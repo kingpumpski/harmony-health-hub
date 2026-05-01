@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Activity, HeartPulse, Thermometer, Droplet, Pulse, Weight, Scale, ShieldCheck, AlertTriangle, ListChecks } from 'lucide-react';
+import { ArrowRight, Activity, HeartPulse, Thermometer, Droplet, Activity as Pulse, Weight, Scale, ShieldCheck, AlertTriangle, ListChecks } from 'lucide-react';
 import { evaluateTriagePriority } from '@/lib/healthApi';
 import { VitalSigns } from '@/types';
 
