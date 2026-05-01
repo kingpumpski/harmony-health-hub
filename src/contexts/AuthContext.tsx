@@ -1,148 +1,126 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { User, UserRole } from '@/types';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { UserRole } from '@/types';
+
+interface AppUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  department?: string;
+  specialization?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
+  session: Session | null;
   isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  switchRole: (role: UserRole) => void;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  logout: () => Promise<void>;
+  switchRole: (role: UserRole) => void; // legacy no-op kept for compatibility
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Demo users for different roles
-const demoUsers: Record<UserRole, User> = {
-  admin: {
-    id: '1',
-    email: 'pumpski6@gmail.com',
-    firstName: 'Pumpski',
-    lastName: 'Admin',
-    role: 'admin',
-    department: 'Administration',
-  },
-  practitioner: {
-    id: '2',
-    email: 'doctor@medicarepro.com',
-    firstName: 'Dr. Sarah',
-    lastName: 'Johnson',
-    role: 'practitioner',
-    department: 'Internal Medicine',
-    specialization: 'General Practitioner',
-  },
-  nurse: {
-    id: '3',
-    email: 'nurse@medicarepro.com',
-    firstName: 'Emily',
-    lastName: 'Williams',
-    role: 'nurse',
-    department: 'Nursing',
-  },
-  midwife: {
-    id: '4',
-    email: 'midwife@medicarepro.com',
-    firstName: 'Grace',
-    lastName: 'Thompson',
-    role: 'midwife',
-    department: 'Maternity',
-  },
-  lab_technician: {
-    id: '5',
-    email: 'lab@medicarepro.com',
-    firstName: 'Michael',
-    lastName: 'Chen',
-    role: 'lab_technician',
-    department: 'Laboratory',
-  },
-  pharmacist: {
-    id: '6',
-    email: 'pharmacy@medicarepro.com',
-    firstName: 'David',
-    lastName: 'Brown',
-    role: 'pharmacist',
-    department: 'Pharmacy',
-  },
-  accountant: {
-    id: '7',
-    email: 'accounts@medicarepro.com',
-    firstName: 'Lisa',
-    lastName: 'Anderson',
-    role: 'accountant',
-    department: 'Finance',
-  },
-  front_desk: {
-    id: '8',
-    email: 'reception@medicarepro.com',
-    firstName: 'Jennifer',
-    lastName: 'Davis',
-    role: 'front_desk',
-    department: 'Reception',
-  },
-  canteen: {
-    id: '9',
-    email: 'canteen@medicarepro.com',
-    firstName: 'Robert',
-    lastName: 'Wilson',
-    role: 'canteen',
-    department: 'Food Services',
-  },
-  patient: {
-    id: '10',
-    email: 'patient@email.com',
-    firstName: 'John',
-    lastName: 'Doe',
-    role: 'patient',
-  },
-};
+async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
+  const [{ data: profile }, { data: roleRow }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', supabaseUser.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email ?? '',
+    firstName: profile?.first_name ?? '',
+    lastName: profile?.last_name ?? '',
+    role: (roleRow?.role as UserRole) ?? 'patient',
+    department: profile?.department ?? undefined,
+    specialization: profile?.specialization ?? undefined,
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up listener FIRST
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        // Defer Supabase calls outside the auth callback
+        setTimeout(() => {
+          loadAppUser(newSession.user).then(setUser);
+        }, 0);
+      } else {
+        setUser(null);
+      }
+    });
+
+    // Then load existing session
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      setSession(existing);
+      if (existing?.user) {
+        loadAppUser(existing.user).then((u) => {
+          setUser(u);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const userEntry = Object.entries(demoUsers).find(
-      ([, user]) => user.email === email
-    );
-
-    const validPasswords: Record<string, string> = {
-      'pumpski6@gmail.com': 'admin@2026',
-      'doctor@medicarepro.com': 'doctor@2026',
-      'nurse@medicarepro.com': 'nurse@2026',
-      'lab@medicarepro.com': 'lab@2026',
-      'pharmacy@medicarepro.com': 'pharmacy@2026',
-      'accounts@medicarepro.com': 'accounts@2026',
-      'reception@medicarepro.com': 'reception@2026',
-      'canteen@medicarepro.com': 'canteen@2026',
-      'patient@email.com': 'patient@2026',
-    };
-
-    if (!userEntry) {
-      throw new Error('User not found');
-    }
-
-    const [role] = userEntry;
-    const expectedPassword = validPasswords[email] || '';
-
-    if (password !== expectedPassword) {
-      throw new Error('Invalid password');
-    }
-
-    setUser(demoUsers[role as UserRole]);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   }, []);
 
-  const logout = useCallback(() => {
+  const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
+    const redirectUrl = `${window.location.origin}/dashboard`;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: { first_name: firstName, last_name: lastName },
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   }, []);
 
-  const switchRole = useCallback((role: UserRole) => {
-    setUser(demoUsers[role]);
+  const switchRole = useCallback(() => {
+    // Legacy demo function — no longer changes role. Real roles come from the DB.
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        session,
+        isAuthenticated: !!session,
+        loading,
         login,
+        signUp,
         logout,
         switchRole,
       }}
@@ -153,9 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }
