@@ -24,13 +24,23 @@ export interface User {
 export interface Patient {
   id: string;
   patientId: string;
+  ghanaCardNumber?: string;
+  fullName?: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   gender: 'male' | 'female' | 'other';
+  address: string;
   email: string;
   phone: string;
-  address: string;
+  nextOfKin?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  profilePhoto?: string;
+  insuranceProvider?: string;
+  insuranceNumber?: string;
   emergencyContact: {
     name: string;
     relationship: string;
@@ -44,7 +54,9 @@ export interface Patient {
     coverageType: string;
   };
   bloodType?: string;
+  genotype?: string;
   allergies?: string[];
+  chronicConditions?: string[];
   medicalHistory?: string[];
   registrationDate: string;
   status: 'active' | 'inactive' | 'discharged';
@@ -286,4 +298,32 @@ export interface Notification {
   relatedEntityType?: string;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface SoundAlertConfig {
+  id: string;
+  name: string;
+  category: 'critical' | 'notification' | 'reminder' | 'emergency';
+  enabled: boolean;
+  soundFile?: string;
+}
+
+export interface PublicHealthReportTemplate {
+  id: string;
+  name: string;
+  frequency: 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly';
+  lastGenerated?: string;
+}
+
+export interface RosterShift {
+  day: string;
+  shift: 'Morning' | 'Afternoon' | 'Night';
+  assignedTeam: string;
+}
+
+export interface AISpecialistAnalysis {
+  specialist: string;
+  score: number;
+  recommendation: string;
+  riskLevel: 'low' | 'moderate' | 'high' | 'critical';
 }

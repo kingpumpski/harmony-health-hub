@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, User, Phone, Mail, MapPin, Shield, Heart, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowLeft, Save, User, Phone, Shield, Heart, AlertTriangle, Upload, QrCode, Barcode, ClipboardCheck } from 'lucide-react';
+import { cn, generateClientId, getBarcodeUrl, getQrCodeUrl } from '@/lib/utils';
+import { analyzeDocument, registerPatient } from '@/lib/healthApi';
 
 interface FormSection {
   id: string;
@@ -12,6 +13,7 @@ interface FormSection {
 const formSections: FormSection[] = [
   { id: 'personal', title: 'Personal Information', icon: User },
   { id: 'contact', title: 'Contact Details', icon: Phone },
+  { id: 'documents', title: 'Documents', icon: Upload },
   { id: 'emergency', title: 'Emergency Contact', icon: AlertTriangle },
   { id: 'insurance', title: 'Insurance', icon: Shield },
   { id: 'medical', title: 'Medical History', icon: Heart },
@@ -21,7 +23,14 @@ export default function PatientRegistration() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('personal');
   const [hasInsurance, setHasInsurance] = useState(false);
-  const [formData, setFormData] = useState({
+  const [profilePhotoName, setProfilePhotoName] = useState('');
+  const [uploadedDocuments, setUploadedDocuments] = useState<File[]>([]);
+  const [documentUploadNames, setDocumentUploadNames] = useState('');
+  const [documentAnalysis, setDocumentAnalysis] = useState<string[]>([]);
+  const [registeredPatientId, setRegisteredPatientId] = useState('');
+  const initialFormState = {
+    patientId: '',
+    ghanaCardNumber: '',
     firstName: '',
     lastName: '',
     dateOfBirth: '',
@@ -38,24 +47,65 @@ export default function PatientRegistration() {
     groupNumber: '',
     insuranceExpiry: '',
     bloodType: '',
+    genotype: '',
     allergies: '',
+    chronicConditions: '',
     medicalHistory: '',
-  });
+  };
+  const [formData, setFormData] = useState(initialFormState);
+  const [registeredPatientData, setRegisteredPatientData] = useState<typeof initialFormState | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length) {
+      setUploadedDocuments(files);
+      setProfilePhotoName(files.map((file) => file.name).join(', '));
+    }
+  };
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length) {
+      setUploadedDocuments(files);
+      setDocumentUploadNames(files.map((file) => file.name).join(', '));
+    }
+  };
+
+  const handleAnalyzeDocuments = async () => {
+    if (!uploadedDocuments.length) return;
+    const analysis = await analyzeDocument(uploadedDocuments[0]);
+    if (analysis.findings) {
+      setDocumentAnalysis(analysis.findings);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Play success sound
+    const clientId = formData.patientId.trim() || generateClientId();
+    const payload = {
+      ...formData,
+      patientId: clientId,
+    };
+
+    setFormData((current) => ({ ...current, patientId: clientId }));
+    setRegisteredPatientId(clientId);
+    setRegisteredPatientData(payload);
+
+    if (uploadedDocuments.length) {
+      await handleAnalyzeDocuments();
+    }
+
+    await registerPatient(payload);
+
     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQ4fk9/qvYIwA2Orzdy/dCANgtnv28RMCx/I+fjObiYNvPT34oM7ChLe//jljT4JGf//+NiVRg4a//7/wZ1ODSQG///cpVgXMhD/9t6lYhg7DP7v2ZhnFjER/+fbnW0ZOg7//dWiaR8yDP/z1KBtJTkN+fjWoW8pMg793tSdcSUoEPz436J2IykQ//baoHUlKBD///emeicuE/7326F3IyYS/fnbpnwnKBL///2me');
     audio.volume = 0.3;
     audio.play().catch(() => {});
-    
-    console.log('Patient registered:', formData);
-    // In production, this would save to Supabase
   };
+
 
   return (
     <div className="animate-fade-in">
@@ -154,6 +204,33 @@ export default function PatientRegistration() {
                     <option value="female">Female</option>
                     <option value="other">Other</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Patient ID</label>
+                  <input
+                    type="text"
+                    name="patientId"
+                    value={formData.patientId}
+                    onChange={handleInputChange}
+                    className="input-medical"
+                    placeholder="Auto-generated or staff-provided"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ghana Card Number</label>
+                  <input
+                    type="text"
+                    name="ghanaCardNumber"
+                    value={formData.ghanaCardNumber}
+                    onChange={handleInputChange}
+                    className="input-medical"
+                    placeholder="Enter National ID number"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Profile Photo</label>
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="input-medical" />
+                  {profilePhotoName && <p className="text-sm text-muted-foreground mt-2">Selected photo: {profilePhotoName}</p>}
                 </div>
               </div>
             </div>
@@ -345,6 +422,27 @@ export default function PatientRegistration() {
                     <option value="O-">O-</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Genotype</label>
+                  <input
+                    type="text"
+                    name="genotype"
+                    value={formData.genotype}
+                    onChange={handleInputChange}
+                    className="input-medical"
+                    placeholder="e.g. AS, AA, SS"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Chronic Conditions</label>
+                  <textarea
+                    name="chronicConditions"
+                    value={formData.chronicConditions}
+                    onChange={handleInputChange}
+                    className="input-medical min-h-20"
+                    placeholder="Diabetes, hypertension, asthma, etc."
+                  />
+                </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-2">Known Allergies</label>
                   <textarea
@@ -367,6 +465,51 @@ export default function PatientRegistration() {
                 </div>
               </div>
             </div>
+
+            {registeredPatientId && registeredPatientData && (
+              <div className="card-medical p-6 border-primary/20 bg-primary/5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.2em] text-primary">Registration Complete</p>
+                      <h2 className="text-xl font-semibold">Client ID: {registeredPatientId}</h2>
+                    </div>
+                    <div className="text-right text-sm text-muted-foreground">
+                      <p>{registeredPatientData.firstName} {registeredPatientData.lastName}</p>
+                      <p>{registeredPatientData.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Wristband / ID Preview</p>
+                      <div className="rounded-3xl border border-border bg-card p-4">
+                        <div className="space-y-3">
+                          <p className="font-medium">{registeredPatientData.firstName} {registeredPatientData.lastName}</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{registeredPatientData.ghanaCardNumber || 'No Ghana Card'}</p>
+                          <p className="text-sm text-muted-foreground">DOB: {registeredPatientData.dateOfBirth}</p>
+                          <div className="mt-3 flex flex-col gap-3 items-start">
+                            <img src={getQrCodeUrl(registeredPatientId)} alt="Patient QR code" className="h-36 w-36 rounded-2xl border border-border bg-white" />
+                            <img src={getBarcodeUrl(registeredPatientId)} alt="Patient barcode" className="h-16 w-full rounded-2xl border border-border bg-white object-contain" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-3xl border border-border bg-card p-4">
+                      <p className="text-sm font-medium mb-2">Uploaded Documents</p>
+                      <p className="text-sm text-muted-foreground">{profilePhotoName ? `Photo: ${profilePhotoName}` : 'No profile image uploaded.'}</p>
+                      <p className="text-sm text-muted-foreground">{documentUploadNames ? `Documents: ${documentUploadNames}` : 'No supporting documents uploaded.'}</p>
+                      <p className="mt-4 text-sm font-medium">Next steps</p>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        <li>Save the patient record to the clinical registry.</li>
+                        <li>Print the wristband or attach the QR code to the chart.</li>
+                        <li>Review document analysis for referral notes.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-4">

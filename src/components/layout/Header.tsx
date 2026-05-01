@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Search, Settings, ChevronDown } from 'lucide-react';
+import { Bell, Search, Settings, ChevronDown, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
+import { searchPatients } from '@/lib/healthApi';
 
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrator',
@@ -18,7 +20,11 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 export default function Header() {
+  const { theme, setTheme } = useTheme();
   const { user, switchRole } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showRoleSwitch, setShowRoleSwitch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -34,14 +40,40 @@ export default function Header() {
     <header className="sticky top-0 z-30 h-16 bg-card border-b border-border px-6 flex items-center justify-between">
       {/* Search */}
       <div className="flex-1 max-w-md">
-        <div className="relative">
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!searchTerm.trim()) return;
+            setIsSearching(true);
+            const results = await searchPatients(searchTerm.trim());
+            setSearchResults(results);
+            setIsSearching(false);
+          }}
+          className="relative"
+        >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             type="text"
             placeholder="Search patients, appointments, records..."
             className="input-medical pl-10 w-full"
           />
-        </div>
+          {searchResults.length > 0 && (
+            <div className="absolute left-0 right-0 z-20 mt-2 rounded-3xl border border-border bg-card p-3 shadow-elevated">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">Elasticsearch results</p>
+              <div className="space-y-2">
+                {searchResults.map((result) => (
+                  <div key={result.patientId} className="rounded-2xl border border-border p-3 hover:bg-muted/50 transition-colors">
+                    <p className="font-medium">{result.fullName || `${result.firstName} ${result.lastName}`}</p>
+                    <p className="text-xs text-muted-foreground">Client ID: {result.patientId}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {isSearching && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">Searching...</div>}
+        </form>
       </div>
 
       {/* Actions */}
@@ -120,6 +152,14 @@ export default function Header() {
             </div>
           )}
         </div>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="p-2 rounded-lg hover:bg-muted transition-colors"
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5 text-muted-foreground" /> : <Moon className="w-5 h-5 text-muted-foreground" />}
+        </button>
 
         {/* Settings */}
         <button className="p-2 rounded-lg hover:bg-muted transition-colors">

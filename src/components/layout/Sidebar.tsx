@@ -24,6 +24,10 @@ import {
   ClipboardList,
   Syringe,
   HeartPulse,
+  Eye,
+  ShieldCheck,
+  MessageSquare,
+  Database,
 } from 'lucide-react';
 
 interface NavItem {
@@ -36,10 +40,17 @@ interface NavItem {
 const roleNavItems: Record<string, NavItem[]> = {
   admin: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: Users, label: 'Users', href: '/admin/users' },
-    { icon: UserCog, label: 'Role Management', href: '/admin/roles' },
-    { icon: Settings, label: 'Settings', href: '/admin/settings' },
-    { icon: Activity, label: 'System Logs', href: '/admin/logs' },
+    { icon: Users, label: 'Patients', href: '/patients' },
+    { icon: ClipboardList, label: 'Registration', href: '/registration' },
+    { icon: Calendar, label: 'Appointments', href: '/appointments' },
+    { icon: FileText, label: 'Medical Records', href: '/records' },
+    { icon: FlaskConical, label: 'Lab Results', href: '/lab-results' },
+    { icon: Pill, label: 'Medications', href: '/medications' },
+    { icon: CreditCard, label: 'Insurance', href: '/insurance' },
+    { icon: FileText, label: 'Public Health', href: '/public-health' },
+    { icon: Activity, label: 'Roster Generator', href: '/roster' },
+    { icon: ShieldCheck, label: 'AI Hub', href: '/ai-clinical' },
+    { icon: Database, label: 'System Administration', href: '/admin/system' },
     { icon: Bell, label: 'Notifications', href: '/notifications', badge: 5 },
   ],
   front_desk: [
@@ -47,23 +58,29 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Users, label: 'Patients', href: '/patients' },
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: ClipboardList, label: 'Registration', href: '/registration' },
+    { icon: HeartPulse, label: 'Triage', href: '/vitals' },
     { icon: Bell, label: 'Notifications', href: '/notifications', badge: 3 },
   ],
   practitioner: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: Users, label: 'My Patients', href: '/patients' },
-    { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: Stethoscope, label: 'Consultation', href: '/consultation' },
     { icon: FileText, label: 'Medical Records', href: '/records' },
     { icon: FlaskConical, label: 'Lab Results', href: '/lab-results', badge: 2 },
+    { icon: Eye, label: 'Ophthalmology', href: '/ophthalmology' },
+    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
+    { icon: ShieldCheck, label: 'AI Hub', href: '/ai-clinical' },
     { icon: Bell, label: 'Notifications', href: '/notifications', badge: 4 },
   ],
   nurse: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: Users, label: 'Patients', href: '/patients' },
     { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
     { icon: HeartPulse, label: 'Vitals', href: '/vitals' },
     { icon: Syringe, label: 'Medications', href: '/medications' },
     { icon: FileText, label: 'Nursing Notes', href: '/nursing-notes' },
+    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
     { icon: Bell, label: 'Notifications', href: '/notifications', badge: 6 },
   ],
   midwife: [
@@ -71,6 +88,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Baby, label: 'Maternity', href: '/maternity' },
     { icon: BedDouble, label: 'Admissions', href: '/admissions' },
     { icon: HeartPulse, label: 'Monitoring', href: '/monitoring' },
+    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   lab_technician: [
@@ -93,6 +111,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: FileText, label: 'Invoices', href: '/invoices' },
     { icon: Users, label: 'Insurance', href: '/insurance' },
     { icon: ClipboardList, label: 'Reports', href: '/financial-reports' },
+    { icon: FileText, label: 'Public Health', href: '/public-health' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   canteen: [
@@ -104,6 +123,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   patient: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: FileText, label: 'Patient Portal', href: '/patient-portal' },
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: FileText, label: 'Medical Records', href: '/records' },
     { icon: CreditCard, label: 'Billing', href: '/billing' },

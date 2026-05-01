@@ -15,9 +15,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const demoUsers: Record<UserRole, User> = {
   admin: {
     id: '1',
-    email: 'admin@medicarepro.com',
-    firstName: 'Admin',
-    lastName: 'User',
+    email: 'pumpski6@gmail.com',
+    firstName: 'Pumpski',
+    lastName: 'Admin',
     role: 'admin',
     department: 'Administration',
   },
@@ -99,17 +99,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const login = useCallback(async (email: string, password: string) => {
-    // Demo login - in production, this would validate against Supabase
-    const role = Object.keys(demoUsers).find(
-      (key) => demoUsers[key as UserRole].email === email
-    ) as UserRole | undefined;
+    const userEntry = Object.entries(demoUsers).find(
+      ([, user]) => user.email === email
+    );
 
-    if (role) {
-      setUser(demoUsers[role]);
-    } else {
-      // Default to front_desk for demo
-      setUser(demoUsers.front_desk);
+    const validPasswords: Record<string, string> = {
+      'pumpski6@gmail.com': 'admin@2026',
+      'doctor@medicarepro.com': 'doctor@2026',
+      'nurse@medicarepro.com': 'nurse@2026',
+      'lab@medicarepro.com': 'lab@2026',
+      'pharmacy@medicarepro.com': 'pharmacy@2026',
+      'accounts@medicarepro.com': 'accounts@2026',
+      'reception@medicarepro.com': 'reception@2026',
+      'canteen@medicarepro.com': 'canteen@2026',
+      'patient@email.com': 'patient@2026',
+    };
+
+    if (!userEntry) {
+      throw new Error('User not found');
     }
+
+    const [role] = userEntry;
+    const expectedPassword = validPasswords[email] || '';
+
+    if (password !== expectedPassword) {
+      throw new Error('Invalid password');
+    }
+
+    setUser(demoUsers[role as UserRole]);
   }, []);
 
   const logout = useCallback(() => {
