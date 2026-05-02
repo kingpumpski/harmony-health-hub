@@ -64,6 +64,60 @@ export type Database = {
           },
         ]
       }
+      department_queues: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          department: string
+          id: string
+          patient_id: string
+          payment_required: boolean
+          payment_satisfied: boolean
+          priority: string
+          reason: string | null
+          related_encounter_id: string | null
+          related_invoice_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          department: string
+          id?: string
+          patient_id: string
+          payment_required?: boolean
+          payment_satisfied?: boolean
+          priority?: string
+          reason?: string | null
+          related_encounter_id?: string | null
+          related_invoice_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          id?: string
+          patient_id?: string
+          payment_required?: boolean
+          payment_satisfied?: boolean
+          priority?: string
+          reason?: string | null
+          related_encounter_id?: string | null
+          related_invoice_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       diagnoses: {
         Row: {
           created_at: string
@@ -569,6 +623,54 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          metadata: Json | null
+          recipient_role: Database["public"]["Enums"]["app_role"] | null
+          recipient_user_id: string | null
+          related_entity_id: string | null
+          related_patient_id: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          metadata?: Json | null
+          recipient_role?: Database["public"]["Enums"]["app_role"] | null
+          recipient_user_id?: string | null
+          related_entity_id?: string | null
+          related_patient_id?: string | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          recipient_role?: Database["public"]["Enums"]["app_role"] | null
+          recipient_user_id?: string | null
+          related_entity_id?: string | null
+          related_patient_id?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
@@ -588,10 +690,12 @@ export type Database = {
           genotype: string | null
           ghana_card_number: string | null
           id: string
+          insurance_expiry: string | null
+          insurance_group_number: string | null
           insurance_number: string | null
           insurance_provider: string | null
           last_name: string
-          patient_code: string
+          patient_code: string | null
           phone: string | null
           status: string
           updated_at: string
@@ -615,10 +719,12 @@ export type Database = {
           genotype?: string | null
           ghana_card_number?: string | null
           id?: string
+          insurance_expiry?: string | null
+          insurance_group_number?: string | null
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name: string
-          patient_code: string
+          patient_code?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
@@ -642,10 +748,12 @@ export type Database = {
           genotype?: string | null
           ghana_card_number?: string | null
           id?: string
+          insurance_expiry?: string | null
+          insurance_group_number?: string | null
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name?: string
-          patient_code?: string
+          patient_code?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
