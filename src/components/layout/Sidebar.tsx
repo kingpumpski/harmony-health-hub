@@ -1,41 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  FileText,
-  Stethoscope,
-  FlaskConical,
-  Pill,
-  CreditCard,
-  BedDouble,
-  Baby,
-  Utensils,
-  Settings,
-  Bell,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Activity,
-  UserCog,
-  ClipboardList,
-  Syringe,
-  HeartPulse,
-  Eye,
-  ShieldCheck,
-  MessageSquare,
-  Database,
+  LayoutDashboard, Users, Calendar, FileText, Stethoscope, FlaskConical,
+  Pill, CreditCard, BedDouble, Baby, Utensils, Bell, LogOut,
+  ChevronLeft, ChevronRight, Activity, ClipboardList, Syringe, HeartPulse,
+  Eye, ShieldCheck, MessageSquare, Database, Video, Receipt, UserCog,
 } from 'lucide-react';
 
-interface NavItem {
-  icon: React.ElementType;
-  label: string;
-  href: string;
-  badge?: number;
-}
+interface NavItem { icon: React.ElementType; label: string; href: string }
 
 const roleNavItems: Record<string, NavItem[]> = {
   admin: [
@@ -43,113 +18,126 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Users, label: 'Patients', href: '/patients' },
     { icon: ClipboardList, label: 'Registration', href: '/registration' },
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
-    { icon: FileText, label: 'Medical Records', href: '/records' },
-    { icon: FlaskConical, label: 'Lab Results', href: '/lab-results' },
-    { icon: Pill, label: 'Medications', href: '/medications' },
-    { icon: CreditCard, label: 'Insurance', href: '/insurance' },
-    { icon: FileText, label: 'Public Health', href: '/public-health' },
-    { icon: Activity, label: 'Roster Generator', href: '/roster' },
+    { icon: HeartPulse, label: 'Triage', href: '/vitals' },
+    { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' },
+    { icon: Pill, label: 'Pharmacy', href: '/pharmacy' },
+    { icon: CreditCard, label: 'Billing', href: '/billing' },
+    { icon: Video, label: 'Telemedicine', href: '/telemedicine' },
+    { icon: Baby, label: 'Fertility', href: '/fertility' },
     { icon: ShieldCheck, label: 'AI Hub', href: '/ai-clinical' },
-    { icon: Database, label: 'System Administration', href: '/admin/system' },
-    { icon: Bell, label: 'Notifications', href: '/notifications', badge: 5 },
+    { icon: UserCog, label: 'Manage Users', href: '/admin/users' },
+    { icon: Database, label: 'System Library', href: '/admin/system' },
+    { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   front_desk: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Users, label: 'Patients', href: '/patients' },
-    { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: ClipboardList, label: 'Registration', href: '/registration' },
+    { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: HeartPulse, label: 'Triage', href: '/vitals' },
-    { icon: Bell, label: 'Notifications', href: '/notifications', badge: 3 },
+    { icon: CreditCard, label: 'Billing', href: '/billing' },
+    { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   practitioner: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
-    { icon: Users, label: 'My Patients', href: '/patients' },
-    { icon: Stethoscope, label: 'Consultation', href: '/consultation' },
-    { icon: FileText, label: 'Medical Records', href: '/records' },
-    { icon: FlaskConical, label: 'Lab Results', href: '/lab-results', badge: 2 },
+    { icon: Users, label: 'Patients', href: '/patients' },
+    { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: FlaskConical, label: 'Lab Results', href: '/laboratory' },
+    { icon: Pill, label: 'Prescriptions', href: '/pharmacy' },
+    { icon: Video, label: 'Telemedicine', href: '/telemedicine' },
+    { icon: Baby, label: 'Fertility', href: '/fertility' },
     { icon: Eye, label: 'Ophthalmology', href: '/ophthalmology' },
-    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
     { icon: ShieldCheck, label: 'AI Hub', href: '/ai-clinical' },
-    { icon: Bell, label: 'Notifications', href: '/notifications', badge: 4 },
+    { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   nurse: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Users, label: 'Patients', href: '/patients' },
+    { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' },
+    { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
     { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
-    { icon: HeartPulse, label: 'Vitals', href: '/vitals' },
-    { icon: Syringe, label: 'Medications', href: '/medications' },
-    { icon: FileText, label: 'Nursing Notes', href: '/nursing-notes' },
-    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
-    { icon: Bell, label: 'Notifications', href: '/notifications', badge: 6 },
+    { icon: Syringe, label: 'Medications', href: '/pharmacy' },
+    { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   midwife: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Baby, label: 'Maternity', href: '/maternity' },
+    { icon: Baby, label: 'Fertility', href: '/fertility' },
     { icon: BedDouble, label: 'Admissions', href: '/admissions' },
-    { icon: HeartPulse, label: 'Monitoring', href: '/monitoring' },
-    { icon: MessageSquare, label: 'Patient Chat', href: '/patients' },
+    { icon: HeartPulse, label: 'Vitals', href: '/vitals' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   lab_technician: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: FlaskConical, label: 'Lab Requests', href: '/lab-requests', badge: 8 },
-    { icon: FileText, label: 'Results Entry', href: '/results-entry' },
+    { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' },
     { icon: ClipboardList, label: 'Reports', href: '/reports' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   pharmacist: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: Pill, label: 'Dispensing', href: '/dispensing', badge: 12 },
+    { icon: Pill, label: 'Pharmacy / Dispensing', href: '/pharmacy' },
     { icon: ClipboardList, label: 'Inventory', href: '/inventory' },
-    { icon: FileText, label: 'Stock Alerts', href: '/stock-alerts', badge: 3 },
+    { icon: FileText, label: 'Stock Alerts', href: '/stock-alerts' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   accountant: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: CreditCard, label: 'Billing', href: '/billing' },
-    { icon: FileText, label: 'Invoices', href: '/invoices' },
-    { icon: Users, label: 'Insurance', href: '/insurance' },
-    { icon: ClipboardList, label: 'Reports', href: '/financial-reports' },
-    { icon: FileText, label: 'Public Health', href: '/public-health' },
+    { icon: Receipt, label: 'Invoices', href: '/billing' },
+    { icon: ShieldCheck, label: 'Insurance', href: '/billing' },
+    { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   canteen: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Utensils, label: 'Menu', href: '/menu' },
-    { icon: ClipboardList, label: 'Orders', href: '/orders', badge: 5 },
+    { icon: ClipboardList, label: 'Orders', href: '/orders' },
     { icon: Users, label: 'Dietary Plans', href: '/dietary-plans' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   patient: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: FileText, label: 'Patient Portal', href: '/patient-portal' },
-    { icon: Calendar, label: 'Appointments', href: '/appointments' },
-    { icon: FileText, label: 'Medical Records', href: '/records' },
-    { icon: CreditCard, label: 'Billing', href: '/billing' },
+    { icon: FileText, label: 'My Portal', href: '/patient-portal' },
+    { icon: Calendar, label: 'My Appointments', href: '/appointments' },
+    { icon: Video, label: 'My Telemedicine', href: '/telemedicine' },
+    { icon: CreditCard, label: 'My Billing', href: '/billing' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
 };
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  if (!user) return null;
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { count } = await supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
+      setUnreadCount(count ?? 0);
+    };
+    load();
+    const ch = supabase.channel('side-notif')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
 
-  const navItems = roleNavItems[user.role] || roleNavItems.front_desk;
+  if (!user) return null;
+  const navItems = roleNavItems[user.role] || roleNavItems.patient;
 
   return (
     <aside
       className={cn(
         'fixed left-0 top-0 z-40 h-screen sidebar-gradient transition-all duration-300 flex flex-col',
-        collapsed ? 'w-20' : 'w-64'
+        collapsed ? 'w-20' : 'w-64',
       )}
     >
-      {/* Logo */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-        {!collapsed && (
+        {!collapsed ? (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
               <HeartPulse className="w-6 h-6 text-sidebar-primary-foreground" />
@@ -159,40 +147,34 @@ export default function Sidebar() {
               <p className="text-xs text-sidebar-foreground/60">Pro Health System</p>
             </div>
           </div>
-        )}
-        {collapsed && (
+        ) : (
           <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center mx-auto">
             <HeartPulse className="w-6 h-6 text-sidebar-primary-foreground" />
           </div>
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-3 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.href;
+            const isNotif = item.href === '/notifications';
             return (
-              <li key={item.href}>
+              <li key={item.label + item.href}>
                 <Link
                   to={item.href}
-                  className={cn(
-                    isActive ? 'nav-link-active' : 'nav-link',
-                    collapsed && 'justify-center px-2'
-                  )}
+                  className={cn(isActive ? 'nav-link-active' : 'nav-link', collapsed && 'justify-center px-2')}
                 >
                   <div className="relative">
                     <item.icon className="w-5 h-5 flex-shrink-0" />
-                    {item.badge && item.badge > 0 && (
-                      <span className="notification-dot" />
-                    )}
+                    {isNotif && unreadCount > 0 && <span className="notification-dot" />}
                   </div>
                   {!collapsed && (
                     <>
                       <span className="flex-1">{item.label}</span>
-                      {item.badge && item.badge > 0 && (
+                      {isNotif && unreadCount > 0 && (
                         <span className="bg-critical text-critical-foreground text-xs font-medium px-2 py-0.5 rounded-full">
-                          {item.badge}
+                          {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                     </>
@@ -202,36 +184,13 @@ export default function Sidebar() {
             );
           })}
         </ul>
-
-        {/* Fertility Clinic Section */}
-        {(user.role === 'admin' || user.role === 'practitioner' || user.role === 'nurse') && (
-          <div className="mt-6 pt-6 border-t border-sidebar-border">
-            {!collapsed && (
-              <p className="px-3 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider mb-2">
-                Fertility Clinic
-              </p>
-            )}
-            <Link
-              to="/fertility"
-              className={cn(
-                location.pathname.startsWith('/fertility') ? 'nav-link-active' : 'nav-link',
-                collapsed && 'justify-center px-2',
-                'bg-fertility/10 hover:bg-fertility/20'
-              )}
-            >
-              <Baby className="w-5 h-5 flex-shrink-0 text-fertility" />
-              {!collapsed && <span className="text-fertility">Fertility Services</span>}
-            </Link>
-          </div>
-        )}
       </nav>
 
-      {/* User Section */}
       <div className="p-3 border-t border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center text-sidebar-foreground font-medium">
-              {user.firstName[0]}{user.lastName[0]}
+              {(user.firstName?.[0] || user.email[0]).toUpperCase()}{(user.lastName?.[0] || '').toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
@@ -245,26 +204,18 @@ export default function Sidebar() {
         )}
         <button
           onClick={logout}
-          className={cn(
-            'nav-link w-full text-critical hover:text-critical hover:bg-critical/10',
-            collapsed && 'justify-center px-2'
-          )}
+          className={cn('nav-link w-full text-critical hover:text-critical hover:bg-critical/10', collapsed && 'justify-center px-2')}
         >
           <LogOut className="w-5 h-5" />
           {!collapsed && <span>Sign Out</span>}
         </button>
       </div>
 
-      {/* Collapse Toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-card border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
       >
-        {collapsed ? (
-          <ChevronRight className="w-4 h-4" />
-        ) : (
-          <ChevronLeft className="w-4 h-4" />
-        )}
+        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
     </aside>
   );

@@ -26,6 +26,11 @@ import SoundAlerts from "./pages/SoundAlerts";
 import PublicHealthReports from "./pages/PublicHealthReports";
 import RosterGenerator from "./pages/RosterGenerator";
 import AIClinicalHub from "./pages/AIClinicalHub";
+import Encounters from "./pages/Encounters";
+import Billing from "./pages/Billing";
+import Fertility from "./pages/Fertility";
+import Telemedicine from "./pages/Telemedicine";
+import Appointments from "./pages/Appointments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,49 +52,68 @@ const App = () => (
                 <Route path="/patients" element={<PatientSearch />} />
                 <Route path="/patients/:patientId/chat" element={<PatientChat />} />
                 <Route path="/patient-portal" element={<PatientPortal />} />
-                <Route path="/appointments" element={<FeaturePage title="Appointments" description="Manage and monitor patient appointment schedules." />} />
-              <Route path="/encounters" element={<FeaturePage title="Encounters" description="Document clinical encounters and consultation summaries." />} />
-              <Route path="/records" element={<FeaturePage title="Medical Records" description="Review patient charts, documents, and historical visits." />} />
-              <Route path="/lab-results" element={<Laboratory />} />
-              <Route path="/lab-requests" element={<Laboratory />} />
-              <Route path="/results-entry" element={<Laboratory />} />
-              <Route path="/reports" element={<PublicHealthReports />} />
-              <Route path="/inpatients" element={<FeaturePage title="Inpatient Care" description="Manage admissions, ward allocation, and patient monitoring." />} />
-              <Route path="/vitals" element={<Triage />} />
-              <Route path="/consultation" element={<Consultation />} />
-              <Route path="/ophthalmology" element={<Ophthalmology />} />
-              <Route path="/medications" element={<Pharmacy />} />
-              <Route path="/dispensing" element={<Pharmacy />} />
-              <Route path="/inventory" element={<Pharmacy />} />
-              <Route path="/stock-alerts" element={<SoundAlerts />} />
-              <Route path="/sound-alerts" element={<SoundAlerts />} />
-              <Route path="/billing" element={<FeaturePage title="Billing" description="Process invoices, payments, and insurance claims." />} />
-              <Route path="/invoices" element={<FeaturePage title="Invoices" description="Generate and review billing invoices." />} />
-              <Route path="/insurance" element={<FeaturePage title="Insurance" description="Manage insurance providers, claims and approvals." />} />
-              <Route path="/financial-reports" element={<FeaturePage title="Financial Reports" description="View finance dashboards and audit summaries." />} />
-              <Route path="/maternity" element={<FeaturePage title="Maternity Services" description="Support maternity care workflows and patient tracking." />} />
-              <Route path="/admissions" element={<FeaturePage title="Admissions" description="Coordinate admissions, transfers, and bed assignments." />} />
-              <Route path="/monitoring" element={<FeaturePage title="Monitoring" description="Track vital sign trends and nursing rounds." />} />
-              <Route path="/menu" element={<FeaturePage title="Menu" description="Manage facility food services and dietary plans." />} />
-              <Route path="/orders" element={<FeaturePage title="Orders" description="Process internal and external supply orders." />} />
-              <Route path="/dietary-plans" element={<FeaturePage title="Dietary Plans" description="Plan meals and nutrition schedules for patients." />} />
-              <Route path="/fertility" element={<FeaturePage title="Fertility Services" description="Support fertility workflows and treatment planning." />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/system" element={<SystemLibrary />} />
-              <Route path="/admin/roles" element={<FeaturePage title="Role Management" description="Configure role-based access and permissions." />} />
-              <Route path="/admin/settings" element={<FeaturePage title="System Settings" description="Administer application configuration and security settings." />} />
-              <Route path="/admin/logs" element={<FeaturePage title="System Logs" description="Audit logs for compliance and traceability." />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/sound-alerts" element={<SoundAlerts />} />
-              <Route path="/public-health" element={<PublicHealthReports />} />
-              <Route path="/roster" element={<RosterGenerator />} />
-              <Route path="/ai-clinical" element={<AIClinicalHub />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+
+                {/* Workflow */}
+                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/vitals" element={<Triage />} />
+                <Route path="/consultation" element={<Consultation />} />
+                <Route path="/encounters" element={<Encounters />} />
+                <Route path="/ophthalmology" element={<Ophthalmology />} />
+
+                {/* Lab */}
+                <Route path="/laboratory" element={<Laboratory />} />
+                <Route path="/lab-results" element={<Laboratory />} />
+                <Route path="/lab-requests" element={<Laboratory />} />
+                <Route path="/results-entry" element={<Laboratory />} />
+
+                {/* Pharmacy */}
+                <Route path="/pharmacy" element={<Pharmacy />} />
+                <Route path="/medications" element={<Pharmacy />} />
+                <Route path="/dispensing" element={<Pharmacy />} />
+                <Route path="/inventory" element={<Pharmacy />} />
+                <Route path="/stock-alerts" element={<SoundAlerts />} />
+                <Route path="/sound-alerts" element={<SoundAlerts />} />
+
+                {/* Records */}
+                <Route path="/records" element={<FeaturePage title="Medical Records" description="Review patient charts, documents, and historical visits." />} />
+                <Route path="/inpatients" element={<FeaturePage title="Inpatient Care" description="Manage admissions, ward allocation, and patient monitoring." />} />
+                <Route path="/admissions" element={<FeaturePage title="Admissions" description="Coordinate admissions, transfers, and bed assignments." />} />
+                <Route path="/monitoring" element={<FeaturePage title="Monitoring" description="Track vital sign trends and nursing rounds." />} />
+                <Route path="/maternity" element={<FeaturePage title="Maternity Services" description="Support maternity care workflows and patient tracking." />} />
+
+                {/* Billing & Telemedicine & Fertility */}
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/invoices" element={<Billing />} />
+                <Route path="/insurance" element={<Billing />} />
+                <Route path="/financial-reports" element={<Billing />} />
+                <Route path="/telemedicine" element={<Telemedicine />} />
+                <Route path="/fertility" element={<Fertility />} />
+
+                {/* Canteen */}
+                <Route path="/menu" element={<FeaturePage title="Menu" description="Manage facility food services and dietary plans." />} />
+                <Route path="/orders" element={<FeaturePage title="Orders" description="Process internal and external supply orders." />} />
+                <Route path="/dietary-plans" element={<FeaturePage title="Dietary Plans" description="Plan meals and nutrition schedules for patients." />} />
+
+                {/* Reports & AI */}
+                <Route path="/reports" element={<PublicHealthReports />} />
+                <Route path="/public-health" element={<PublicHealthReports />} />
+                <Route path="/roster" element={<RosterGenerator />} />
+                <Route path="/ai-clinical" element={<AIClinicalHub />} />
+
+                {/* Admin */}
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/system" element={<SystemLibrary />} />
+                <Route path="/admin/roles" element={<AdminUsers />} />
+                <Route path="/admin/settings" element={<FeaturePage title="System Settings" description="Administer application configuration and security settings." />} />
+                <Route path="/admin/logs" element={<FeaturePage title="System Logs" description="Audit logs for compliance and traceability." />} />
+
+                <Route path="/notifications" element={<Notifications />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
