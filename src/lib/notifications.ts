@@ -25,7 +25,7 @@ interface NotifyOptions {
 /** Insert a single notification row. */
 export async function notify(opts: NotifyOptions) {
   return supabase.from('notifications').insert({
-    recipient_role: opts.recipientRole ?? null,
+    recipient_role: (opts.recipientRole ?? null) as any,
     recipient_user_id: opts.recipientUserId ?? null,
     title: opts.title,
     message: opts.message,
@@ -34,14 +34,14 @@ export async function notify(opts: NotifyOptions) {
     link: opts.link ?? null,
     related_patient_id: opts.relatedPatientId ?? null,
     related_entity_id: opts.relatedEntityId ?? null,
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as any,
   });
 }
 
 /** Broadcast the same notification to multiple roles at once. */
 export async function notifyRoles(roles: StaffRole[], opts: Omit<NotifyOptions, 'recipientRole' | 'recipientUserId'>) {
   const rows = roles.map((role) => ({
-    recipient_role: role,
+    recipient_role: role as any,
     title: opts.title,
     message: opts.message,
     severity: opts.severity ?? 'info',
@@ -49,9 +49,9 @@ export async function notifyRoles(roles: StaffRole[], opts: Omit<NotifyOptions, 
     link: opts.link ?? null,
     related_patient_id: opts.relatedPatientId ?? null,
     related_entity_id: opts.relatedEntityId ?? null,
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata ?? {}) as any,
   }));
-  return supabase.from('notifications').insert(rows);
+  return supabase.from('notifications').insert(rows as any);
 }
 
 /** Invoke an edge function for richer notifications (email + multi-recipient). Best-effort. */
