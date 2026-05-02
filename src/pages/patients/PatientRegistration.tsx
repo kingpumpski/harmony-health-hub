@@ -85,25 +85,37 @@ export default function PatientRegistration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clientId = formData.patientId.trim() || generateClientId();
-    const payload = {
-      ...formData,
-      patientId: clientId,
-    };
-
-    setFormData((current) => ({ ...current, patientId: clientId }));
-    setRegisteredPatientId(clientId);
-    setRegisteredPatientData(payload);
+    const payload = { ...formData };
 
     if (uploadedDocuments.length) {
       await handleAnalyzeDocuments();
     }
 
-    await registerPatient(payload as any);
+    try {
+      const result: any = await registerPatient(payload as any);
+      const newCode = result?.patientId || '';
+      setFormData((current) => ({ ...current, patientId: newCode }));
+      setRegisteredPatientId(newCode);
+      setRegisteredPatientData({ ...payload, patientId: newCode });
 
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQ4fk9/qvYIwA2Orzdy/dCANgtnv28RMCx/I+fjObiYNvPT34oM7ChLe//jljT4JGf//+NiVRg4a//7/wZ1ODSQG///cpVgXMhD/9t6lYhg7DP7v2ZhnFjER/+fbnW0ZOg7//dWiaR8yDP/z1KBtJTkN+fjWoW8pMg793tSdcSUoEPz436J2IykQ//baoHUlKBD///emeicuE/7326F3IyYS/fnbpnwnKBL///2me');
-    audio.volume = 0.3;
-    audio.play().catch(() => {});
+      // Notify front desk + nurses that a new patient is ready for triage
+      const { notifyRoles } = await import('@/lib/notifications');
+      await notifyRoles(['front_desk', 'nurse'], {
+        title: 'New patient registered',
+        message: `${payload.firstName} ${payload.lastName} (${newCode}) is ready for triage.`,
+        severity: 'info',
+        category: 'other',
+        link: '/vitals',
+        relatedPatientId: result?.patient?.id,
+      });
+
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQ4fk9/qvYIwA2Orzdy/dCANgtnv28RMCx/I+fjObiYNvPT34oM7ChLe//jljT4JGf//+NiVRg4a//7/wZ1ODSQG///cpVgXMhD/9t6lYhg7DP7v2ZhnFjER/+fbnW0ZOg7//dWiaR8yDP/z1KBtJTkN+fjWoW8pMg793tSdcSUoEPz436J2IykQ//baoHUlKBD///emeicuE/7326F3IyYS/fnbpnwnKBL///2me');
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+    } catch (err: any) {
+      const { toast } = await import('@/hooks/use-toast');
+      toast({ title: 'Registration failed', description: err.message ?? 'Could not save patient', variant: 'destructive' });
+    }
   };
 
 
