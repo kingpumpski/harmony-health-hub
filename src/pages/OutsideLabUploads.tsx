@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Upload, FileText, Sparkles } from 'lucide-react';
+import { Upload, FileText, Sparkles, CheckCircle2 } from 'lucide-react';
+import { playSuccessSound } from '@/lib/sounds';
 
 interface Doc { id: string; patient_id: string; document_type: string; title: string; storage_path: string; ai_analysis: string | null; created_at: string }
 
