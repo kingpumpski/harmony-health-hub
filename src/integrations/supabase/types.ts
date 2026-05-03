@@ -14,6 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_case_memory: {
+        Row: {
+          age_group: string | null
+          created_at: string
+          diagnosis: string | null
+          encounter_id: string | null
+          gender: string | null
+          icd_code: string | null
+          id: string
+          outcome: string | null
+          outcome_notes: string | null
+          patient_id: string | null
+          prescriptions: Json | null
+          symptoms: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          encounter_id?: string | null
+          gender?: string | null
+          icd_code?: string | null
+          id?: string
+          outcome?: string | null
+          outcome_notes?: string | null
+          patient_id?: string | null
+          prescriptions?: Json | null
+          symptoms?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          encounter_id?: string | null
+          gender?: string | null
+          icd_code?: string | null
+          id?: string
+          outcome?: string | null
+          outcome_notes?: string | null
+          patient_id?: string | null
+          prescriptions?: Json | null
+          symptoms?: string | null
+        }
+        Relationships: []
+      }
+      ai_protocols: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          case_count: number | null
+          created_at: string
+          diagnosis: string
+          icd_code: string | null
+          id: string
+          protocol_text: string
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_count?: number | null
+          created_at?: string
+          diagnosis: string
+          icd_code?: string | null
+          id?: string
+          protocol_text: string
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_count?: number | null
+          created_at?: string
+          diagnosis?: string
+          icd_code?: string | null
+          id?: string
+          protocol_text?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      anesthetic_assessments: {
+        Row: {
+          airway_assessment: string | null
+          allergies: string | null
+          asa_class: string | null
+          cardiovascular: string | null
+          cleared_by: string | null
+          cleared_for_procedure: boolean | null
+          conclusions: string | null
+          created_at: string
+          encounter_id: string | null
+          fasting_status: string | null
+          id: string
+          medications: string | null
+          patient_id: string
+          questionnaire: Json | null
+          respiratory: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          airway_assessment?: string | null
+          allergies?: string | null
+          asa_class?: string | null
+          cardiovascular?: string | null
+          cleared_by?: string | null
+          cleared_for_procedure?: boolean | null
+          conclusions?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          fasting_status?: string | null
+          id?: string
+          medications?: string | null
+          patient_id: string
+          questionnaire?: Json | null
+          respiratory?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          airway_assessment?: string | null
+          allergies?: string | null
+          asa_class?: string | null
+          cardiovascular?: string | null
+          cleared_by?: string | null
+          cleared_for_procedure?: boolean | null
+          conclusions?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          fasting_status?: string | null
+          id?: string
+          medications?: string | null
+          patient_id?: string
+          questionnaire?: Json | null
+          respiratory?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           created_at: string
@@ -63,6 +204,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_overrides: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          overridden_by: string
+          patient_id: string
+          reason: string
+          related_entity_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          overridden_by: string
+          patient_id: string
+          reason: string
+          related_entity_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          overridden_by?: string
+          patient_id?: string
+          reason?: string
+          related_entity_id?: string | null
+        }
+        Relationships: []
+      }
+      dental_records: {
+        Row: {
+          created_at: string
+          encounter_id: string | null
+          examination: string | null
+          id: string
+          patient_id: string
+          performed_by: string | null
+          procedures_performed: string | null
+          tooth_chart: Json | null
+          treatment_plan: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          encounter_id?: string | null
+          examination?: string | null
+          id?: string
+          patient_id: string
+          performed_by?: string | null
+          procedures_performed?: string | null
+          tooth_chart?: Json | null
+          treatment_plan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          encounter_id?: string | null
+          examination?: string | null
+          id?: string
+          patient_id?: string
+          performed_by?: string | null
+          procedures_performed?: string | null
+          tooth_chart?: Json | null
+          treatment_plan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       department_queues: {
         Row: {
@@ -126,6 +336,8 @@ export type Database = {
           icd_code: string | null
           id: string
           is_principal: boolean | null
+          is_provisional: boolean | null
+          notes: string | null
         }
         Insert: {
           created_at?: string
@@ -134,6 +346,8 @@ export type Database = {
           icd_code?: string | null
           id?: string
           is_principal?: boolean | null
+          is_provisional?: boolean | null
+          notes?: string | null
         }
         Update: {
           created_at?: string
@@ -142,6 +356,8 @@ export type Database = {
           icd_code?: string | null
           id?: string
           is_principal?: boolean | null
+          is_provisional?: boolean | null
+          notes?: string | null
         }
         Relationships: [
           {
@@ -342,6 +558,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      icd_codes: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string
+          description: string
+          id: string
+          version: string
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string
+          description: string
+          id?: string
+          version?: string
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          version?: string
+        }
+        Relationships: []
       }
       insurance_claims: {
         Row: {
@@ -623,6 +866,84 @@ export type Database = {
           },
         ]
       }
+      meal_orders: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          id: string
+          meal_plan_id: string | null
+          meal_type: string
+          notes: string | null
+          patient_id: string
+          scheduled_for: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          meal_plan_id?: string | null
+          meal_type: string
+          notes?: string | null
+          patient_id: string
+          scheduled_for: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          meal_plan_id?: string | null
+          meal_type?: string
+          notes?: string | null
+          patient_id?: string
+          scheduled_for?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      meal_plans: {
+        Row: {
+          active: boolean | null
+          ai_recommendations: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          meals_per_day: number | null
+          patient_id: string
+          plan_type: string
+          restrictions: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          ai_recommendations?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          meals_per_day?: number | null
+          patient_id: string
+          plan_type: string
+          restrictions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          ai_recommendations?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          meals_per_day?: number | null
+          patient_id?: string
+          plan_type?: string
+          restrictions?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           category: string | null
@@ -668,6 +989,54 @@ export type Database = {
           related_patient_id?: string | null
           severity?: string
           title?: string
+        }
+        Relationships: []
+      }
+      outside_lab_documents: {
+        Row: {
+          ai_analysis: string | null
+          ai_analyzed_at: string | null
+          created_at: string
+          document_type: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          patient_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          storage_path: string
+          title: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          ai_analysis?: string | null
+          ai_analyzed_at?: string | null
+          created_at?: string
+          document_type: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          patient_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          storage_path: string
+          title?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          ai_analysis?: string | null
+          ai_analyzed_at?: string | null
+          created_at?: string
+          document_type?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          patient_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          storage_path?: string
+          title?: string | null
+          uploaded_by?: string | null
         }
         Relationships: []
       }
@@ -812,6 +1181,93 @@ export type Database = {
           },
         ]
       }
+      pharmacy_goods_receipts: {
+        Row: {
+          created_at: string
+          drug_name: string
+          expiry_date: string | null
+          id: string
+          inventory_id: string | null
+          invoice_number: string | null
+          notes: string | null
+          quantity: number
+          received_by: string | null
+          supplier: string | null
+          unit_cost: number | null
+        }
+        Insert: {
+          created_at?: string
+          drug_name: string
+          expiry_date?: string | null
+          id?: string
+          inventory_id?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          quantity: number
+          received_by?: string | null
+          supplier?: string | null
+          unit_cost?: number | null
+        }
+        Update: {
+          created_at?: string
+          drug_name?: string
+          expiry_date?: string | null
+          id?: string
+          inventory_id?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          quantity?: number
+          received_by?: string | null
+          supplier?: string | null
+          unit_cost?: number | null
+        }
+        Relationships: []
+      }
+      pharmacy_inventory: {
+        Row: {
+          created_at: string
+          drug_name: string
+          expiry_date: string | null
+          form: string | null
+          generic_name: string | null
+          id: string
+          reorder_level: number | null
+          stock_quantity: number
+          strength: string | null
+          supplier: string | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          drug_name: string
+          expiry_date?: string | null
+          form?: string | null
+          generic_name?: string | null
+          id?: string
+          reorder_level?: number | null
+          stock_quantity?: number
+          strength?: string | null
+          supplier?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          drug_name?: string
+          expiry_date?: string | null
+          form?: string | null
+          generic_name?: string | null
+          id?: string
+          reorder_level?: number | null
+          stock_quantity?: number
+          strength?: string | null
+          supplier?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prescriptions: {
         Row: {
           created_at: string
@@ -875,6 +1331,66 @@ export type Database = {
           },
         ]
       }
+      procedure_notes: {
+        Row: {
+          assistants: string | null
+          complications: string | null
+          created_at: string
+          encounter_id: string | null
+          findings: string | null
+          id: string
+          indication: string | null
+          patient_id: string
+          performed_at: string | null
+          performed_by: string | null
+          post_op_plan: string | null
+          procedure_code: string | null
+          procedure_name: string
+          status: string
+          technique: string | null
+          template_used: string | null
+          updated_at: string
+        }
+        Insert: {
+          assistants?: string | null
+          complications?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          findings?: string | null
+          id?: string
+          indication?: string | null
+          patient_id: string
+          performed_at?: string | null
+          performed_by?: string | null
+          post_op_plan?: string | null
+          procedure_code?: string | null
+          procedure_name: string
+          status?: string
+          technique?: string | null
+          template_used?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assistants?: string | null
+          complications?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          findings?: string | null
+          id?: string
+          indication?: string | null
+          patient_id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          post_op_plan?: string | null
+          procedure_code?: string | null
+          procedure_name?: string
+          status?: string
+          technique?: string | null
+          template_used?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -910,6 +1426,81 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stg_guidelines: {
+        Row: {
+          condition: string
+          created_at: string
+          icd_code: string | null
+          id: string
+          medications: Json | null
+          recommended_action: string | null
+          summary: string | null
+        }
+        Insert: {
+          condition: string
+          created_at?: string
+          icd_code?: string | null
+          id?: string
+          medications?: Json | null
+          recommended_action?: string | null
+          summary?: string | null
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          icd_code?: string | null
+          id?: string
+          medications?: Json | null
+          recommended_action?: string | null
+          summary?: string | null
+        }
+        Relationships: []
+      }
+      treatment_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          diagnosis: string | null
+          icd_code: string | null
+          id: string
+          is_ai_generated: boolean | null
+          lab_orders: Json | null
+          name: string
+          notes: string | null
+          prescriptions: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          diagnosis?: string | null
+          icd_code?: string | null
+          id?: string
+          is_ai_generated?: boolean | null
+          lab_orders?: Json | null
+          name: string
+          notes?: string | null
+          prescriptions?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          diagnosis?: string | null
+          icd_code?: string | null
+          id?: string
+          is_ai_generated?: boolean | null
+          lab_orders?: Json | null
+          name?: string
+          notes?: string | null
+          prescriptions?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -1003,6 +1594,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vital_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          details: string | null
+          id: string
+          patient_id: string
+          severity: string
+          vital_signs_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          patient_id: string
+          severity?: string
+          vital_signs_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          patient_id?: string
+          severity?: string
+          vital_signs_id?: string | null
+        }
+        Relationships: []
       }
       vital_signs: {
         Row: {
