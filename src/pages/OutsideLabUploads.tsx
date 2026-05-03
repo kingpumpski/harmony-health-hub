@@ -41,10 +41,14 @@ export default function OutsideLabUploads() {
       }).select().single();
       if (dErr) throw dErr;
 
-      // Trigger AI analysis (best-effort)
+      // Trigger AI analysis (best-effort, fire and forget)
       supabase.functions.invoke('analyze-lab-document', { body: { documentId: doc.id, title: title || file.name, documentType: type } });
 
-      toast({ title: 'Uploaded', description: 'AI analysis in progress…' });
+      playSuccessSound();
+      toast({
+        title: '✓ Upload successful',
+        description: 'Document uploaded. AI analysis is running and clinicians will be notified.',
+      });
       setFile(null); setTitle(''); setPid('');
       load();
     } catch (err: any) {
