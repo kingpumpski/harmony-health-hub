@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, User, Phone, Shield, Heart, AlertTriangle, Upload, QrCode, Barcode, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Save, User, Phone, Shield, Heart, AlertTriangle, Upload, QrCode, Barcode, ClipboardCheck, Sparkles, Loader2, ScanLine, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn, generateClientId, getBarcodeUrl, getQrCodeUrl } from '@/lib/utils';
 import { analyzeDocument, registerPatient } from '@/lib/healthApi';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface FormSection {
   id: string;
@@ -28,6 +30,9 @@ export default function PatientRegistration() {
   const [documentUploadNames, setDocumentUploadNames] = useState('');
   const [documentAnalysis, setDocumentAnalysis] = useState<string[]>([]);
   const [registeredPatientId, setRegisteredPatientId] = useState('');
+  const [idScanFile, setIdScanFile] = useState<File | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; confidence?: number } | null>(null);
   const initialFormState = {
     patientId: '',
     ghanaCardNumber: '',
@@ -80,6 +85,79 @@ export default function PatientRegistration() {
     const analysis = await analyzeDocument(uploadedDocuments[0]);
     if (analysis.findings) {
       setDocumentAnalysis(analysis.findings);
+    }
+  };
+
+  const handleIdScanUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIdScanFile(file);
+      setScanResult(null);
+    }
+  };
+
+  const handleScanId = async () => {
+    if (!idScanFile) return;
+    
+    setIsScanning(true);
+    setScanResult(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', idScanFile);
+      
+      const { data, error } = await supabase.functions.invoke('scan-id-document', {
+        body: formData,
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.data) {
+        const extracted = data.data;
+        
+        // Auto-fill the form with extracted data
+        setFormData(prev => ({
+          ...prev,
+          firstName: extracted.firstName || prev.firstName,
+          lastName: extracted.lastName || prev.lastName,
+          dateOfBirth: extracted.dateOfBirth || prev.dateOfBirth,
+          gender: extracted.gender || prev.gender,
+          ghanaCardNumber: extracted.ghanaCardNumber || prev.ghanaCardNumber,
+          address: extracted.address || prev.address,
+          city: extracted.city || prev.city,
+          phone: extracted.phone || prev.phone,
+          email: extracted.email || prev.email,
+        }));
+        
+        setScanResult({
+          success: true,
+          message: data.message || 'ID scanned successfully',
+          confidence: extracted.confidence
+        });
+        
+        toast({
+          title: 'ID Scanned Successfully',
+          description: `Extracted ${extracted.documentType || 'ID'} information with ${extracted.confidence || 0}% confidence. Please verify the auto-filled data.`,
+        });
+        
+        // Move to personal section to show filled data
+        setActiveSection('personal');
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      console.error('ID scan error:', err);
+      setScanResult({
+        success: false,
+        message: err.message || 'Failed to scan ID document'
+      });
+      toast({
+        title: 'Scan Failed',
+        description: err.message || 'Could not extract information from the ID document',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -243,6 +321,164 @@ export default function PatientRegistration() {
                   <label className="block text-sm font-medium mb-2">Profile Photo</label>
                   <input type="file" accept="image/*" onChange={handleFileUpload} className="input-medical" />
                   {profilePhotoName && <p className="text-sm text-muted-foreground mt-2">Selected photo: {profilePhotoName}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* AI ID Scanner - Documents Section */}
+            <div className={cn('card-medical p-6', activeSection !== 'documents' && 'lg:hidden')}>
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ScanLine className="w-5 h-5 text-primary" />
+                AI-Powered ID Scanner
+              </h2>
+              
+              <div className="space-y-4">
+                {/* AI Scanner Info Banner */}
+                <div className="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-sm">Smart ID Recognition</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Upload a photo of the patient&apos;s ID card (Ghana Card, Passport, or Driver&apos;s License) and our AI will automatically extract and fill in their biodata information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upload Area */}
+                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIdScanUpload}
+                    className="hidden"
+                    id="id-scan-upload"
+                  />
+                  <label htmlFor="id-scan-upload" className="cursor-pointer">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+                        <Upload className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Upload ID Document</p>
+                        <p className="text-sm text-muted-foreground">
+                          Drag and drop or click to select
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Selected File & Scan Button */}
+                {idScanFile && (
+                  <div className="rounded-xl border border-border p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                          <img 
+                            src={URL.createObjectURL(idScanFile)} 
+                            alt="ID preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{idScanFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(idScanFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleScanId}
+                        disabled={isScanning}
+                        className="btn-primary"
+                      >
+                        {isScanning ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Scanning...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Scan with AI
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Scan Result */}
+                {scanResult && (
+                  <div className={cn(
+                    'rounded-xl border p-4',
+                    scanResult.success 
+                      ? 'border-success/30 bg-success/5' 
+                      : 'border-critical/30 bg-critical/5'
+                  )}>
+                    <div className="flex items-start gap-3">
+                      {scanResult.success ? (
+                        <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-critical flex-shrink-0" />
+                      )}
+                      <div>
+                        <p className={cn(
+                          'font-medium text-sm',
+                          scanResult.success ? 'text-success' : 'text-critical'
+                        )}>
+                          {scanResult.success ? 'Extraction Successful' : 'Extraction Failed'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {scanResult.message}
+                        </p>
+                        {scanResult.confidence && (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={cn(
+                                    'h-full rounded-full transition-all',
+                                    scanResult.confidence >= 80 ? 'bg-success' : 
+                                    scanResult.confidence >= 60 ? 'bg-warning' : 'bg-critical'
+                                  )}
+                                  style={{ width: `${scanResult.confidence}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-medium">{scanResult.confidence}%</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {scanResult.confidence >= 80 
+                                ? 'High confidence - data is likely accurate' 
+                                : 'Lower confidence - please verify the extracted data'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual Document Upload */}
+                <div className="pt-4 border-t border-border">
+                  <label className="block text-sm font-medium mb-2">Additional Supporting Documents</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf"
+                    onChange={handleDocumentUpload}
+                    className="input-medical"
+                  />
+                  {documentUploadNames && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Uploaded: {documentUploadNames}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

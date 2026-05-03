@@ -7,11 +7,16 @@ const corsHeaders = {
 const MODEL = 'google/gemini-2.5-flash';
 
 interface Body {
-  mode: 'report' | 'recommend' | 'synthesize_protocol';
+  mode: 'report' | 'recommend' | 'synthesize_protocol' | 'chat';
   patientId?: string;
   encounterId?: string;
   diagnosis?: string;
   context?: string;
+  // Chat mode fields
+  role?: string;
+  message?: string;
+  systemPrompt?: string;
+  history?: Array<{ role: string; content: string }>;
 }
 
 Deno.serve(async (req) => {
@@ -45,6 +50,40 @@ Deno.serve(async (req) => {
       }
       systemPrompt = 'You synthesize an evidence-informed in-house treatment protocol from past cases. Output a single concise protocol document.';
       userPrompt = `Diagnosis: ${body.diagnosis}\nCases (n=${cases.length}):\n${JSON.stringify(cases)}\n\nProduce a protocol with: Indication, Initial assessment, First-line therapy, Monitoring, Escalation.`;
+    } else if (body.mode === 'chat') {
+      // Role-based AI assistant chat
+      systemPrompt = body.systemPrompt || 'You are a helpful healthcare assistant. Provide accurate, professional guidance while reminding users to verify information with clinical guidelines and use professional judgment.';
+      
+      // Build conversation with history
+      const messages: Array<{ role: string; content: string }> = [
+        { role: 'system', content: systemPrompt },
+      ];
+      
+      // Add conversation history
+      if (body.history && Array.isArray(body.history)) {
+        for (const msg of body.history) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
+      
+      // Add current message
+      messages.push({ role: 'user', content: body.message || '' });
+      
+      // Make direct chat completion call with full history
+      const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODEL, messages }),
+      });
+
+      if (aiRes.status === 429) return new Response(JSON.stringify({ error: 'AI rate limit reached, try again shortly.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (aiRes.status === 402) return new Response(JSON.stringify({ error: 'AI credits exhausted. Add funds in Workspace → Usage.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!aiRes.ok) return new Response(JSON.stringify({ error: 'AI gateway error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const data = await aiRes.json();
+      const content = data.choices?.[0]?.message?.content ?? '';
+      
+      return new Response(JSON.stringify({ content }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } else {
       return new Response(JSON.stringify({ error: 'Unknown mode' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }

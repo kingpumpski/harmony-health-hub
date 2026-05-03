@@ -38,6 +38,7 @@ import TreatmentTemplates from "./pages/TreatmentTemplates";
 import OutsideLabUploads from "./pages/OutsideLabUploads";
 import CanteenMeals from "./pages/CanteenMeals";
 import AIReportGenerator from "./pages/AIReportGenerator";
+import AIAssistant from "./pages/AIAssistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -114,6 +115,7 @@ const App = () => (
                 <Route path="/public-health" element={<PublicHealthReports />} />
                 <Route path="/roster" element={<RosterGenerator />} />
                 <Route path="/ai-clinical" element={<AIClinicalHub />} />
+                <Route path="/ai-assistant" element={<AIAssistant />} />
 
                 {/* Admin */}
                 <Route path="/admin/users" element={<AdminUsers />} />

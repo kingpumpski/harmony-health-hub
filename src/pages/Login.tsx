@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { HeartPulse, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import MedicalLogo from '@/components/MedicalLogo';
 
 export default function Login() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -50,14 +51,8 @@ export default function Login() {
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sidebar to-sidebar-accent relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-12 py-16">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-16 h-16 rounded-2xl bg-sidebar-primary flex items-center justify-center shadow-lg">
-              <HeartPulse className="w-10 h-10 text-sidebar-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-heading font-bold text-sidebar-foreground">MediCare Pro</h1>
-              <p className="text-sidebar-foreground/70">Health Management System</p>
-            </div>
+          <div className="mb-12">
+            <MedicalLogo size="xl" variant="sidebar" />
           </div>
 
           <div className="space-y-8">
@@ -92,14 +87,8 @@ export default function Login() {
 
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <HeartPulse className="w-7 h-7 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-heading font-bold">MediCare Pro</h1>
-              <p className="text-sm text-muted-foreground">Health Management System</p>
-            </div>
+          <div className="lg:hidden mb-8">
+            <MedicalLogo size="lg" variant="default" />
           </div>
 
           <div className="card-medical p-8">

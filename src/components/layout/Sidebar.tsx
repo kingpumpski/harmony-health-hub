@@ -3,12 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import MedicalLogo from '@/components/MedicalLogo';
 import {
   LayoutDashboard, Users, Calendar, FileText, Stethoscope, FlaskConical,
   Pill, CreditCard, BedDouble, Baby, Utensils, Bell, LogOut,
   ChevronLeft, ChevronRight, Activity, ClipboardList, Syringe, HeartPulse,
   Eye, ShieldCheck, MessageSquare, Database, Video, Receipt, UserCog,
-  Smile, Scissors, Sparkles, Upload, BookOpen, FileSearch,
+  Smile, Scissors, Sparkles, Upload, BookOpen, FileSearch, Bot,
 } from 'lucide-react';
 
 interface NavItem { icon: React.ElementType; label: string; href: string }
@@ -45,6 +46,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: HeartPulse, label: 'Triage', href: '/vitals' },
     { icon: CreditCard, label: 'Billing', href: '/billing' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   practitioner: [
@@ -74,6 +76,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
     { icon: Syringe, label: 'Medications', href: '/pharmacy' },
     { icon: Utensils, label: 'Meal Orders', href: '/menu' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   midwife: [
@@ -82,6 +85,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Baby, label: 'Fertility', href: '/fertility' },
     { icon: BedDouble, label: 'Admissions', href: '/admissions' },
     { icon: HeartPulse, label: 'Vitals', href: '/vitals' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   lab_technician: [
@@ -89,6 +93,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' },
     { icon: Upload, label: 'Outside Lab Uploads', href: '/outside-lab' },
     { icon: ClipboardList, label: 'Reports', href: '/reports' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   pharmacist: [
@@ -96,6 +101,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Pill, label: 'Pharmacy / Dispensing', href: '/pharmacy' },
     { icon: ClipboardList, label: 'Inventory', href: '/inventory' },
     { icon: FileText, label: 'Stock Alerts', href: '/stock-alerts' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   accountant: [
@@ -104,6 +110,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Receipt, label: 'Invoices', href: '/billing' },
     { icon: ShieldCheck, label: 'Insurance', href: '/billing' },
     { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   canteen: [
@@ -111,6 +118,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Utensils, label: 'Menu', href: '/menu' },
     { icon: ClipboardList, label: 'Orders', href: '/orders' },
     { icon: Users, label: 'Dietary Plans', href: '/dietary-plans' },
+    { icon: Bot, label: 'AI Assistant', href: '/ai-assistant' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   patient: [
@@ -154,19 +162,9 @@ export default function Sidebar() {
     >
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {!collapsed ? (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-              <HeartPulse className="w-6 h-6 text-sidebar-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-heading font-bold text-sidebar-foreground text-lg">MediCare</h1>
-              <p className="text-xs text-sidebar-foreground/60">Pro Health System</p>
-            </div>
-          </div>
+          <MedicalLogo size="md" variant="sidebar" />
         ) : (
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center mx-auto">
-            <HeartPulse className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
+          <MedicalLogo size="sm" variant="sidebar" showText={false} />
         )}
       </div>
 
