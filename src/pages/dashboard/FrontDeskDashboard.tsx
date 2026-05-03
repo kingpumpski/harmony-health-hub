@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Calendar, Clock, UserPlus, Search, Filter, Plus } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import AlertBanner from '@/components/ui/AlertBanner';
@@ -19,6 +20,7 @@ const recentRegistrations = [
 ];
 
 export default function FrontDeskDashboard() {
+  const navigate = useNavigate();
   const [showCriticalAlert, setShowCriticalAlert] = useState(true);
 
   return (
@@ -30,11 +32,11 @@ export default function FrontDeskDashboard() {
           <p className="text-muted-foreground">Manage patient registration and appointments</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/appointments')}>
             <Calendar className="w-4 h-4" />
             Schedule
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/registration')}>
             <UserPlus className="w-4 h-4" />
             Register Patient
           </button>
@@ -137,7 +139,7 @@ export default function FrontDeskDashboard() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn-ghost text-xs py-1 px-2">
+                      <button className="btn-ghost text-xs py-1 px-2" onClick={() => navigate('/appointments')}>
                         {apt.status === 'scheduled' ? 'Check In' : 'View'}
                       </button>
                     </td>
@@ -147,7 +149,7 @@ export default function FrontDeskDashboard() {
             </table>
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary">View All Appointments →</button>
+            <button className="btn-ghost text-sm text-primary" onClick={() => navigate('/appointments')}>View All Appointments →</button>
           </div>
         </div>
 
@@ -155,13 +157,13 @@ export default function FrontDeskDashboard() {
         <div className="card-medical">
           <div className="p-5 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold">Recent Registrations</h2>
-            <button className="btn-ghost p-1.5">
+            <button className="btn-ghost p-1.5" onClick={() => navigate('/registration')}>
               <Plus className="w-4 h-4" />
             </button>
           </div>
           <div className="divide-y divide-border">
             {recentRegistrations.map((reg) => (
-              <div key={reg.id} className="p-4 hover:bg-muted/30 transition-colors">
+              <div key={reg.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/patients')}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{reg.name}</p>
@@ -183,7 +185,7 @@ export default function FrontDeskDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary w-full">View All →</button>
+            <button className="btn-ghost text-sm text-primary w-full" onClick={() => navigate('/patients')}>View All →</button>
           </div>
         </div>
       </div>
@@ -193,13 +195,14 @@ export default function FrontDeskDashboard() {
         <h2 className="font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'New Registration', icon: UserPlus, color: 'bg-primary' },
-            { label: 'Schedule Appointment', icon: Calendar, color: 'bg-info' },
-            { label: 'Patient Lookup', icon: Search, color: 'bg-success' },
-            { label: 'Print Queue Ticket', icon: Clock, color: 'bg-warning' },
+            { label: 'New Registration', icon: UserPlus, color: 'bg-primary', href: '/registration' },
+            { label: 'Schedule Appointment', icon: Calendar, color: 'bg-info', href: '/appointments' },
+            { label: 'Patient Lookup', icon: Search, color: 'bg-success', href: '/patients' },
+            { label: 'Print Queue Ticket', icon: Clock, color: 'bg-warning', href: '/vitals' },
           ].map((action) => (
             <button
               key={action.label}
+              onClick={() => navigate(action.href)}
               className="flex flex-col items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-all hover:scale-[1.02]"
             >
               <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-white', action.color)}>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CreditCard, FileText, Users, TrendingUp, AlertTriangle, DollarSign, Receipt, Shield } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import AlertBanner from '@/components/ui/AlertBanner';
@@ -25,6 +26,7 @@ const dailySummary = {
 };
 
 export default function AccountsDashboard() {
+  const navigate = useNavigate();
   const [showInsuranceAlert, setShowInsuranceAlert] = useState(true);
 
   return (
@@ -36,11 +38,11 @@ export default function AccountsDashboard() {
           <p className="text-muted-foreground">Financial Management Dashboard</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/financial-reports')}>
             <FileText className="w-4 h-4" />
             Reports
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/invoices')}>
             <CreditCard className="w-4 h-4" />
             New Invoice
           </button>
@@ -159,7 +161,7 @@ export default function AccountsDashboard() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn-primary text-xs py-1 px-2">Process</button>
+                      <button className="btn-primary text-xs py-1 px-2" onClick={() => navigate('/billing')}>Process</button>
                     </td>
                   </tr>
                 ))}
@@ -167,7 +169,7 @@ export default function AccountsDashboard() {
             </table>
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary">View All Bills →</button>
+            <button className="btn-ghost text-sm text-primary" onClick={() => navigate('/billing')}>View All Bills →</button>
           </div>
         </div>
 
@@ -178,7 +180,7 @@ export default function AccountsDashboard() {
           </div>
           <div className="divide-y divide-border">
             {recentPayments.map((payment) => (
-              <div key={payment.id} className="p-4 hover:bg-muted/30 transition-colors">
+              <div key={payment.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/billing')}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-mono text-xs text-muted-foreground">{payment.invoiceNo}</p>
@@ -194,7 +196,7 @@ export default function AccountsDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary w-full">View All Payments →</button>
+            <button className="btn-ghost text-sm text-primary w-full" onClick={() => navigate('/billing')}>View All Payments →</button>
           </div>
         </div>
       </div>
@@ -202,12 +204,12 @@ export default function AccountsDashboard() {
       {/* Daily Summary */}
       <div className="card-medical p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Today's Revenue Summary</h2>
-          <button className="btn-ghost text-sm">Download Report</button>
+          <h2 className="font-semibold">Today&apos;s Revenue Summary</h2>
+          <button className="btn-ghost text-sm" onClick={() => navigate('/financial-reports')}>Download Report</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Object.entries(dailySummary).map(([key, value]) => (
-            <div key={key} className="p-4 bg-muted/30 rounded-lg">
+            <div key={key} className="p-4 bg-muted/30 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/billing')}>
               <p className="text-sm text-muted-foreground capitalize">{key}</p>
               <p className="text-2xl font-bold mt-1">${(value.revenue / 1000).toFixed(1)}K</p>
               <p className="text-xs text-muted-foreground mt-1">{value.count} transactions</p>

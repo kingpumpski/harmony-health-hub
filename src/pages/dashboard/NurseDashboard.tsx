@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BedDouble, HeartPulse, Syringe, FileText, AlertTriangle, Users, ThermometerSun, Activity } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import AlertBanner from '@/components/ui/AlertBanner';
@@ -29,6 +30,7 @@ const temperatureChart = [
 ];
 
 export default function NurseDashboard() {
+  const navigate = useNavigate();
   const [selectedWard, setSelectedWard] = useState('all');
 
   return (
@@ -40,11 +42,11 @@ export default function NurseDashboard() {
           <p className="text-muted-foreground">Ward 1 & 2 • Day Shift</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/records')}>
             <FileText className="w-4 h-4" />
             Nursing Notes
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/vitals')}>
             <HeartPulse className="w-4 h-4" />
             Record Vitals
           </button>
@@ -152,11 +154,11 @@ export default function NurseDashboard() {
                       <p className="text-xs text-muted-foreground">Last Vitals</p>
                       <p className="text-sm font-medium">{patient.lastVitals}</p>
                     </div>
-                    <button className="btn-secondary text-sm py-1.5">
+                    <button className="btn-secondary text-sm py-1.5" onClick={() => navigate('/vitals')}>
                       <HeartPulse className="w-4 h-4" />
                       Vitals
                     </button>
-                    <button className="btn-ghost text-sm py-1.5">
+                    <button className="btn-ghost text-sm py-1.5" onClick={() => navigate('/pharmacy')}>
                       <Syringe className="w-4 h-4" />
                       Meds
                     </button>
@@ -177,9 +179,10 @@ export default function NurseDashboard() {
               <div
                 key={med.id}
                 className={cn(
-                  'p-4',
+                  'p-4 cursor-pointer hover:bg-muted/30 transition-colors',
                   med.status === 'overdue' && 'bg-critical/5'
                 )}
+                onClick={() => navigate('/pharmacy')}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -196,7 +199,7 @@ export default function NurseDashboard() {
                     )}>
                       {med.time}
                     </span>
-                    <button className="btn-primary text-xs py-1 px-2 mt-2 w-full">
+                    <button className="btn-primary text-xs py-1 px-2 mt-2 w-full" onClick={() => navigate('/pharmacy')}>
                       Administer
                     </button>
                   </div>

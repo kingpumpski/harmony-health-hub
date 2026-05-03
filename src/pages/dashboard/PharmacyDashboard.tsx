@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Pill, Package, AlertTriangle, CheckCircle, Search, Clock, TrendingDown, ShoppingCart } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import AlertBanner from '@/components/ui/AlertBanner';
@@ -25,6 +26,7 @@ const recentDispensed = [
 ];
 
 export default function PharmacyDashboard() {
+  const navigate = useNavigate();
   const [showLowStockAlert, setShowLowStockAlert] = useState(true);
 
   return (
@@ -36,11 +38,11 @@ export default function PharmacyDashboard() {
           <p className="text-muted-foreground">Dispensing & Inventory Management</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/inventory')}>
             <Package className="w-4 h-4" />
             Inventory
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/dispensing')}>
             <Pill className="w-4 h-4" />
             Dispense
           </button>
@@ -146,7 +148,7 @@ export default function PharmacyDashboard() {
                     )}>
                       {rx.status}
                     </span>
-                    <button className="btn-primary text-sm py-1.5">
+                    <button className="btn-primary text-sm py-1.5" onClick={() => navigate('/pharmacy')}>
                       {rx.status === 'pending' ? 'Process' : 'Continue'}
                     </button>
                   </div>
@@ -155,7 +157,7 @@ export default function PharmacyDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary">View All Prescriptions →</button>
+            <button className="btn-ghost text-sm text-primary" onClick={() => navigate('/pharmacy')}>View All Prescriptions →</button>
           </div>
         </div>
 
@@ -167,7 +169,7 @@ export default function PharmacyDashboard() {
           </div>
           <div className="divide-y divide-border">
             {lowStockItems.map((item) => (
-              <div key={item.id} className="p-4 hover:bg-muted/30 transition-colors">
+              <div key={item.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/inventory')}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-sm">{item.name}</p>
@@ -198,7 +200,7 @@ export default function PharmacyDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-secondary w-full">
+            <button className="btn-secondary w-full" onClick={() => navigate('/inventory')}>
               <ShoppingCart className="w-4 h-4" />
               Create Reorder
             </button>
@@ -210,11 +212,11 @@ export default function PharmacyDashboard() {
       <div className="card-medical p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Recently Dispensed</h2>
-          <button className="btn-ghost text-sm">View All</button>
+          <button className="btn-ghost text-sm" onClick={() => navigate('/pharmacy')}>View All</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {recentDispensed.map((item) => (
-            <div key={item.id} className="p-4 bg-muted/30 rounded-lg">
+            <div key={item.id} className="p-4 bg-muted/30 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/pharmacy')}>
               <div className="flex items-center justify-between mb-2">
                 <span className="font-mono text-sm text-primary">{item.rxId}</span>
                 <span className="text-xs text-muted-foreground">{item.time}</span>

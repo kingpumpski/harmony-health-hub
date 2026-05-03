@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, UserCog, Activity, Settings, Shield, Bell, TrendingUp, AlertTriangle, Server, Database } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,8 @@ const systemAlerts = [
 ];
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -43,11 +46,11 @@ export default function AdminDashboard() {
           <p className="text-muted-foreground">System Overview & Management</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/admin/logs')}>
             <Activity className="w-4 h-4" />
             System Logs
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/admin/users')}>
             <UserCog className="w-4 h-4" />
             Manage Users
           </button>
@@ -95,11 +98,11 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 card-medical">
           <div className="p-5 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold">Recent System Activity</h2>
-            <button className="btn-ghost text-sm">View All Logs</button>
+            <button className="btn-ghost text-sm" onClick={() => navigate('/admin/logs')}>View All Logs</button>
           </div>
           <div className="divide-y divide-border">
             {recentActivity.map((activity) => (
-              <div key={activity.id} className="p-4 hover:bg-muted/30 transition-colors">
+              <div key={activity.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/admin/logs')}>
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     'w-2 h-2 rounded-full mt-2',
@@ -127,7 +130,7 @@ export default function AdminDashboard() {
           </div>
           <div className="p-5 space-y-4">
             {usersByRole.map((item) => (
-              <div key={item.role}>
+              <div key={item.role} className="cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/admin/users')}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm">{item.role}</span>
                   <span className="text-sm font-semibold">{item.count}</span>
@@ -142,7 +145,7 @@ export default function AdminDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary w-full">
+            <button className="btn-ghost text-sm text-primary w-full" onClick={() => navigate('/admin/users')}>
               <UserCog className="w-4 h-4" />
               Manage Staff
             </button>
@@ -160,7 +163,7 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-border">
             {systemAlerts.map((alert) => (
-              <div key={alert.id} className="p-4 flex items-start gap-3">
+              <div key={alert.id} className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => navigate('/notifications')}>
                 <div className={cn(
                   'p-2 rounded-lg',
                   alert.type === 'warning' && 'bg-warning/10',
@@ -185,15 +188,16 @@ export default function AdminDashboard() {
           <h2 className="font-semibold mb-4">Admin Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'User Management', icon: UserCog, color: 'bg-primary' },
-              { label: 'Role Permissions', icon: Shield, color: 'bg-success' },
-              { label: 'System Settings', icon: Settings, color: 'bg-info' },
-              { label: 'Audit Logs', icon: Activity, color: 'bg-warning' },
-              { label: 'Notifications', icon: Bell, color: 'bg-accent' },
-              { label: 'Database', icon: Database, color: 'bg-fertility' },
+              { label: 'User Management', icon: UserCog, color: 'bg-primary', href: '/admin/users' },
+              { label: 'Role Permissions', icon: Shield, color: 'bg-success', href: '/admin/roles' },
+              { label: 'System Settings', icon: Settings, color: 'bg-info', href: '/admin/settings' },
+              { label: 'Audit Logs', icon: Activity, color: 'bg-warning', href: '/admin/logs' },
+              { label: 'Notifications', icon: Bell, color: 'bg-accent', href: '/notifications' },
+              { label: 'Database', icon: Database, color: 'bg-fertility', href: '/admin/system' },
             ].map((action) => (
               <button
                 key={action.label}
+                onClick={() => navigate(action.href)}
                 className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-all"
               >
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center text-white', action.color)}>

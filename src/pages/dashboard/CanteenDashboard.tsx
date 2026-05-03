@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Utensils, Users, ClipboardList, Bell, Clock, ChefHat, Leaf, AlertTriangle } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const staffOrders = [
 ];
 
 export default function CanteenDashboard() {
+  const navigate = useNavigate();
   const [selectedDietFilter, setSelectedDietFilter] = useState('all');
 
   return (
@@ -35,11 +37,11 @@ export default function CanteenDashboard() {
           <p className="text-muted-foreground">Food Services & Dietary Management</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/menu')}>
             <ClipboardList className="w-4 h-4" />
             Menu Planning
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/orders')}>
             <Utensils className="w-4 h-4" />
             New Order
           </button>
@@ -144,7 +146,7 @@ export default function CanteenDashboard() {
                     )}>
                       {meal.status}
                     </span>
-                    <button className="btn-primary text-sm py-1.5">
+                    <button className="btn-primary text-sm py-1.5" onClick={() => navigate('/orders')}>
                       {meal.status === 'pending' ? 'Prepare' : meal.status === 'preparing' ? 'Ready' : 'View'}
                     </button>
                   </div>
@@ -183,7 +185,7 @@ export default function CanteenDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-secondary w-full">
+            <button className="btn-secondary w-full" onClick={() => navigate('/menu')}>
               <ClipboardList className="w-4 h-4" />
               Edit Menu
             </button>
@@ -199,7 +201,7 @@ export default function CanteenDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {staffOrders.map((order) => (
-            <div key={order.id} className="p-4 bg-muted/30 rounded-lg">
+            <div key={order.id} className="p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between mb-2">
                 <span className={cn(
                   'badge-status',
@@ -213,7 +215,7 @@ export default function CanteenDashboard() {
               </div>
               <p className="font-medium">{order.staff}</p>
               <p className="text-sm text-muted-foreground mt-1">{order.items}</p>
-              <button className="btn-ghost text-xs mt-3 w-full">
+              <button className="btn-ghost text-xs mt-3 w-full" onClick={() => navigate('/orders')}>
                 {order.status === 'ready' ? 'Mark Delivered' : 'Update Status'}
               </button>
             </div>

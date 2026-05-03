@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Calendar, FileText, FlaskConical, AlertTriangle, Clock, Stethoscope, TrendingUp } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import AlertBanner from '@/components/ui/AlertBanner';
@@ -23,6 +24,7 @@ const criticalAlerts = [
 ];
 
 export default function PractitionerDashboard() {
+  const navigate = useNavigate();
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
 
   return (
@@ -34,11 +36,11 @@ export default function PractitionerDashboard() {
           <p className="text-muted-foreground">Dr. Sarah Johnson • Internal Medicine</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/appointments')}>
             <Calendar className="w-4 h-4" />
             My Schedule
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/encounters')}>
             <Stethoscope className="w-4 h-4" />
             Start Encounter
           </button>
@@ -109,7 +111,9 @@ export default function PractitionerDashboard() {
                   'p-4 cursor-pointer transition-all',
                   selectedPatient === patient.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/30'
                 )}
-                onClick={() => setSelectedPatient(patient.id)}
+                onClick={() => {
+                  setSelectedPatient(patient.id);
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -136,7 +140,7 @@ export default function PractitionerDashboard() {
                         Lab Ready
                       </span>
                     )}
-                    <button className="btn-primary text-sm py-1.5">
+                    <button className="btn-primary text-sm py-1.5" onClick={() => navigate('/encounters')}>
                       Start Visit
                     </button>
                   </div>
@@ -154,7 +158,7 @@ export default function PractitionerDashboard() {
           </div>
           <div className="divide-y divide-border">
             {pendingLabResults.map((lab) => (
-              <div key={lab.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+              <div key={lab.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/laboratory')}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{lab.patient}</p>
@@ -172,7 +176,7 @@ export default function PractitionerDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary w-full">View All Results →</button>
+            <button className="btn-ghost text-sm text-primary w-full" onClick={() => navigate('/laboratory')}>View All Results →</button>
           </div>
         </div>
       </div>
@@ -181,7 +185,7 @@ export default function PractitionerDashboard() {
       <div className="card-medical p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Quick Treatment Templates</h2>
-          <button className="btn-ghost text-sm">Manage Templates</button>
+          <button className="btn-ghost text-sm" onClick={() => navigate('/treatment-templates')}>Manage Templates</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {[
@@ -194,6 +198,7 @@ export default function PractitionerDashboard() {
           ].map((template) => (
             <button
               key={template}
+              onClick={() => navigate('/treatment-templates')}
               className="p-3 rounded-lg border border-border text-sm font-medium hover:bg-primary/5 hover:border-primary transition-all text-center"
             >
               {template}

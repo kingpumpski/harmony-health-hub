@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FlaskConical, Clock, CheckCircle, AlertTriangle, FileText, Search, Filter, Send } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ const completedToday = [
 ];
 
 export default function LabTechDashboard() {
+  const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
 
@@ -30,11 +32,11 @@ export default function LabTechDashboard() {
           <p className="text-muted-foreground">Clinical Laboratory • Hematology & Biochemistry</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button className="btn-secondary" onClick={() => navigate('/treatment-templates')}>
             <FileText className="w-4 h-4" />
             Templates
           </button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => navigate('/laboratory')}>
             <FlaskConical className="w-4 h-4" />
             New Result Entry
           </button>
@@ -160,7 +162,7 @@ export default function LabTechDashboard() {
                       </span>
                     </td>
                     <td>
-                      <button className="btn-primary text-xs py-1 px-2">
+                      <button className="btn-primary text-xs py-1 px-2" onClick={() => navigate('/laboratory')}>
                         {test.status === 'pending' ? 'Start' : test.status === 'completed' ? 'View' : 'Continue'}
                       </button>
                     </td>
@@ -179,7 +181,7 @@ export default function LabTechDashboard() {
           </div>
           <div className="divide-y divide-border">
             {completedToday.map((test) => (
-              <div key={test.id} className="p-4 hover:bg-muted/30 transition-colors">
+              <div key={test.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/laboratory')}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-mono text-xs text-muted-foreground">{test.labId}</p>
@@ -205,7 +207,7 @@ export default function LabTechDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-border">
-            <button className="btn-ghost text-sm text-primary w-full">View All Completed →</button>
+            <button className="btn-ghost text-sm text-primary w-full" onClick={() => navigate('/laboratory')}>View All Completed →</button>
           </div>
         </div>
       </div>
@@ -214,7 +216,7 @@ export default function LabTechDashboard() {
       <div className="card-medical p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Quick Result Templates</h2>
-          <button className="btn-ghost text-sm">Manage Templates</button>
+          <button className="btn-ghost text-sm" onClick={() => navigate('/treatment-templates')}>Manage Templates</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {[
@@ -227,6 +229,7 @@ export default function LabTechDashboard() {
           ].map((template) => (
             <button
               key={template}
+              onClick={() => navigate('/laboratory')}
               className="p-3 rounded-lg border border-border text-sm font-medium hover:bg-primary/5 hover:border-primary transition-all text-center"
             >
               {template}
