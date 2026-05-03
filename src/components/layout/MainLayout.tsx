@@ -2,6 +2,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import CriticalAlertOverlay from '@/components/CriticalAlertOverlay';
 
 export default function MainLayout() {
   const { isAuthenticated, loading } = useAuth();
@@ -23,10 +24,11 @@ export default function MainLayout() {
       <Sidebar />
       <div className="pl-64 transition-all duration-300">
         <Header />
-        <main className="p-6">
+        <main className="p-6 animate-fade-in">
           <Outlet />
         </main>
       </div>
+      <CriticalAlertOverlay />
     </div>
   );
 }

@@ -31,6 +31,13 @@ import Billing from "./pages/Billing";
 import Fertility from "./pages/Fertility";
 import Telemedicine from "./pages/Telemedicine";
 import Appointments from "./pages/Appointments";
+import Dental from "./pages/Dental";
+import ProcedureNotes from "./pages/ProcedureNotes";
+import AnestheticAssessment from "./pages/AnestheticAssessment";
+import TreatmentTemplates from "./pages/TreatmentTemplates";
+import OutsideLabUploads from "./pages/OutsideLabUploads";
+import CanteenMeals from "./pages/CanteenMeals";
+import AIReportGenerator from "./pages/AIReportGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,10 +96,18 @@ const App = () => (
                 <Route path="/telemedicine" element={<Telemedicine />} />
                 <Route path="/fertility" element={<Fertility />} />
 
+                {/* Specialty clinical */}
+                <Route path="/dental" element={<Dental />} />
+                <Route path="/procedures" element={<ProcedureNotes />} />
+                <Route path="/anesthesia" element={<AnestheticAssessment />} />
+                <Route path="/treatment-templates" element={<TreatmentTemplates />} />
+                <Route path="/outside-lab" element={<OutsideLabUploads />} />
+                <Route path="/ai-report" element={<AIReportGenerator />} />
+
                 {/* Canteen */}
-                <Route path="/menu" element={<FeaturePage title="Menu" description="Manage facility food services and dietary plans." />} />
-                <Route path="/orders" element={<FeaturePage title="Orders" description="Process internal and external supply orders." />} />
-                <Route path="/dietary-plans" element={<FeaturePage title="Dietary Plans" description="Plan meals and nutrition schedules for patients." />} />
+                <Route path="/menu" element={<CanteenMeals />} />
+                <Route path="/orders" element={<CanteenMeals />} />
+                <Route path="/dietary-plans" element={<CanteenMeals />} />
 
                 {/* Reports & AI */}
                 <Route path="/reports" element={<PublicHealthReports />} />
