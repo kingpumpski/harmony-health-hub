@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, CreditCard, Video, HeartPulse } from 'lucide-react';
+import { FileText, Calendar, CreditCard, Video, Sparkles, Printer, Volume2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { playSuccessSound } from '@/lib/sounds';
 
 export default function PatientPortal() {
   const { user } = useAuth();
@@ -10,6 +12,18 @@ export default function PatientPortal() {
   const [appts, setAppts] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [requesting, setRequesting] = useState(false);
+
+  const loadReports = async (patientId: string) => {
+    const { data } = await supabase
+      .from('ai_report_requests')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setReports(data ?? []);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -23,9 +37,56 @@ export default function PatientPortal() {
           supabase.from('invoices').select('*').eq('patient_id', p.id).order('created_at', { ascending: false }).limit(10),
         ]);
         setAppts(a ?? []); setSessions(vs ?? []); setInvoices(inv ?? []);
+        loadReports(p.id);
       }
     })();
   }, [user?.id]);
+
+  const requestAIReport = async () => {
+    if (!patient) return;
+    setRequesting(true);
+    try {
+      // 1. Create the request row
+      const { data: req, error: insErr } = await supabase
+        .from('ai_report_requests')
+        .insert({ patient_id: patient.id, requested_by: user?.id, report_type: 'medical_summary', status: 'processing' })
+        .select()
+        .single();
+      if (insErr) throw insErr;
+
+      // 2. Generate via existing edge function
+      const { data, error } = await supabase.functions.invoke('ai-clinical-assist', {
+        body: { mode: 'report', patientId: patient.id },
+      });
+      if (error || data?.error) throw new Error(data?.error ?? error?.message ?? 'AI failed');
+
+      // 3. Save result
+      await supabase.from('ai_report_requests').update({
+        status: 'completed', content: data.content, completed_at: new Date().toISOString(),
+      }).eq('id', req.id);
+
+      playSuccessSound();
+      toast({ title: '✓ Report ready', description: 'Your AI medical report is available below.' });
+      loadReports(patient.id);
+    } catch (e: any) {
+      toast({ title: 'Report failed', description: e.message, variant: 'destructive' });
+    }
+    setRequesting(false);
+  };
+
+  const speakReport = (text: string) => {
+    const u = new SpeechSynthesisUtterance(text.replace(/[#*_`]/g, ''));
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  };
+
+  const printReport = (text: string) => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<pre style="font-family:Georgia,serif;white-space:pre-wrap;padding:32px;max-width:800px;margin:auto">${text.replace(/</g, '&lt;')}</pre>`);
+    w.document.close();
+    w.print();
+  };
 
   if (!user) return null;
 
@@ -41,6 +102,48 @@ export default function PatientPortal() {
           <p className="text-xs uppercase text-muted-foreground">Patient ID</p>
           <h2 className="text-xl font-semibold">{patient.patient_code}</h2>
           <p className="text-sm">{patient.first_name} {patient.last_name} · {patient.email}</p>
+        </div>
+      )}
+
+      {/* AI Medical Report (client-facing) */}
+      {patient && (
+        <div className="card-medical p-5 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI Medical Report</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Generate a comprehensive summary of your encounters, vitals, labs and treatment history.
+              </p>
+            </div>
+            <button onClick={requestAIReport} disabled={requesting} className="btn-primary text-sm inline-flex items-center gap-2">
+              <Sparkles className="w-4 h-4" /> {requesting ? 'Generating…' : 'Request report'}
+            </button>
+          </div>
+
+          {reports.length > 0 && (
+            <div className="space-y-3 mt-4">
+              {reports.map((r) => (
+                <div key={r.id} className="rounded-xl border border-border bg-background p-4">
+                  <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
+                    <span>Requested {new Date(r.created_at).toLocaleString()}</span>
+                    <span className={r.status === 'completed' ? 'text-success' : r.status === 'failed' ? 'text-critical' : 'text-warning'}>
+                      {r.status}
+                    </span>
+                  </div>
+                  {r.status === 'completed' && r.content && (
+                    <>
+                      <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm">{r.content}</div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => printReport(r.content)} className="btn-ghost text-xs inline-flex items-center gap-1"><Printer className="w-3 h-3" /> Print</button>
+                        <button onClick={() => speakReport(r.content)} className="btn-ghost text-xs inline-flex items-center gap-1"><Volume2 className="w-3 h-3" /> Read aloud</button>
+                      </div>
+                    </>
+                  )}
+                  {r.status === 'failed' && <p className="text-xs text-critical">{r.error ?? 'Failed to generate.'}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -93,6 +196,7 @@ export default function PatientPortal() {
           <h3 className="font-semibold flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-primary" /> Quick links</h3>
           <Link to="/records" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">Medical Records</Link>
           <Link to="/notifications" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">My Notifications</Link>
+          <Link to="/outside-lab" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">Upload Outside Diagnostics</Link>
         </div>
       </div>
     </div>
