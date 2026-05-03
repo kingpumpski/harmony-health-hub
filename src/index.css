@@ -6,69 +6,64 @@
 
 @layer base {
   :root {
-    /* Core Medical Theme */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Core Medical Theme — vibrant 2026 refresh */
+    --background: 210 30% 98%;
+    --foreground: 222 35% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 222 35% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 222 35% 12%;
 
-    /* Primary - Medical Teal */
-    --primary: 187 65% 35%;
+    --primary: 184 80% 38%;
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 184 90% 55%;
 
-    /* Secondary - Soft Blue */
-    --secondary: 210 40% 94%;
-    --secondary-foreground: 215 25% 25%;
+    --secondary: 232 60% 96%;
+    --secondary-foreground: 232 40% 25%;
 
-    --muted: 210 25% 93%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 220 30% 95%;
+    --muted-foreground: 220 12% 42%;
 
-    /* Accent - Warm Coral (Fertility/Care) */
-    --accent: 12 76% 61%;
+    --accent: 340 85% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 80% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Status Colors */
-    --success: 152 60% 40%;
+    --success: 158 70% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 95% 52%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    --info: 210 95% 55%;
     --info-foreground: 0 0% 100%;
-    --critical: 0 84% 60%;
+    --critical: 0 88% 58%;
     --critical-foreground: 0 0% 100%;
 
-    /* Fertility Clinic Theme */
-    --fertility: 330 60% 55%;
+    --fertility: 320 75% 58%;
     --fertility-foreground: 0 0% 100%;
 
-    --border: 214 25% 88%;
-    --input: 214 25% 88%;
-    --ring: 187 65% 35%;
+    --border: 220 25% 90%;
+    --input: 220 25% 90%;
+    --ring: 184 80% 38%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
-    /* Sidebar */
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 187 65% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 25%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 215 20% 25%;
-    --sidebar-ring: 187 65% 50%;
+    --sidebar-background: 232 45% 14%;
+    --sidebar-foreground: 220 30% 92%;
+    --sidebar-primary: 184 90% 55%;
+    --sidebar-primary-foreground: 232 45% 14%;
+    --sidebar-accent: 232 35% 22%;
+    --sidebar-accent-foreground: 220 30% 96%;
+    --sidebar-border: 232 30% 22%;
+    --sidebar-ring: 184 90% 55%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(187 65% 35%) 0%, hsl(199 70% 45%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(12 76% 61%) 0%, hsl(330 60% 55%) 100%);
-    --gradient-dark: linear-gradient(135deg, hsl(215 28% 17%) 0%, hsl(215 25% 25%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(152 60% 40%) 0%, hsl(160 55% 45%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(184 80% 38%) 0%, hsl(210 95% 55%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(340 85% 60%) 0%, hsl(280 75% 60%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(232 45% 14%) 0%, hsl(232 50% 10%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(158 70% 40%) 0%, hsl(180 65% 45%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(184 80% 38%) 0%, hsl(232 70% 50%) 50%, hsl(280 75% 55%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(215 25% 15% / 0.05);
