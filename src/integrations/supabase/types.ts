@@ -95,6 +95,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_report_requests: {
+        Row: {
+          completed_at: string | null
+          content: string | null
+          created_at: string
+          error: string | null
+          id: string
+          patient_id: string
+          report_type: string
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          content?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          patient_id: string
+          report_type?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          content?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          patient_id?: string
+          report_type?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       anesthetic_assessments: {
         Row: {
           airway_assessment: string | null
@@ -944,6 +980,48 @@ export type Database = {
         }
         Relationships: []
       }
+      medication_administrations: {
+        Row: {
+          administered_at: string
+          administered_by: string | null
+          created_at: string
+          dose: string | null
+          drug_name: string
+          id: string
+          inventory_id: string | null
+          notes: string | null
+          patient_id: string
+          prescription_id: string
+          quantity_dispensed: number
+        }
+        Insert: {
+          administered_at?: string
+          administered_by?: string | null
+          created_at?: string
+          dose?: string | null
+          drug_name: string
+          id?: string
+          inventory_id?: string | null
+          notes?: string | null
+          patient_id: string
+          prescription_id: string
+          quantity_dispensed?: number
+        }
+        Update: {
+          administered_at?: string
+          administered_by?: string | null
+          created_at?: string
+          dose?: string | null
+          drug_name?: string
+          id?: string
+          inventory_id?: string | null
+          notes?: string | null
+          patient_id?: string
+          prescription_id?: string
+          quantity_dispensed?: number
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           category: string | null
@@ -1183,6 +1261,8 @@ export type Database = {
       }
       pharmacy_goods_receipts: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           drug_name: string
           expiry_date: string | null
@@ -1192,10 +1272,14 @@ export type Database = {
           notes: string | null
           quantity: number
           received_by: string | null
+          rejection_reason: string | null
+          status: string
           supplier: string | null
           unit_cost: number | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           drug_name: string
           expiry_date?: string | null
@@ -1205,10 +1289,14 @@ export type Database = {
           notes?: string | null
           quantity: number
           received_by?: string | null
+          rejection_reason?: string | null
+          status?: string
           supplier?: string | null
           unit_cost?: number | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           drug_name?: string
           expiry_date?: string | null
@@ -1218,6 +1306,8 @@ export type Database = {
           notes?: string | null
           quantity?: number
           received_by?: string | null
+          rejection_reason?: string | null
+          status?: string
           supplier?: string | null
           unit_cost?: number | null
         }
