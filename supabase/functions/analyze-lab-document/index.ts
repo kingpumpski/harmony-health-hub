@@ -1,12 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+  const cors = buildCorsHeaders(req);
+
   try {
     const { documentId, title, documentType } = await req.json();
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -40,7 +39,6 @@ Deno.serve(async (req) => {
     const analysis: string = data.choices?.[0]?.message?.content ?? '';
     const isUrgent = /^\s*URGENT:/i.test(analysis);
 
-    // Look up patient for the notification target
     const { data: doc } = await supabase
       .from('outside_lab_documents')
       .select('patient_id')
@@ -52,11 +50,28 @@ Deno.serve(async (req) => {
       .update({ ai_analysis: analysis, ai_analyzed_at: new Date().toISOString() })
       .eq('id', documentId);
 
-    // Broadcast to multiple clinical roles
+    // Enqueue notifications (resilient — survives transient failures)
     const roles = ['practitioner', 'nurse', 'lab_technician'];
     const severity = isUrgent ? 'critical' : 'info';
     const titleMsg = isUrgent ? '🚨 URGENT outside-lab finding' : 'New outside-lab document analyzed';
-    const rows = roles.map((r) => ({
+
+    const queueRows = roles.map((r) => ({
+      channel: 'in_app',
+      payload: {
+        recipient_role: r,
+        title: titleMsg,
+        message: `${title || 'Outside diagnostic'} (${documentType}) analyzed by AI.${isUrgent ? ' Review immediately.' : ''}`,
+        severity,
+        category: 'lab',
+        related_entity_id: documentId,
+        related_patient_id: doc?.patient_id ?? null,
+        link: '/outside-lab',
+      },
+    }));
+    await supabase.from('notification_queue').insert(queueRows);
+
+    // Also write directly for instant delivery (queue is the safety net)
+    const directRows = roles.map((r) => ({
       recipient_role: r,
       title: titleMsg,
       message: `${title || 'Outside diagnostic'} (${documentType}) analyzed by AI.${isUrgent ? ' Review immediately.' : ''}`,
@@ -66,16 +81,16 @@ Deno.serve(async (req) => {
       related_patient_id: doc?.patient_id ?? null,
       link: '/outside-lab',
     }));
-    await supabase.from('notifications').insert(rows);
+    await supabase.from('notifications').insert(directRows);
 
-    return new Response(JSON.stringify({ analysis, urgent: isUrgent }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ analysis, urgent: isUrgent, queued: queueRows.length }), {
+      headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error('[analyze-lab-document] error', e);
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
 });
