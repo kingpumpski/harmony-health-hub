@@ -381,6 +381,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_import_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity: string
+          errors: Json
+          failed_rows: number
+          filename: string | null
+          id: string
+          inserted_rows: number
+          status: string
+          total_rows: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity: string
+          errors?: Json
+          failed_rows?: number
+          filename?: string | null
+          id?: string
+          inserted_rows?: number
+          status?: string
+          total_rows?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity?: string
+          errors?: Json
+          failed_rows?: number
+          filename?: string | null
+          id?: string
+          inserted_rows?: number
+          status?: string
+          total_rows?: number
+        }
+        Relationships: []
+      }
       dental_records: {
         Row: {
           created_at: string
@@ -1166,6 +1205,48 @@ export type Database = {
           patient_id?: string
           prescription_id?: string
           quantity_dispensed?: number
+        }
+        Relationships: []
+      }
+      notification_queue: {
+        Row: {
+          attempts: number
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          payload: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2028,6 +2109,10 @@ export type Database = {
       }
     }
     Functions: {
+      enqueue_notification: {
+        Args: { _channel?: string; _payload: Json }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
