@@ -36,6 +36,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: ShieldCheck, label: 'AI Hub', href: '/ai-clinical' },
     { icon: UserCog, label: 'Manage Users', href: '/admin/users' },
     { icon: Database, label: 'System Library', href: '/admin/system' },
+    { icon: Upload, label: 'Bulk Upload', href: '/admin/bulk-upload' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   front_desk: [

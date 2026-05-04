@@ -21,6 +21,7 @@ import Laboratory from "./pages/Laboratory";
 import Pharmacy from "./pages/Pharmacy";
 import Notifications from "./pages/Notifications";
 import AdminUsers from "./pages/admin/AdminUsers";
+import BulkUpload from "./pages/admin/BulkUpload";
 import FeaturePage from "./pages/FeaturePage";
 import SoundAlerts from "./pages/SoundAlerts";
 import PublicHealthReports from "./pages/PublicHealthReports";
@@ -120,6 +121,7 @@ const App = () => (
                 <Route path="/admin/system" element={<SystemLibrary />} />
                 <Route path="/admin/roles" element={<AdminUsers />} />
                 <Route path="/admin/settings" element={<FeaturePage title="System Settings" description="Administer application configuration and security settings." />} />
+                <Route path="/admin/bulk-upload" element={<BulkUpload />} />
                 <Route path="/admin/logs" element={<FeaturePage title="System Logs" description="Audit logs for compliance and traceability." />} />
 
                 <Route path="/notifications" element={<Notifications />} />
