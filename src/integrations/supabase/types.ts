@@ -59,6 +59,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_diagnosis_suggestions: {
+        Row: {
+          accepted: boolean | null
+          created_at: string | null
+          encounter_id: string | null
+          id: string
+          model_version: string | null
+          reasoning: string | null
+          suggested_icd: string | null
+        }
+        Insert: {
+          accepted?: boolean | null
+          created_at?: string | null
+          encounter_id?: string | null
+          id?: string
+          model_version?: string | null
+          reasoning?: string | null
+          suggested_icd?: string | null
+        }
+        Update: {
+          accepted?: boolean | null
+          created_at?: string | null
+          encounter_id?: string | null
+          id?: string
+          model_version?: string | null
+          reasoning?: string | null
+          suggested_icd?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_diagnosis_suggestions_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_diagnosis_suggestions_suggested_icd_fkey"
+            columns: ["suggested_icd"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       ai_protocols: {
         Row: {
           approved_at: string | null
@@ -130,6 +175,38 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      ai_symptom_icd_map: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          icd_code: string | null
+          id: string
+          symptom: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          icd_code?: string | null
+          id?: string
+          symptom: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          icd_code?: string | null
+          id?: string
+          symptom?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_symptom_icd_map_icd_code_fkey"
+            columns: ["icd_code"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       anesthetic_assessments: {
         Row: {
@@ -240,6 +317,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          action: string | null
+          created_at: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       billing_overrides: {
         Row: {
@@ -366,6 +476,7 @@ export type Database = {
       }
       diagnoses: {
         Row: {
+          ai_suggested: boolean | null
           created_at: string
           diagnosis: string
           encounter_id: string
@@ -376,6 +487,7 @@ export type Database = {
           notes: string | null
         }
         Insert: {
+          ai_suggested?: boolean | null
           created_at?: string
           diagnosis: string
           encounter_id: string
@@ -386,6 +498,7 @@ export type Database = {
           notes?: string | null
         }
         Update: {
+          ai_suggested?: boolean | null
           created_at?: string
           diagnosis?: string
           encounter_id?: string
@@ -402,6 +515,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "encounters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_diagnoses_icd"
+            columns: ["icd_code"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -901,6 +1021,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lab_tests: {
+        Row: {
+          created_at: string | null
+          id: string
+          loinc_code: string | null
+          normal_range: string | null
+          specimen: string | null
+          test_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          loinc_code?: string | null
+          normal_range?: string | null
+          specimen?: string | null
+          test_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          loinc_code?: string | null
+          normal_range?: string | null
+          specimen?: string | null
+          test_name?: string | null
+        }
+        Relationships: []
       }
       meal_orders: {
         Row: {
@@ -1548,6 +1695,35 @@ export type Database = {
           recommended_action?: string | null
           summary?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "fk_stg_icd"
+            columns: ["icd_code"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      sync_queue: {
+        Row: {
+          id: string
+          payload: Json | null
+          synced: boolean | null
+          table_name: string | null
+        }
+        Insert: {
+          id?: string
+          payload?: Json | null
+          synced?: boolean | null
+          table_name?: string | null
+        }
+        Update: {
+          id?: string
+          payload?: Json | null
+          synced?: boolean | null
+          table_name?: string | null
+        }
         Relationships: []
       }
       treatment_templates: {
@@ -1795,7 +1971,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_ai_clinical_decision: {
+        Row: {
+          description: string | null
+          diagnosis: string | null
+          encounter_id: string | null
+          icd_code: string | null
+          medications: Json | null
+          recommended_action: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnoses_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_diagnoses_icd"
+            columns: ["icd_code"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      v_patient_diagnosis_full: {
+        Row: {
+          category: string | null
+          diagnosis: string | null
+          diagnosis_id: string | null
+          encounter_id: string | null
+          icd_code: string | null
+          icd_description: string | null
+          medications: Json | null
+          recommended_action: string | null
+          stg_summary: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnoses_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_diagnoses_icd"
+            columns: ["icd_code"]
+            isOneToOne: false
+            referencedRelation: "icd_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
