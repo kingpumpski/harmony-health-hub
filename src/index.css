@@ -272,6 +272,16 @@
 }
 
 @layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
   }
