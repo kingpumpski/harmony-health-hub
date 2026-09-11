@@ -2,49 +2,114 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { releaseServiceOrder, cancelServiceOrder, getPaymentFlow, setPaymentFlow, STATUS_LABEL } from '@/lib/workflow';
-import { BadgeCheck, Banknote, XCircle, Settings2 } from 'lucide-react';
+import {
+  cancelServiceOrder,
+  grantServiceOrderOverride,
+  releaseServiceOrder,
+  getPaymentFlow,
+  setPaymentFlow,
+  STATUS_LABEL,
+  type PaymentFlow,
+  type ServiceOrderStatus,
+} from '@/lib/workflow';
+import { BadgeCheck, Banknote, ShieldCheck, XCircle, Settings2 } from 'lucide-react';
+
+interface AccountsOrder {
+  id: string;
+  patient_id: string;
+  service_name: string;
+  department: string;
+  amount: number | string;
+  status: ServiceOrderStatus;
+  invoice_id: string | null;
+  patients?: {
+    first_name: string | null;
+    last_name: string | null;
+    patient_code: string | null;
+    insurance_provider: string | null;
+    insurance_number: string | null;
+  } | null;
+}
 
 export default function AccountsApprovals() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [flow, setFlow] = useState<'strict' | 'streamlined'>('streamlined');
-  const [filter, setFilter] = useState('pending_payment');
+  const [orders, setOrders] = useState<AccountsOrder[]>([]);
+  const [flow, setFlow] = useState<PaymentFlow>('streamlined');
+  const [filter, setFilter] = useState<ServiceOrderStatus>('pending_payment_approval');
+  const [busyId, setBusyId] = useState<string | null>(null);
   const isAdmin = user?.role === 'admin';
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('service_orders')
-      .select('*, patients(first_name,last_name,patient_code,insurance_provider,insurance_number)')
+      .select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number)')
       .eq('status', filter)
       .order('created_at', { ascending: false })
       .limit(100);
-    setOrders(data ?? []);
+    if (error) {
+      toast({ title: 'Could not load approvals', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setOrders((data ?? []) as AccountsOrder[]);
   }, [filter]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { getPaymentFlow().then(setFlow); }, []);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    getPaymentFlow().then(setFlow).catch((error: Error) => {
+      toast({ title: 'Could not load routing settings', description: error.message, variant: 'destructive' });
+    });
+  }, []);
 
-  const approve = async (order: any) => {
+  const approve = async (order: AccountsOrder) => {
+    setBusyId(order.id);
     try {
       await releaseServiceOrder(order.id, user?.id);
       toast({ title: 'Released to department', description: `${order.service_name} is now open for work.` });
-      load();
-    } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+      await load();
+    } catch (error) {
+      toast({ title: 'Release blocked', description: error instanceof Error ? error.message : 'Payment approval is required.', variant: 'destructive' });
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const reject = async (order: any) => {
-    await cancelServiceOrder(order.id, 'Cancelled by accounts');
-    toast({ title: 'Order cancelled' });
-    load();
+  const override = async (order: AccountsOrder) => {
+    const reason = window.prompt('Enter the Accounts override reason:')?.trim();
+    if (!reason) return;
+    setBusyId(order.id);
+    try {
+      await grantServiceOrderOverride(order.id, reason);
+      await releaseServiceOrder(order.id, user?.id, `Override: ${reason}`);
+      toast({ title: 'Override approved', description: `${order.service_name} has been released.` });
+      await load();
+    } catch (error) {
+      toast({ title: 'Override failed', description: error instanceof Error ? error.message : 'Unable to grant override.', variant: 'destructive' });
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const changeFlow = async (value: 'strict' | 'streamlined') => {
-    setFlow(value);
-    await setPaymentFlow(value);
-    toast({ title: 'Routing updated' });
+  const reject = async (order: AccountsOrder) => {
+    setBusyId(order.id);
+    try {
+      await cancelServiceOrder(order.id, 'Cancelled by Accounts');
+      toast({ title: 'Order cancelled' });
+      await load();
+    } catch (error) {
+      toast({ title: 'Cancellation failed', description: error instanceof Error ? error.message : 'Unable to cancel order.', variant: 'destructive' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const changeFlow = async (value: PaymentFlow) => {
+    try {
+      await setPaymentFlow(value);
+      setFlow(value);
+      toast({ title: 'Routing updated' });
+    } catch (error) {
+      toast({ title: 'Routing update failed', description: error instanceof Error ? error.message : 'Unable to update routing.', variant: 'destructive' });
+    }
   };
 
   return (
@@ -56,9 +121,10 @@ export default function AccountsApprovals() {
           </h1>
           <p className="text-muted-foreground">Release paid services to laboratory, pharmacy and other departments.</p>
         </div>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="input-medical max-w-xs">
-          <option value="pending_payment">Awaiting payment approval</option>
-          <option value="released">Approved — in progress</option>
+        <select value={filter} onChange={(e) => setFilter(e.target.value as ServiceOrderStatus)} className="input-medical max-w-xs">
+          <option value="pending_payment_approval">Awaiting payment approval</option>
+          <option value="released">Released</option>
+          <option value="in_progress">In progress</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
         </select>
@@ -69,12 +135,12 @@ export default function AccountsApprovals() {
           <div className="flex items-center gap-2 mb-2 font-semibold"><Settings2 className="w-4 h-4" /> Patient routing style</div>
           <div className="flex flex-wrap gap-3 text-sm">
             <label className="flex items-center gap-2">
-              <input type="radio" checked={flow === 'strict'} onChange={() => changeFlow('strict')} />
+              <input type="radio" checked={flow === 'strict'} onChange={() => void changeFlow('strict')} />
               Accounts stop before every step
             </label>
             <label className="flex items-center gap-2">
-              <input type="radio" checked={flow === 'streamlined'} onChange={() => changeFlow('streamlined')} />
-              Streamlined (triage → consultation → accounts → diagnostics → review → accounts → pharmacy)
+              <input type="radio" checked={flow === 'streamlined'} onChange={() => void changeFlow('streamlined')} />
+              Streamlined routing between clinical steps
             </label>
           </div>
         </div>
@@ -82,35 +148,42 @@ export default function AccountsApprovals() {
 
       <div className="space-y-3">
         {orders.length === 0 && <p className="text-sm text-muted-foreground">Nothing in this list.</p>}
-        {orders.map((o) => (
-          <div key={o.id} className="card-medical p-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="font-semibold">{o.service_name}</p>
-              <p className="text-sm text-muted-foreground">
-                {o.patients?.first_name} {o.patients?.last_name} · {o.patients?.patient_code} · {o.department}
-              </p>
-              {o.patients?.insurance_provider && (
-                <p className="text-xs text-primary mt-1">
-                  Insurance: {o.patients.insurance_provider} · {o.patients.insurance_number ?? 'no number on file'}
+        {orders.map((order) => {
+          const patient = order.patients;
+          const busy = busyId === order.id;
+          return (
+            <div key={order.id} className="card-medical p-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-semibold">{order.service_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {patient?.first_name} {patient?.last_name} · {patient?.patient_code} · {order.department}
                 </p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">{STATUS_LABEL[o.status]}</p>
+                {patient?.insurance_provider && (
+                  <p className="text-xs text-primary mt-1">
+                    Insurance: {patient.insurance_provider} · {patient.insurance_number ?? 'no number on file'}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">{STATUS_LABEL[order.status]}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-lg font-semibold">GHS {Number(order.amount).toFixed(2)}</span>
+                {order.status === 'pending_payment_approval' && (
+                  <>
+                    <button disabled={busy} onClick={() => void approve(order)} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
+                      <BadgeCheck className="w-4 h-4" /> Approve & release
+                    </button>
+                    <button disabled={busy} onClick={() => void override(order)} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50">
+                      <ShieldCheck className="w-4 h-4" /> Override
+                    </button>
+                    <button disabled={busy} onClick={() => void reject(order)} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50">
+                      <XCircle className="w-4 h-4" /> Cancel
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-semibold">GHS {Number(o.amount).toFixed(2)}</span>
-              {o.status === 'pending_payment' && (
-                <>
-                  <button onClick={() => approve(o)} className="btn-primary inline-flex items-center gap-2">
-                    <BadgeCheck className="w-4 h-4" /> Approve & release
-                  </button>
-                  <button onClick={() => reject(o)} className="btn-secondary inline-flex items-center gap-2">
-                    <XCircle className="w-4 h-4" /> Cancel
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
