@@ -1,179 +1,72 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Activity, HeartPulse, Thermometer, Droplet, Activity as Pulse, Weight, Scale, ShieldCheck, AlertTriangle, ListChecks } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, HeartPulse, ListChecks } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 import { evaluateTriagePriority } from '@/lib/healthApi';
-import { VitalSigns } from '@/types';
 
-const defaultPatient = {
-  id: 'P-0001',
-  patientId: 'P-0001',
-  firstName: 'Emmanuel',
-  lastName: 'Owusu',
-  dateOfBirth: '1988-06-14',
-  gender: 'male' as const,
-  email: 'emmanuel.owusu@example.com',
-  phone: '+233 24 123 4567',
-  address: 'Accra Ridge',
-  emergencyContact: { name: 'Amina Owusu', relationship: 'Spouse', phone: '+233 24 765 4321' },
-  registrationDate: '2026-04-27',
-  status: 'active' as const,
+type Priority = 'Critical' | 'Urgent' | 'Moderate' | 'Routine';
+interface Patient { id: string; patient_code: string | null; first_name: string; last_name: string }
+interface TriageRow { id: string; patient_id: string; priority: string; systolic: number; diastolic: number; heart_rate: number; temperature: number; oxygen_saturation: number; created_at: string; patients?: { first_name: string; last_name: string } | null }
+
+const priorityLabel = (value: string): Priority => {
+  const normalized = value.toLowerCase();
+  if (normalized === 'critical') return 'Critical';
+  if (normalized === 'urgent') return 'Urgent';
+  if (normalized === 'moderate') return 'Moderate';
+  return 'Routine';
 };
 
-const defaultWaitingList = [
-  { id: 'P-0010', name: 'Raymond Boateng', triage: 'Urgent' },
-  { id: 'P-0011', name: 'Esther Mensah', triage: 'Moderate' },
-  { id: 'P-0012', name: 'Grace Nyamekye', triage: 'Routine' },
-];
-
 export default function Triage() {
-  const [vitals, setVitals] = useState<VitalSigns>({
-    id: 'v-01',
-    patientId: defaultPatient.patientId,
-    recordedBy: 'Nurse Emily',
-    recordedAt: new Date().toISOString(),
-    bloodPressure: { systolic: 138, diastolic: 92 },
-    heartRate: 110,
-    temperature: 38.2,
-    respiratoryRate: 24,
-    oxygenSaturation: 91,
-    weight: 78,
-    height: 1.72,
-    notes: 'Patient reports chest discomfort and dizziness.',
-    isCritical: false,
-  });
-  const [evaluation, setEvaluation] = useState('Routine');
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [history, setHistory] = useState<TriageRow[]>([]);
+  const [patientId, setPatientId] = useState('');
+  const [systolic, setSystolic] = useState(120); const [diastolic, setDiastolic] = useState(80);
+  const [heartRate, setHeartRate] = useState(80); const [temperature, setTemperature] = useState(36.8);
+  const [respiratoryRate, setRespiratoryRate] = useState(18); const [oxygenSaturation, setOxygenSaturation] = useState(98);
+  const [weight, setWeight] = useState(70); const [height, setHeight] = useState(1.7);
+  const [pain, setPain] = useState(0); const [consciousness, setConsciousness] = useState('Alert');
+  const [complaint, setComplaint] = useState(''); const [notes, setNotes] = useState('');
+  const [priority, setPriority] = useState<Priority>('Routine'); const [saving, setSaving] = useState(false);
+  const bmi = useMemo(() => height > 0 ? Number((weight / (height * height)).toFixed(1)) : 0, [weight, height]);
 
-  const bmi = useMemo(() => {
-    if (!vitals.weight || !vitals.height) return 0;
-    return Number((vitals.weight / (vitals.height * vitals.height)).toFixed(1));
-  }, [vitals.weight, vitals.height]);
+  const load = async () => {
+    const [{ data: pts }, { data: rows }] = await Promise.all([
+      supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300),
+      supabase.from('triage_assessments' as never).select('id, patient_id, priority, systolic, diastolic, heart_rate, temperature, oxygen_saturation, created_at, patients(first_name,last_name)').order('created_at', { ascending: false }).limit(50),
+    ]);
+    setPatients((pts ?? []) as Patient[]); setHistory((rows ?? []) as unknown as TriageRow[]);
+  };
+  useEffect(() => { void load(); }, []);
 
-  const updateVital = (field: string, value: string | number) => {
-    setVitals((prev) => ({
-      ...prev,
-      [field]: typeof value === 'string' && field !== 'recordedAt' ? Number(value) : value,
-    } as VitalSigns));
+  const evaluate = () => setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic, diastolic }, heartRate, temperature, respiratoryRate, oxygenSaturation, weight, height, notes, isCritical: false }) as Priority);
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault(); if (!patientId || !user?.id) return; setSaving(true);
+    const normalized = priority.toLowerCase();
+    const { error } = await supabase.from('triage_assessments' as never).insert({ patient_id: patientId, recorded_by: user.id, systolic, diastolic, heart_rate: heartRate, temperature, respiratory_rate: respiratoryRate, oxygen_saturation: oxygenSaturation, weight_kg: weight || null, height_m: height || null, pain_score: pain, consciousness, presenting_complaint: complaint || null, clinical_notes: notes || null, priority: normalized, is_critical: normalized === 'critical' } as never);
+    setSaving(false);
+    if (error) return toast({ title: 'Triage save failed', description: error.message, variant: 'destructive' });
+    toast({ title: 'Triage recorded', description: `${priority} priority saved to the patient record.` });
+    setPatientId(''); setComplaint(''); setNotes(''); setPain(0); setPriority('Routine'); void load();
   };
 
-  const handleEvaluate = () => {
-    const priority = evaluateTriagePriority(vitals);
-    setEvaluation(priority);
-  };
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Triage & Vital Signs</h1>
-          <p className="text-muted-foreground">Record urgency and AI-assisted priority categorization.</p>
-        </div>
-        <button className="btn-primary inline-flex items-center gap-2">
-          <ArrowRight className="w-4 h-4" /> Start New Triage
-        </button>
+  return <div className="space-y-6 animate-fade-in">
+    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><HeartPulse className="w-6 h-6 text-primary" /> Triage & Vital Signs</h1><p className="text-muted-foreground">Persistent clinical triage with deterministic priority support. Priority is decision support, not a diagnosis.</p></div>
+    <form onSubmit={save} className="card-medical p-5 space-y-5">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select>
+        <input value={complaint} onChange={e => setComplaint(e.target.value)} placeholder="Presenting complaint" className="input-medical" />
+        <select value={consciousness} onChange={e => setConsciousness(e.target.value)} className="input-medical"><option>Alert</option><option>Confused</option><option>Drowsy</option><option>Unresponsive</option></select>
       </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="card-medical p-6">
-          <h2 className="text-lg font-semibold mb-4">Patient Summary</h2>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p><span className="font-medium text-foreground">Name:</span> {defaultPatient.firstName} {defaultPatient.lastName}</p>
-            <p><span className="font-medium text-foreground">Patient ID:</span> {defaultPatient.patientId}</p>
-            <p><span className="font-medium text-foreground">DOB:</span> {defaultPatient.dateOfBirth}</p>
-            <p><span className="font-medium text-foreground">Phone:</span> {defaultPatient.phone}</p>
-            <p><span className="font-medium text-foreground">Emergency Contact:</span> {defaultPatient.emergencyContact.name} ({defaultPatient.emergencyContact.relationship})</p>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-border p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Current Priority</p>
-              <p className="mt-2 text-2xl font-semibold">{evaluation}</p>
-            </div>
-            <div className="rounded-2xl border border-border p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">AI Risk</p>
-              <p className="mt-2 text-2xl font-semibold text-warning">{evaluation === 'Critical' ? 'High' : 'Medium'}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 card-medical p-6">
-          <h2 className="text-lg font-semibold mb-4">Vital Signs</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><HeartPulse className="w-4 h-4" /> Heart Rate</div>
-              <input type="number" value={vitals.heartRate} onChange={(e) => updateVital('heartRate', e.target.value)} className="input-medical" />
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><Thermometer className="w-4 h-4" /> Temperature (°C)</div>
-              <input type="number" step="0.1" value={vitals.temperature} onChange={(e) => updateVital('temperature', e.target.value)} className="input-medical" />
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><Activity className="w-4 h-4" /> Respiratory Rate</div>
-              <input type="number" value={vitals.respiratoryRate} onChange={(e) => updateVital('respiratoryRate', e.target.value)} className="input-medical" />
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><Droplet className="w-4 h-4" /> Oxygen Saturation</div>
-              <input type="number" value={vitals.oxygenSaturation} onChange={(e) => updateVital('oxygenSaturation', e.target.value)} className="input-medical" />
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><Scale className="w-4 h-4" /> Height (m)</div>
-              <input type="number" step="0.01" value={vitals.height ?? ''} onChange={(e) => updateVital('height', e.target.value)} className="input-medical" />
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-3 text-muted-foreground"><Weight className="w-4 h-4" /> Weight (kg)</div>
-              <input type="number" step="0.1" value={vitals.weight ?? ''} onChange={(e) => updateVital('weight', e.target.value)} className="input-medical" />
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">BMI</p>
-              <p className="text-3xl font-semibold">{bmi || '--'}</p>
-            </div>
-            <button onClick={handleEvaluate} className="btn-primary">Run AI Evaluation</button>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[["SBP",systolic,setSystolic],["DBP",diastolic,setDiastolic],["Heart rate",heartRate,setHeartRate],["Temperature °C",temperature,setTemperature],["Respiratory rate",respiratoryRate,setRespiratoryRate],["SpO₂ %",oxygenSaturation,setOxygenSaturation],["Weight kg",weight,setWeight],["Height m",height,setHeight]].map(([label,value,setter]) => <label key={String(label)} className="text-xs">{String(label)}<input type="number" step={String(label).includes('Temperature') || String(label).includes('Weight') || String(label).includes('Height') ? '0.1' : '1'} value={value as number} onChange={e => (setter as (v:number)=>void)(Number(e.target.value))} className="input-medical mt-1 w-full" /></label>)}
       </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card-medical p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Waiting List</h2>
-              <p className="text-sm text-muted-foreground">Live triage queue from the emergency desk.</p>
-            </div>
-            <ListChecks className="w-5 h-5 text-primary" />
-          </div>
-          <div className="space-y-3">
-            {defaultWaitingList.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-border p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.id}</p>
-                </div>
-                <span className="badge-status badge-warning">{item.triage}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card-medical p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Critical Patients</h2>
-              <p className="text-sm text-muted-foreground">Patients requiring immediate intervention.</p>
-            </div>
-            <AlertTriangle className="w-5 h-5 text-critical" />
-          </div>
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-critical/20 bg-critical/5 p-4">
-              <p className="font-medium">Kwame Asare</p>
-              <p className="text-sm text-muted-foreground">BP 190/120 · SpO2 86% · AI: Critical</p>
-            </div>
-            <div className="rounded-2xl border border-warning/20 bg-warning/5 p-4">
-              <p className="font-medium">Eunice Addo</p>
-              <p className="text-sm text-muted-foreground">HR 124 · Temp 39.4°C · AI: Urgent</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]"><label className="text-xs">Pain score (0–10)<input type="number" min="0" max="10" value={pain} onChange={e => setPain(Number(e.target.value))} className="input-medical mt-1 w-full" /></label><div className="rounded-xl border border-border p-3 text-sm"><span className="text-muted-foreground">BMI</span><strong className="block text-xl">{bmi || '—'}</strong></div><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Clinical notes" className="input-medical w-full" /></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"><span className="text-xs text-muted-foreground">Decision-support priority</span><strong className="block text-lg">{priority}</strong></div><div className="flex gap-2"><button type="button" onClick={evaluate} className="btn-ghost">Evaluate</button><button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save triage'}</button></div></div>
+    </form>
+    <div className="card-medical p-5"><div className="flex items-center gap-2 mb-4"><ListChecks className="w-5 h-5 text-primary" /><h2 className="font-semibold">Recent triage assessments</h2></div><div className="space-y-2">{history.map(row => <div key={row.id} className="rounded-xl border border-border p-3 flex flex-wrap justify-between gap-2 text-sm"><span><strong>{row.patients?.first_name} {row.patients?.last_name}</strong> · BP {row.systolic}/{row.diastolic} · SpO₂ {row.oxygen_saturation}%</span><span className={row.priority === 'critical' ? 'text-critical font-semibold' : row.priority === 'urgent' ? 'text-warning font-semibold' : 'text-muted-foreground'}>{priorityLabel(row.priority)} · {new Date(row.created_at).toLocaleString()}</span></div>)}{history.length === 0 && <p className="text-sm text-muted-foreground">No saved triage assessments yet.</p>}</div></div>
+    <div className="rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground flex gap-2"><AlertTriangle className="w-4 h-4 text-warning shrink-0" /> Authorized clinicians remain responsible for assessment, diagnosis and treatment decisions.</div>
+  </div>;
 }
