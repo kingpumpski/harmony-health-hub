@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import WorkflowSummary from '@/components/WorkflowSummary';
 import FrontDeskDashboard from './dashboard/FrontDeskDashboard';
 import PractitionerDashboard from './dashboard/PractitionerDashboard';
 import NurseDashboard from './dashboard/NurseDashboard';
@@ -10,27 +11,21 @@ import CanteenDashboard from './dashboard/CanteenDashboard';
 
 export default function Dashboard() {
   const { user } = useAuth();
-
   if (!user) return null;
 
+  let dashboard;
   switch (user.role) {
-    case 'admin':
-      return <AdminDashboard />;
-    case 'practitioner':
-      return <PractitionerDashboard />;
+    case 'admin': dashboard = <AdminDashboard />; break;
+    case 'practitioner': dashboard = <PractitionerDashboard />; break;
     case 'nurse':
-    case 'midwife':
-      return <NurseDashboard />;
-    case 'lab_technician':
-      return <LabTechDashboard />;
-    case 'pharmacist':
-      return <PharmacyDashboard />;
-    case 'accountant':
-      return <AccountsDashboard />;
-    case 'canteen':
-      return <CanteenDashboard />;
+    case 'midwife': dashboard = <NurseDashboard />; break;
+    case 'lab_technician': dashboard = <LabTechDashboard />; break;
+    case 'pharmacist': dashboard = <PharmacyDashboard />; break;
+    case 'accountant': dashboard = <AccountsDashboard />; break;
+    case 'canteen': dashboard = <CanteenDashboard />; break;
     case 'front_desk':
-    default:
-      return <FrontDeskDashboard />;
+    default: dashboard = <FrontDeskDashboard />; break;
   }
+
+  return <><WorkflowSummary />{dashboard}</>;
 }
