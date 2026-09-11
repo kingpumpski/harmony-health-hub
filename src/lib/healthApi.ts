@@ -84,29 +84,83 @@ export async function updatePatient(id: string, data: Partial<Patient>) {
 }
 
 /* ============================================================
-   Lightweight helpers still used by demo pages
-   ============================================================ */
+   Document safety / analysis helpers
+   ============================================================
 
-export function analyzeDocument(_document: File) {
-  return Promise.resolve({
-    success: true,
-    findings: [
-      'OCR extracted patient demographics and insurance details.',
-      'No obvious drug interactions detected for current medication.',
-      'Recommend physician review for referral and treatment planning.',
-    ],
-  });
+   The previous implementation returned fabricated clinical findings such as
+   drug-interaction and treatment recommendations. That is unsafe for a health
+   information system because the function did not actually inspect document
+   contents. The implementation below performs deterministic file validation
+   and provenance checks only. Clinical OCR/AI extraction must be supplied by
+   an explicitly configured, access-controlled service before it is presented
+   as clinical information.
+*/
+
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const SUPPORTED_DOCUMENT_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/tiff',
+  'text/plain',
+]);
+
+async function sha256File(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function analyzeDocument(document: File) {
+  if (!document || document.size === 0) {
+    return {
+      success: false,
+      findings: ['The selected document is empty and cannot be processed.'],
+    };
+  }
+
+  if (document.size > MAX_DOCUMENT_SIZE_BYTES) {
+    return {
+      success: false,
+      findings: ['The selected document exceeds the 10 MB upload limit.'],
+    };
+  }
+
+  const type = document.type || 'application/octet-stream';
+  const fingerprint = await sha256File(document);
+  const findings = [
+    `Document accepted: ${document.name}`,
+    `MIME type: ${type}`,
+    `Size: ${(document.size / 1024).toFixed(1)} KB`,
+    `SHA-256 fingerprint: ${fingerprint}`,
+  ];
+
+  if (!SUPPORTED_DOCUMENT_TYPES.has(type)) {
+    findings.push('The file type is not in the supported clinical-document set. Review before attaching it to the patient record.');
+  } else {
+    findings.push('File integrity metadata generated successfully.');
+  }
+
+  findings.push(
+    'No diagnosis, medication-interaction assessment, or treatment recommendation was generated from this upload. Clinical OCR/AI extraction must be explicitly configured and reviewed by an authorized clinician.',
+  );
+
+  return { success: true, findings, fingerprint };
 }
 
 export function registerPatientFromDocument(_document: File) {
-  return Promise.resolve({ success: true, extracted: {} });
+  return Promise.resolve({ success: false, extracted: {}, message: 'Clinical document extraction requires a configured, access-controlled OCR service.' });
 }
 
 export function verifyGhanaCard(cardNumber: string) {
   return Promise.resolve({
     success: cardNumber.startsWith('GHA'),
-    verified: true,
+    verified: false,
     authority: 'National Identification Authority Ghana',
+    message: 'Format validation only. This does not verify the identity or authenticity of a Ghana Card.',
   });
 }
 
