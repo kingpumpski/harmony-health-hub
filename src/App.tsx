@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PatientRegistration = lazy(() => import("./pages/patients/PatientRegistration"));
 const PatientSearch = lazy(() => import("./pages/patients/PatientSearch"));
+const PatientHub = lazy(() => import("./pages/patients/PatientHub"));
 const PatientChat = lazy(() => import("./pages/patients/PatientChat"));
 const PatientPortal = lazy(() => import("./pages/PatientPortal"));
 const SystemLibrary = lazy(() => import("./pages/admin/SystemLibrary"));
@@ -74,6 +75,7 @@ const App = () => (
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/registration" element={<PatientRegistration />} />
                   <Route path="/patients" element={<PatientSearch />} />
+                  <Route path="/patients/:patientId" element={<PatientHub />} />
                   <Route path="/patients/:patientId/chat" element={<PatientChat />} />
                   <Route path="/patient-portal" element={<PatientPortal />} />
 
