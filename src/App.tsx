@@ -42,6 +42,7 @@ const TreatmentTemplates = lazy(() => import("./pages/TreatmentTemplates"));
 const OutsideLabUploads = lazy(() => import("./pages/OutsideLabUploads"));
 const CanteenMeals = lazy(() => import("./pages/CanteenMeals"));
 const AIReportGenerator = lazy(() => import("./pages/AIReportGenerator"));
+const AccountsApprovals = lazy(() => import("./pages/AccountsApprovals"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -85,6 +86,7 @@ const App = () => (
                   <Route path="/consultation" element={<Consultation />} />
                   <Route path="/encounters" element={<Encounters />} />
                   <Route path="/ophthalmology" element={<Ophthalmology />} />
+                  <Route path="/accounts-approvals" element={<AccountsApprovals />} />
 
                   {/* Lab */}
                   <Route path="/laboratory" element={<Laboratory />} />
