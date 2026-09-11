@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      admissions: {
+        Row: {
+          admitted_at: string
+          admitted_by: string | null
+          bed: string | null
+          created_at: string
+          discharge_summary: string | null
+          discharged_at: string | null
+          encounter_id: string | null
+          id: string
+          patient_id: string
+          reason: string | null
+          status: string
+          updated_at: string
+          ward: string | null
+        }
+        Insert: {
+          admitted_at?: string
+          admitted_by?: string | null
+          bed?: string | null
+          created_at?: string
+          discharge_summary?: string | null
+          discharged_at?: string | null
+          encounter_id?: string | null
+          id?: string
+          patient_id: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          ward?: string | null
+        }
+        Update: {
+          admitted_at?: string
+          admitted_by?: string | null
+          bed?: string | null
+          created_at?: string
+          discharge_summary?: string | null
+          discharged_at?: string | null
+          encounter_id?: string | null
+          id?: string
+          patient_id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          ward?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admissions_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admissions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_case_memory: {
         Row: {
           age_group: string | null
@@ -630,6 +693,30 @@ export type Database = {
           },
         ]
       }
+      facility_settings: {
+        Row: {
+          created_at: string
+          facility_name: string
+          id: string
+          payment_flow: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          facility_name?: string
+          id?: string
+          payment_flow?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          facility_name?: string
+          id?: string
+          payment_flow?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fertility_cycles: {
         Row: {
           assigned_specialist: string | null
@@ -780,6 +867,60 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      inpatient_reviews: {
+        Row: {
+          admission_id: string
+          created_at: string
+          findings: string | null
+          id: string
+          patient_id: string
+          plan: string | null
+          review_type: string
+          reviewed_by: string | null
+          reviewer_name: string | null
+          reviewer_role: string | null
+        }
+        Insert: {
+          admission_id: string
+          created_at?: string
+          findings?: string | null
+          id?: string
+          patient_id: string
+          plan?: string | null
+          review_type?: string
+          reviewed_by?: string | null
+          reviewer_name?: string | null
+          reviewer_role?: string | null
+        }
+        Update: {
+          admission_id?: string
+          created_at?: string
+          findings?: string | null
+          id?: string
+          patient_id?: string
+          plan?: string | null
+          review_type?: string
+          reviewed_by?: string | null
+          reviewer_name?: string | null
+          reviewer_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inpatient_reviews_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inpatient_reviews_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       insurance_claims: {
         Row: {
@@ -1057,6 +1198,101 @@ export type Database = {
             columns: ["lab_order_id"]
             isOneToOne: false
             referencedRelation: "lab_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_test_catalog: {
+        Row: {
+          active: boolean
+          category: string | null
+          code: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string | null
+          name: string
+          notes: string | null
+          price: number
+          specimen: string | null
+          turnaround_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string | null
+          name: string
+          notes?: string | null
+          price?: number
+          specimen?: string | null
+          turnaround_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string | null
+          name?: string
+          notes?: string | null
+          price?: number
+          specimen?: string | null
+          turnaround_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lab_test_parameters: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          interpretation: string | null
+          name: string
+          ref_high: number | null
+          ref_low: number | null
+          ref_text: string | null
+          test_id: string
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          interpretation?: string | null
+          name: string
+          ref_high?: number | null
+          ref_low?: number | null
+          ref_text?: string | null
+          test_id: string
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          interpretation?: string | null
+          name?: string
+          ref_high?: number | null
+          ref_low?: number | null
+          ref_text?: string | null
+          test_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_test_parameters_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "lab_test_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -1747,6 +1983,85 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      service_orders: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          department: string
+          encounter_id: string | null
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          patient_id: string
+          related_entity_id: string | null
+          requested_by: string | null
+          service_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          department: string
+          encounter_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          patient_id: string
+          related_entity_id?: string | null
+          requested_by?: string | null
+          service_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          department?: string
+          encounter_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          patient_id?: string
+          related_entity_id?: string | null
+          requested_by?: string | null
+          service_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stg_guidelines: {
         Row: {
