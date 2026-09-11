@@ -1,37 +1,56 @@
-import { useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Loader2, UserPlus, Zap, MessageSquare } from 'lucide-react';
+import { Search, Loader2, UserPlus, MessageSquare, ArrowRight } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
+
+interface PatientSearchResult {
+  id: string;
+  patientId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string | null;
+  ghanaCardNumber: string | null;
+  status: string;
+  insuranceProvider: string | null;
+}
 
 export default function PatientSearch() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<PatientSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('Type a name, ID, or phone number to search patients.');
+  const [message, setMessage] = useState('Search by patient name, patient code, phone, email or Ghana Card.');
 
-  const handleSearch = async (event: React.FormEvent) => {
+  const handleSearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!query.trim()) return;
-    setIsLoading(true);
-    const items = await searchPatients(query.trim());
-    setResults(items);
-    setIsLoading(false);
-    setMessage(items.length ? `${items.length} patient(s) found.` : 'No matching patients found.');
-  };
+    const value = query.trim();
+    if (!value) {
+      setResults([]);
+      setMessage('Enter a search term to find a patient.');
+      return;
+    }
 
-  const activeLabel = useMemo(() => (results.length ? 'Elasticsearch results' : 'Quick search'), [results.length]);
+    setIsLoading(true);
+    try {
+      const items = await searchPatients(value);
+      setResults(items as PatientSearchResult[]);
+      setMessage(items.length ? `${items.length} patient(s) found.` : 'No matching patients found.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold">Patient Search</h1>
-          <p className="text-muted-foreground">Elasticsearch-powered search for fast patient lookup.</p>
+          <p className="text-muted-foreground">Open the complete patient hub without leaving the search workflow.</p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3">
-          <Zap className="w-5 h-5 text-primary" />
-          <span className="text-sm text-muted-foreground">Search across patient records, IDs, phone numbers and Ghana Card data.</span>
-        </div>
+        <Link to="/registration" className="btn-primary inline-flex items-center justify-center gap-2">
+          <UserPlus className="w-4 h-4" />
+          Register Patient
+        </Link>
       </div>
 
       <form onSubmit={handleSearch} className="card-medical p-6">
@@ -40,14 +59,15 @@ export default function PatientSearch() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search patients by name, Client ID, Ghana Card or phone number"
+            placeholder="Search by name, patient code, Ghana Card, phone or email"
             className="input-medical pl-12 w-full"
+            aria-label="Search patients"
           />
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <button type="submit" className="btn-primary inline-flex items-center gap-2">
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Search
+            Search Patients
           </button>
           <span className="text-sm text-muted-foreground">{message}</span>
         </div>
@@ -55,33 +75,46 @@ export default function PatientSearch() {
 
       <div className="grid gap-4">
         {results.map((patient) => (
-          <div key={patient.patientId} className="card-medical p-5 rounded-3xl border border-border hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between gap-4">
+          <div key={patient.id} className="card-medical p-5 rounded-3xl border border-border hover:shadow-md transition-shadow">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-lg font-semibold">{patient.fullName || `${patient.firstName} ${patient.lastName}`}</p>
-                <p className="text-sm text-muted-foreground">Client ID: {patient.patientId}</p>
+                <p className="text-lg font-semibold">{patient.fullName}</p>
+                <p className="text-sm text-muted-foreground">Patient code: {patient.patientId}</p>
               </div>
-              <div className="rounded-2xl bg-primary/10 px-4 py-2 text-primary text-sm font-medium">
+              <div className="rounded-2xl bg-primary/10 px-4 py-2 text-primary text-sm font-medium w-fit capitalize">
                 {patient.status || 'active'}
               </div>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Phone</p>
-                <p className="font-medium">{patient.phone}</p>
+                <p className="font-medium">{patient.phone || 'Not available'}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ghana Card</p>
                 <p className="font-medium">{patient.ghanaCardNumber || 'Not available'}</p>
               </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Insurance</p>
+                <p className="font-medium">{patient.insuranceProvider || 'Self-pay / not recorded'}</p>
+              </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+
+            <div className="mt-5 flex flex-wrap gap-2">
               <Link
-                to={`/patients/${patient.patientId}/chat`}
+                to={`/patients/${patient.id}`}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                Open Patient Hub
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to={`/patients/${patient.id}/chat`}
                 className="btn-secondary inline-flex items-center gap-2"
               >
                 <MessageSquare className="w-4 h-4" />
-                Open Patient Chat
+                Patient Chat
               </Link>
             </div>
           </div>
