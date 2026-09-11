@@ -20,17 +20,15 @@ export interface CreateServiceOrderInput {
   serviceCode?: string | null;
 }
 
-/** Facility routing style used by the existing settings schema. */
+/** Facility routing style stored in the existing facility settings schema. */
 export async function getPaymentFlow(): Promise<PaymentFlow> {
   const { data, error } = await supabase
     .from('facility_settings')
-    .select('payment_flow, routing_mode')
+    .select('payment_flow')
     .eq('id', 'default')
     .maybeSingle();
   if (error) throw error;
-  return data?.payment_flow === 'strict' || data?.routing_mode === 'pay_before_each_step'
-    ? 'strict'
-    : 'streamlined';
+  return data?.payment_flow === 'strict' ? 'strict' : 'streamlined';
 }
 
 export async function setPaymentFlow(flow: PaymentFlow) {
@@ -53,13 +51,7 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
       related_entity_id: input.relatedEntityId ?? null,
       notes: input.notes ?? null,
       requested_by: input.requestedBy ?? null,
-      created_by: input.requestedBy ?? null,
       invoice_id: input.invoiceId ?? null,
-      invoice_item_id: input.invoiceItemId ?? null,
-      order_type: input.orderType ?? null,
-      service_code: input.serviceCode ?? null,
-      unit_price: input.amount ?? 0,
-      payment_required: (input.amount ?? 0) > 0,
       status: 'pending_payment_approval',
     })
     .select()
@@ -81,11 +73,10 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
 
 /** Accounts releases only through the database payment gate. */
 export async function releaseServiceOrder(orderId: string, _approvedBy?: string, reason = 'Payment received') {
-  const { data, error } = await supabase
-    .rpc('release_service_order', {
-      _service_order_id: orderId,
-      _reason: reason,
-    });
+  const { data, error } = await supabase.rpc('release_service_order', {
+    _service_order_id: orderId,
+    _reason: reason,
+  });
   if (error) throw error;
 
   const roleByDept: Record<ServiceDepartment, string[]> = {
