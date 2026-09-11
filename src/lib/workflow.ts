@@ -5,6 +5,23 @@ export type ServiceDepartment = 'laboratory' | 'imaging' | 'procedure' | 'pharma
 export type PaymentFlow = 'strict' | 'streamlined';
 export type ServiceOrderStatus = 'pending_payment_approval' | 'released' | 'in_progress' | 'completed' | 'cancelled';
 
+interface ServiceOrderRpcRow {
+  id: string;
+  department: string;
+  service_name: string;
+  patient_id: string;
+  status: ServiceOrderStatus;
+}
+
+interface WorkflowRpcClient {
+  rpc(
+    functionName: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+const workflowRpc = supabase as unknown as WorkflowRpcClient;
+
 export interface CreateServiceOrderInput {
   patientId: string;
   encounterId?: string | null;
@@ -32,10 +49,10 @@ export async function getPaymentFlow(): Promise<PaymentFlow> {
 }
 
 export async function setPaymentFlow(flow: PaymentFlow) {
-  const { error } = await supabase.rpc('set_facility_routing_mode', {
+  const { error } = await workflowRpc.rpc('set_facility_routing_mode', {
     _mode: flow === 'strict' ? 'pay_before_each_step' : 'streamlined',
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 /** Every chargeable service starts blocked until Accounts releases it. */
@@ -73,11 +90,12 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
 
 /** Accounts releases only through the database payment gate. */
 export async function releaseServiceOrder(orderId: string, _approvedBy?: string, reason = 'Payment received') {
-  const { data, error } = await supabase.rpc('release_service_order', {
+  const { data: rawData, error } = await workflowRpc.rpc('release_service_order', {
     _service_order_id: orderId,
     _reason: reason,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+  const data = rawData as ServiceOrderRpcRow;
 
   const roleByDept: Record<ServiceDepartment, string[]> = {
     laboratory: ['lab_technician'],
@@ -101,36 +119,36 @@ export async function releaseServiceOrder(orderId: string, _approvedBy?: string,
 }
 
 export async function grantServiceOrderOverride(orderId: string, reason: string) {
-  const { data, error } = await supabase.rpc('grant_service_order_override', {
+  const { data, error } = await workflowRpc.rpc('grant_service_order_override', {
     _service_order_id: orderId,
     _reason: reason,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function cancelServiceOrder(orderId: string, reason = 'Cancelled by authorised staff') {
-  const { data, error } = await supabase.rpc('cancel_service_order', {
+  const { data, error } = await workflowRpc.rpc('cancel_service_order', {
     _service_order_id: orderId,
     _reason: reason,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function markServiceOrderInProgress(orderId: string) {
-  const { data, error } = await supabase.rpc('mark_service_order_in_progress', {
+  const { data, error } = await workflowRpc.rpc('mark_service_order_in_progress', {
     _service_order_id: orderId,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function completeServiceOrder(orderId: string) {
-  const { data, error } = await supabase.rpc('complete_service_order', {
+  const { data, error } = await workflowRpc.rpc('complete_service_order', {
     _service_order_id: orderId,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
