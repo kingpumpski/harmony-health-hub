@@ -2,6 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { notifyRoles } from '@/lib/notifications';
 
 export type ServiceDepartment = 'laboratory' | 'imaging' | 'procedure' | 'pharmacy' | 'consultation' | 'other';
+export type PaymentFlow = 'strict' | 'streamlined';
+export type ServiceOrderStatus = 'pending_payment_approval' | 'released' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface CreateServiceOrderInput {
   patientId: string;
@@ -12,22 +14,33 @@ export interface CreateServiceOrderInput {
   relatedEntityId?: string | null;
   notes?: string | null;
   requestedBy?: string | null;
+  invoiceId?: string | null;
+  invoiceItemId?: string | null;
+  orderType?: 'lab' | 'imaging' | 'procedure' | 'drug' | null;
+  serviceCode?: string | null;
 }
 
-/** Facility routing style: 'strict' = accounts before every step, 'streamlined' = fewer accounts stops. */
-export async function getPaymentFlow(): Promise<'strict' | 'streamlined'> {
-  const { data } = await supabase.from('facility_settings').select('payment_flow').eq('id', 'default').maybeSingle();
-  return (data?.payment_flow as 'strict' | 'streamlined') ?? 'streamlined';
+/** Facility routing style used by the existing settings schema. */
+export async function getPaymentFlow(): Promise<PaymentFlow> {
+  const { data, error } = await supabase
+    .from('facility_settings')
+    .select('payment_flow, routing_mode')
+    .eq('id', 'default')
+    .maybeSingle();
+  if (error) throw error;
+  return data?.payment_flow === 'strict' || data?.routing_mode === 'pay_before_each_step'
+    ? 'strict'
+    : 'streamlined';
 }
 
-export async function setPaymentFlow(flow: 'strict' | 'streamlined') {
-  return supabase.from('facility_settings').update({ payment_flow: flow }).eq('id', 'default');
+export async function setPaymentFlow(flow: PaymentFlow) {
+  const { error } = await supabase.rpc('set_facility_routing_mode', {
+    _mode: flow === 'strict' ? 'pay_before_each_step' : 'streamlined',
+  });
+  if (error) throw error;
 }
 
-/**
- * Every chargeable service is created as pending until accounts releases it.
- * Returns the created service order row.
- */
+/** Every chargeable service starts blocked until Accounts releases it. */
 export async function createServiceOrder(input: CreateServiceOrderInput) {
   const { data, error } = await supabase
     .from('service_orders')
@@ -40,7 +53,14 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
       related_entity_id: input.relatedEntityId ?? null,
       notes: input.notes ?? null,
       requested_by: input.requestedBy ?? null,
-      status: 'pending_payment',
+      created_by: input.requestedBy ?? null,
+      invoice_id: input.invoiceId ?? null,
+      invoice_item_id: input.invoiceItemId ?? null,
+      order_type: input.orderType ?? null,
+      service_code: input.serviceCode ?? null,
+      unit_price: input.amount ?? 0,
+      payment_required: (input.amount ?? 0) > 0,
+      status: 'pending_payment_approval',
     })
     .select()
     .single();
@@ -59,17 +79,16 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
   return data;
 }
 
-/** Accounts releases the order to the department. */
-export async function releaseServiceOrder(orderId: string, approvedBy?: string) {
+/** Accounts releases only through the database payment gate. */
+export async function releaseServiceOrder(orderId: string, _approvedBy?: string, reason = 'Payment received') {
   const { data, error } = await supabase
-    .from('service_orders')
-    .update({ status: 'released', approved_by: approvedBy ?? null, approved_at: new Date().toISOString() })
-    .eq('id', orderId)
-    .select()
-    .single();
+    .rpc('release_service_order', {
+      _service_order_id: orderId,
+      _reason: reason,
+    });
   if (error) throw error;
 
-  const roleByDept: Record<string, any[]> = {
+  const roleByDept: Record<ServiceDepartment, string[]> = {
     laboratory: ['lab_technician'],
     imaging: ['lab_technician', 'practitioner'],
     pharmacy: ['pharmacist'],
@@ -78,7 +97,7 @@ export async function releaseServiceOrder(orderId: string, approvedBy?: string) 
     other: ['practitioner'],
   };
 
-  await notifyRoles(roleByDept[data.department] ?? ['practitioner'], {
+  await notifyRoles(roleByDept[data.department as ServiceDepartment] ?? ['practitioner'], {
     title: 'Service approved by accounts',
     message: `${data.service_name} has been paid for and released. You can proceed.`,
     severity: 'success',
@@ -90,30 +109,55 @@ export async function releaseServiceOrder(orderId: string, approvedBy?: string) 
   return data;
 }
 
-export async function cancelServiceOrder(orderId: string, reason?: string) {
-  return supabase.from('service_orders').update({ status: 'cancelled', notes: reason ?? null }).eq('id', orderId);
+export async function grantServiceOrderOverride(orderId: string, reason: string) {
+  const { data, error } = await supabase.rpc('grant_service_order_override', {
+    _service_order_id: orderId,
+    _reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelServiceOrder(orderId: string, reason = 'Cancelled by authorised staff') {
+  const { data, error } = await supabase.rpc('cancel_service_order', {
+    _service_order_id: orderId,
+    _reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function markServiceOrderInProgress(orderId: string) {
+  const { data, error } = await supabase.rpc('mark_service_order_in_progress', {
+    _service_order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function completeServiceOrder(orderId: string) {
-  return supabase
-    .from('service_orders')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
-    .eq('id', orderId);
+  const { data, error } = await supabase.rpc('complete_service_order', {
+    _service_order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
 }
 
-/** Is a department allowed to work on this related record yet? */
+/** A department may work only after Accounts has released the order. */
 export async function isReleased(relatedEntityId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('service_orders')
     .select('status')
     .eq('related_entity_id', relatedEntityId)
     .maybeSingle();
-  return !data || data.status === 'released' || data.status === 'completed';
+  if (error) throw error;
+  return !data || data.status === 'released' || data.status === 'in_progress' || data.status === 'completed';
 }
 
-export const STATUS_LABEL: Record<string, string> = {
-  pending_payment: 'Awaiting payment approval',
-  released: 'Approved — in progress',
+export const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
+  pending_payment_approval: 'Awaiting payment approval',
+  released: 'Released to department',
+  in_progress: 'In progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
