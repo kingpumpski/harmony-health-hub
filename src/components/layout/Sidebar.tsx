@@ -8,7 +8,7 @@ import {
   Pill, CreditCard, BedDouble, Baby, Utensils, Bell, LogOut,
   ChevronLeft, ChevronRight, Activity, ClipboardList, Syringe, HeartPulse,
   Eye, ShieldCheck, MessageSquare, Database, Video, Receipt, UserCog,
-  Smile, Scissors, Sparkles, Upload, BookOpen, FileSearch,
+  Smile, Scissors, Sparkles, Upload, BookOpen,
 } from 'lucide-react';
 
 interface NavItem { icon: React.ElementType; label: string; href: string }
@@ -21,6 +21,8 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: HeartPulse, label: 'Triage', href: '/vitals' },
     { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: CreditCard, label: 'Accounts Approvals', href: '/accounts-approvals' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: Smile, label: 'Dental', href: '/dental' },
     { icon: Scissors, label: 'Procedures', href: '/procedures' },
     { icon: Activity, label: 'Anesthesia', href: '/anesthesia' },
@@ -53,6 +55,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Calendar, label: 'Appointments', href: '/appointments' },
     { icon: Users, label: 'Patients', href: '/patients' },
     { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: Smile, label: 'Dental', href: '/dental' },
     { icon: Scissors, label: 'Procedure Notes', href: '/procedures' },
     { icon: Activity, label: 'Anesthesia', href: '/anesthesia' },
@@ -72,6 +75,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Users, label: 'Patients', href: '/patients' },
     { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' },
     { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
     { icon: Syringe, label: 'Medications', href: '/pharmacy' },
     { icon: Utensils, label: 'Meal Orders', href: '/menu' },
@@ -83,10 +87,12 @@ const roleNavItems: Record<string, NavItem[]> = {
     { icon: Baby, label: 'Fertility', href: '/fertility' },
     { icon: BedDouble, label: 'Admissions', href: '/admissions' },
     { icon: HeartPulse, label: 'Vitals', href: '/vitals' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   lab_technician: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' },
     { icon: Upload, label: 'Outside Lab Uploads', href: '/outside-lab' },
     { icon: ClipboardList, label: 'Reports', href: '/reports' },
@@ -94,6 +100,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   pharmacist: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: Pill, label: 'Pharmacy / Dispensing', href: '/pharmacy' },
     { icon: ClipboardList, label: 'Inventory', href: '/inventory' },
     { icon: FileText, label: 'Stock Alerts', href: '/stock-alerts' },
@@ -102,6 +109,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   accountant: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: CreditCard, label: 'Billing', href: '/billing' },
+    { icon: ShieldCheck, label: 'Accounts Approvals', href: '/accounts-approvals' },
     { icon: Receipt, label: 'Invoices', href: '/billing' },
     { icon: ShieldCheck, label: 'Insurance', href: '/billing' },
     { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' },
@@ -136,11 +144,11 @@ export default function Sidebar() {
       const { count } = await supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
       setUnreadCount(count ?? 0);
     };
-    load();
+    void load();
     const ch = supabase.channel('side-notif')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, load)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { void supabase.removeChannel(ch); };
   }, [user?.id]);
 
   if (!user) return null;
