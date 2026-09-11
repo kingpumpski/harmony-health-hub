@@ -10,13 +10,20 @@ import {
 } from '@/lib/workflow';
 import { CheckCircle2, ClipboardList, PlayCircle, RefreshCw } from 'lucide-react';
 
+interface QueueRecord {
+  id: string;
+  department: string;
+  status: string;
+  created_at: string;
+  service_order_id?: string | null;
+}
+
 interface QueueRow {
   id: string;
   department: string;
   status: 'queued' | 'claimed' | 'completed' | 'cancelled';
   queued_at: string;
-  claimed_at: string | null;
-  service_orders: {
+  serviceOrder: {
     id: string;
     service_name: string;
     department: string;
@@ -56,17 +63,49 @@ export default function DepartmentQueue() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data: rawQueue, error: queueError } = await supabase
       .from('department_queues')
-      .select('id,department,status,queued_at,claimed_at,service_orders(id,service_name,department,amount,status,patient_id,patients(first_name,last_name,patient_code))')
+      .select('id,department,status,created_at,service_order_id')
       .eq('department', currentDepartment)
       .in('status', ['queued', 'claimed'])
-      .order('queued_at', { ascending: true });
-    if (error) {
-      toast({ title: 'Could not load department queue', description: error.message, variant: 'destructive' });
+      .order('created_at', { ascending: true });
+    if (queueError) {
+      toast({ title: 'Could not load department queue', description: queueError.message, variant: 'destructive' });
       return;
     }
-    setRows((data ?? []) as QueueRow[]);
+
+    const queue = (rawQueue ?? []) as unknown as QueueRecord[];
+    const orderIds = queue.map((item) => item.service_order_id).filter((id): id is string => Boolean(id));
+    if (orderIds.length === 0) {
+      setRows([]);
+      return;
+    }
+
+    const { data: rawOrders, error: orderError } = await supabase
+      .from('service_orders')
+      .select('id,service_name,department,amount,status,patient_id,patients(first_name,last_name,patient_code)')
+      .in('id', orderIds);
+    if (orderError) {
+      toast({ title: 'Could not load queued orders', description: orderError.message, variant: 'destructive' });
+      return;
+    }
+
+    const orders = (rawOrders ?? []) as unknown as QueueRow['serviceOrder'][];
+    const orderMap = new Map(orders.map((order) => [order.id, order]));
+    setRows(
+      queue.flatMap((item) => {
+        const serviceOrder = item.service_order_id ? orderMap.get(item.service_order_id) ?? null : null;
+        return serviceOrder
+          ? [{
+              id: item.id,
+              department: item.department,
+              status: item.status as QueueRow['status'],
+              queued_at: item.created_at,
+              serviceOrder,
+            }]
+          : [];
+      }),
+    );
   }, [user?.id]);
 
   useEffect(() => { void load(); }, [load]);
@@ -127,7 +166,7 @@ export default function DepartmentQueue() {
 
       <div className="space-y-3">
         {rows.map((row) => {
-          const order = row.service_orders;
+          const order = row.serviceOrder;
           if (!order) return null;
           const patient = order.patients;
           const busy = busyId === order.id;
