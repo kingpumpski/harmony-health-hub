@@ -61,5 +61,7 @@ BEGIN
 END;
 $$;
 
+-- Trigger functions are invoked by PostgreSQL through their owning trigger;
+-- authenticated users do not need direct EXECUTE access to this security-definer function.
 REVOKE ALL ON FUNCTION public.audit_clinical_record_change() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.audit_clinical_record_change() TO authenticated;
+REVOKE ALL ON FUNCTION public.audit_clinical_record_change() FROM authenticated;
