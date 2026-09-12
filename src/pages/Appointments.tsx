@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck } from 'lucide-react';
+import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck, Stethoscope } from 'lucide-react';
 import { notifyRoles, notify } from '@/lib/notifications';
 
 interface Patient { id: string; first_name: string; last_name: string; user_id: string | null }
@@ -18,6 +19,7 @@ const treatmentStatuses = ['scheduled', 'claimed', 'in_progress', 'completed', '
 
 export default function Appointments() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [pid, setPid] = useState('');
@@ -26,6 +28,7 @@ export default function Appointments() {
   const [reason, setReason] = useState('');
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [saving, setSaving] = useState(false);
+  const [startingEncounter, setStartingEncounter] = useState<string | null>(null);
 
   const role = String(user?.role ?? '');
   const isStaff = role !== 'patient' && Boolean(user);
@@ -83,6 +86,22 @@ export default function Appointments() {
     await load();
   };
 
+  const startEncounter = async (appointment: Appointment) => {
+    if (!canClaim) return;
+    setStartingEncounter(appointment.id);
+    const { data, error } = await supabase.rpc('start_appointment_encounter' as never, {
+      _appointment_id: appointment.id,
+      _symptoms: null,
+      _clerking_notes: null,
+    } as never);
+    setStartingEncounter(null);
+    if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' });
+    toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' });
+    await load();
+    navigate(`/patients/${appointment.patient_id}`);
+    void data;
+  };
+
   const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editing || !canEdit) return;
@@ -128,7 +147,7 @@ export default function Appointments() {
               const treatmentStatus = a.treatment_status || a.status || 'scheduled';
               return <div key={a.id} className="rounded-xl border border-border p-4 space-y-3">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <button type="button" onClick={() => window.location.assign(`/patients/${a.patient_id}`)} className="text-left hover:text-primary min-w-0">
+                  <button type="button" onClick={() => navigate(`/patients/${a.patient_id}`)} className="text-left hover:text-primary min-w-0">
                     <p className="font-medium text-sm">{patientName.get(a.patient_id) || 'Unknown patient'}</p>
                     <p className="text-xs text-muted-foreground">{new Date(a.scheduled_at).toLocaleString()} · {a.department || 'General'}</p>
                     {a.reason && <p className="text-xs text-muted-foreground mt-0.5">{a.reason}</p>}
@@ -137,9 +156,10 @@ export default function Appointments() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {canClaim && !a.attending_officer_id && !['completed', 'cancelled', 'no_show'].includes(treatmentStatus) && <button type="button" onClick={() => void claim(a.id)} className="btn-primary inline-flex items-center gap-1.5 text-xs"><UserCheck className="w-3.5 h-3.5" /> Attend to patient</button>}
-                  {canClaim && assignedToMe && treatmentStatus === 'claimed' && <button type="button" onClick={() => { setEditing({ ...a, treatment_status: 'in_progress' }); }} className="btn-primary inline-flex items-center gap-1.5 text-xs"><Play className="w-3.5 h-3.5" /> Start treatment</button>}
+                  {canClaim && assignedToMe && treatmentStatus === 'claimed' && <button type="button" onClick={() => setEditing({ ...a, treatment_status: 'in_progress' })} className="btn-primary inline-flex items-center gap-1.5 text-xs"><Play className="w-3.5 h-3.5" /> Start treatment</button>}
+                  {canClaim && assignedToMe && ['claimed', 'in_progress'].includes(treatmentStatus) && <button type="button" disabled={startingEncounter === a.id} onClick={() => void startEncounter(a)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><Stethoscope className="w-3.5 h-3.5" />{startingEncounter === a.id ? 'Starting…' : 'Start encounter'}</button>}
                   {canEdit && (assignedToMe || role === 'admin' || role === 'front_desk') && <button type="button" onClick={() => setEditing(a)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><Edit3 className="w-3.5 h-3.5" /> Edit</button>}
-                  <button type="button" onClick={() => window.location.assign(`/patients/${a.patient_id}`)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Open patient</button>
+                  <button type="button" onClick={() => navigate(`/patients/${a.patient_id}`)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Open patient</button>
                 </div>
                 {a.attending_officer_id && <p className="text-xs text-muted-foreground">Attending officer: {assignedToMe ? 'You' : 'Assigned officer'}</p>}
               </div>;
