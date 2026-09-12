@@ -1,130 +1,71 @@
-import { useState } from 'react';
-import { Eye, ImagePlus, Activity, Sparkles, FileUp, ShieldCheck, PlusCircle, CircleDashed } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, FileUp, ShieldCheck, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
-const aiDiagnosis = [
-  'Early-stage cataract signs detected',
-  'Glaucoma risk elevated due to intraocular pressure',
-  'Diabetic retinopathy screening recommended',
-];
+interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
+interface Exam { id: string; patient_id: string; visual_acuity: string | null; refraction: string | null; keratometry: string | null; intraocular_pressure: number | null; color_vision: string | null; fundus_notes: string | null; status: string; created_at: string }
 
 export default function Ophthalmology() {
-  const [exam, setExam] = useState({
-    visualAcuity: '6/12',
-    refraction: '+1.50 / -0.75 x 90',
-    keratometry: '43.5 / 44.1 D',
-    intraocularPressure: 18,
-    fundusNotes: '',
-    colorVision: 'Normal',
-  });
-  const [retinaImage, setRetinaImage] = useState<File | null>(null);
-  const [aiReport, setAiReport] = useState<string[]>(aiDiagnosis);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [patientId, setPatientId] = useState('');
+  const [form, setForm] = useState({ visualAcuity: '', refraction: '', keratometry: '', intraocularPressure: '', colorVision: 'Normal', fundusNotes: '' });
+  const [saving, setSaving] = useState(false);
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Ophthalmology Specialist Module</h1>
-          <p className="text-muted-foreground">Eye exam workspace with AI-assisted diagnosis support.</p>
-        </div>
-        <button className="btn-primary inline-flex items-center gap-2">
-          <Eye className="w-4 h-4" /> Register Eye Exam
-        </button>
-      </div>
+  const load = async () => {
+    const [{ data: pts, error: pError }, { data: rows, error: eError }] = await Promise.all([
+      supabase.from('patients').select('id, first_name, last_name, patient_code').limit(200),
+      supabase.from('ophthalmology_exams').select('*').order('created_at', { ascending: false }).limit(50),
+    ]);
+    if (pError || eError) return toast({ title: 'Unable to load ophthalmology workspace', description: pError?.message ?? eError?.message, variant: 'destructive' });
+    setPatients(pts ?? []); setExams((rows ?? []) as Exam[]);
+  };
+  useEffect(() => { void load(); }, []);
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(320px,_360px)_1fr]">
-        <div className="card-medical p-6 space-y-5">
-          <div>
-            <h2 className="text-lg font-semibold">Ophthalmometry Exam</h2>
-            <p className="text-sm text-muted-foreground">Capture measurements for both eyes.</p>
-          </div>
-          <div className="grid gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Visual Acuity</label>
-              <input value={exam.visualAcuity} onChange={(e) => setExam((prev) => ({ ...prev, visualAcuity: e.target.value }))} className="input-medical w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Refraction</label>
-              <input value={exam.refraction} onChange={(e) => setExam((prev) => ({ ...prev, refraction: e.target.value }))} className="input-medical w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Keratometry</label>
-              <input value={exam.keratometry} onChange={(e) => setExam((prev) => ({ ...prev, keratometry: e.target.value }))} className="input-medical w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Intraocular Pressure (mmHg)</label>
-              <input type="number" value={exam.intraocularPressure} onChange={(e) => setExam((prev) => ({ ...prev, intraocularPressure: Number(e.target.value) }))} className="input-medical w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Color Vision</label>
-              <select value={exam.colorVision} onChange={(e) => setExam((prev) => ({ ...prev, colorVision: e.target.value }))} className="input-medical w-full">
-                <option>Normal</option>
-                <option>Deficient</option>
-                <option>Unable to complete</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Fundoscopy Notes</label>
-              <textarea value={exam.fundusNotes} onChange={(e) => setExam((prev) => ({ ...prev, fundusNotes: e.target.value }))} rows={4} className="textarea-medical w-full" />
-            </div>
-          </div>
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!patientId) return toast({ title: 'Select a patient', variant: 'destructive' });
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any).rpc('create_ophthalmology_exam', {
+        _patient_id: patientId,
+        _visual_acuity: form.visualAcuity,
+        _refraction: form.refraction,
+        _keratometry: form.keratometry,
+        _intraocular_pressure: form.intraocularPressure === '' ? null : Number(form.intraocularPressure),
+        _color_vision: form.colorVision,
+        _fundus_notes: form.fundusNotes,
+      });
+      if (error) throw error;
+      toast({ title: 'Ophthalmology exam saved' });
+      setPatientId('');
+      setForm({ visualAcuity: '', refraction: '', keratometry: '', intraocularPressure: '', colorVision: 'Normal', fundusNotes: '' });
+      void load();
+    } catch (error: any) {
+      toast({ title: 'Unable to save exam', description: error.message, variant: 'destructive' });
+    } finally { setSaving(false); }
+  };
 
-          <div className="rounded-2xl border border-border p-4 bg-background/70">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <ImagePlus className="w-4 h-4" />
-              <span>Retina Imaging</span>
-            </div>
-            <input type="file" accept="image/*" onChange={(e) => setRetinaImage(e.target.files?.[0] ?? null)} className="mt-3 w-full" />
-            {retinaImage && <p className="mt-3 text-sm text-foreground">Selected file: {retinaImage.name}</p>}
-          </div>
+  return <div className="space-y-6 animate-fade-in">
+    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Eye className="w-6 h-6 text-primary" /> Ophthalmology</h1><p className="text-muted-foreground">Clinician-recorded eye examinations with an auditable review workflow.</p></div>
 
-          <button className="btn-primary w-full py-3 inline-flex items-center justify-center gap-2">
-            <FileUp className="w-4 h-4" /> Upload Exam and Analyze
-          </button>
-        </div>
+    <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm flex items-start gap-2"><AlertCircle className="w-4 h-4 text-info mt-0.5" /><span>No diagnosis is fabricated by the interface. AI assistance can be attached later as a separately identified clinical advisory with provenance and clinician review.</span></div>
 
-        <div className="space-y-6">
-          <div className="card-medical p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">AI Eye Disease Detection</h2>
-                <p className="text-sm text-muted-foreground">Automated screening for key ophthalmic conditions.</p>
-              </div>
-              <Sparkles className="w-5 h-5 text-primary" />
-            </div>
+    <div className="grid gap-6 xl:grid-cols-[minmax(280px,400px)_1fr]">
+      <form onSubmit={save} className="card-medical p-5 space-y-4">
+        <h2 className="font-semibold">New eye examination</h2>
+        <select required value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>
+        <input placeholder="Visual acuity" value={form.visualAcuity} onChange={(e) => setForm({ ...form, visualAcuity: e.target.value })} className="input-medical w-full" />
+        <input placeholder="Refraction" value={form.refraction} onChange={(e) => setForm({ ...form, refraction: e.target.value })} className="input-medical w-full" />
+        <input placeholder="Keratometry" value={form.keratometry} onChange={(e) => setForm({ ...form, keratometry: e.target.value })} className="input-medical w-full" />
+        <label className="block text-sm"><span className="font-medium">Intraocular pressure (mmHg)</span><input min="0" type="number" step="0.1" value={form.intraocularPressure} onChange={(e) => setForm({ ...form, intraocularPressure: e.target.value })} className="input-medical mt-1 w-full" /></label>
+        <select value={form.colorVision} onChange={(e) => setForm({ ...form, colorVision: e.target.value })} className="input-medical w-full"><option>Normal</option><option>Deficient</option><option>Unable to complete</option></select>
+        <textarea rows={4} placeholder="Fundoscopy / examination notes" value={form.fundusNotes} onChange={(e) => setForm({ ...form, fundusNotes: e.target.value })} className="textarea-medical w-full" />
+        <button disabled={saving} className="btn-primary w-full inline-flex items-center justify-center gap-2"><FileUp className="w-4 h-4" />{saving ? 'Saving…' : 'Save examination'}</button>
+      </form>
 
-            <div className="space-y-3">
-              {aiReport.map((line) => (
-                <div key={line} className="rounded-2xl border border-border p-4">
-                  <p className="font-medium">{line}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card-medical p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">Exam Status</h2>
-                <p className="text-sm text-muted-foreground">Record outcomes and generate ophthalmology reports.</p>
-              </div>
-              <ShieldCheck className="w-5 h-5 text-success" />
-            </div>
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-border p-4">
-                <p className="text-sm text-muted-foreground">Selected eye exam:</p>
-                <p className="mt-2 font-medium">Visual acuity, Refraction, Keratometry, IOP</p>
-              </div>
-              <div className="rounded-2xl border border-border p-4">
-                <p className="text-sm text-muted-foreground">AI findings:</p>
-                <p className="mt-2 font-medium">Possible early cataract and glaucoma risk.</p>
-              </div>
-              <button className="btn-secondary w-full py-3 inline-flex items-center justify-center gap-2">
-                <PlusCircle className="w-4 h-4" /> Add Follow-up Plan
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <section className="card-medical p-5"><div className="flex items-center justify-between mb-4"><div><h2 className="font-semibold">Recent examinations</h2><p className="text-sm text-muted-foreground">Clinical measurements and review status.</p></div><ShieldCheck className="w-5 h-5 text-success" /></div><div className="space-y-3">{exams.map((exam) => { const p = patients.find((x) => x.id === exam.patient_id); return <article key={exam.id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-1 sm:flex-row sm:justify-between"><p className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient'}</p><span className="text-xs capitalize text-muted-foreground">{exam.status}</span></div><p className="mt-2 text-xs text-muted-foreground">{new Date(exam.created_at).toLocaleString()}</p><div className="mt-3 grid gap-2 sm:grid-cols-2 text-sm"><span>VA: {exam.visual_acuity || '—'}</span><span>IOP: {exam.intraocular_pressure ?? '—'}</span><span>Refraction: {exam.refraction || '—'}</span><span>Keratometry: {exam.keratometry || '—'}</span></div>{exam.fundus_notes && <p className="mt-3 text-sm">{exam.fundus_notes}</p>}</article>; })}{exams.length === 0 && <p className="text-sm text-muted-foreground">No examinations recorded yet.</p>}</div></section>
     </div>
-  );
+  </div>;
 }
