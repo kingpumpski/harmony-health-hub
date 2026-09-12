@@ -16,7 +16,7 @@ interface NavItem { icon: React.ElementType; label: string; href: string }
 const roleNavItems: Record<string, NavItem[]> = {
   admin: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: ClipboardList, label: 'Registration', href: '/registration' },
-    { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' },
+    { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' },
     { icon: CreditCard, label: 'Accounts Approvals', href: '/accounts-approvals' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
     { icon: Smile, label: 'Dental', href: '/dental' }, { icon: Scissors, label: 'Procedures', href: '/procedures' }, { icon: Activity, label: 'Anesthesia', href: '/anesthesia' },
     { icon: BookOpen, label: 'Treatment Templates', href: '/treatment-templates' }, { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' }, { icon: Upload, label: 'Outside Lab Uploads', href: '/outside-lab' },
@@ -27,11 +27,11 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   front_desk: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: ClipboardList, label: 'Registration', href: '/registration' },
-    { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, { icon: CreditCard, label: 'Billing', href: '/billing' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
+    { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: CreditCard, label: 'Billing', href: '/billing' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   practitioner: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: Users, label: 'Patients', href: '/patients' },
-    { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Smile, label: 'Dental', href: '/dental' },
+    { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Smile, label: 'Dental', href: '/dental' },
     { icon: Scissors, label: 'Procedure Notes', href: '/procedures' }, { icon: Activity, label: 'Anesthesia', href: '/anesthesia' }, { icon: BookOpen, label: 'Treatment Templates', href: '/treatment-templates' },
     { icon: FlaskConical, label: 'Lab Results', href: '/laboratory' }, { icon: Upload, label: 'Outside Lab Uploads', href: '/outside-lab' }, { icon: Pill, label: 'Prescriptions', href: '/pharmacy' },
     { icon: Video, label: 'Telemedicine', href: '/telemedicine' }, { icon: Baby, label: 'Fertility', href: '/fertility' }, { icon: Eye, label: 'Ophthalmology', href: '/ophthalmology' },
@@ -39,18 +39,18 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   nurse: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' },
-    { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
-    { icon: Syringe, label: 'Medications', href: '/pharmacy' }, { icon: Utensils, label: 'Meal Orders', href: '/menu' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
+    { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: BedDouble, label: 'Inpatients', href: '/inpatients' },
+    { icon: Syringe, label: 'Medications', href: '/medications' }, { icon: Utensils, label: 'Meal Orders', href: '/menu' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   specialist_nurse: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: Calendar, label: 'Appointments', href: '/appointments' },
-    { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
-    { icon: BedDouble, label: 'Inpatients', href: '/inpatients' }, { icon: Syringe, label: 'Medications', href: '/pharmacy' }, { icon: ShieldCheck, label: 'AI Clinical Hub', href: '/ai-clinical' },
+    { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' },
+    { icon: BedDouble, label: 'Inpatients', href: '/inpatients' }, { icon: Syringe, label: 'Medications', href: '/medications' }, { icon: ShieldCheck, label: 'AI Clinical Hub', href: '/ai-clinical' },
     { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   midwife: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Baby, label: 'Maternity', href: '/maternity' }, { icon: Baby, label: 'Fertility', href: '/fertility' },
-    { icon: BedDouble, label: 'Admissions', href: '/admissions' }, { icon: HeartPulse, label: 'Vitals', href: '/vitals' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
+    { icon: BedDouble, label: 'Admissions', href: '/admissions' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: HeartPulse, label: 'Vitals', href: '/vitals' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   lab_technician: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' },
@@ -62,7 +62,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   accountant: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: CreditCard, label: 'Billing', href: '/billing' }, { icon: ShieldCheck, label: 'Accounts Approvals', href: '/accounts-approvals' },
-    { icon: Receipt, label: 'Invoices', href: '/billing' }, { icon: ShieldCheck, label: 'Insurance', href: '/billing' }, { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
+    { icon: Receipt, label: 'Invoices', href: '/billing' }, { icon: ShieldCheck, label: 'Insurance', href: '/billing' }, { icon: Activity, label: 'Clinical Operations', href: '/clinical-operations' }, { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
   ],
   canteen: [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Utensils, label: 'Menu', href: '/menu' }, { icon: ClipboardList, label: 'Orders', href: '/orders' }, { icon: Users, label: 'Dietary Plans', href: '/dietary-plans' }, { icon: Bell, label: 'Notifications', href: '/notifications' },
