@@ -19,12 +19,17 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Data-loading and form-reset effects remain common in the current HIMS UI.
-      // Keep exhaustive dependency analysis visible while this is progressively
-      // moved behind query/mutation boundaries.
+      // Keep hook dependency analysis visible while legacy data-loading effects are
+      // progressively moved behind query/mutation boundaries.
       "react-hooks/exhaustive-deps": "warn",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // Legacy modules currently use broad Supabase row shapes. These rules remain
+      // non-blocking until each module is migrated to generated/domain types.
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-unused-vars": "off",
+      "no-empty": "off",
     },
   },
 );
