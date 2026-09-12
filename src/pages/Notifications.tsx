@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bell, AlertTriangle, CheckCircle2, Info, AlertCircle } from 'lucide-react';
@@ -30,48 +30,51 @@ export default function Notifications() {
   const { user } = useAuth();
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const db = supabase as any;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200);
     if (filter === 'unread') q = q.eq('is_read', false);
-    const { data } = await q;
-    setItems(data ?? []);
-  };
-
-  useEffect(() => {
-    load();
-    const channel = supabase
-      .channel('notif-page')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const { data, error } = await q;
+    if (!error) setItems((data ?? []) as NotificationRow[]);
   }, [filter]);
 
+  useEffect(() => {
+    void load();
+    const channel = supabase
+      .channel('notif-page')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [load]);
+
   const markRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    const { error } = await db.rpc('mark_notification_read', { _notification_id: id });
+    if (!error) void load();
   };
 
   const markAllRead = async () => {
     const ids = items.filter((n) => !n.is_read).map((n) => n.id);
     if (!ids.length) return;
-    await supabase.from('notifications').update({ is_read: true }).in('id', ids);
+    const { error } = await db.rpc('mark_notifications_read', { _notification_ids: ids });
+    if (!error) void load();
   };
 
   if (!user) return null;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
             <Bell className="w-6 h-6 text-primary" /> Notifications
           </h1>
           <p className="text-muted-foreground">Real-time alerts for your role and personal items.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setFilter('all')} className={cn('px-3 py-1.5 rounded-lg text-sm', filter === 'all' && 'bg-primary text-primary-foreground')}>All</button>
           <button onClick={() => setFilter('unread')} className={cn('px-3 py-1.5 rounded-lg text-sm', filter === 'unread' && 'bg-primary text-primary-foreground')}>Unread</button>
-          <button onClick={markAllRead} className="btn-ghost text-sm">Mark all read</button>
+          <button onClick={() => void markAllRead()} className="btn-ghost text-sm">Mark all read</button>
         </div>
       </div>
 
@@ -88,21 +91,15 @@ export default function Notifications() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium">{n.title}</p>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(n.created_at).toLocaleString()}
-                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(n.created_at).toLocaleString()}</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5">{n.message}</p>
-                {n.category && (
-                  <span className="inline-block mt-2 text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    {n.category}
-                  </span>
-                )}
+                {n.category && <span className="inline-block mt-2 text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded">{n.category}</span>}
               </div>
             </div>
           );
           return (
-            <div key={n.id} onClick={() => !n.is_read && markRead(n.id)}>
+            <div key={n.id} onClick={() => !n.is_read && void markRead(n.id)}>
               {n.link ? <Link to={n.link}>{inner}</Link> : inner}
             </div>
           );
