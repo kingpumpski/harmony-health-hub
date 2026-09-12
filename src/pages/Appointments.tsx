@@ -38,11 +38,12 @@ export default function Appointments() {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault(); if (!pid) return toast({ title: 'Select a patient', description: 'Choose the patient for this appointment.', variant: 'destructive' });
-    const { data, error } = await supabase.from('appointments').insert({ patient_id: pid, scheduled_at: new Date(when).toISOString(), reason: reason || null, department: dept, status: 'scheduled', treatment_status: 'scheduled' }).select().single();
-    if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    const { data, error } = await supabase.rpc('create_appointment_workflow' as never, { _patient_id: pid, _scheduled_at: new Date(when).toISOString(), _department: dept, _reason: reason || null } as never);
+    if (error) return toast({ title: 'Failed to schedule appointment', description: error.message, variant: 'destructive' });
+    const created = data as unknown as Appointment;
     toast({ title: 'Appointment scheduled' }); const p = patients.find((x) => x.id === pid); const name = p ? `${p.first_name} ${p.last_name}` : 'patient';
-    await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], { title: 'New appointment', message: `${name} scheduled for ${dept} on ${new Date(when).toLocaleString()}`, severity: 'info', category: 'appointment', link: '/appointments', relatedPatientId: pid, relatedEntityId: data.id });
-    if (p?.user_id) await notify({ recipientUserId: p.user_id, title: 'Your appointment is booked', message: `${dept} on ${new Date(when).toLocaleString()}`, severity: 'success', category: 'appointment', link: '/patient-portal', relatedPatientId: pid, relatedEntityId: data.id });
+    await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], { title: 'New appointment', message: `${name} scheduled for ${dept} on ${new Date(when).toLocaleString()}`, severity: 'info', category: 'appointment', link: '/appointments', relatedPatientId: pid, relatedEntityId: created?.id });
+    if (p?.user_id && created?.id) await notify({ recipientUserId: p.user_id, title: 'Your appointment is booked', message: `${dept} on ${new Date(when).toLocaleString()}`, severity: 'success', category: 'appointment', link: '/patient-portal', relatedPatientId: pid, relatedEntityId: created.id });
     setReason(''); setPid(''); await load();
   };
 
