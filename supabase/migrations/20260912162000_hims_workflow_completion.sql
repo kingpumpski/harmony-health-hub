@@ -114,6 +114,74 @@ CREATE INDEX IF NOT EXISTS service_orders_patient_idx
 CREATE INDEX IF NOT EXISTS service_orders_payment_idx
   ON public.service_orders (payment_status, fulfillment_status);
 
+-- Server-authoritative service-order state machine. Client-side workflow helpers are advisory;
+-- this trigger prevents bypassing payment/release rules through direct database writes.
+CREATE OR REPLACE FUNCTION public.validate_service_order_transition()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  routing_mode TEXT;
+BEGIN
+  SELECT payment_routing_mode INTO routing_mode
+  FROM public.facility_settings
+  ORDER BY created_at
+  LIMIT 1;
+
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.patient_id IS DISTINCT FROM OLD.patient_id
+       OR NEW.encounter_id IS DISTINCT FROM OLD.encounter_id
+       OR NEW.department IS DISTINCT FROM OLD.department
+       OR NEW.service_type IS DISTINCT FROM OLD.service_type
+       OR NEW.service_name IS DISTINCT FROM OLD.service_name
+       OR NEW.amount IS DISTINCT FROM OLD.amount THEN
+      IF OLD.fulfillment_status <> 'blocked' THEN
+        RAISE EXCEPTION 'Released service orders cannot change their clinical or financial identity';
+      END IF;
+    END IF;
+
+    IF NEW.fulfillment_status = 'released' AND OLD.fulfillment_status = 'blocked' THEN
+      IF routing_mode = 'pay_before_every_step'
+         AND NEW.payment_status NOT IN ('approved','overridden','waived') THEN
+        RAISE EXCEPTION 'Payment approval is required before service release';
+      END IF;
+      IF NEW.payment_status = 'rejected' THEN
+        RAISE EXCEPTION 'Rejected service orders cannot be released';
+      END IF;
+      NEW.released_by := COALESCE(NEW.released_by, auth.uid());
+      NEW.released_at := COALESCE(NEW.released_at, now());
+    END IF;
+
+    IF OLD.fulfillment_status IN ('completed','cancelled')
+       AND NEW.fulfillment_status IS DISTINCT FROM OLD.fulfillment_status THEN
+      RAISE EXCEPTION 'Completed or cancelled service orders cannot be reopened';
+    END IF;
+
+    IF NEW.fulfillment_status = 'completed' AND OLD.fulfillment_status NOT IN ('in_progress','released') THEN
+      RAISE EXCEPTION 'Only released or in-progress service orders can be completed';
+    END IF;
+
+    IF NEW.fulfillment_status = 'cancelled' AND OLD.fulfillment_status = 'completed' THEN
+      RAISE EXCEPTION 'Completed service orders cannot be cancelled';
+    END IF;
+
+    IF NEW.fulfillment_status = 'completed' THEN
+      NEW.completed_at := COALESCE(NEW.completed_at, now());
+    END IF;
+  END IF;
+
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_validate_service_order_transition ON public.service_orders;
+CREATE TRIGGER trg_validate_service_order_transition
+BEFORE UPDATE ON public.service_orders
+FOR EACH ROW EXECUTE FUNCTION public.validate_service_order_transition();
+
 -- 5. Inpatient continuity extensions. These are additive to the existing admissions model.
 CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -135,8 +203,7 @@ CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
   ON public.inpatient_reviews (patient_id, seen_at DESC);
 
--- 6. Patient-level audit history for data changes. Existing application audit remains intact;
--- this table provides a canonical row-change trail for patient records.
+-- 6. Patient-level audit history for data changes. Existing application audit remains intact.
 CREATE TABLE IF NOT EXISTS public.patient_audit (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
@@ -174,10 +241,12 @@ CREATE TRIGGER trg_patient_audit
 AFTER INSERT OR UPDATE OR DELETE ON public.patients
 FOR EACH ROW EXECUTE FUNCTION public.audit_patient_changes();
 
--- 7. Generic updated_at helper for the new mutable tables.
+-- 7. Generic updated_at helper for new mutable tables.
 CREATE OR REPLACE FUNCTION public.touch_hims_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   NEW.updated_at = now();
@@ -205,7 +274,7 @@ CREATE TRIGGER trg_service_orders_updated_at
 BEFORE UPDATE ON public.service_orders
 FOR EACH ROW EXECUTE FUNCTION public.touch_hims_updated_at();
 
--- 8. Secure new clinical/operational tables with RLS.
+-- 8. Row-level security for the additive operational tables.
 ALTER TABLE public.facility_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_test_catalog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_test_parameters ENABLE ROW LEVEL SECURITY;
@@ -216,7 +285,7 @@ ALTER TABLE public.patient_audit ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS facility_settings_staff_read ON public.facility_settings;
 CREATE POLICY facility_settings_staff_read
 ON public.facility_settings FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'accountant'));
+USING (public.has_role(auth.uid(), 'admin') OR public.is_clinical_staff(auth.uid()));
 
 DROP POLICY IF EXISTS facility_settings_admin_write ON public.facility_settings;
 CREATE POLICY facility_settings_admin_write
@@ -300,6 +369,6 @@ USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admi
 COMMENT ON TABLE public.service_orders IS
   'Chargeable clinical services awaiting payment approval or operational release.';
 COMMENT ON TABLE public.lab_test_catalog IS
-  'Facility laboratory catalogue with reusable test definitions and WHO-aligned reference metadata.';
+  'Facility laboratory catalogue with reusable test definitions and reference metadata.';
 COMMENT ON TABLE public.patient_audit IS
-  'Immutable patient row-change history used for clinical accountability and compliance review.';
+  'Patient row-change history used for clinical accountability and compliance review.';
