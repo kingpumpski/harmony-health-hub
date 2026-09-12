@@ -45,7 +45,22 @@ export default function Triage() {
   const save = async (event: React.FormEvent) => {
     event.preventDefault(); if (!patientId || !user?.id) return; setSaving(true);
     const normalized = priority.toLowerCase();
-    const { error } = await supabase.from('triage_assessments' as never).insert({ patient_id: patientId, recorded_by: user.id, systolic, diastolic, heart_rate: heartRate, temperature, respiratory_rate: respiratoryRate, oxygen_saturation: oxygenSaturation, weight_kg: weight || null, height_m: height || null, pain_score: pain, consciousness, presenting_complaint: complaint || null, clinical_notes: notes || null, priority: normalized, is_critical: normalized === 'critical' } as never);
+    const { error } = await supabase.rpc('record_triage_assessment' as never, {
+      _patient_id: patientId,
+      _systolic: systolic,
+      _diastolic: diastolic,
+      _heart_rate: heartRate,
+      _temperature: temperature,
+      _respiratory_rate: respiratoryRate,
+      _oxygen_saturation: oxygenSaturation,
+      _weight_kg: weight || null,
+      _height_m: height || null,
+      _pain_score: pain,
+      _consciousness: consciousness,
+      _presenting_complaint: complaint || null,
+      _clinical_notes: notes || null,
+      _priority: normalized,
+    } as never);
     setSaving(false);
     if (error) return toast({ title: 'Triage save failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Triage recorded', description: `${priority} priority saved to the patient record.` });
@@ -61,7 +76,7 @@ export default function Triage() {
         <select value={consciousness} onChange={e => setConsciousness(e.target.value)} className="input-medical"><option>Alert</option><option>Confused</option><option>Drowsy</option><option>Unresponsive</option></select>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[["SBP",systolic,setSystolic],["DBP",diastolic,setDiastolic],["Heart rate",heartRate,setHeartRate],["Temperature °C",temperature,setTemperature],["Respiratory rate",respiratoryRate,setRespiratoryRate],["SpO₂ %",oxygenSaturation,setOxygenSaturation],["Weight kg",weight,setWeight],["Height m",height,setHeight]].map(([label,value,setter]) => <label key={String(label)} className="text-xs">{String(label)}<input type="number" step={String(label).includes('Temperature') || String(label).includes('Weight') || String(label).includes('Height') ? '0.1' : '1'} value={value as number} onChange={e => (setter as (v:number)=>void)(Number(e.target.value))} className="input-medical mt-1 w-full" /></label>)}
+        {[['SBP',systolic,setSystolic],['DBP',diastolic,setDiastolic],['Heart rate',heartRate,setHeartRate],['Temperature °C',temperature,setTemperature],['Respiratory rate',respiratoryRate,setRespiratoryRate],['SpO₂ %',oxygenSaturation,setOxygenSaturation],['Weight kg',weight,setWeight],['Height m',height,setHeight]].map(([label,value,setter]) => <label key={String(label)} className="text-xs">{String(label)}<input type="number" step={String(label).includes('Temperature') || String(label).includes('Weight') || String(label).includes('Height') ? '0.1' : '1'} value={value as number} onChange={e => (setter as (v:number)=>void)(Number(e.target.value))} className="input-medical mt-1 w-full" /></label>)}
       </div>
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]"><label className="text-xs">Pain score (0–10)<input type="number" min="0" max="10" value={pain} onChange={e => setPain(Number(e.target.value))} className="input-medical mt-1 w-full" /></label><div className="rounded-xl border border-border p-3 text-sm"><span className="text-muted-foreground">BMI</span><strong className="block text-xl">{bmi || '—'}</strong></div><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Clinical notes" className="input-medical w-full" /></div>
       <div className="flex flex-wrap items-center justify-between gap-3"><div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"><span className="text-xs text-muted-foreground">Decision-support priority</span><strong className="block text-lg">{priority}</strong></div><div className="flex gap-2"><button type="button" onClick={evaluate} className="btn-ghost">Evaluate</button><button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save triage'}</button></div></div>
