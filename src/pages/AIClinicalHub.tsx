@@ -3,6 +3,7 @@ import { BrainCircuit, Cpu, ShieldCheck, Sparkles, ClipboardList } from 'lucide-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildAIClinicalContext } from '@/lib/aiClinicalContext';
 
 const specialists = [
   { id: 'physician', title: 'AI Physician', description: 'Structured clinical reasoning support from symptoms, history, vitals and documented investigations.' },
@@ -45,40 +46,43 @@ export default function AIClinicalHub() {
       return;
     }
     setLoading(true);
-    const patient = patients.find(item => item.id === patientId);
-    const inputSnapshot = {
-      patient: patient ?? null,
-      captured_at: new Date().toISOString(),
-      source: 'harmony-health-hub',
-      source_scope: ['patient_profile'],
-    };
-    const provenance = {
-      created_from: 'AI Clinical Decision Support',
-      specialist: selected,
-      data_sources: ['patients'],
-      generated_by: 'clinician_requested_session',
-    };
-    const { data, error } = await supabase.from('ai_clinical_sessions' as never).insert({
-      patient_id: patientId,
-      specialist: selected,
-      status: 'draft',
-      input_snapshot: inputSnapshot,
-      provenance,
-      created_by: user.id,
-    } as never).select('id').single();
-    if (error) {
-      setLoading(false);
-      toast({ title: 'Could not prepare AI case', description: error.message, variant: 'destructive' });
-      return;
-    }
-    const sessionId = (data as { id: string } | null)?.id ?? '';
-    if (sessionId) {
-      await supabase.rpc('record_ai_clinical_event' as never, { _session_id: sessionId, _event_type: 'session_created', _metadata: { specialist: selected } } as never);
+    try {
+      const clinicalContext = await buildAIClinicalContext(patientId);
+      const patient = patients.find(item => item.id === patientId);
+      const inputSnapshot = {
+        ...clinicalContext,
+        patient: patient ?? clinicalContext.patient,
+        captured_at: clinicalContext.generatedAt,
+        source: 'harmony-health-hub',
+      };
+      const provenance = {
+        created_from: 'AI Clinical Decision Support',
+        specialist: selected,
+        data_sources: ['patients', 'appointments', 'vital_signs', 'triage_assessments', 'encounters', 'lab_orders', 'lab_results', 'prescriptions', 'imaging_orders', 'procedure_notes', 'anesthetic_assessments', 'admissions'],
+        generated_by: 'clinician_requested_session',
+        context_generated_at: clinicalContext.generatedAt,
+      };
+      const { data, error } = await supabase.from('ai_clinical_sessions' as never).insert({
+        patient_id: patientId,
+        specialist: selected,
+        status: 'draft',
+        input_snapshot: inputSnapshot,
+        provenance,
+        created_by: user.id,
+      } as never).select('id').single();
+      if (error) throw new Error(error.message);
+      const sessionId = (data as { id: string } | null)?.id ?? '';
+      if (!sessionId) throw new Error('The AI session was created without an identifier');
+      const { error: eventError } = await supabase.rpc('record_ai_clinical_event' as never, { _session_id: sessionId, _event_type: 'session_created', _metadata: { specialist: selected, context_sources: provenance.data_sources } } as never);
+      if (eventError) throw new Error(eventError.message);
       setActiveSessionId(sessionId);
+      toast({ title: 'AI case prepared', description: 'The current documented clinical context was captured. No AI finding has been generated.' });
+      void load();
+    } catch (error: any) {
+      toast({ title: 'Could not prepare AI case', description: error.message ?? 'Clinical context could not be assembled.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    toast({ title: 'AI case prepared', description: 'The documented case context was recorded. No AI finding has been generated.' });
-    void load();
   };
 
   const requestAnalysis = async () => {
@@ -122,8 +126,8 @@ export default function AIClinicalHub() {
         <div className="card-medical p-6">
           <div className="flex items-center justify-between mb-5"><div><h2 className="text-lg font-semibold">{active?.title}</h2><p className="text-sm text-muted-foreground">Clinical decision-support workspace</p></div><Sparkles className="w-5 h-5 text-primary" /></div>
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-border p-5"><p className="font-medium">Documented case</p><p className="text-sm text-muted-foreground mt-2">Select a patient. The first persisted snapshot records only the documented context used to prepare this AI session.</p><select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical mt-4 w-full"><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select></div>
-            <div className="rounded-2xl border border-border p-5"><p className="font-medium">Output</p><p className="text-sm text-muted-foreground mt-2">No fabricated analysis is shown. The current repository records the request and provenance; a configured AI provider must supply the actual model response before it can be stored as an AI finding.</p><button onClick={requestAnalysis} disabled={loading || !activeSessionId} className="btn-primary mt-4 text-xs">Request analysis</button></div>
+            <div className="rounded-2xl border border-border p-5"><p className="font-medium">Documented case</p><p className="text-sm text-muted-foreground mt-2">Select a patient. Preparation captures the current documented profile, clinical observations, encounters, investigations, medications and relevant workflow records.</p><select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical mt-4 w-full"><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select></div>
+            <div className="rounded-2xl border border-border p-5"><p className="font-medium">Output</p><p className="text-sm text-muted-foreground mt-2">No fabricated analysis is shown. The repository records the request and provenance; a configured AI provider must supply the actual model response before it can be stored as an AI finding.</p><button onClick={requestAnalysis} disabled={loading || !activeSessionId} className="btn-primary mt-4 text-xs">Request analysis</button></div>
           </div>
           <div className="mt-5 rounded-2xl border border-border p-5"><p className="font-medium">Specialist scope</p><p className="text-sm text-muted-foreground mt-2">{active?.description}</p><p className="text-xs text-muted-foreground mt-4">Any future AI response must include model/provider provenance and clinician-review state before becoming part of the medical record.</p></div>
         </div>
