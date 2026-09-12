@@ -19,11 +19,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // The current application intentionally performs data-loading and form-reset
-      // state transitions from effects. Keep these rules visible without making the
-      // existing HIMS workflow fail the repository quality gate while they are
-      // incrementally refactored into query/mutation boundaries.
-      "react-hooks/set-state-in-effect": "warn",
+      // Data-loading and form-reset effects remain common in the current HIMS UI.
+      // Keep exhaustive dependency analysis visible while this is progressively
+      // moved behind query/mutation boundaries.
       "react-hooks/exhaustive-deps": "warn",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
