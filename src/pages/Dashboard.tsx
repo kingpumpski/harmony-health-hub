@@ -12,13 +12,13 @@ import CanteenDashboard from './dashboard/CanteenDashboard';
 export default function Dashboard() {
   const { user } = useAuth();
   if (!user) return null;
-
   let dashboard;
-  switch (user.role) {
+  switch (String(user.role)) {
     case 'admin': dashboard = <AdminDashboard />; break;
     case 'practitioner': dashboard = <PractitionerDashboard />; break;
     case 'nurse':
-    case 'midwife': dashboard = <NurseDashboard />; break;
+    case 'midwife':
+    case 'specialist_nurse': dashboard = <NurseDashboard />; break;
     case 'lab_technician': dashboard = <LabTechDashboard />; break;
     case 'pharmacist': dashboard = <PharmacyDashboard />; break;
     case 'accountant': dashboard = <AccountsDashboard />; break;
@@ -26,6 +26,5 @@ export default function Dashboard() {
     case 'front_desk':
     default: dashboard = <FrontDeskDashboard />; break;
   }
-
   return <><WorkflowSummary />{dashboard}</>;
 }
