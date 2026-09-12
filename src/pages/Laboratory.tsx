@@ -85,7 +85,10 @@ export default function Laboratory() {
     }
     const created = data as unknown as CreateLabOrderResponse | null;
     if (created?.lab_order_id && catalogueId) {
-      const { error: catalogueError } = await supabase.from('lab_orders').update({ lab_test_catalogue_id: catalogueId }).eq('id', created.lab_order_id);
+      const { error: catalogueError } = await supabase.rpc('attach_lab_catalogue_to_order', {
+        _lab_order_id: created.lab_order_id,
+        _catalogue_id: catalogueId,
+      } as never);
       if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
     }
     setPid(''); setCatalogueId(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
@@ -94,41 +97,34 @@ export default function Laboratory() {
   };
 
   const collectSample = async (id: string) => {
-    const order = orders.find((item) => item.id === id);
-    if (!order) return;
-    const { data: gate, error: gateError } = await supabase.from('service_orders').select('status').eq('related_entity_id', id).eq('department', 'laboratory').maybeSingle();
-    if (gateError) return toast({ title: 'Could not verify payment gate', description: gateError.message, variant: 'destructive' });
-    if (gate && !['released', 'in_progress', 'completed'].includes(gate.status)) {
-      return toast({ title: 'Payment approval required', description: 'Accounts must release this laboratory order before sample collection.', variant: 'destructive' });
+    const { error } = await supabase.rpc('collect_lab_sample', { _lab_order_id: id } as never);
+    if (error) {
+      const blocked = /payment|release|approval|released/i.test(error.message);
+      toast({ title: blocked ? 'Payment approval required' : 'Could not collect sample', description: error.message, variant: 'destructive' });
+      return;
     }
-    const { error } = await supabase.from('lab_orders').update({ status: 'sample_collected', collected_by: user?.id, sample_collected_at: new Date().toISOString() }).eq('id', id);
-    if (error) toast({ title: 'Could not collect sample', description: error.message, variant: 'destructive' }); else void loadAll();
+    void loadAll();
   };
 
   const submitResult = async (orderId: string) => {
-    const order = orders.find((item) => item.id === orderId);
-    const item = catalogue.find((entry) => entry.id === order?.lab_test_catalogue_id);
     const parsedNumeric = numericValue.trim() === '' ? null : Number(numericValue);
     if (numericValue.trim() !== '' && !Number.isFinite(parsedNumeric)) return toast({ title: 'Invalid numeric result', description: 'Enter a valid number or leave the numeric field empty.', variant: 'destructive' });
-    const { error } = await supabase.from('lab_results').insert({
-      lab_order_id: orderId, result_data: { value: resultText }, interpretation,
-      is_abnormal: isAbnormal, entered_by: user?.id, status: 'completed',
-      numeric_value: parsedNumeric, unit: item?.unit ?? null,
-      reference_low: item?.reference_low ?? null, reference_high: item?.reference_high ?? null,
-      abnormal_flag: isAbnormal ? 'abnormal' : 'normal',
+    const { error } = await supabase.rpc('enter_lab_result', {
+      _lab_order_id: orderId,
+      _result_text: resultText,
+      _numeric_value: parsedNumeric,
+      _interpretation: interpretation || null,
+      _is_abnormal: isAbnormal,
     } as never);
     if (error) return toast({ title: 'Failed to save result', description: error.message, variant: 'destructive' });
-    await supabase.from('lab_orders').update({ status: 'completed' }).eq('id', orderId);
     setResultFor(null); setResultText(''); setNumericValue(''); setInterpretation(''); setIsAbnormal(false);
     toast({ title: 'Result submitted', description: 'The result is ready for clinical approval.' });
     void loadAll();
   };
 
   const approveResult = async (resultId: string, orderId: string, patientId: string) => {
-    const { error } = await supabase.from('lab_results').update({ status: 'approved', approved_by: user?.id, approved_at: new Date().toISOString() }).eq('id', resultId);
+    const { error } = await supabase.rpc('approve_lab_result', { _lab_result_id: resultId } as never);
     if (error) return toast({ title: 'Approval failed', description: error.message, variant: 'destructive' });
-    const { error: orderError } = await supabase.from('lab_orders').update({ status: 'approved' }).eq('id', orderId);
-    if (orderError) return toast({ title: 'Result approved but order update failed', description: orderError.message, variant: 'destructive' });
     const patient = patients.find((p) => p.id === patientId);
     if (patient?.email) {
       try { await supabase.functions.invoke('notify-lab-result', { body: { patientEmail: patient.email, patientName: `${patient.first_name} ${patient.last_name}`, testName: orders.find((o) => o.id === orderId)?.test_name ?? 'Lab Test' } }); }
