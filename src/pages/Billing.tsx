@@ -1,104 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, CreditCard, Loader2, RefreshCw, ShieldCheck, Wallet } from 'lucide-react';
+import { useCallback,useEffect,useMemo,useState } from 'react';
+import { CalendarDays,CheckCircle2,CreditCard,Loader2,RefreshCw,ShieldCheck,Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
-interface Patient { id: string; first_name: string; last_name: string; patient_code: string; membership_type?: string; membership_expires_at?: string | null; insurance_provider: string | null; insurance_number: string | null }
-interface BillableItem { invoice_id: string; invoice_item_id: string; source_type: string | null; source_id: string | null; description: string; category: string | null; department: string | null; quantity: number; unit_price: number; amount: number; paid_amount: number; outstanding_amount: number; service_order_id: string | null; service_order_status: string | null }
-
-const money = (value: number) => `₵${Number(value || 0).toFixed(2)}`;
-const categoryLabel: Record<string, string> = { consultation: 'Consultation', lab: 'Laboratory', imaging: 'Diagnostic imaging', pharmacy: 'Pharmacy / drugs', ward: 'Accommodation', feeding: 'Feeding', procedure: 'Medical service' };
-
-export default function Billing() {
-  const { user } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [patientId, setPatientId] = useState('');
-  const [from, setFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [items, setItems] = useState<BillableItem[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [invoiceId, setInvoiceId] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
-  const [method, setMethod] = useState('cash');
-  const [reference, setReference] = useState('');
-
-  const selectedPatient = patients.find((p) => p.id === patientId);
-
-  const loadPatients = useCallback(async () => {
-    const { data, error } = await supabase.from('patients').select('id,first_name,last_name,patient_code,membership_type,membership_expires_at,insurance_provider,insurance_number').order('created_at', { ascending: false }).limit(1000);
-    if (error) return toast.error(error.message);
-    setPatients((data ?? []) as Patient[]);
-  }, []);
-
-  const loadBillable = useCallback(async () => {
-    if (!patientId) { setItems([]); setSelected([]); return; }
-    setLoading(true);
-    const start = `${from}T00:00:00+00:00`;
-    const end = `${to}T23:59:59+00:00`;
-    const { data, error } = await supabase.rpc('prepare_patient_billable_items', { _patient_id: patientId, _from: start, _to: end });
-    setLoading(false);
-    if (error) return toast.error(`Unable to prepare patient bill: ${error.message}`);
-    const rows = (data ?? []) as BillableItem[];
-    setItems(rows);
-    setInvoiceId(rows[0]?.invoice_id ?? '');
-    setSelected([]);
-  }, [from, patientId, to]);
-
-  useEffect(() => { void loadPatients(); }, [loadPatients]);
-  useEffect(() => { void loadBillable(); }, [loadBillable]);
-
-  const selectedTotal = useMemo(() => items.filter((i) => selected.includes(i.invoice_item_id)).reduce((sum, i) => sum + Number(i.outstanding_amount), 0), [items, selected]);
-  const selectable = items.filter((i) => Number(i.outstanding_amount) > 0);
-
-  const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
-  const selectAll = () => setSelected(selected.length === selectable.length ? [] : selectable.map((i) => i.invoice_item_id));
-
-  const paySelected = async () => {
-    if (!invoiceId || selected.length === 0) return toast.error('Select at least one unpaid service.');
-    if (selectedTotal <= 0) return toast.error('Selected services have no outstanding balance.');
-    setPaying(true);
-    const { error } = await supabase.rpc('pay_selected_invoice_items', { _invoice_id: invoiceId, _item_ids: selected, _method: method, _reference: reference || null });
-    setPaying(false);
-    if (error) return toast.error(error.message);
-    toast.success(`${money(selectedTotal)} received. Selected services released to their departments.`);
-    setSelected([]); setReference('');
-    await loadBillable();
-  };
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><CreditCard className="w-6 h-6 text-primary" /> Billing & Patient Account</h1><p className="text-muted-foreground">Select a patient, review the billable services for the period, and release only the services the patient chooses to pay.</p></div>
-        <button onClick={() => void loadBillable()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" />Refresh</button>
-      </header>
-
-      <section className="card-medical p-5 space-y-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_170px_auto] items-end">
-          <label className="text-sm space-y-1"><span className="font-medium">Patient</span><select value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select></label>
-          <label className="text-sm space-y-1"><span className="font-medium">From</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-medical w-full" /></label>
-          <label className="text-sm space-y-1"><span className="font-medium">To</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-medical w-full" /></label>
-          <button onClick={() => void loadBillable()} className="btn-primary inline-flex items-center justify-center gap-2" disabled={!patientId || loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}Prepare bill</button>
-        </div>
-        {selectedPatient && <div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-muted px-3 py-1">{selectedPatient.first_name} {selectedPatient.last_name}</span><span className="rounded-full bg-muted px-3 py-1">{selectedPatient.membership_type === 'temporary' ? 'Temporary visitor' : 'Registered patient'}</span>{selectedPatient.membership_expires_at && <span className="rounded-full bg-warning/10 text-warning px-3 py-1">Membership expires {new Date(selectedPatient.membership_expires_at).toLocaleDateString()}</span>}{selectedPatient.insurance_provider && <span className="rounded-full bg-primary/10 text-primary px-3 py-1 inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />{selectedPatient.insurance_provider}</span>}</div>}
-      </section>
-
-      {!patientId ? <div className="card-medical p-10 text-center text-muted-foreground">Select a patient to load consultation, diagnostics, drugs, accommodation, feeding and other billable services.</div> : <>
-        <section className="card-medical p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"><div><h2 className="font-semibold">Billable services</h2><p className="text-xs text-muted-foreground">Paid items disappear from the selectable list. Unpaid items remain available for a later visit.</p></div><button onClick={selectAll} className="btn-secondary text-xs">{selected.length === selectable.length && selectable.length ? 'Clear selection' : 'Select all unpaid'}</button></div>
-          <div className="space-y-2">
-            {items.map((item) => { const due = Number(item.outstanding_amount); const checked = selected.includes(item.invoice_item_id); const released = ['released','in_progress','completed'].includes(item.service_order_status ?? ''); return <label key={item.invoice_item_id} className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition ${due <= 0 ? 'opacity-50 cursor-not-allowed' : checked ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/30'}`}><input type="checkbox" checked={checked} disabled={due <= 0 || released} onChange={() => toggle(item.invoice_item_id)} /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-medium text-sm">{item.description}</span><span className="text-[10px] rounded-full bg-muted px-2 py-0.5">{categoryLabel[item.category ?? ''] ?? item.category ?? 'Service'}</span>{released && <span className="text-[10px] rounded-full bg-success/10 text-success px-2 py-0.5">Released</span>}</div><p className="text-xs text-muted-foreground">{item.department ?? 'clinical service'} · Qty {item.quantity} · {money(Number(item.unit_price))} each</p></div><div className="text-right shrink-0"><p className="font-semibold">{money(due)}</p>{due <= 0 && <p className="text-[10px] text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Paid</p>}</div></label>; })}
-            {!items.length && <p className="text-sm text-muted-foreground py-6 text-center">No billable items were found for this period. Clinical staff can create a walk-in service order when another service is requested.</p>}
-          </div>
-        </section>
-
-        <section className="card-medical p-5 grid gap-4 lg:grid-cols-[1fr_420px] items-end">
-          <div><p className="text-sm text-muted-foreground">Selected services</p><p className="text-3xl font-bold">{money(selectedTotal)}</p><p className="text-xs text-muted-foreground mt-1">Payment releases each selected item to its affected department.</p></div>
-          <div className="grid grid-cols-2 gap-2"><select value={method} onChange={(e) => setMethod(e.target.value)} className="input-medical"><option value="cash">Cash</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option><option value="insurance">Insurance</option><option value="advance">Advance</option></select><input value={reference} onChange={(e) => setReference(e.target.value)} className="input-medical" placeholder="Payment reference (optional)" /><button onClick={() => void paySelected()} disabled={paying || selected.length === 0} className="btn-primary col-span-2 inline-flex items-center justify-center gap-2"><Wallet className="w-4 h-4" />{paying ? 'Recording payment…' : `Pay selected · ${money(selectedTotal)}`}</button></div>
-        </section>
-      </>}
-      <p className="text-xs text-muted-foreground">Billing operator: {user?.email ?? 'authenticated user'}</p>
-    </div>
-  );
+interface Patient{id:string;first_name:string;last_name:string;patient_code:string;membership_type?:string;membership_expires_at?:string|null;insurance_provider:string|null;insurance_number:string|null} interface BillableItem{invoice_id:string;invoice_item_id:string;source_type:string|null;source_id:string|null;description:string;category:string|null;department:string|null;quantity:number;unit_price:number;amount:number;paid_amount:number;outstanding_amount:number;service_order_id:string|null;service_order_status:string|null}
+const db=supabase as any;const money=(v:number)=>`₵${Number(v||0).toFixed(2)}`;const categoryLabel:Record<string,string>={consultation:'Consultation',lab:'Laboratory',imaging:'Diagnostic imaging',pharmacy:'Pharmacy / drugs',ward:'Accommodation',feeding:'Feeding',procedure:'Medical service'};
+export default function Billing(){const{user}=useAuth();const[patients,setPatients]=useState<Patient[]>([]);const[patientId,setPatientId]=useState('');const[from,setFrom]=useState(()=>new Date().toISOString().slice(0,10));const[to,setTo]=useState(()=>new Date().toISOString().slice(0,10));const[items,setItems]=useState<BillableItem[]>([]);const[selected,setSelected]=useState<string[]>([]);const[invoiceId,setInvoiceId]=useState('');const[loading,setLoading]=useState(false);const[paying,setPaying]=useState(false);const[method,setMethod]=useState('cash');const[reference,setReference]=useState('');const selectedPatient=patients.find(p=>p.id===patientId);
+ const loadPatients=useCallback(async()=>{const{data,error}=await supabase.from('patients').select('id,first_name,last_name,patient_code,membership_type,membership_expires_at,insurance_provider,insurance_number').order('created_at',{ascending:false}).limit(1000);if(error)toast.error(error.message);else setPatients((data??[])as Patient[])},[]);
+ const loadBillable=useCallback(async()=>{if(!patientId){setItems([]);setSelected([]);return}setLoading(true);const{data,error}=await db.rpc('prepare_patient_billable_items',{_patient_id:patientId,_from:`${from}T00:00:00+00:00`,_to:`${to}T23:59:59+00:00`});setLoading(false);if(error)return toast.error(`Unable to prepare patient bill: ${error.message}`);const rows=(data??[])as BillableItem[];setItems(rows);setInvoiceId(rows[0]?.invoice_id??'');setSelected([])},[from,patientId,to]);
+ useEffect(()=>{void loadPatients()},[loadPatients]);useEffect(()=>{void loadBillable()},[loadBillable]);const selectedTotal=useMemo(()=>items.filter(i=>selected.includes(i.invoice_item_id)).reduce((s,i)=>s+Number(i.outstanding_amount),0),[items,selected]);const selectable=items.filter(i=>Number(i.outstanding_amount)>0);const toggle=(id:string)=>setSelected(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);const selectAll=()=>setSelected(selected.length===selectable.length?[]:selectable.map(i=>i.invoice_item_id));
+ const paySelected=async()=>{if(!invoiceId||!selected.length)return toast.error('Select at least one unpaid service.');if(selectedTotal<=0)return toast.error('Selected services have no outstanding balance.');setPaying(true);const{error}=await db.rpc('pay_selected_invoice_items',{_invoice_id:invoiceId,_item_ids:selected,_method:method,_reference:reference||null});setPaying(false);if(error)return toast.error(error.message);toast.success(`${money(selectedTotal)} received. Selected services released to their departments.`);setSelected([]);setReference('');await loadBillable()};
+ return <div className="space-y-6 animate-fade-in"><header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><CreditCard className="w-6 h-6 text-primary"/>Billing & Patient Account</h1><p className="text-muted-foreground">Select a patient, review billable services for the period, and release only what the patient chooses to pay.</p></div><button onClick={()=>void loadBillable()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="w-4 h-4"/>Refresh</button></header><section className="card-medical p-5 space-y-4"><div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_170px_auto] items-end"><label className="text-sm space-y-1"><span className="font-medium">Patient</span><select value={patientId} onChange={e=>setPatientId(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map(p=><option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select></label><label className="text-sm space-y-1"><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="input-medical w-full"/></label><label className="text-sm space-y-1"><span>To</span><input type="date" value={to} onChange={e=>setTo(e.target.value)} className="input-medical w-full"/></label><button onClick={()=>void loadBillable()} className="btn-primary inline-flex justify-center gap-2" disabled={!patientId||loading}>{loading?<Loader2 className="w-4 h-4 animate-spin"/>:<CalendarDays className="w-4 h-4"/>}Prepare bill</button></div>{selectedPatient&&<div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-muted px-3 py-1">{selectedPatient.first_name} {selectedPatient.last_name}</span><span className="rounded-full bg-muted px-3 py-1">{selectedPatient.membership_type==='temporary'?'Temporary visitor':'Registered patient'}</span>{selectedPatient.membership_expires_at&&<span className="rounded-full bg-warning/10 text-warning px-3 py-1">Expires {new Date(selectedPatient.membership_expires_at).toLocaleDateString()}</span>}{selectedPatient.insurance_provider&&<span className="rounded-full bg-primary/10 text-primary px-3 py-1 inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3"/>{selectedPatient.insurance_provider}</span>}</div>}</section>{!patientId?<div className="card-medical p-10 text-center text-muted-foreground">Select a patient to load consultation, diagnostics, drugs, accommodation, feeding and other billable services.</div>:<><section className="card-medical p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"><div><h2 className="font-semibold">Billable services</h2><p className="text-xs text-muted-foreground">Paid items disappear from selection and remain recorded on the patient account.</p></div><button onClick={selectAll} className="btn-secondary text-xs">{selected.length===selectable.length&&selectable.length?'Clear selection':'Select all unpaid'}</button></div><div className="space-y-2">{items.map(item=>{const due=Number(item.outstanding_amount);const checked=selected.includes(item.invoice_item_id);const released=['released','in_progress','completed'].includes(item.service_order_status??'');return <label key={item.invoice_item_id} className={`flex items-center gap-3 rounded-xl border p-3 ${due<=0||released?'opacity-60':'cursor-pointer hover:bg-muted/30'} ${checked?'border-primary bg-primary/5':'border-border'}`}><input type="checkbox" checked={checked} disabled={due<=0||released} onChange={()=>toggle(item.invoice_item_id)}/><div className="min-w-0 flex-1"><div className="flex flex-wrap gap-2"><span className="font-medium text-sm">{item.description}</span><span className="text-[10px] rounded-full bg-muted px-2 py-0.5">{categoryLabel[item.category??'']??item.category??'Service'}</span>{released&&<span className="text-[10px] rounded-full bg-success/10 text-success px-2 py-0.5">Released</span>}</div><p className="text-xs text-muted-foreground">{item.department??'clinical service'} · Qty {item.quantity} · {money(Number(item.unit_price))} each</p></div><div className="text-right shrink-0"><p className="font-semibold">{money(due)}</p>{due<=0&&<p className="text-[10px] text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/>Paid</p>}</div></label>})}{!items.length&&<p className="text-sm text-muted-foreground py-6 text-center">No billable items were found for this period.</p>}</div></section><section className="card-medical p-5 grid gap-4 lg:grid-cols-[1fr_420px] items-end"><div><p className="text-sm text-muted-foreground">Selected services</p><p className="text-3xl font-bold">{money(selectedTotal)}</p><p className="text-xs text-muted-foreground mt-1">Payment releases each selected item to its affected department.</p></div><div className="grid grid-cols-2 gap-2"><select value={method} onChange={e=>setMethod(e.target.value)} className="input-medical"><option value="cash">Cash</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option><option value="insurance">Insurance</option><option value="advance">Advance</option></select><input value={reference} onChange={e=>setReference(e.target.value)} className="input-medical" placeholder="Payment reference"/><button onClick={()=>void paySelected()} disabled={paying||!selected.length} className="btn-primary col-span-2 inline-flex justify-center gap-2"><Wallet className="w-4 h-4"/>{paying?'Recording payment…':`Pay selected · ${money(selectedTotal)}`}</button></div></section></>}<p className="text-xs text-muted-foreground">Billing operator: {user?.email??'authenticated user'}</p></div>;
 }
