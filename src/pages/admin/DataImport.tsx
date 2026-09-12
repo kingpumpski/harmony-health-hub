@@ -21,7 +21,7 @@ export default function DataImport() {
   const parse = (file: File) => {
     setFileName(file.name); setErrors([]);
     if (file.name.toLowerCase().endsWith('.csv')) {
-      Papa.parse<Row>(file, { header: true, skipEmptyLines: true, transformHeader: h => h.trim().toLowerCase(), complete: result => setRows(result.data.map(r => Object.fromEntries(Object.entries(r).map(([k,v]) => [k, normalize(v)])))) as Row[]), error: e => toast({ title: 'CSV parse failed', description: e.message, variant: 'destructive' }) });
+      Papa.parse<Row>(file, { header: true, skipEmptyLines: true, transformHeader: h => h.trim().toLowerCase(), complete: result => setRows(result.data.map(r => Object.fromEntries(Object.entries(r).map(([k,v]) => [k, normalize(v)]))) as Row[]), error: e => toast({ title: 'CSV parse failed', description: e.message, variant: 'destructive' }) });
       return;
     }
     const reader = new FileReader(); reader.onload = e => { try { const workbook = XLSX.read(e.target?.result, { type: 'array' }); const sheet = workbook.Sheets[workbook.SheetNames[0]]; const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null }); setRows(data.map(row => Object.fromEntries(Object.entries(row).map(([k,v]) => [String(k).trim().toLowerCase(), normalize(v)]))) as Row[]); } catch (error) { toast({ title: 'Spreadsheet parse failed', description: error instanceof Error ? error.message : 'Invalid workbook.', variant: 'destructive' }); } }; reader.readAsArrayBuffer(file);
@@ -38,7 +38,10 @@ export default function DataImport() {
         inserted++;
       } catch (error) { failed.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Insert failed'}`); }
     }
-    await supabase.from('bulk_import_jobs').insert({ entity, filename: fileName, total_rows: rows.length, inserted_rows: inserted, failed_rows: failed.length, errors: failed.map(reason => ({ reason })), status: failed.length === rows.length ? 'failed' : 'completed', created_by: user.id } as never);
+    const sourceFormat = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx';
+    const jobStatus = failed.length === rows.length ? 'failed' : failed.length > 0 ? 'completed_with_errors' : 'completed';
+    const { error: auditError } = await supabase.from('bulk_import_jobs').insert({ entity_type: entity, source_format: sourceFormat, file_name: fileName || null, total_rows: rows.length, successful_rows: inserted, failed_rows: failed.length, errors: failed.map(reason => ({ reason })), status: jobStatus, created_by: user.id, completed_at: new Date().toISOString() } as never);
+    if (auditError) toast({ title: 'Import audit warning', description: auditError.message });
     setErrors(failed); setBusy(false); setRows([]); setFileName(''); toast({ title: 'Import complete', description: `${inserted}/${rows.length} rows inserted${failed.length ? `; ${failed.length} failed` : ''}.`, variant: failed.length === rows.length ? 'destructive' : 'default' });
   };
   return <div className="space-y-6 animate-fade-in">
