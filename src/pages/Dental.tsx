@@ -24,18 +24,21 @@ export default function Dental() {
     setPatients(pts ?? []);
     setRecords(recs ?? []);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pid) return toast({ title: 'Select a patient', variant: 'destructive' });
-    const { error } = await supabase.from('dental_records').insert({
-      patient_id: pid, examination: exam, treatment_plan: plan, procedures_performed: proc, performed_by: user?.id,
+    const { error } = await (supabase as any).rpc('create_dental_record', {
+      _patient_id: pid,
+      _examination: exam,
+      _treatment_plan: plan,
+      _procedures_performed: proc,
     });
     if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Dental record saved' });
     setPid(''); setExam(''); setPlan(''); setProc('');
-    load();
+    void load();
   };
 
   return (
