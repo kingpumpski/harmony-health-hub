@@ -50,7 +50,18 @@ export default function ProcedureNotes() {
         }
       }
 
-      const { error } = await supabase.from('procedure_notes').insert({ patient_id: pid, procedure_name: proc, template_used: proc, indication, technique, findings, complications, post_op_plan: postOp, performed_by: user.id, status: 'completed', charge_amount: chargeAmount, service_order_id: serviceOrderId });
+      const { error } = await (supabase as any).rpc('create_procedure_note', {
+        _patient_id: pid,
+        _procedure_name: proc,
+        _template_used: proc,
+        _indication: indication,
+        _technique: technique,
+        _findings: findings,
+        _complications: complications,
+        _post_op_plan: postOp,
+        _charge_amount: chargeAmount,
+        _service_order_id: serviceOrderId,
+      });
       if (error) throw error;
       toast({ title: 'Procedure note saved' }); resetForm(); void load();
     } catch (error) { toast({ title: 'Failed', description: error instanceof Error ? error.message : 'Unable to save procedure.', variant: 'destructive' }); }
