@@ -33,11 +33,11 @@ BEGIN
   END IF;
 
   INSERT INTO public.appointments (
-    patient_id, scheduled_at, reason, department, status, treatment_status, created_by
+    patient_id, scheduled_at, reason, department, status, treatment_status
   )
   VALUES (
     _patient_id, _scheduled_at, NULLIF(trim(_reason), ''), NULLIF(trim(_department), ''),
-    'scheduled', 'scheduled', auth.uid()
+    'scheduled', 'scheduled'
   )
   RETURNING * INTO result;
 
