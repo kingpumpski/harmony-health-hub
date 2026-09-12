@@ -19,6 +19,7 @@ async function query<T>(table: string, patientId: string, orderColumn: string, l
 export interface AIClinicalContext {
   generatedAt: string;
   patient: Record<string, unknown> | null;
+  latestBmi: { value: number | null; category: string; recordedAt: string | null; weightKg: number | null; heightM: number | null };
   appointments: unknown[];
   vitals: unknown[];
   triage: unknown[];
@@ -42,7 +43,7 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
   const [appointments, vitals, triage, encounters, labOrders, prescriptions, imagingOrders, procedureNotes, anestheticAssessments, admissions] = await Promise.all([
     query('appointments', patientId, 'scheduled_at'),
     query('vital_signs', patientId, 'recorded_at'),
-    query('triage_assessments', patientId, 'recorded_at'),
+    query('triage_assessments', patientId, 'created_at'),
     query('encounters', patientId, 'created_at'),
     query('lab_orders', patientId, 'created_at'),
     query('prescriptions', patientId, 'created_at'),
@@ -51,6 +52,19 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
     query('anesthetic_assessments', patientId, 'created_at'),
     query('admissions', patientId, 'admitted_at'),
   ]);
+
+  const latestTriage = (triage[0] as any) ?? null;
+  const latestBmi = {
+    value: latestTriage?.bmi != null ? Number(latestTriage.bmi) : null,
+    category: latestTriage?.bmi != null
+      ? latestTriage.bmi < 18.5 ? 'underweight'
+        : latestTriage.bmi < 25 ? 'healthy range'
+          : latestTriage.bmi < 30 ? 'overweight' : 'obesity range'
+      : 'unavailable',
+    recordedAt: latestTriage?.created_at ?? null,
+    weightKg: latestTriage?.weight_kg != null ? Number(latestTriage.weight_kg) : null,
+    heightM: latestTriage?.height_m != null ? Number(latestTriage.height_m) : null,
+  };
 
   const labOrderIds = labOrders.map((row: any) => row.id).filter(Boolean);
   let labResults: unknown[] = [];
@@ -63,6 +77,7 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
   return {
     generatedAt: new Date().toISOString(),
     patient: patientResult.data,
+    latestBmi,
     appointments,
     vitals,
     triage,
