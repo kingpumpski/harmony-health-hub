@@ -31,6 +31,6 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Insurance case not found'; END IF;
   RETURN v;
 END; $$;
-REVOKE ALL ON FUNCTION public.update_insurance_case(UUID,TEXT,TEXT,TEXT,NUMERIC,NUMERIC,TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.update_insurance_case(UUID,TEXT,TEXT,TEXT,NUMERIC,NUMERIC,TEXT) FROM anon,PUBLIC;
 GRANT EXECUTE ON FUNCTION public.update_insurance_case(UUID,TEXT,TEXT,TEXT,NUMERIC,NUMERIC,TEXT) TO authenticated;
 NOTIFY pgrst,'reload schema';
