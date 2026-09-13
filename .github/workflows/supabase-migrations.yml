@@ -62,15 +62,28 @@ jobs:
       - name: Show migration state
         run: supabase migration list --linked
 
+      - name: Verify live database schema health
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "Checking live public schema health before migration-chain validation..."
+          supabase db lint --linked --fail-on error
+
       - name: Validate migrations
         if: ${{ env.WORKFLOW_MODE == 'validate' }}
-        run: supabase db push --linked --dry-run
+        run: |
+          set -euo pipefail
+          echo "Validating migration chain against the linked project."
+          supabase db push --linked --dry-run
 
       - name: Apply migrations
         if: ${{ env.WORKFLOW_MODE == 'apply' }}
-        run: supabase db push --linked
+        run: |
+          set -euo pipefail
+          supabase db push --linked
 
-      - name: Verify database lint
+      - name: Verify database lint after apply
         if: ${{ env.WORKFLOW_MODE == 'apply' }}
         run: supabase db lint --linked --fail-on error
 
