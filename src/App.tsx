@@ -33,7 +33,7 @@ const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
 const MedicalRecords = lazy(() => import('./pages/MedicalRecords'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoundAlerts = lazy(() => import('./pages/SoundAlerts'));
-const PublicHealthReports = lazy(() => import('./pages/PublicHealthReports'));
+const ReportsCenter = lazy(() => import('./pages/ReportsCenter'));
 const RosterGenerator = lazy(() => import('./pages/RosterGenerator'));
 const AIClinicalHub = lazy(() => import('./pages/AIClinicalHub'));
 const Encounters = lazy(() => import('./pages/Encounters'));
@@ -153,8 +153,8 @@ export default function App() {
                     <Route path="/menu" element={<CanteenMeals />} />
                     <Route path="/orders" element={<CanteenMeals />} />
                     <Route path="/dietary-plans" element={<CanteenMeals />} />
-                    <Route path="/reports" element={<PublicHealthReports />} />
-                    <Route path="/public-health" element={<PublicHealthReports />} />
+                    <Route path="/reports" element={<ReportsCenter />} />
+                    <Route path="/public-health" element={<ReportsCenter />} />
                     <Route path="/roster" element={<RosterGenerator />} />
                     <Route path="/ai-clinical" element={<AIClinicalHub />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
