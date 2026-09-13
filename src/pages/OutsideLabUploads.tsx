@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Upload, FileText, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, Sparkles } from 'lucide-react';
 import { playSuccessSound } from '@/lib/sounds';
 
 interface Doc { id: string; patient_id: string; document_type: string; title: string; storage_path: string; ai_analysis: string | null; created_at: string }
 
 export default function OutsideLabUploads() {
-  const { user } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [pid, setPid] = useState('');
@@ -99,7 +97,7 @@ export default function OutsideLabUploads() {
         <div className="space-y-3">
           {docs.map((d) => (
             <div key={d.id} className="rounded-xl border border-border p-4">
-              <div className="flex justify-between text-sm gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start text-sm">
                 <span className="font-medium flex items-center gap-2 min-w-0"><FileText className="w-4 h-4 shrink-0" /> <span className="truncate">{d.title}</span> <span className="text-muted-foreground shrink-0">· {d.document_type}</span></span>
                 <span className="text-muted-foreground shrink-0">{new Date(d.created_at).toLocaleString()}</span>
               </div>
