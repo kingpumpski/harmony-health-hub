@@ -62,14 +62,7 @@ export async function listFacilities(): Promise<HealthcareFacility[]> {
 export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_active'>): Promise<HealthcareFacility> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated administrator is required to create a facility.');
-  const { data, error } = await reportsDb.rpc('create_reports_facility', {
-    _name: input.name,
-    _facility_code: input.facility_code,
-    _facility_type: input.facility_type,
-    _district: input.district,
-    _region: input.region,
-    _dhims2_uid: input.dhims2_uid,
-  });
+  const { data, error } = await reportsDb.rpc('create_reports_facility', { _name: input.name, _facility_code: input.facility_code, _facility_type: input.facility_type, _district: input.district, _region: input.region, _dhims2_uid: input.dhims2_uid });
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Facility creation returned no facility record.');
   return data as HealthcareFacility;
@@ -79,10 +72,7 @@ export async function listDefinitions(): Promise<ReportDefinition[]> {
   const { data, error } = await reportsDb.from('report_definitions').select('*, report_categories(*)').eq('is_active', true).order('report_code');
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<Record<string, unknown>>;
-  return rows.map((row) => {
-    const categories = row.report_categories as ReportCategory[] | ReportCategory | null | undefined;
-    return { ...row, category: Array.isArray(categories) ? categories[0] ?? null : categories ?? null, parameters: Array.isArray(row.parameters) ? row.parameters : [] };
-  }) as unknown as ReportDefinition[];
+  return rows.map((row) => { const categories = row.report_categories as ReportCategory[] | ReportCategory | null | undefined; return { ...row, category: Array.isArray(categories) ? categories[0] ?? null : categories ?? null, parameters: Array.isArray(row.parameters) ? row.parameters : [] }; }) as unknown as ReportDefinition[];
 }
 
 export async function listFacilityConfigs(facilityId: string): Promise<FacilityReportConfig[]> {
@@ -99,7 +89,8 @@ export async function setReportEnabled(facilityId: string, reportId: string, ena
 
 function dueDateFor(period: string, deadline: number) {
   const [year, month] = period.split('-').map(Number);
-  return new Date(Date.UTC(year, month, deadline)).toISOString().slice(0, 10);
+  const safeDeadline = Math.min(31, Math.max(1, Math.trunc(deadline || 1)));
+  return new Date(Date.UTC(year, month, safeDeadline)).toISOString().slice(0, 10);
 }
 
 export async function generateRun(facilityId: string, period: string, configs: FacilityReportConfig[]) {
@@ -108,116 +99,58 @@ export async function generateRun(facilityId: string, period: string, configs: F
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
-
   const now = new Date().toISOString();
   const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
   if (activeRunError) throw new Error(activeRunError.message);
-  for (const activeRun of (activeRuns ?? []) as ReportRun[]) {
-    const result = await reportsDb.rpc('recover_stale_report_run', { _run_id: activeRun.id, _stale_after_minutes: 30 });
-    if (result.error) throw new Error(result.error.message);
-  }
-
+  for (const activeRun of (activeRuns ?? []) as ReportRun[]) { const result = await reportsDb.rpc('recover_stale_report_run', { _run_id: activeRun.id, _stale_after_minutes: 30 }); if (result.error) throw new Error(result.error.message); }
   const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('*').single();
-  if (runError) {
-    if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.');
-    throw new Error(runError.message);
-  }
+  if (runError) { if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.'); throw new Error(runError.message); }
   const run = runData as ReportRun;
   const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('*');
   if (itemError) throw new Error(itemError.message);
   const items = itemData as ReportRunItem[];
-  let success = 0;
-  let warning = 0;
-  let failed = 0;
-
+  let success = 0; let warning = 0; let failed = 0;
   for (const item of items) {
     const config = enabled.find((entry) => entry.report_id === item.report_id);
-    if (!config?.report) {
-      failed += 1;
-      await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: 'Report definition was not available for the activated configuration.', completed_at: new Date().toISOString() }).eq('id', item.id);
-      continue;
-    }
-
-    const snapshot = await extractSnapshot(config.report, period);
-    const hasWarning = Boolean(snapshot.warning);
-    const status: ReportStatus = hasWarning ? 'warning' : 'completed';
+    if (!config?.report) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: 'Report definition was not available for the activated configuration.', completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
+    const snapshot = await extractSnapshot(config.report, period); const hasWarning = Boolean(snapshot.warning); const status: ReportStatus = hasWarning ? 'warning' : 'completed';
     const { error: itemUpdateError } = await reportsDb.from('report_generation_items').update({ status, data_snapshot: snapshot, validation_messages: snapshot.warning ? [snapshot.warning] : [], file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
-
-    if (itemUpdateError) {
-      failed += 1;
-      await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: itemUpdateError.message, completed_at: new Date().toISOString() }).eq('id', item.id);
-      continue;
-    }
-
-    if (hasWarning) warning += 1;
-    else success += 1;
-
-    const submissionResult = await reportsDb.rpc('upsert_report_submission_tracking', {
-      _report_id: config.report_id,
-      _facility_id: facilityId,
-      _period_start: start.slice(0, 10),
-      _period_end: end.slice(0, 10),
-      _due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day),
-      _data_snapshot: snapshot,
-    });
-    if (submissionResult.error) {
-      await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id);
-      if (!hasWarning) { success -= 1; warning += 1; }
-    }
+    if (itemUpdateError) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: itemUpdateError.message, completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
+    if (hasWarning) warning += 1; else success += 1;
+    const submissionResult = await reportsDb.rpc('upsert_report_submission_tracking', { _report_id: config.report_id, _facility_id: facilityId, _period_start: start.slice(0, 10), _period_end: end.slice(0, 10), _due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day), _data_snapshot: snapshot });
+    if (submissionResult.error) { await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id); if (!hasWarning) { success -= 1; warning += 1; } }
   }
-
   const finalStatus = failed > 0 ? (failed === enabled.length ? 'failed' : 'partial_failed') : 'completed';
   const { data: finalData, error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', run.id).select('*').single();
   if (finalError) throw new Error(finalError.message);
   return finalData as ReportRun;
 }
 
-export async function getRunItems(runId: string): Promise<ReportRunItem[]> {
-  const { data, error } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at');
-  if (error) throw new Error(error.message);
-  return (data ?? []) as ReportRunItem[];
-}
+export async function getRunItems(runId: string): Promise<ReportRunItem[]> { const { data, error } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at'); if (error) throw new Error(error.message); return (data ?? []) as ReportRunItem[]; }
 
 export async function listSubmissions(facilityId: string, period: string): Promise<ReportSubmission[]> {
-  const { start, end } = monthBounds(period);
-  const periodStart = start.slice(0, 10);
-  const periodEnd = end.slice(0, 10);
-  const sync = await reportsDb.rpc('sync_overdue_report_submissions', { _facility_id: facilityId, _period_start: periodStart, _period_end: periodEnd });
-  if (sync.error) throw new Error(sync.error.message);
-  const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date');
-  if (error) throw new Error(error.message);
-  return (data ?? []) as ReportSubmission[];
+  const { start, end } = monthBounds(period); const periodStart = start.slice(0, 10); const periodEnd = end.slice(0, 10);
+  const sync = await reportsDb.rpc('sync_overdue_report_submissions', { _facility_id: facilityId, _period_start: periodStart, _period_end: periodEnd }); if (sync.error) throw new Error(sync.error.message);
+  const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date'); if (error) throw new Error(error.message); return (data ?? []) as ReportSubmission[];
 }
 
-export async function markSubmissionsSubmitted(ids: string[]) {
-  if (!ids.length) return;
-  const result = await reportsDb.rpc('mark_report_submissions_submitted', { _submission_ids: ids });
-  if (result.error) throw new Error(result.error.message);
+export async function markSubmissionsSubmitted(ids: string[]) { if (!ids.length) return; const result = await reportsDb.rpc('mark_report_submissions_submitted', { _submission_ids: ids }); if (result.error) throw new Error(result.error.message); }
+
+function uniqueSheetName(rawName: string, used: Set<string>) {
+  const base = (rawName.replace(/[:\\/?*\[\]]/g, '').slice(0, 31) || 'Report').trim() || 'Report';
+  let name = base; let suffix = 2;
+  while (used.has(name.toLowerCase())) { const suffixText = `_${suffix++}`; name = `${base.slice(0, 31 - suffixText.length)}${suffixText}`; }
+  used.add(name.toLowerCase()); return name;
 }
 
 export async function downloadRunWorkbook(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
-  const workbook = XLSX.utils.book_new();
-  const manifest = items.map((item) => ({ Report: item.file_name ?? item.report_id, Status: item.status, Source: item.data_snapshot.source, Total: item.data_snapshot.total, Warnings: item.validation_messages.join(' | ') }));
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(manifest), 'Manifest');
-  for (const item of items) {
-    const rows = item.data_snapshot.by_dimension.map((row) => ({ Dimension: row.dimension, Value: row.value, Count: row.count }));
-    if (!rows.length) rows.push({ Dimension: 'status', Value: item.status, Count: item.data_snapshot.total });
-    const sheetName = (item.file_name ?? item.report_id).replace(/[^A-Za-z0-9 ]/g, '').slice(0, 28) || 'Report';
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), sheetName);
-  }
+  const workbook = XLSX.utils.book_new(); const manifest = items.map((item) => ({ Report: item.file_name ?? item.report_id, Status: item.status, Source: item.data_snapshot.source, Total: item.data_snapshot.total, Warnings: item.validation_messages.join(' | ') })); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(manifest), 'Manifest');
+  const used = new Set<string>(['manifest']);
+  for (const item of items) { const rows = item.data_snapshot.by_dimension.map((row) => ({ Dimension: row.dimension, Value: row.value, Count: row.count })); if (!rows.length) rows.push({ Dimension: 'status', Value: item.status, Count: item.data_snapshot.total }); const sheetName = uniqueSheetName(item.file_name ?? item.report_id, used); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), sheetName); }
   XLSX.writeFile(workbook, `Monthly_Reports_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.xlsx`);
 }
 
 export function downloadRunManifestCsv(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
-  const rows = [['Report', 'Status', 'Source', 'Total', 'Warnings'], ...items.map((item) => [item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join(' | ')])];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `Reports_Manifest_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.csv`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  const rows = [['Report', 'Status', 'Source', 'Total', 'Warnings'], ...items.map((item) => [item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join(' | ')] )];
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `Reports_Manifest_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.csv`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
 }
