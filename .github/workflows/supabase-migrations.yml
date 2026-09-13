@@ -9,28 +9,39 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
     steps:
       - uses: actions/checkout@v4
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Validate required secrets
+
+      - name: Validate migration credentials
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
-          test -n "$SUPABASE_PROJECT_REF"
+
+      - name: Show pending migrations
+        run: supabase migration list --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
       - name: Validate migrations
         if: ${{ inputs.dry_run == true }}
         run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --dry-run
+
       - name: Apply migrations
         if: ${{ inputs.dry_run != true }}
         run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Verify database lint
+        if: ${{ inputs.dry_run != true }}
+        run: supabase db lint --linked --fail-on error --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
