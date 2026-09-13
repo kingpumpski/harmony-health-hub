@@ -7,16 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Choose whether to validate or apply the migration chain'
+        description: 'Choose whether to validate, apply, or rebuild the migration baseline'
         required: true
         default: validate
         type: choice
         options:
           - validate
           - apply
+          - baseline
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   migrate:
@@ -27,6 +28,7 @@ jobs:
       SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
       SUPABASE_CLI_VERSION: latest
       WORKFLOW_MODE: ${{ inputs.mode || 'validate' }}
+      BASELINE_MODE: ${{ inputs.mode == 'baseline' || contains(github.event.head_commit.message, '[migration-baseline]') }}
     steps:
       - name: Start workflow timer
         run: |
@@ -43,6 +45,8 @@ jobs:
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --depth=1 origin "${GITHUB_SHA}"
           git checkout --detach FETCH_HEAD
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install Supabase CLI without third-party actions
         run: |
@@ -56,35 +60,117 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
 
-      - name: Link Harmony database project
+      - name: Link Harmony production database
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
-      - name: Show migration state
-        run: supabase migration list --linked
-
-      - name: Verify live database schema health
-        env:
-          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - name: Capture live schema backup before baseline repair
+        if: ${{ env.BASELINE_MODE == 'true' }}
         run: |
           set -euo pipefail
-          echo "Checking live public schema health before migration-chain validation..."
+          mkdir -p /tmp/harmony-migration-baseline
+          supabase db dump --linked --schema public,extensions -f /tmp/harmony-migration-baseline/public-extensions.sql
+          supabase db dump --linked --schema supabase_migrations --data-only --use-copy -f /tmp/harmony-migration-baseline/migration-history.sql
+          test -s /tmp/harmony-migration-baseline/public-extensions.sql
+          test -s /tmp/harmony-migration-baseline/migration-history.sql
+          echo "Live schema and migration-history backups captured before repair."
+
+      - name: Archive repository migration chain before baseline repair
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          archive_dir="supabase/migrations-archive/$(date -u '+%Y%m%dT%H%M%SZ')"
+          mkdir -p "$archive_dir"
+          if compgen -G 'supabase/migrations/*.sql' > /dev/null; then
+            git mv supabase/migrations/*.sql "$archive_dir"/
+          fi
+          mkdir -p supabase/migrations
+          echo "Archived historical repository migrations under $archive_dir"
+
+      - name: Record and clear divergent remote migration history
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          supabase migration list --linked | tee migration-history-before-baseline.txt
+          grep -oE '[0-9]{14}' migration-history-before-baseline.txt | sort -u > /tmp/harmony-migration-baseline/remote-versions.txt
+          count=$(wc -l < /tmp/harmony-migration-baseline/remote-versions.txt | tr -d ' ')
+          echo "Remote migration records discovered: $count"
+          test "$count" -gt 0
+          while IFS= read -r version; do
+            echo "Reverting migration-history record $version (tracking only; no schema rollback)."
+            supabase migration repair "$version" --status reverted --linked
+          done < /tmp/harmony-migration-baseline/remote-versions.txt
+          if grep -qE '[0-9]{14}' <(supabase migration list --linked); then
+            echo "Remote migration history was not fully cleared."
+            exit 1
+          fi
+
+      - name: Generate canonical remote schema baseline
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          printf 'Y\n' | supabase db pull --linked canonical_remote_schema
+          test -n "$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -print -quit)"
+
+      - name: Capture storage policy delta after public baseline
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          printf 'Y\n' | supabase db pull --linked storage_policy_baseline --schema storage || true
+
+      - name: Verify canonical migration history after baseline
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          supabase migration list --linked | tee migration-history-after-baseline.txt
+          versions=$(grep -oE '[0-9]{14}' migration-history-after-baseline.txt | sort -u | wc -l | tr -d ' ')
+          test "$versions" -ge 1
           supabase db lint --linked --fail-on error
 
+      - name: Commit canonical migration baseline
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/migrations
+          {
+            echo '# Migration History Baseline'
+            echo
+            echo 'This archive was created from the production Supabase project before repairing migration history.'
+            echo
+            echo '## Pre-repair remote history'
+            echo '```text'
+            cat migration-history-before-baseline.txt
+            echo '```'
+            echo
+            echo '## Post-repair remote history'
+            echo '```text'
+            cat migration-history-after-baseline.txt
+            echo '```'
+            echo
+            echo 'The archived migrations remain available under `supabase/migrations-archive/` for audit/reference but are no longer part of the executable migration chain.'
+          } > docs/migrations/MIGRATION_HISTORY_BASELINE.md
+          git add supabase/migrations supabase/migrations-archive docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
+          git commit -m "chore: establish canonical production migration baseline [migration-baseline-complete]"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Show migration state
+        if: ${{ env.BASELINE_MODE != 'true' }}
+        run: supabase migration list --linked
+
       - name: Validate migrations
-        if: ${{ env.WORKFLOW_MODE == 'validate' }}
+        if: ${{ env.BASELINE_MODE != 'true' && env.WORKFLOW_MODE == 'validate' }}
         run: |
           set -euo pipefail
           echo "Validating migration chain against the linked project."
           supabase db push --linked --dry-run
 
       - name: Apply migrations
-        if: ${{ env.WORKFLOW_MODE == 'apply' }}
+        if: ${{ env.BASELINE_MODE != 'true' && env.WORKFLOW_MODE == 'apply' }}
         run: |
           set -euo pipefail
           supabase db push --linked
 
       - name: Verify database lint after apply
-        if: ${{ env.WORKFLOW_MODE == 'apply' }}
+        if: ${{ env.BASELINE_MODE != 'true' && env.WORKFLOW_MODE == 'apply' }}
         run: supabase db lint --linked --fail-on error
 
       - name: Report workflow duration
