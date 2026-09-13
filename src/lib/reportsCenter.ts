@@ -16,7 +16,11 @@ export interface ReportSubmission { id: string; report_id: string; facility_id: 
 const SOURCE_TABLES: Record<string, string> = { opd_morbidity: 'encounters + diagnoses', opd_attendance: 'appointments', laboratory: 'lab_orders + lab_results', inpatient_days: 'admissions / inpatient module', surgeries: 'procedure/theatre module', maternity: 'maternity module' };
 
 function monthBounds(period: string) {
-  const [year, month] = period.split('-').map(Number);
+  const match = /^(\d{4})-(\d{2})$/.exec(period);
+  if (!match) throw new Error('Report period must use the YYYY-MM format.');
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) throw new Error('Report period month must be between 01 and 12.');
   const start = new Date(Date.UTC(year, month - 1, 1));
   const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
   return { start: start.toISOString(), end: end.toISOString() };
@@ -155,10 +159,11 @@ export async function downloadRunWorkbook(run: ReportRun, items: ReportRunItem[]
   const workbook = XLSX.utils.book_new(); const manifest = items.map((item) => ({ Report: item.file_name ?? item.report_id, Status: item.status, Source: item.data_snapshot.source, Total: item.data_snapshot.total, Warnings: item.validation_messages.join(' | ') })); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(manifest), 'Manifest');
   const used = new Set<string>(['manifest']);
   for (const item of items) { const rows = item.data_snapshot.by_dimension.map((row) => ({ Dimension: row.dimension, Value: row.value, Count: row.count })); if (!rows.length) rows.push({ Dimension: 'status', Value: item.status, Count: item.data_snapshot.total }); const sheetName = uniqueSheetName(item.file_name ?? item.report_id, used); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), sheetName); }
-  XLSX.writeFile(workbook, `Monthly_Reports_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.xlsx`);
+  XLSX.writeFile(workbook, `reports_${facility.facility_code ?? facility.id}_${run.period_start.slice(0, 7)}.xlsx`);
 }
 
-export function downloadRunManifestCsv(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
-  const rows = [['Report', 'Status', 'Source', 'Total', 'Warnings'], ...items.map((item) => [item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join(' | ')])];
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `Reports_Manifest_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.csv`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+export function downloadManifestCsv(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
+  const lines = ['Report,Status,Source,Total,Warnings'];
+  for (const item of items) lines.push([item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join('; ')].map((value) => `"${value.replace(/"/g, '""')}"`).join(','));
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `reports_manifest_${facility.facility_code ?? facility.id}_${run.period_start.slice(0, 7)}.csv`; anchor.click(); URL.revokeObjectURL(url);
 }
