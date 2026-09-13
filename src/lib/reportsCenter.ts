@@ -184,10 +184,8 @@ export async function listSubmissions(facilityId: string, period: string): Promi
 
 export async function markSubmissionsSubmitted(ids: string[]) {
   if (!ids.length) return;
-  const userId = (await supabase.auth.getUser()).data.user?.id;
-  if (!userId) throw new Error('An authenticated user is required to update submissions.');
-  const { error } = await reportsDb.from('report_submissions').update({ status: 'submitted', submitted_at: new Date().toISOString(), submitted_by: userId }).in('id', ids);
-  if (error) throw new Error(error.message);
+  const result = await reportsDb.rpc('mark_report_submissions_submitted', { _submission_ids: ids });
+  if (result.error) throw new Error(result.error.message);
 }
 
 export async function downloadRunWorkbook(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
