@@ -113,7 +113,7 @@ GRANT EXECUTE ON FUNCTION public.start_appointment_encounter(UUID, TEXT, TEXT) T
 -- use the existing system audit infrastructure rather than a second audit log.
 DO $$
 BEGIN
-  IF to_regprocedure('public.record_system_audit(text,text,text,uuid,text,jsonb)') IS NOT NULL THEN
+  IF to_regprocedure('public.audit_clinical_record_change()') IS NOT NULL THEN
     DROP TRIGGER IF EXISTS trg_audit_appointments_changes ON public.appointments;
     CREATE TRIGGER trg_audit_appointments_changes
       AFTER INSERT OR UPDATE OR DELETE ON public.appointments
