@@ -22,6 +22,7 @@ function monthBounds(period: string) {
   const month = Number(match[2]);
   if (month < 1 || month > 12) throw new Error('Report period month must be between 01 and 12.');
   const start = new Date(Date.UTC(year, month - 1, 1));
+  if (start.getUTCFullYear() !== year || start.getUTCMonth() !== month - 1) throw new Error('Report period contains an invalid calendar year.');
   const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
   return { start: start.toISOString(), end: end.toISOString() };
 }
