@@ -3,29 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
-// Vite exposes only VITE_* variables to the browser. Hosted builds that do not
-// inherit the repository's .env.example otherwise fail during module evaluation
-// with "supabaseUrl is required", leaving the application completely blank.
-// The Supabase URL and publishable key are intentionally public client values;
-// secrets must never be placed here. Environment variables remain authoritative.
-const DEFAULT_SUPABASE_URL = 'https://ygqoptvezotdqhtimdkr.supabase.co';
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OWOl70nV57PKXtYPEtOvKg_mpTloQrH';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+// Vite exposes only VITE_* variables to the browser. The repository migration
+// contract targets project pmebpkcufyrbjhawsiyn; do not silently fall back to a
+// different Supabase project because that can route authentication and data to
+// an unrelated environment.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error('Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
+  throw new Error(
+    'Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY for project pmebpkcufyrbjhawsiyn.',
+  );
 }
-
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
 });
