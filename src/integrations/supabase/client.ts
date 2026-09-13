@@ -3,16 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
-// Vite exposes only VITE_* variables to the browser. The runtime Supabase
-// project is the current Harmony database: ygqoptvezotdqhtimdkr.
-// Keep the client environment-driven so development/production credentials
-// are never silently mixed with the separate development migration project.
+// Vite exposes only VITE_* variables to the browser. Runtime configuration is
+// intentionally environment-driven because the development Supabase project
+// and the current Harmony database are separate environments.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(
-    'Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY for the current Harmony Supabase project.',
+    'Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY for the active Harmony Supabase environment.',
   );
 }
 
