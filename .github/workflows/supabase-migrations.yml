@@ -31,17 +31,20 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
 
-      - name: Show pending migrations
-        run: supabase migration list --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Show migration state
+        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
 
       - name: Validate migrations
         if: ${{ inputs.dry_run == true }}
-        run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --dry-run
+        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --dry-run
 
       - name: Apply migrations
         if: ${{ inputs.dry_run != true }}
-        run: supabase db push --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
 
       - name: Verify database lint
         if: ${{ inputs.dry_run != true }}
-        run: supabase db lint --linked --fail-on error --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db lint --linked --fail-on error --password "$SUPABASE_DB_PASSWORD"
