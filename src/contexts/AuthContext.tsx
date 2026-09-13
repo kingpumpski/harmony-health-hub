@@ -21,13 +21,13 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
-  switchRole: (role: UserRole) => void; // legacy no-op kept for compatibility
+  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
-  const [{ data: profile }, { data: roleRow }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
     supabase
       .from('user_roles')
@@ -37,6 +37,9 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
       .limit(1)
       .maybeSingle(),
   ]);
+
+  if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
+  if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
 
   return {
     id: supabaseUser.id,
@@ -55,33 +58,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up listener FIRST
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      if (newSession?.user) {
-        // Defer Supabase calls outside the auth callback
-        setTimeout(() => {
-          loadAppUser(newSession.user).then(setUser);
-        }, 0);
-      } else {
+    let mounted = true;
+
+    const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      if (!nextSession?.user) {
         setUser(null);
-      }
-    });
-
-    // Then load existing session
-    supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      if (existing?.user) {
-        loadAppUser(existing.user).then((u) => {
-          setUser(u);
-          setLoading(false);
-        });
-      } else {
         setLoading(false);
+        return;
       }
+
+      try {
+        const appUser = await loadAppUser(nextSession.user);
+        if (mounted) setUser(appUser);
+      } catch (error) {
+        console.error('Auth profile bootstrap failed; continuing with session.', error);
+        if (mounted) {
+          setUser({
+            id: nextSession.user.id,
+            email: nextSession.user.email ?? '',
+            firstName: '',
+            lastName: '',
+            role: 'patient',
+          });
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      void applySession(newSession);
     });
 
-    return () => sub.subscription.unsubscribe();
+    void supabase.auth.getSession()
+      .then(({ data: { session: existing } }) => applySession(existing))
+      .catch((error) => {
+        console.error('Unable to restore authentication session.', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -108,23 +133,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   }, []);
 
-  const switchRole = useCallback(() => {
-    // Legacy demo function — no longer changes role. Real roles come from the DB.
+  const switchRole = useCallback((_role: UserRole) => {
+    // Legacy compatibility function. Real roles come from the database.
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: !!session,
-        loading,
-        login,
-        signUp,
-        logout,
-        switchRole,
-      }}
-    >
+    <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
