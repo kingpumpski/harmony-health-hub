@@ -28,6 +28,12 @@ jobs:
       SUPABASE_CLI_VERSION: latest
       WORKFLOW_MODE: ${{ inputs.mode || 'validate' }}
     steps:
+      - name: Start workflow timer
+        run: |
+          set -euo pipefail
+          echo "WORKFLOW_START_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
+          echo "Workflow started at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
       - name: Checkout repository without third-party actions
         env:
           GH_TOKEN: ${{ github.token }}
@@ -67,3 +73,13 @@ jobs:
       - name: Verify database lint
         if: ${{ env.WORKFLOW_MODE == 'apply' }}
         run: supabase db lint --linked --fail-on error
+
+      - name: Report workflow duration
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          end_ms=$(date +%s%3N)
+          duration_ms=$((end_ms - WORKFLOW_START_MS))
+          duration_seconds=$(awk "BEGIN { printf \"%.3f\", ${duration_ms}/1000 }")
+          echo "Workflow completed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "Total workflow duration: ${duration_seconds}s (${duration_ms}ms)"
