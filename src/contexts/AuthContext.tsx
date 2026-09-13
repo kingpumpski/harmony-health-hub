@@ -19,12 +19,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ confirmationRequired: boolean }>;
+  resendSignupConfirmation: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function getAuthRedirectUrl() {
+  return `${window.location.origin}/auth/callback`;
+}
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
@@ -115,15 +120,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: getAuthRedirectUrl(),
         data: { first_name: firstName, last_name: lastName },
       },
     });
+
+    if (error) throw error;
+
+    return { confirmationRequired: !data.session };
+  }, []);
+
+  const resendSignupConfirmation = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: getAuthRedirectUrl() },
+    });
+
     if (error) throw error;
   }, []);
 
@@ -138,7 +155,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      isAuthenticated: !!session,
+      loading,
+      login,
+      signUp,
+      resendSignupConfirmation,
+      logout,
+      switchRole,
+    }}>
       {children}
     </AuthContext.Provider>
   );
