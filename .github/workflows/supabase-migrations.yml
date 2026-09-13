@@ -22,15 +22,27 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
+      SUPABASE_CLI_VERSION: latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository without third-party actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Install Supabase CLI without third-party actions
+        run: |
+          set -euo pipefail
+          npm install --global "supabase@${SUPABASE_CLI_VERSION}"
+          supabase --version
 
       - name: Validate migration credentials
         run: |
+          set -euo pipefail
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
 
