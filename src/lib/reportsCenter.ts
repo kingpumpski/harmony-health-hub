@@ -152,9 +152,16 @@ export async function generateRun(facilityId: string, period: string, configs: F
     if (hasWarning) warning += 1;
     else success += 1;
 
-    const { error: submissionError } = await reportsDb.from('report_submissions').upsert({ report_id: config.report_id, facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day), status: 'pending', data_snapshot: snapshot }, { onConflict: 'report_id,facility_id,period_start,period_end' });
-    if (submissionError) {
-      await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionError.message}`], status: 'warning' }).eq('id', item.id);
+    const submissionResult = await reportsDb.rpc('upsert_report_submission_tracking', {
+      _report_id: config.report_id,
+      _facility_id: facilityId,
+      _period_start: start.slice(0, 10),
+      _period_end: end.slice(0, 10),
+      _due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day),
+      _data_snapshot: snapshot,
+    });
+    if (submissionResult.error) {
+      await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id);
       if (!hasWarning) { success -= 1; warning += 1; }
     }
   }
