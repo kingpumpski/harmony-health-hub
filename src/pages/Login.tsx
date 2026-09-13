@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { HeartPulse, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { HeartPulse, Eye, EyeOff, ArrowRight, MailCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function Login() {
@@ -12,7 +12,9 @@ export default function Login() {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signUp, isAuthenticated, loading } = useAuth();
+  const [confirmationPending, setConfirmationPending] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const { login, signUp, resendSignupConfirmation, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,23 +28,52 @@ export default function Login() {
       if (mode === 'signin') {
         await login(email, password);
         toast({ title: 'Welcome back', description: 'Signed in successfully.' });
-      } else {
-        if (!firstName.trim() || !lastName.trim()) {
-          toast({ title: 'Missing details', description: 'Please enter your first and last name.', variant: 'destructive' });
-          return;
-        }
-        await signUp(email, password, firstName.trim(), lastName.trim());
-        toast({ title: 'Account created', description: 'You are now signed in as a patient.' });
+        navigate('/dashboard');
+        return;
       }
+
+      if (!firstName.trim() || !lastName.trim()) {
+        toast({ title: 'Missing details', description: 'Please enter your first and last name.', variant: 'destructive' });
+        return;
+      }
+
+      const { confirmationRequired } = await signUp(email.trim(), password, firstName.trim(), lastName.trim());
+      if (confirmationRequired) {
+        setConfirmationPending(true);
+        toast({
+          title: 'Check your email',
+          description: `A confirmation link was sent to ${email.trim()}.`,
+        });
+        return;
+      }
+
+      toast({ title: 'Account created', description: 'Your account is ready.' });
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Please try again.';
       toast({
         title: mode === 'signin' ? 'Sign in failed' : 'Sign up failed',
-        description: err?.message ?? 'Please try again.',
+        description: message,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setIsResending(true);
+    try {
+      await resendSignupConfirmation(email.trim());
+      toast({ title: 'Confirmation email resent', description: `A new link was sent to ${email.trim()}.` });
+    } catch (err: unknown) {
+      toast({
+        title: 'Unable to resend confirmation',
+        description: err instanceof Error ? err.message : 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -103,93 +134,95 @@ export default function Login() {
           </div>
 
           <div className="card-medical p-8">
-            <div className="mb-8">
-              <h2 className="text-2xl font-heading font-bold">
-                {mode === 'signin' ? 'Welcome back' : 'Create patient account'}
-              </h2>
-              <p className="text-muted-foreground mt-2">
-                {mode === 'signin'
-                  ? 'Sign in to access your dashboard'
-                  : 'Patients can self-register. Staff accounts are created by an administrator.'}
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {mode === 'signup' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">First name</label>
-                    <input
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="input-medical"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Last name</label>
-                    <input
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="input-medical"
-                      required
-                    />
-                  </div>
+            {confirmationPending ? (
+              <div className="text-center space-y-5">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MailCheck className="h-7 w-7" />
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Email Address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="input-medical"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 8 characters"
-                    className="input-medical pr-10"
-                    minLength={8}
-                    required
-                  />
+                <div>
+                  <h2 className="text-2xl font-heading font-bold">Confirm your email</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    We created your account. Open the confirmation link sent to <strong>{email.trim()}</strong> to activate access.
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">If you do not see it, check spam or junk mail.</p>
+                </div>
+                <div className="space-y-3">
+                  <button type="button" onClick={handleResend} disabled={isResending} className="btn-primary w-full">
+                    {isResending ? 'Resending…' : 'Resend confirmation email'}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => { setConfirmationPending(false); setMode('signin'); }}
+                    className="w-full text-sm text-primary hover:underline"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Return to sign in
                   </button>
                 </div>
               </div>
+            ) : (
+              <>
+                <div className="mb-8">
+                  <h2 className="text-2xl font-heading font-bold">
+                    {mode === 'signin' ? 'Welcome back' : 'Create patient account'}
+                  </h2>
+                  <p className="text-muted-foreground mt-2">
+                    {mode === 'signin'
+                      ? 'Sign in to access your dashboard'
+                      : 'Patients can self-register. Staff accounts are created by an administrator.'}
+                  </p>
+                </div>
 
-              <button type="submit" disabled={isLoading} className="btn-primary w-full">
-                {isLoading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create account'}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {mode === 'signup' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">First name</label>
+                        <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input-medical" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Last name</label>
+                        <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="input-medical" required />
+                      </div>
+                    </div>
+                  )}
 
-            <p className="text-sm text-muted-foreground text-center mt-6">
-              {mode === 'signin' ? "Don't have an account? " : 'Already registered? '}
-              <button
-                type="button"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="text-primary hover:underline font-medium"
-              >
-                {mode === 'signin' ? 'Sign up as a patient' : 'Sign in'}
-              </button>
-            </p>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Email Address</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="input-medical" required />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="At least 8 characters"
+                        className="input-medical pr-10"
+                        minLength={8}
+                        required
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={isLoading} className="btn-primary w-full">
+                    {isLoading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create account'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+
+                <p className="text-sm text-muted-foreground text-center mt-6">
+                  {mode === 'signin' ? "Don't have an account? " : 'Already registered? '}
+                  <button type="button" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')} className="text-primary hover:underline font-medium">
+                    {mode === 'signin' ? 'Sign up as a patient' : 'Sign in'}
+                  </button>
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
