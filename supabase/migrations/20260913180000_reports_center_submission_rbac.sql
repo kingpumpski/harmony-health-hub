@@ -1,6 +1,6 @@
 -- Keep submission lifecycle transitions server-authoritative and role-aware.
 -- Facility membership grants access to reporting data, while submission actions
--- require an appropriate operational role or administrator authority.
+-- require an established operational role or administrator authority.
 
 CREATE OR REPLACE FUNCTION public.mark_report_submissions_submitted(_submission_ids UUID[])
 RETURNS INTEGER
@@ -18,9 +18,10 @@ BEGIN
 
   IF NOT (
     public.has_role(v_user, 'admin')
-    OR public.has_role(v_user, 'doctor')
+    OR public.has_role(v_user, 'practitioner')
     OR public.has_role(v_user, 'nurse')
-    OR public.has_role(v_user, 'health_information')
+    OR public.has_role(v_user, 'midwife')
+    OR public.has_role(v_user, 'specialist_nurse')
   ) THEN
     RAISE EXCEPTION 'You are not authorized to submit reports.' USING errcode = '42501';
   END IF;
