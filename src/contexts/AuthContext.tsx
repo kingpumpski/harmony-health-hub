@@ -3,7 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { UserRole } from '@/types';
 
-interface AppUser { id: string; email: string; firstName: string; lastName: string; role: UserRole; department?: string; specialization?: string; }
+interface AppUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  department?: string;
+  specialization?: string;
+}
+
 interface AuthContextType {
   user: AppUser | null;
   session: Session | null;
@@ -20,11 +29,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
-    supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }).limit(1).maybeSingle(),
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', supabaseUser.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
   ]);
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
   if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
-  return { id: supabaseUser.id, email: supabaseUser.email ?? '', firstName: profile?.first_name ?? '', lastName: profile?.last_name ?? '', role: (roleRow?.role as UserRole) ?? 'patient', department: profile?.department ?? undefined, specialization: profile?.specialization ?? undefined };
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email ?? '',
+    firstName: profile?.first_name ?? '',
+    lastName: profile?.last_name ?? '',
+    role: (roleRow?.role as UserRole) ?? 'patient',
+    department: profile?.department ?? undefined,
+    specialization: profile?.specialization ?? undefined,
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,21 +72,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => { void applySession(newSession); });
-    void supabase.auth.getSession().then(({ data: { session: existing } }) => applySession(existing)).catch((error) => {
-      console.error('Unable to restore authentication session.', error);
-      if (mounted) { setSession(null); setUser(null); setLoading(false); }
-    });
+    void supabase.auth.getSession()
+      .then(({ data: { session: existing } }) => applySession(existing))
+      .catch((error) => {
+        console.error('Unable to restore authentication session.', error);
+        if (mounted) { setSession(null); setUser(null); setLoading(false); }
+      });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => { const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error; }, []);
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
   const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
     const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectUrl, data: { first_name: firstName, last_name: lastName } } });
     if (error) throw error;
   }, []);
+
   const logout = useCallback(async () => { await supabase.auth.signOut(); setUser(null); setSession(null); }, []);
-  const switchRole = useCallback((_role: UserRole) => { /* Legacy compatibility. Real roles come from the database. */ }, []);
+  const switchRole = useCallback((_role: UserRole) => { /* Legacy compatibility function. Real roles come from the database. */ }, []);
 
   return <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>{children}</AuthContext.Provider>;
 }
