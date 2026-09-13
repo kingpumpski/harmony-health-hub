@@ -9,6 +9,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import Index from './pages/Index';
 import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const PatientRegistration = lazy(() => import('./pages/patients/PatientRegistration'));
@@ -105,15 +106,9 @@ class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState>
       <div className="min-h-screen bg-background px-6 py-16 text-foreground">
         <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h1 className="text-xl font-semibold">Harmony Health Hub could not display this page</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The application encountered a runtime error. Your session and data have not been cleared.
-          </p>
-          <p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-            {this.state.error.message || 'Unknown application error'}
-          </p>
-          <button type="button" onClick={this.handleReload} className="btn-primary mt-4">
-            Reload application
-          </button>
+          <p className="mt-2 text-sm text-muted-foreground">The application encountered a runtime error. Your session and data have not been cleared.</p>
+          <p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">{this.state.error.message || 'Unknown application error'}</p>
+          <button type="button" onClick={this.handleReload} className="btn-primary mt-4">Reload application</button>
         </div>
       </div>
     );
@@ -134,6 +129,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
                     <Route element={<MainLayout />}>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/profile" element={<Profile />} />
