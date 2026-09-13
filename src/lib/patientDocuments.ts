@@ -95,6 +95,10 @@ export async function uploadPatientFile(patientId: string, file: File, documentT
     : validatePatientDocument(file);
   if (!validation.valid) throw new Error(validation.reason);
 
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('You must be signed in to upload a patient document.');
+
   const safeName = sanitizeFileName(file.name);
   const path = `${patientId}/${crypto.randomUUID()}-${safeName}`;
   const { error: uploadError } = await supabase.storage
@@ -110,6 +114,7 @@ export async function uploadPatientFile(patientId: string, file: File, documentT
     mime_type: file.type,
     file_size: file.size,
     notes: 'Uploaded during patient registration.',
+    uploaded_by: authData.user.id,
   } as any);
 
   if (metadataError) {

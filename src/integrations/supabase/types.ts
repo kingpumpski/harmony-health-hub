@@ -1606,8 +1606,11 @@ export type Database = {
           insurance_number: string | null
           insurance_provider: string | null
           last_name: string
+          membership_expires_at: string | null
+          membership_type: string
           patient_code: string | null
           phone: string | null
+          registration_reason: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -1635,8 +1638,11 @@ export type Database = {
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name: string
+          membership_expires_at?: string | null
+          membership_type?: string
           patient_code?: string | null
           phone?: string | null
+          registration_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -1664,8 +1670,11 @@ export type Database = {
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name?: string
+          membership_expires_at?: string | null
+          membership_type?: string
           patient_code?: string | null
           phone?: string | null
+          registration_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
