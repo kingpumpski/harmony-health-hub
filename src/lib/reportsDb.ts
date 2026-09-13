@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-type QueryResult = { data: unknown; error: { message: string } | null };
+type QueryResult = { data: unknown; error: { message: string } | null; count?: number | null };
 type ReportsQuery = PromiseLike<QueryResult> & {
   select: (columns?: string, options?: { count?: 'exact'; head?: boolean }) => ReportsQuery;
   insert: (values: unknown | unknown[]) => ReportsQuery;
