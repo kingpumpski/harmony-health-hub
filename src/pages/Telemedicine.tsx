@@ -9,10 +9,12 @@ interface Session {
   provider: string; scheduled_at: string; status: string;
   payment_required: boolean; payment_received: boolean; service_order_id: string | null;
 }
+interface BillingStatus { id: string; status: string }
 
 export default function Telemedicine() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [billing, setBilling] = useState<Record<string, string>>({});
   const [pid, setPid] = useState('');
   const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
 
@@ -26,7 +28,17 @@ export default function Telemedicine() {
       return;
     }
     setPatients(pts ?? []);
-    setSessions((ss ?? []) as Session[]);
+    const loaded = (ss ?? []) as Session[];
+    setSessions(loaded);
+
+    const orderIds = loaded.map((s) => s.service_order_id).filter((id): id is string => Boolean(id));
+    if (!orderIds.length) return setBilling({});
+    const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
+    if (orderError) {
+      toast({ title: 'Unable to load telemedicine billing status', description: orderError.message, variant: 'destructive' });
+      return;
+    }
+    setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
   };
   useEffect(() => { void loadAll(); }, []);
 
@@ -88,14 +100,16 @@ export default function Telemedicine() {
           <div className="space-y-3">
             {sessions.map((s) => {
               const p = patients.find((x) => x.id === s.patient_id);
+              const billingStatus = s.service_order_id ? billing[s.service_order_id] : undefined;
+              const released = billingStatus === 'released' || billingStatus === 'in_progress' || billingStatus === 'completed';
               return <div key={s.id} className="rounded-xl border border-border p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
                   <div className="min-w-0"><p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : '—'}</p><p className="text-xs text-muted-foreground">{new Date(s.scheduled_at).toLocaleString()} · Room: {s.room_name}</p></div>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-info/15 text-info self-start">{s.status}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
-                  {s.payment_required && !s.payment_received && <span className="text-xs text-warning">Billing release required</span>}
-                  {s.payment_received && <span className="text-xs text-success">✓ Billing released</span>}
+                  {s.payment_required && !released && <span className="text-xs text-warning">Billing release required</span>}
+                  {released && <span className="text-xs text-success">✓ Billing released</span>}
                   {s.status !== 'completed' && <button type="button" onClick={() => void startSession(s)} className="btn-primary text-xs inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Join call</button>}
                   {s.status === 'active' && <button type="button" onClick={() => void endSession(s.id)} className="btn-ghost text-xs">End</button>}
                 </div>
