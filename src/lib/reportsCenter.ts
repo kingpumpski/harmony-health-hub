@@ -60,9 +60,13 @@ export async function listFacilities(): Promise<HealthcareFacility[]> {
 }
 
 export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_active'>): Promise<HealthcareFacility> {
-  const { data, error } = await reportsDb.from('healthcare_facilities').insert(input).select('id,name,facility_code,facility_type,district,region,dhims2_uid,is_active').single();
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error('An authenticated administrator is required to create a facility.');
+  const { data, error } = await reportsDb.from('healthcare_facilities').insert({ ...input, created_by: userId }).select('id,name,facility_code,facility_type,district,region,dhims2_uid,is_active').single();
   if (error) throw new Error(error.message);
   const facility = data as HealthcareFacility;
+  const membership = await reportsDb.from('facility_memberships').upsert({ facility_id: facility.id, user_id: userId, access_scope: 'facility', is_active: true }, { onConflict: 'facility_id,user_id' });
+  if (membership.error) throw new Error(`Facility created but membership setup failed: ${membership.error.message}`);
   const seed = await reportsDb.rpc('seed_facility_reports', { _facility_id: facility.id });
   if (seed.error) throw new Error(seed.error.message);
   return facility;
@@ -100,10 +104,15 @@ export async function generateRun(facilityId: string, period: string, configs: F
   const enabled = configs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
-  const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: new Date().toISOString(), parameters: { period } }).select('*').single();
-  if (runError) throw new Error(runError.message);
+  if (!userId) throw new Error('An authenticated user is required to generate reports.');
+  const now = new Date().toISOString();
+  const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('*').single();
+  if (runError) {
+    if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.');
+    throw new Error(runError.message);
+  }
   const run = runData as ReportRun;
-  const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: new Date().toISOString() }))).select('*');
+  const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('*');
   if (itemError) throw new Error(itemError.message);
   const items = itemData as ReportRunItem[];
   let success = 0;
@@ -161,6 +170,7 @@ export async function listSubmissions(facilityId: string, period: string): Promi
 export async function markSubmissionsSubmitted(ids: string[]) {
   if (!ids.length) return;
   const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error('An authenticated user is required to update submissions.');
   const { error } = await reportsDb.from('report_submissions').update({ status: 'submitted', submitted_at: new Date().toISOString(), submitted_by: userId }).in('id', ids);
   if (error) throw new Error(error.message);
 }
