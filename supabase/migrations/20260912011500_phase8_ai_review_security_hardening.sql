@@ -8,7 +8,6 @@ CREATE POLICY "Clinical staff read AI sessions"
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'lab_technician'::public.app_role)
     OR public.has_role(auth.uid(), 'pharmacist'::public.app_role)
   );
@@ -23,7 +22,6 @@ CREATE POLICY "Clinical staff create AI sessions"
       OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
       OR public.has_role(auth.uid(), 'nurse'::public.app_role)
       OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-      OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
       OR public.has_role(auth.uid(), 'lab_technician'::public.app_role)
       OR public.has_role(auth.uid(), 'pharmacist'::public.app_role)
     )
@@ -53,7 +51,6 @@ BEGIN
   IF NOT (
     public.has_role(auth.uid(), 'admin'::public.app_role)
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
     OR public.has_role(auth.uid(), 'pharmacist'::public.app_role)
@@ -89,6 +86,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.review_ai_clinical_session(UUID, TEXT, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.review_ai_clinical_session(UUID, TEXT, JSONB) TO authenticated;
 COMMENT ON FUNCTION public.review_ai_clinical_session(UUID, TEXT, JSONB) IS
   'Records a qualified clinician review of an AI clinical decision-support session; never grants autonomous clinical authority.';
