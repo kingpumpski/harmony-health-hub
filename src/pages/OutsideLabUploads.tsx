@@ -18,12 +18,16 @@ export default function OutsideLabUploads() {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from('outside_lab_documents').select('*').order('created_at', { ascending: false }).limit(50);
+    const { data, error } = await supabase.from('outside_lab_documents').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error) {
+      toast({ title: 'Unable to load outside-lab documents', description: error.message, variant: 'destructive' });
+      return;
+    }
     setDocs((data ?? []) as Doc[]);
   };
 
   useEffect(() => {
-    load();
+    void load();
     supabase.from('patients').select('id, first_name, last_name').limit(200).then(({ data }) => setPatients(data ?? []));
   }, []);
 
@@ -31,18 +35,26 @@ export default function OutsideLabUploads() {
     e.preventDefault();
     if (!file || !pid) return toast({ title: 'Patient and file required', variant: 'destructive' });
     setBusy(true);
+    let uploadedPath: string | null = null;
     try {
-      const path = `${pid}/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage.from('outside-lab').upload(path, file);
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${pid}/${crypto.randomUUID()}-${safeName}`;
+      uploadedPath = path;
+      const { error: upErr } = await supabase.storage.from('outside-lab').upload(path, file, { upsert: false });
       if (upErr) throw upErr;
-      const { data: doc, error: dErr } = await supabase.from('outside_lab_documents').insert({
-        patient_id: pid, document_type: type, title: title || file.name,
-        storage_path: path, mime_type: file.type, uploaded_by: user?.id,
-      }).select().single();
+
+      const { data: doc, error: dErr } = await (supabase as any).rpc('register_outside_lab_document', {
+        _patient_id: pid,
+        _document_type: type,
+        _title: title || file.name,
+        _storage_path: path,
+        _mime_type: file.type || null,
+      });
       if (dErr) throw dErr;
 
-      // Trigger AI analysis (best-effort, fire and forget)
-      supabase.functions.invoke('analyze-lab-document', { body: { documentId: doc.id, title: title || file.name, documentType: type } });
+      void supabase.functions.invoke('analyze-lab-document', {
+        body: { documentId: doc.id, title: title || file.name, documentType: type },
+      });
 
       playSuccessSound();
       toast({
@@ -50,11 +62,15 @@ export default function OutsideLabUploads() {
         description: 'Document uploaded. AI analysis is running and clinicians will be notified.',
       });
       setFile(null); setTitle(''); setPid('');
-      load();
+      void load();
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+      if (uploadedPath) {
+        await supabase.storage.from('outside-lab').remove([uploadedPath]);
+      }
+      toast({ title: 'Upload failed', description: err?.message ?? 'Unable to register document', variant: 'destructive' });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (
@@ -83,9 +99,9 @@ export default function OutsideLabUploads() {
         <div className="space-y-3">
           {docs.map((d) => (
             <div key={d.id} className="rounded-xl border border-border p-4">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium flex items-center gap-2"><FileText className="w-4 h-4" /> {d.title} <span className="text-muted-foreground">· {d.document_type}</span></span>
-                <span className="text-muted-foreground">{new Date(d.created_at).toLocaleString()}</span>
+              <div className="flex justify-between text-sm gap-3">
+                <span className="font-medium flex items-center gap-2 min-w-0"><FileText className="w-4 h-4 shrink-0" /> <span className="truncate">{d.title}</span> <span className="text-muted-foreground shrink-0">· {d.document_type}</span></span>
+                <span className="text-muted-foreground shrink-0">{new Date(d.created_at).toLocaleString()}</span>
               </div>
               {d.ai_analysis ? (
                 <div className="mt-2 text-xs bg-primary/5 border border-primary/20 rounded p-3">
