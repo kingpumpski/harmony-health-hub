@@ -19,7 +19,6 @@ BEGIN
     OR public.has_role(auth.uid(),'practitioner'::public.app_role)
     OR public.has_role(auth.uid(),'nurse'::public.app_role)
     OR public.has_role(auth.uid(),'midwife'::public.app_role)
-    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical access required';
