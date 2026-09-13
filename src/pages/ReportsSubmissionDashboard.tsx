@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SubmissionDashboard } from '@/components/reports/SubmissionDashboard';
+import SubmissionDashboard from '@/components/reports/SubmissionDashboard';
 import { listFacilities, type HealthcareFacility } from '@/lib/reportsCenter';
 
 function previousMonth() {
