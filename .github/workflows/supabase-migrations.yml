@@ -3,11 +3,14 @@ name: Supabase migrations
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: 'Validate migrations without applying them'
-        required: false
-        default: true
-        type: boolean
+      mode:
+        description: 'Choose whether to validate or apply the migration chain'
+        required: true
+        default: validate
+        type: choice
+        options:
+          - validate
+          - apply
 
 permissions:
   contents: read
@@ -38,13 +41,13 @@ jobs:
         run: supabase migration list --linked
 
       - name: Validate migrations
-        if: ${{ inputs.dry_run == true }}
+        if: ${{ inputs.mode == 'validate' }}
         run: supabase db push --linked --dry-run
 
       - name: Apply migrations
-        if: ${{ inputs.dry_run != true }}
+        if: ${{ inputs.mode == 'apply' }}
         run: supabase db push --linked
 
       - name: Verify database lint
-        if: ${{ inputs.dry_run != true }}
+        if: ${{ inputs.mode == 'apply' }}
         run: supabase db lint --linked --fail-on error
