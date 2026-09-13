@@ -7,8 +7,6 @@ export function brokeredPreviewStorage() {
   const host = location.hostname;
   const PREVIEW_ZONES = ['lovableproject.com', 'lovableproject-dev.com', 'lovable.app', 'gpt-eng.com', 'gptengineer.run'];
   const onPreviewZone = PREVIEW_ZONES.some((z) => host === z || host.endsWith('.' + z));
-  // Read the id only from non-user-controlled host positions, so a user-named
-  // preview--<name> host can't smuggle another project's id.
   const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
   const projectId = onPreviewZone
     ? (host.match(new RegExp('^(?:id-preview(?:-[a-z0-9]+)?|project)--(' + UUID + ')(?:-dev)?(?=\\.|$)', 'i'))?.[1]
@@ -17,8 +15,6 @@ export function brokeredPreviewStorage() {
   const framed = window.parent && window.parent !== window;
   if (!projectId || !framed) return localStorage;
 
-  // Post only to the real editor ancestor, validated as a Lovable origin, so the
-  // session token can never reach an untrusted embedder.
   const dev = host.endsWith('.lovableproject-dev.com') || host.endsWith('.gpt-eng.com');
   const EDITOR = dev
     ? /^https:\/\/([a-z0-9-]+\.)*(lovable\.dev|gptengineer\.app)$|^http:\/\/localhost:3000$/
