@@ -4,17 +4,21 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
+    if (loading) return;
+    navigate(isAuthenticated ? '/dashboard' : '/login', { replace: true });
+  }, [isAuthenticated, loading, navigate]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="text-center">
+        <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+        <p className="text-sm text-muted-foreground">Loading Harmony Health Hub…</p>
+      </div>
+    </div>
+  );
 };
 
 export default Index;
