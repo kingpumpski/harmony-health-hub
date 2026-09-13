@@ -1,1 +1,7 @@
-project_id = "pmebpkcufyrbjhawsiyn"
+project_id = "ygqoptvezotdqhtimdkr"
+
+[storage.buckets.outside-lab]
+public = false
+
+[storage.buckets.patient-documents]
+public = false
