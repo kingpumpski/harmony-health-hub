@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Video, Plus, ExternalLink, Phone, AlertCircle } from 'lucide-react';
+import { Video, Plus, ExternalLink, AlertCircle } from 'lucide-react';
 
 interface Patient { id: string; first_name: string; last_name: string }
 interface Session {
   id: string; patient_id: string; practitioner_id: string | null; room_name: string;
   provider: string; scheduled_at: string; status: string;
-  payment_required: boolean; payment_received: boolean;
+  payment_required: boolean; payment_received: boolean; service_order_id: string | null;
 }
 
 export default function Telemedicine() {
-  const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [pid, setPid] = useState('');
@@ -41,14 +39,8 @@ export default function Telemedicine() {
       _provider: 'jitsi',
     });
     if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
-    toast({ title: 'Video session scheduled' });
+    toast({ title: 'Video session scheduled', description: 'Accounts must release the telemedicine service order in Billing before the consultation can start.' });
     setPid('');
-    void loadAll();
-  };
-
-  const markPaid = async (id: string) => {
-    const { error } = await (supabase as any).rpc('mark_video_session_paid', { _session_id: id });
-    if (error) return toast({ title: 'Payment update failed', description: error.message, variant: 'destructive' });
     void loadAll();
   };
 
@@ -72,12 +64,12 @@ export default function Telemedicine() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Video className="w-6 h-6 text-primary" /> Telemedicine</h1>
-        <p className="text-muted-foreground">Video consultations with server-enforced payment and lifecycle controls.</p>
+        <p className="text-muted-foreground">Video consultations with server-enforced billing and lifecycle controls.</p>
       </div>
 
       <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm flex items-start gap-2">
-        <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-        <div><strong>Clinical safety:</strong> video sessions are payment-gated and lifecycle transitions are authorized server-side. The current browser provider is Jitsi; replace it with an approved managed provider before handling regulated production telehealth traffic if your facility requires managed recording, identity assurance, or contractual controls.</div>
+        <AlertCircle className="w-4 h-4 text-info mt-0.5 shrink-0" />
+        <div><strong>Clinical safety:</strong> every scheduled consultation creates a billable TELEMEDICINE service order. Accounts releases it through Billing after payment or an authorized override; the practitioner cannot start the session before release. The current browser provider is Jitsi; replace it with an approved managed provider before regulated production telehealth traffic if your facility requires managed recording, identity assurance, or contractual controls.</div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
@@ -102,8 +94,8 @@ export default function Telemedicine() {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-info/15 text-info self-start">{s.status}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
-                  {s.payment_required && !s.payment_received && <button type="button" onClick={() => void markPaid(s.id)} className="btn-ghost text-xs inline-flex items-center gap-1"><Phone className="w-3 h-3" /> Mark paid</button>}
-                  {s.payment_received && <span className="text-xs text-success">✓ Paid</span>}
+                  {s.payment_required && !s.payment_received && <span className="text-xs text-warning">Billing release required</span>}
+                  {s.payment_received && <span className="text-xs text-success">✓ Billing released</span>}
                   {s.status !== 'completed' && <button type="button" onClick={() => void startSession(s)} className="btn-primary text-xs inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Join call</button>}
                   {s.status === 'active' && <button type="button" onClick={() => void endSession(s.id)} className="btn-ghost text-xs">End</button>}
                 </div>
