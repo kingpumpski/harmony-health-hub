@@ -40,7 +40,6 @@ BEGIN
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'You are not authorized to create appointments'; END IF;
   IF _scheduled_at IS NULL THEN RAISE EXCEPTION 'Appointment time is required'; END IF;
@@ -66,7 +65,6 @@ BEGIN
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Only attending clinical officers may claim appointments'; END IF;
 
   UPDATE public.appointments
@@ -108,7 +106,6 @@ BEGIN
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'You are not authorized to edit appointments'; END IF;
 
@@ -158,7 +155,6 @@ BEGIN
     OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
     OR public.has_role(auth.uid(), 'nurse'::public.app_role)
     OR public.has_role(auth.uid(), 'midwife'::public.app_role)
-    OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Only clinical officers may start encounters'; END IF;
 
   SELECT * INTO appt FROM public.appointments WHERE id = _appointment_id FOR UPDATE;
@@ -199,6 +195,10 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.create_appointment_workflow(UUID, TIMESTAMPTZ, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_appointment(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.update_appointment_workflow(UUID, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.start_appointment_encounter(UUID, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_appointment_workflow(UUID, TIMESTAMPTZ, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_appointment(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_appointment_workflow(UUID, TIMESTAMPTZ, TEXT, TEXT, TEXT, TEXT) TO authenticated;
