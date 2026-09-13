@@ -173,7 +173,11 @@ export async function getRunItems(runId: string): Promise<ReportRunItem[]> {
 
 export async function listSubmissions(facilityId: string, period: string): Promise<ReportSubmission[]> {
   const { start, end } = monthBounds(period);
-  const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).order('due_date');
+  const periodStart = start.slice(0, 10);
+  const periodEnd = end.slice(0, 10);
+  const sync = await reportsDb.rpc('sync_overdue_report_submissions', { _facility_id: facilityId, _period_start: periodStart, _period_end: periodEnd });
+  if (sync.error) throw new Error(sync.error.message);
+  const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date');
   if (error) throw new Error(error.message);
   return (data ?? []) as ReportSubmission[];
 }
