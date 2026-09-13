@@ -24,7 +24,7 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
   const overdue = rows.filter((row) => row.status === 'overdue').length;
   const submitted = rows.filter((row) => ['submitted', 'accepted'].includes(row.status)).length;
   const completeness = rows.length ? Math.round((submitted / rows.length) * 100) : 0;
-  const dueSoon = useMemo(() => rows.filter((row) => row.status === 'pending').slice(0, 6), [rows]);
+  const dueSoon = useMemo(() => rows.filter((row) => ['pending', 'overdue'].includes(row.status)).slice(0, 6), [rows]);
 
   async function submitAllReady() {
     const ids = rows.filter((row) => ['pending', 'overdue'].includes(row.status)).map((row) => row.id);
