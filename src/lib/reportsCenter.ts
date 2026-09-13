@@ -62,14 +62,17 @@ export async function listFacilities(): Promise<HealthcareFacility[]> {
 export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_active'>): Promise<HealthcareFacility> {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated administrator is required to create a facility.');
-  const { data, error } = await reportsDb.from('healthcare_facilities').insert({ ...input, created_by: userId }).select('id,name,facility_code,facility_type,district,region,dhims2_uid,is_active').single();
+  const { data, error } = await reportsDb.rpc('create_reports_facility', {
+    _name: input.name,
+    _facility_code: input.facility_code,
+    _facility_type: input.facility_type,
+    _district: input.district,
+    _region: input.region,
+    _dhims2_uid: input.dhims2_uid,
+  });
   if (error) throw new Error(error.message);
-  const facility = data as HealthcareFacility;
-  const membership = await reportsDb.from('facility_memberships').upsert({ facility_id: facility.id, user_id: userId, access_scope: 'facility', is_active: true }, { onConflict: 'facility_id,user_id' });
-  if (membership.error) throw new Error(`Facility created but membership setup failed: ${membership.error.message}`);
-  const seed = await reportsDb.rpc('seed_facility_reports', { _facility_id: facility.id });
-  if (seed.error) throw new Error(seed.error.message);
-  return facility;
+  if (!data) throw new Error('Facility creation returned no facility record.');
+  return data as HealthcareFacility;
 }
 
 export async function listDefinitions(): Promise<ReportDefinition[]> {
@@ -105,7 +108,18 @@ export async function generateRun(facilityId: string, period: string, configs: F
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
+
+  const recovery = await reportsDb.rpc('recover_stale_report_run', { _run_id: '00000000-0000-0000-0000-000000000000', _stale_after_minutes: 30 });
+  if (recovery.error && !recovery.error.message.toLowerCase().includes('report generation run not found')) throw new Error(recovery.error.message);
+
   const now = new Date().toISOString();
+  const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
+  if (activeRunError) throw new Error(activeRunError.message);
+  for (const activeRun of (activeRuns ?? []) as ReportRun[]) {
+    const result = await reportsDb.rpc('recover_stale_report_run', { _run_id: activeRun.id, _stale_after_minutes: 30 });
+    if (result.error) throw new Error(result.error.message);
+  }
+
   const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('*').single();
   if (runError) {
     if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.');
@@ -196,6 +210,8 @@ export function downloadRunManifestCsv(run: ReportRun, items: ReportRunItem[], f
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `Reports_Manifest_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.csv`;
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
   URL.revokeObjectURL(url);
 }
