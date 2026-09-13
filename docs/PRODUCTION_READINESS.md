@@ -8,6 +8,8 @@ The application is being reconciled against the master HIMS reconciliation list 
 - high-value operational tables have authenticated direct INSERT/UPDATE/DELETE revoked where the UI has been migrated to secure RPCs;
 - clinical changes are captured by the central system audit trail;
 - payment-gated service orders remain the release boundary for chargeable clinical work;
+- telemedicine scheduling now creates a billable `TELEMEDICINE` service order and cannot start until that order is released by Billing;
+- outside-lab metadata registration is audited through an RPC and the outside-lab storage bucket is explicitly private;
 - sensitive patient continuity access is restricted to clinical/authorized operational roles;
 - notification read mutations are user/role scoped through RPCs;
 - telemedicine lifecycle mutations are server-authorized;
@@ -36,6 +38,7 @@ The connected remote database was last verified to have an empty migration histo
 11. Complete browser-level smoke tests for registration, appointment, triage, encounter, laboratory, pharmacy, billing, admission, emergency, theatre, transfusion, claims and notifications.
 12. Verify backups, restore procedures, audit-log retention and operational monitoring.
 13. Replace demo-grade telemedicine provider configuration with the facility-approved provider and contractual/privacy controls where required.
+14. Configure an active `TELEMEDICINE` service tariff before enabling telemedicine scheduling; the server deliberately rejects scheduling when the tariff is missing or zero-priced.
 
 ## Master reconciliation coverage
 
