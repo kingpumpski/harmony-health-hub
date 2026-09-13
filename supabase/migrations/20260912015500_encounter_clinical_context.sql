@@ -16,8 +16,7 @@ BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
     public.has_role(v_user,'admin') OR public.has_role(v_user,'practitioner') OR
-    public.has_role(v_user,'nurse') OR public.has_role(v_user,'midwife') OR
-    public.has_role(v_user,'specialist_nurse')
+    public.has_role(v_user,'nurse') OR public.has_role(v_user,'midwife')
   ) THEN RAISE EXCEPTION 'Clinical access required'; END IF;
 
   SELECT jsonb_build_object(
@@ -67,4 +66,5 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.get_encounter_clinical_context(UUID, UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_encounter_clinical_context(UUID, UUID) TO authenticated;
