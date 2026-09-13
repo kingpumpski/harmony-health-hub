@@ -109,9 +109,6 @@ export async function generateRun(facilityId: string, period: string, configs: F
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
 
-  const recovery = await reportsDb.rpc('recover_stale_report_run', { _run_id: '00000000-0000-0000-0000-000000000000', _stale_after_minutes: 30 });
-  if (recovery.error && !recovery.error.message.toLowerCase().includes('report generation run not found')) throw new Error(recovery.error.message);
-
   const now = new Date().toISOString();
   const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
   if (activeRunError) throw new Error(activeRunError.message);
