@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, CalendarDays, CheckCircle2, ChevronDown, Download, FileSpreadsheet, FileText, Loader2, Plus, RefreshCw, Settings2, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { BarChart3, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Plus, RefreshCw, Settings2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
