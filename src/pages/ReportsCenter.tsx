@@ -21,6 +21,7 @@ function previousMonth() {
 
 export default function ReportsCenter() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [facilities, setFacilities] = useState<HealthcareFacility[]>([]);
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
   const [configs, setConfigs] = useState<FacilityReportConfig[]>([]);
@@ -59,6 +60,7 @@ export default function ReportsCenter() {
   useEffect(() => { if (!selectedFacilityId) return; listFacilityConfigs(selectedFacilityId).then(setConfigs).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility reports.')); }, [selectedFacilityId]);
 
   async function toggle(config: FacilityReportConfig) {
+    if (!isAdmin) return;
     try { await setReportEnabled(selectedFacilityId, config.report_id, !config.is_enabled); setConfigs((current) => current.map((entry) => entry.id === config.id ? { ...entry, is_enabled: !entry.is_enabled } : entry)); }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to update report configuration.'); }
   }
@@ -94,12 +96,12 @@ export default function ReportsCenter() {
           <p className="text-muted-foreground">Facility-configured public-health reporting with traceable generation and submission readiness.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {user?.role === 'admin' && <button className="btn-secondary inline-flex items-center gap-2" onClick={() => setShowSetup((value) => !value)}><Plus className="h-4 w-4" /> Facility</button>}
+          {isAdmin && <button className="btn-secondary inline-flex items-center gap-2" onClick={() => setShowSetup((value) => !value)}><Plus className="h-4 w-4" /> Facility</button>}
           <button className="btn-secondary inline-flex items-center gap-2" onClick={() => void load()}><RefreshCw className="h-4 w-4" /> Refresh</button>
         </div>
       </div>
 
-      {showSetup && user?.role === 'admin' && <section className="card-medical p-5 space-y-4">
+      {showSetup && isAdmin && <section className="card-medical p-5 space-y-4">
         <div><h2 className="font-semibold">Add healthcare facility</h2><p className="text-sm text-muted-foreground">Create the facility boundary first; its report catalogue is seeded from facility type.</p></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <input className="input" placeholder="Facility name" value={facilityForm.name} onChange={(e) => setFacilityForm({ ...facilityForm, name: e.target.value })} />
@@ -112,7 +114,7 @@ export default function ReportsCenter() {
         <button className="btn-primary" onClick={() => void createNewFacility()}>Create facility</button>
       </section>}
 
-      {!facilities.length ? <section className="card-medical p-8 text-center space-y-3"><Settings2 className="mx-auto h-8 w-8 text-primary" /><h2 className="text-lg font-semibold">Facility setup required</h2><p className="text-sm text-muted-foreground">Reports are facility-scoped. An administrator must create the first facility before reports can be activated or generated.</p>{user?.role === 'admin' && <button className="btn-primary inline-flex items-center gap-2" onClick={() => setShowSetup(true)}><Plus className="h-4 w-4" /> Create facility</button>}</section> : <>
+      {!facilities.length ? <section className="card-medical p-8 text-center space-y-3"><Settings2 className="mx-auto h-8 w-8 text-primary" /><h2 className="text-lg font-semibold">Facility setup required</h2><p className="text-sm text-muted-foreground">Reports are facility-scoped. An administrator must create the first facility before reports can be activated or generated.</p>{isAdmin && <button className="btn-primary inline-flex items-center gap-2" onClick={() => setShowSetup(true)}><Plus className="h-4 w-4" /> Create facility</button>}</section> : <>
         <section className="grid gap-4 md:grid-cols-4">
           <div className="card-medical p-5"><p className="text-xs uppercase tracking-wide text-muted-foreground">Facility</p><select className="mt-2 w-full bg-transparent font-semibold outline-none" value={selectedFacilityId} onChange={(e) => setSelectedFacilityId(e.target.value)}>{facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}</option>)}</select><p className="mt-1 text-xs text-muted-foreground">{selectedFacility?.facility_type.replaceAll('_', ' ')}</p></div>
           <div className="card-medical p-5"><p className="text-xs uppercase tracking-wide text-muted-foreground">Activated monthly</p><p className="mt-2 text-2xl font-bold">{enabledConfigs.length}</p><p className="text-xs text-muted-foreground">of {definitions.filter((definition) => definition.frequency === 'monthly').length} monthly definitions</p></div>
@@ -133,7 +135,7 @@ export default function ReportsCenter() {
 
         <section className="card-medical p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-semibold">Activated report library</h2><p className="text-sm text-muted-foreground">Only reports activated for the selected facility are eligible for bulk generation.</p></div><div className="flex flex-col gap-2 sm:flex-row"><input className="input" placeholder="Search reports" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input" value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div></div>
-          <div className="mt-5 grid gap-3">{visibleConfigs.map((config) => { const report = config.report!; return <div key={config.id} className={cn('flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between', config.is_enabled ? 'border-primary/30 bg-primary/5' : 'border-border')}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-mono text-muted-foreground">{report.report_code}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{report.frequency}</span>{report.implementation_status === 'seeded' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Validation pending</span>}</div><p className="mt-1 font-medium">{report.report_name}</p><p className="text-xs text-muted-foreground">{report.description}</p></div><button className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors', config.is_enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')} onClick={() => void toggle(config)}>{config.is_enabled ? 'Activated' : 'Activate'}</button></div>; })}</div>
+          <div className="mt-5 grid gap-3">{visibleConfigs.map((config) => { const report = config.report!; return <div key={config.id} className={cn('flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between', config.is_enabled ? 'border-primary/30 bg-primary/5' : 'border-border')}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-mono text-muted-foreground">{report.report_code}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{report.frequency}</span>{report.implementation_status === 'seeded' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Validation pending</span>}</div><p className="mt-1 font-medium">{report.report_name}</p><p className="text-xs text-muted-foreground">{report.description}</p></div>{isAdmin ? <button className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors', config.is_enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')} onClick={() => void toggle(config)}>{config.is_enabled ? 'Activated' : 'Activate'}</button> : <span className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium', config.is_enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{config.is_enabled ? 'Activated' : 'Not activated'}</span>}</div>; })}</div>
         </section>
 
         <section className="card-medical p-5"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-primary" /><div><h2 className="text-lg font-semibold">Compliance dashboard foundation</h2><p className="text-sm text-muted-foreground">Submission records are stored per facility, report and period so completeness/timeliness rates can be added without changing the generation model.</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Generation completeness</p><p className="mt-1 text-xl font-bold">{run ? `${run.total_reports ? Math.round(((run.success_count + run.warning_count) / run.total_reports) * 100) : 0}%` : '—'}</p></div><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Timeliness</p><p className="mt-1 text-xl font-bold">Submission tracking ready</p></div><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">DHIMS2 integration</p><p className="mt-1 text-xl font-bold">Phase 2</p></div></div></section>
