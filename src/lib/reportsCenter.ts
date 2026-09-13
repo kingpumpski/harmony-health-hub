@@ -8,7 +8,7 @@ export interface ReportCategory { id: string; name: string; display_order: numbe
 export interface ReportDefinition { id: string; report_code: string; report_name: string; category_id: string | null; description: string | null; frequency: ReportFrequency; parameters: string[]; default_parameters: Record<string, unknown>; extractor_key: string; supported_formats: string[]; submission_deadline_day: number; is_active: boolean; implementation_status: 'seeded' | 'mapped' | 'validated' | 'retired'; category?: ReportCategory | null; }
 export interface HealthcareFacility { id: string; name: string; facility_code: string | null; facility_type: string; district: string | null; region: string | null; dhims2_uid: string | null; is_active: boolean; }
 export interface FacilityReportConfig { id: string; facility_id: string; report_id: string; is_enabled: boolean; submission_deadline_day: number | null; custom_parameters: Record<string, unknown>; report?: ReportDefinition; }
-export interface ReportSnapshot { total: number; by_dimension: Array<{ dimension: string; value: string; count: number }>; source: string; warning?: string; }
+export interface ReportSnapshot { total: number; by_dimension: Array<{ dimension: string; value: string; count: number }>; source: string; warning?: string; error?: string; }
 export interface ReportRunItem { id: string; run_id: string; report_id: string; status: ReportStatus; output_format: 'xlsx' | 'csv' | 'pdf'; file_name: string | null; data_snapshot: ReportSnapshot; validation_messages: string[]; error_message: string | null; }
 export interface ReportRun { id: string; facility_id: string; period_start: string; period_end: string; frequency: ReportFrequency; status: string; total_reports: number; success_count: number; warning_count: number; failed_count: number; created_at: string; completed_at: string | null; }
 export interface ReportSubmission { id: string; report_id: string; facility_id: string; period_start: string; period_end: string; due_date: string; status: 'pending' | 'submitted' | 'overdue' | 'accepted' | 'rejected'; submitted_at: string | null; submitted_by: string | null; submission_reference: string | null; }
@@ -49,7 +49,7 @@ async function extractSnapshot(report: ReportDefinition, period: string): Promis
         return { total: 0, by_dimension: [], source: SOURCE_TABLES[report.extractor_key] ?? 'data dictionary mapping', warning: 'No validated source adapter is registered yet. This report remains seeded/configurable but is not presented as DHIMS2-validated output.' };
     }
   } catch (error) {
-    return { total: 0, by_dimension: [], source: SOURCE_TABLES[report.extractor_key] ?? 'unknown', warning: error instanceof Error ? error.message : 'Unable to read source data.' };
+    return { total: 0, by_dimension: [], source: SOURCE_TABLES[report.extractor_key] ?? 'unknown', error: error instanceof Error ? error.message : 'Unable to read source data.' };
   }
 }
 
@@ -115,7 +115,13 @@ export async function generateRun(facilityId: string, period: string, configs: F
   for (const item of items) {
     const config = enabled.find((entry) => entry.report_id === item.report_id);
     if (!config?.report) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: 'Report definition was not available for the activated configuration.', completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
-    const snapshot = await extractSnapshot(config.report, period); const hasWarning = Boolean(snapshot.warning); const status: ReportStatus = hasWarning ? 'warning' : 'completed';
+    const snapshot = await extractSnapshot(config.report, period);
+    if (snapshot.error) {
+      failed += 1;
+      await reportsDb.from('report_generation_items').update({ status: 'failed', data_snapshot: snapshot, validation_messages: [snapshot.error], error_message: snapshot.error, file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
+      continue;
+    }
+    const hasWarning = Boolean(snapshot.warning); const status: ReportStatus = hasWarning ? 'warning' : 'completed';
     const { error: itemUpdateError } = await reportsDb.from('report_generation_items').update({ status, data_snapshot: snapshot, validation_messages: snapshot.warning ? [snapshot.warning] : [], file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
     if (itemUpdateError) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: itemUpdateError.message, completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
     if (hasWarning) warning += 1; else success += 1;
