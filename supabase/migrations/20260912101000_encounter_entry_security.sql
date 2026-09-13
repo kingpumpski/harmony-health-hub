@@ -13,7 +13,7 @@ AS $$
 DECLARE result public.encounters;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN
     RAISE EXCEPTION 'Only authorized clinical staff may create encounters';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN RAISE EXCEPTION 'Patient does not exist'; END IF;
@@ -30,7 +30,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE result public.diagnoses;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.encounters WHERE id = _encounter_id) THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
   IF NULLIF(trim(_diagnosis), '') IS NULL THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
   INSERT INTO public.diagnoses (encounter_id, diagnosis, is_principal) VALUES (_encounter_id, trim(_diagnosis), false) RETURNING * INTO result;
@@ -44,7 +44,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE result public.diagnoses;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to set principal diagnosis'; END IF;
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to set principal diagnosis'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.diagnoses WHERE id = _diagnosis_id AND encounter_id = _encounter_id) THEN RAISE EXCEPTION 'Diagnosis does not belong to encounter'; END IF;
   UPDATE public.diagnoses SET is_principal = false WHERE encounter_id = _encounter_id;
   UPDATE public.diagnoses SET is_principal = true WHERE id = _diagnosis_id RETURNING * INTO result;
@@ -57,7 +57,7 @@ CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to remove diagnoses'; END IF;
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to remove diagnoses'; END IF;
   DELETE FROM public.diagnoses WHERE id = _diagnosis_id;
 END;
 $$;
@@ -74,7 +74,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE result public.prescriptions; patient_id_value UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
   SELECT patient_id INTO patient_id_value FROM public.encounters WHERE id = _encounter_id;
   IF patient_id_value IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
   IF NULLIF(trim(_medication), '') IS NULL THEN RAISE EXCEPTION 'Medication is required'; END IF;
@@ -91,7 +91,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE result public.encounters;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
+  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.encounters WHERE id = _encounter_id AND principal_diagnosis IS NOT NULL AND NULLIF(trim(principal_diagnosis), '') IS NOT NULL) THEN RAISE EXCEPTION 'Principal diagnosis required'; END IF;
   UPDATE public.encounters SET status = 'completed', completed_at = COALESCE(completed_at, now()), updated_at = COALESCE(updated_at, now()) WHERE id = _encounter_id RETURNING * INTO result;
   IF result.id IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
