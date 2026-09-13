@@ -90,7 +90,9 @@ export async function setReportEnabled(facilityId: string, reportId: string, ena
 function dueDateFor(period: string, deadline: number) {
   const [year, month] = period.split('-').map(Number);
   const safeDeadline = Math.min(31, Math.max(1, Math.trunc(deadline || 1)));
-  return new Date(Date.UTC(year, month, safeDeadline)).toISOString().slice(0, 10);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const effectiveDeadline = Math.min(safeDeadline, daysInMonth);
+  return new Date(Date.UTC(year, month - 1, effectiveDeadline)).toISOString().slice(0, 10);
 }
 
 export async function generateRun(facilityId: string, period: string, configs: FacilityReportConfig[]) {
@@ -151,6 +153,6 @@ export async function downloadRunWorkbook(run: ReportRun, items: ReportRunItem[]
 }
 
 export function downloadRunManifestCsv(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
-  const rows = [['Report', 'Status', 'Source', 'Total', 'Warnings'], ...items.map((item) => [item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join(' | ')] )];
+  const rows = [['Report', 'Status', 'Source', 'Total', 'Warnings'], ...items.map((item) => [item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join(' | ')])];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `Reports_Manifest_${facility.name.replace(/[^A-Za-z0-9]+/g, '_')}_${run.period_start.slice(0, 7)}.csv`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
 }
