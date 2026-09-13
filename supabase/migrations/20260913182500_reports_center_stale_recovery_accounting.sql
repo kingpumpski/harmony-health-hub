@@ -19,7 +19,7 @@ DECLARE
   v_warning INTEGER := 0;
   v_failed INTEGER := 0;
   v_total INTEGER := 0;
-  v_final_status TEXT;
+  v_final_status public.report_generation_runs.status%TYPE;
 BEGIN
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'Authentication is required';
