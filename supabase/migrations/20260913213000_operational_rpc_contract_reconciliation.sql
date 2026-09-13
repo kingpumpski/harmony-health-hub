@@ -58,8 +58,7 @@ BEGIN
     department,
     reason,
     status,
-    treatment_status,
-    created_by
+    treatment_status
   )
   VALUES (
     _patient_id,
@@ -67,8 +66,7 @@ BEGIN
     NULLIF(trim(_department), ''),
     NULLIF(trim(_reason), ''),
     'scheduled',
-    'scheduled',
-    auth.uid()
+    'scheduled'
   )
   RETURNING * INTO result;
 
