@@ -7,25 +7,28 @@ export default function OfflineStatus() {
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  const refresh = async () => {
-    setPending((await getOfflineMutations()).length);
+  const refresh = async () => setPending((await getOfflineMutations()).length);
+
+  const synchronize = async () => {
+    if (!navigator.onLine) return;
+    setSyncing(true);
+    try { await syncOfflineMutations(); } finally { setSyncing(false); await refresh(); }
   };
 
   useEffect(() => {
-    const onOnline = async () => {
-      setOnline(true);
-      setSyncing(true);
-      try { await syncOfflineMutations(); } finally { setSyncing(false); await refresh(); }
-    };
+    const onOnline = () => { setOnline(true); void synchronize(); };
     const onOffline = () => setOnline(false);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
-    const unsubscribe = subscribeToOfflineSync(refresh);
+    const unsubscribe = subscribeToOfflineSync(() => void refresh());
     void refresh();
+    void synchronize();
+    const retryTimer = window.setInterval(() => void synchronize(), 30000);
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       unsubscribe();
+      window.clearInterval(retryTimer);
     };
   }, []);
 
