@@ -7,6 +7,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 ## Current architecture
 
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
+- **Cold-start production shell:** Vite emits `.vite/manifest.json`; the service worker reads that manifest during installation and precaches discovered production JavaScript, CSS and asset chunks. This means a device that has successfully loaded the production application and completed service-worker installation can reopen the application with its required hashed assets even if connectivity is already unavailable.
 - **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
 - **Mutation interception:** `src/lib/offlineSync.ts` handles an explicit allow-list of low-risk PostgREST table writes (`patients` and `triage_assessments`) plus explicitly contracted appointment and vital-sign RPC workflows. It does **not** automatically make arbitrary `/rest/v1/` writes offline-capable.
 - **POST-only direct-table continuity:** patient and triage direct-table continuity is limited to `POST`. Existing `PUT`, `PATCH`, and `DELETE` operations against those tables bypass the offline queue and retain their normal online behavior; they are not silently converted into offline mutations.
@@ -77,35 +78,35 @@ This branch is designed to merge into `main` as a continuity layer, not as a par
 
 ## Testing checklist
 
-1. Load the application online at least once and navigate through screens required for offline testing.
-2. Confirm the service worker is active.
-3. Sign in while online and keep the session persisted.
-4. Disable network access.
-5. Refresh and verify cached application resources continue to load.
-6. Verify patient registration can be saved locally and later synchronized.
-7. Verify triage can be captured locally and later synchronized with its stable UUID.
-8. Verify vital signs can be captured through the existing Patient Hub vital-sign workflow while disconnected and appear as queued locally.
-9. Verify appointment scheduling can be captured through the existing Patient Hub appointment workflow while disconnected and appear as queued locally.
-10. Restore connectivity and verify patient, triage, vital-sign and appointment queues drain.
-11. Verify offline continuity records change to server-confirmed only after successful replay.
-12. Verify mutations requiring `return=representation` are not falsely queued.
-13. Verify an unrelated/high-risk PostgREST table mutation is **not** automatically queued merely because it uses `/rest/v1/`.
-14. Verify `PUT`, `PATCH`, and `DELETE` operations against `patients` and `triage_assessments` are never converted into offline queue entries.
-15. Simulate a server 5xx/network failure during replay and verify the item remains pending with an increased `nextAttemptAt` rather than being hammered continuously.
-16. Simulate a 401/403/409 or validation 4xx during replay and verify the item becomes blocked and is not automatically retried every 15 seconds.
-17. Use the Offline Synchronization Center's **Retry** action to release a blocked item and verify it can synchronize once the underlying issue is resolved.
-18. Open two tabs and verify only one performs queue replay at a time.
-19. Verify document/photo uploads remain online-only during offline registration.
-20. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
-21. Open `/admin/offline-sync` as an administrator and verify pending, blocked, continuity records, failure history, connectivity state, retry timing and manual retry are visible without displaying queued mutation payload bodies.
-22. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+1. Run a production build and confirm `.vite/manifest.json` is emitted.
+2. Load the production application online and navigate through screens required for offline testing.
+3. Confirm the service worker is active and has completed installation.
+4. Sign in while online and keep the session persisted.
+5. Disable network access completely, including before a new navigation/reload.
+6. Refresh and verify the cached application entry point **and hashed production JS/CSS assets** continue to load.
+7. Verify patient registration can be saved locally and later synchronized.
+8. Verify triage can be captured locally and later synchronized with its stable UUID.
+9. Verify vital signs can be captured through the existing Patient Hub vital-sign workflow while disconnected and appear as queued locally.
+10. Verify appointment scheduling can be captured through the existing Patient Hub appointment workflow while disconnected and appear as queued locally.
+11. Restore connectivity and verify patient, triage, vital-sign and appointment queues drain.
+12. Verify offline continuity records change to server-confirmed only after successful replay.
+13. Verify mutations requiring `return=representation` are not falsely queued.
+14. Verify an unrelated/high-risk PostgREST table mutation is **not** automatically queued merely because it uses `/rest/v1/`.
+15. Verify `PUT`, `PATCH`, and `DELETE` operations against `patients` and `triage_assessments` are never converted into offline queue entries.
+16. Simulate a server 5xx/network failure during replay and verify the item remains pending with an increased `nextAttemptAt` rather than being hammered continuously.
+17. Simulate a 401/403/409 or validation 4xx during replay and verify the item becomes blocked and is not automatically retried every 15 seconds.
+18. Use the Offline Synchronization Center's **Retry** action to release a blocked item and verify it can synchronize once the underlying issue is resolved.
+19. Open two tabs and verify only one performs queue replay at a time.
+20. Verify document/photo uploads remain online-only during offline registration.
+21. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
+22. Open `/admin/offline-sync` as an administrator and verify pending, blocked, continuity records, failure history, connectivity state, retry timing and manual retry are visible without displaying queued mutation payload bodies.
+23. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
 - Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
 - Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
 - Replace the local synchronization history view with durable server-side synchronization/reconciliation events when multi-device facility-wide reconciliation is required.
-- Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, POST-only direct-table queuing, duplicate replay protection, backoff and blocked recovery.
-- Expand service-worker precaching to production hashed JS/CSS assets if full cold-start offline navigation is required.
+- Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, POST-only direct-table queuing, duplicate replay protection, backoff and blocked recovery, and cold-start offline asset availability.
 - Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
 - Extend local read models to additional workflows only after inspecting their schemas, authorization model, mutation path, and conflict/idempotency requirements.
