@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Patient, VitalSigns } from '@/types';
+import { isNetworkError } from '@/lib/offlineSync';
+import { queueOfflinePatientRegistration } from '@/lib/offlinePatientRegistration';
 
 /* ============================================================
    Real Supabase-backed helpers (replaces previous mocks)
@@ -39,9 +41,34 @@ export async function registerPatient(payload: any) {
     emergency_contact_relation: payload.emergencyRelation || null,
     created_by: authData.user.id,
   };
-  const { data, error } = await supabase.from('patients').insert(insertRow as any).select().single();
-  if (error) throw error;
-  return { success: true, patientId: data.patient_code, patient: data };
+
+  // Registration is an explicit offline workflow. It deliberately does not
+  // queue document uploads: files require Storage-specific offline handling.
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const queued = await queueOfflinePatientRegistration(insertRow);
+    return {
+      success: true,
+      offlineQueued: true,
+      patientId: queued.patientCode,
+      patient: queued.row,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.from('patients').insert(insertRow as any).select().single();
+    if (error) throw error;
+    return { success: true, offlineQueued: false, patientId: data.patient_code, patient: data };
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+
+    const queued = await queueOfflinePatientRegistration(insertRow);
+    return {
+      success: true,
+      offlineQueued: true,
+      patientId: queued.patientCode,
+      patient: queued.row,
+    };
+  }
 }
 
 export async function searchPatients(query: string) {
