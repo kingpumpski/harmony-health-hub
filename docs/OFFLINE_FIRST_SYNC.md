@@ -12,7 +12,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 - **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
 - **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, and periodically while the application remains open.
 - **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
-- **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The client does not claim duplicate protection until the server/workflow honors that key.
+- **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The generic queue does not claim that this header alone provides server-side duplicate protection.
 - **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
 - **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB.
 - **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work.
@@ -21,11 +21,11 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 
 ### Patient registration
 
-Patient registration has an explicit offline command with a stable client-generated patient UUID and patient code. The UI distinguishes locally queued registration from server-confirmed registration. Patient documents/photos remain online-only until Storage synchronization is explicitly designed.
+Patient registration has an explicit offline command with a stable client-generated patient UUID and patient code. The queued PostgREST command uses the patient's primary key as its conflict target and `resolution=ignore-duplicates`, so a replay after a successfully committed request with a lost response does not create a second patient. The UI distinguishes locally queued registration from server-confirmed registration. Patient documents/photos remain online-only until Storage synchronization is explicitly designed.
 
 ### Triage assessment
 
-Triage now has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`; the UI explicitly states that an offline assessment is not yet server-confirmed. The selected clinical priority and measured values are persisted with the queued assessment. Server-side validation remains authoritative when synchronization occurs.
+Triage has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`, `on_conflict=id`, and `resolution=ignore-duplicates`; a replay after a lost response therefore becomes a server-side no-op for the same assessment ID. The UI explicitly states that an offline assessment is not yet server-confirmed. Server-side validation and RLS remain authoritative when synchronization occurs.
 
 This does **not** make every clinical workflow offline. Emergency actions, RPC workflows, medication administration, financial operations and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
 
@@ -35,7 +35,7 @@ This is intentionally not a blanket offline database replica. Authentication, AI
 
 A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
 
-The stable idempotency key alone is not a server-side guarantee. Until database/workflow-specific idempotency handling is implemented, replay of a request whose server response was lost can theoretically duplicate the underlying write. High-risk clinical and financial operations must therefore remain online-only or receive explicit server-side idempotency before production offline use.
+The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. The patient-registration and triage commands currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics; this is deliberately scoped to those workflows rather than treated as a universal database idempotency layer.
 
 ## Testing checklist
 
@@ -52,11 +52,12 @@ The stable idempotency key alone is not a server-side guarantee. Until database/
 11. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
 12. Open two tabs and verify only one performs queue replay at a time.
 13. Verify document/photo uploads remain online-only during offline registration.
-14. Test duplicate/retry behavior for every clinical and financial workflow before enabling it offline.
+14. Repeat synchronization after a deliberately interrupted response and verify patient/triage primary-key replay is idempotent.
+15. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
-- Implement database/workflow-specific server-side idempotency for retryable writes using `X-Harmony-Idempotency-Key`.
+- Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
 - Add local read models for registration, triage/vitals, encounters, medication administration, appointments, queue/roster and selected billing operations where clinically safe.
 - Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
 - Add an auditable administrator synchronization/reconciliation screen backed by durable server-side events.
