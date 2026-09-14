@@ -35,7 +35,7 @@
     --success: 158 70% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 95% 52%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 38 95% 18%;
     --info: 210 95% 55%;
     --info-foreground: 0 0% 100%;
     --critical: 0 88% 58%;
@@ -322,6 +322,34 @@
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  /* The clinical safety context is a true right-side rail on desktop.
+     The Encounters layout already reserves its 280px grid column, so the rail
+     never covers the clinical workspace. It returns to normal document flow
+     below the desktop breakpoint for responsive operation. */
+  @media (min-width: 1024px) {
+    main aside[class*="border-l-critical/70"] {
+      position: fixed !important;
+      top: 4rem;
+      right: 0;
+      width: 280px;
+      height: calc(100vh - 4rem);
+      max-height: none !important;
+      overflow-y: auto !important;
+      z-index: 20;
+      border-radius: 0.75rem 0 0 0.75rem;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    main aside[class*="border-l-critical/70"] {
+      position: static !important;
+      width: auto;
+      height: auto;
+      max-height: none !important;
+      overflow: visible !important;
     }
   }
 }
