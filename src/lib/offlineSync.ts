@@ -9,6 +9,11 @@ const SYNC_LOCK_KEY = 'harmony:offline-sync-lock';
 const SYNC_LOCK_TTL_MS = 30_000;
 const IDEMPOTENCY_HEADER = 'x-harmony-idempotency-key';
 
+// Direct PostgREST writes are intentionally allow-listed. Protected clinical
+// workflows must use an explicit offline RPC contract rather than becoming
+// offline-capable merely because they happen to use /rest/v1/.
+const OFFLINE_POSTGREST_TABLES = new Set(['patients', 'triage_assessments']);
+
 export type OfflineMutation = { id:string; createdAt:string; url:string; method:string; headers:Record<string,string>; body:string|null; attempts:number; lastError?:string; idempotencyKey:string };
 export type OfflineSyncHistory = { id:string; mutationId:string; idempotencyKey:string; event:'queued'|'synced'|'failed'; occurredAt:string; attempts:number; status?:number; error?:string };
 export type OfflineReadModelKind = 'patient' | 'triage' | 'vitals' | 'appointment';
@@ -32,7 +37,7 @@ export async function getOfflineMutations():Promise<OfflineMutation[]>{if(!isBro
 export async function removeOfflineMutation(id:string):Promise<void>{await withStore(STORE_NAME,'readwrite',store=>store.delete(id));}
 export async function updateOfflineMutation(mutation:OfflineMutation):Promise<void>{await withStore(STORE_NAME,'readwrite',store=>store.put(mutation));}
 export function isNetworkError(error:unknown):boolean{if(!navigator.onLine)return true;if(error instanceof TypeError)return true;return error instanceof Error&&/network|fetch|failed to fetch|load failed|offline/i.test(error.message);}
-function shouldQueue(request:Request):boolean{if(!['POST','PUT','PATCH','DELETE'].includes(request.method))return false;const url=new URL(request.url);if(!url.pathname.includes('/rest/v1/')||url.pathname.includes('/rpc/'))return false;const prefer=request.headers.get('prefer')?.toLowerCase()??'';if(prefer.includes('return=representation'))return false;return true;}
+function shouldQueue(request:Request):boolean{if(!['POST','PUT','PATCH','DELETE'].includes(request.method))return false;const url=new URL(request.url);if(!url.pathname.includes('/rest/v1/')||url.pathname.includes('/rpc/'))return false;const prefer=request.headers.get('prefer')?.toLowerCase()??'';if(prefer.includes('return=representation'))return false;const tableName=url.pathname.split('/rest/v1/')[1]?.split('/')[0]??'';return OFFLINE_POSTGREST_TABLES.has(tableName);}
 function explicitRpc(request:Request,name:string):boolean{return request.method==='POST'&&new URL(request.url).pathname.endsWith(`/rpc/${name}`);}
 async function requestToMutation(request:Request):Promise<Omit<OfflineMutation,'id'|'createdAt'|'attempts'|'idempotencyKey'>>{const headers:Record<string,string>={};request.headers.forEach((value,key)=>{headers[key]=value;});return{url:request.url,method:request.method,headers,body:await request.clone().text()};}
 async function queueExplicitRpc(request:Request,sourceName:string,targetName:string,kind:OfflineReadModelKind,transform:(payload:Record<string,unknown>,id:string)=>Record<string,unknown>):Promise<Response>{let payload:Record<string,unknown>;try{payload=JSON.parse(await request.clone().text()) as Record<string,unknown>;}catch{throw new Error(`Unable to safely queue the ${sourceName} request.`);}const id=crypto.randomUUID();const target=request.url.replace(`/rpc/${sourceName}`,`/rpc/${targetName}`);const queuedBody=JSON.stringify(transform(payload,id));const mutation=await enqueueOfflineMutation({...await requestToMutation(request),url:target,body:queuedBody});await upsertOfflineReadModel({id,mutationId:mutation.id,kind,data:{id,...payload,created_at:new Date().toISOString()}});emitOfflineOperation({event:'queued',mutationId:mutation.id,kind});return queuedResponse(mutation.id);}
