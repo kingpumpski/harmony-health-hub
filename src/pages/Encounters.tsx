@@ -1,43 +1,754 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, HeartPulse, History, Pill, Plus, ShieldAlert, Stethoscope, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  HeartPulse,
+  History,
+  Pill,
+  Plus,
+  ShieldAlert,
+  Stethoscope,
+  Trash2,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import MedicalTermInput from "@/components/MedicalTermInput";
+import type { DiagnosisSuggestion } from "@/lib/medicalTerms";
 
-interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
-interface Encounter { id: string; patient_id: string; symptoms: string | null; clerking_notes: string | null; principal_diagnosis: string | null; treatment_plan: string | null; status: string; created_at: string }
-interface Diagnosis { id: string; encounter_id: string; diagnosis: string; is_principal: boolean }
-interface Prescription { id: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; status: string }
-interface BMIContext { bmi: number | null; category: string; weight_kg: number | null; height_m: number | null; recorded_at: string | null }
-interface ClinicalContext { patient?: { patient_code?: string; name?: string; blood_group?: string | null; genotype?: string | null; allergies?: string | null; chronic_conditions?: string | null }; previous_encounters?: Array<{ id: string; created_at: string; status: string; principal_diagnosis: string | null; symptoms: string | null; treatment_plan: string | null; diagnoses: string[] }>; recent_vitals?: Array<{ recorded_at: string; systolic: number | null; diastolic: number | null; pulse_rate: number | null; temperature: number | null; oxygen_saturation: number | null; priority: string | null }> }
+interface Patient {
+  id: string;
+  first_name: string;
+  last_name: string;
+  patient_code: string;
+}
+interface Encounter {
+  id: string;
+  patient_id: string;
+  symptoms: string | null;
+  clerking_notes: string | null;
+  principal_diagnosis: string | null;
+  treatment_plan: string | null;
+  status: string;
+  created_at: string;
+}
+interface Diagnosis {
+  id: string;
+  encounter_id: string;
+  diagnosis: string;
+  is_principal: boolean;
+}
+interface Prescription {
+  id: string;
+  medication: string;
+  dosage: string | null;
+  frequency: string | null;
+  duration: string | null;
+  status: string;
+}
+interface BMIContext {
+  bmi: number | null;
+  category: string;
+  weight_kg: number | null;
+  height_m: number | null;
+  recorded_at: string | null;
+}
+interface ClinicalContext {
+  patient?: {
+    patient_code?: string;
+    name?: string;
+    blood_group?: string | null;
+    genotype?: string | null;
+    allergies?: string | null;
+    chronic_conditions?: string | null;
+  };
+  previous_encounters?: Array<{
+    id: string;
+    created_at: string;
+    status: string;
+    principal_diagnosis: string | null;
+    symptoms: string | null;
+    treatment_plan: string | null;
+    diagnoses: string[];
+  }>;
+  recent_vitals?: Array<{
+    recorded_at: string;
+    systolic: number | null;
+    diastolic: number | null;
+    pulse_rate: number | null;
+    temperature: number | null;
+    oxygen_saturation: number | null;
+    priority: string | null;
+  }>;
+}
 const db = supabase as any;
 
 function BMIContextCard({ patientId }: { patientId: string }) {
   const [bmi, setBmi] = useState<BMIContext | null>(null);
-  useEffect(() => { let active = true; const load = async () => { const { data, error } = await db.rpc('get_patient_bmi_context', { _patient_id: patientId }); if (!active) return; if (error) { toast({ title: 'BMI context unavailable', description: error.message, variant: 'destructive' }); return; } setBmi((data?.[0] ?? null) as BMIContext | null); }; void load(); return () => { active = false; }; }, [patientId]);
-  return <section className="rounded-xl border border-primary/30 bg-primary/5 p-4"><div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-primary" /> BMI clinical context</h4><p className="text-[11px] text-muted-foreground mt-1">Latest server-calculated measurement</p></div><span className="text-2xl font-bold">{bmi?.bmi ?? '—'}</span></div>{bmi && <div className="grid grid-cols-2 gap-2 mt-3 text-xs"><span>Category: <b>{bmi.category}</b></span><span>Weight: <b>{bmi.weight_kg ?? '—'} kg</b></span><span>Height: <b>{bmi.height_m ?? '—'} m</b></span><span>Recorded: <b>{bmi.recorded_at ? new Date(bmi.recorded_at).toLocaleDateString() : '—'}</b></span></div>}<p className="text-[11px] text-muted-foreground mt-3">BMI is one clinical input alongside age, pregnancy status, diagnoses, examination findings, renal/hepatic function, allergies and medication-specific guidance. It does not automatically determine a prescription or dose.</p></section>;
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const { data, error } = await db.rpc("get_patient_bmi_context", {
+        _patient_id: patientId,
+      });
+      if (!active) return;
+      if (error) {
+        toast({
+          title: "BMI context unavailable",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      setBmi((data?.[0] ?? null) as BMIContext | null);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [patientId]);
+  return (
+    <section className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-primary" /> BMI clinical context
+          </h4>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Latest server-calculated measurement
+          </p>
+        </div>
+        <span className="text-2xl font-bold">{bmi?.bmi ?? "—"}</span>
+      </div>
+      {bmi && (
+        <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+          <span>
+            Category: <b>{bmi.category}</b>
+          </span>
+          <span>
+            Weight: <b>{bmi.weight_kg ?? "—"} kg</b>
+          </span>
+          <span>
+            Height: <b>{bmi.height_m ?? "—"} m</b>
+          </span>
+          <span>
+            Recorded:{" "}
+            <b>
+              {bmi.recorded_at
+                ? new Date(bmi.recorded_at).toLocaleDateString()
+                : "—"}
+            </b>
+          </span>
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground mt-3">
+        BMI is one clinical input alongside age, pregnancy status, diagnoses,
+        examination findings, renal/hepatic function, allergies and
+        medication-specific guidance. It does not automatically determine a
+        prescription or dose.
+      </p>
+    </section>
+  );
 }
 
-function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; encounterId?: string }) {
-  const [context, setContext] = useState<ClinicalContext | null>(null); const [loading, setLoading] = useState(false);
-  useEffect(() => { let active = true; const load = async () => { setLoading(true); const { data, error } = await db.rpc('get_encounter_clinical_context', { _patient_id: patientId, _encounter_id: encounterId ?? null }); if (!active) return; if (error) toast({ title: 'Clinical history unavailable', description: error.message, variant: 'destructive' }); setContext((data ?? null) as ClinicalContext | null); setLoading(false); }; void load(); return () => { active = false; }; }, [patientId, encounterId]);
-  const patient = context?.patient; const conditions = useMemo(() => { const historical = (context?.previous_encounters ?? []).flatMap((e) => [e.principal_diagnosis, ...e.diagnoses]).filter((v): v is string => Boolean(v)); const chronic = patient?.chronic_conditions?.split(/[,;\n]+/) ?? []; return Array.from(new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean))).slice(0, 12); }, [context, patient]);
-  return <aside className="card-medical p-4 space-y-3 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety context</h3><p className="text-xs text-muted-foreground mt-1">High-value history stays beside the active encounter.</p></div>{loading && <span className="text-xs text-muted-foreground">Loading…</span>}</div>{patient && <section className="rounded-xl border border-border p-3"><p className="font-medium text-sm">{patient.name}</p><p className="text-xs text-muted-foreground">{patient.patient_code}</p><div className="grid grid-cols-2 gap-2 mt-3 text-xs"><div>Blood group<p className="font-medium">{patient.blood_group || 'Not recorded'}</p></div><div>Genotype<p className="font-medium">{patient.genotype || 'Not recorded'}</p></div></div></section>}<BMIContextCard patientId={patientId}/>{patient?.allergies && <section className="rounded-xl border border-critical/40 bg-critical/5 p-3"><div className="flex items-center gap-2 font-semibold text-sm text-critical"><AlertTriangle className="w-4 h-4"/> Allergies / alerts</div><p className="text-sm mt-2 whitespace-pre-wrap">{patient.allergies}</p></section>}{conditions.length > 0 && <section className="rounded-xl border border-warning/40 bg-warning/5 p-3"><div className="flex items-center gap-2 font-semibold text-sm mb-2"><AlertTriangle className="w-4 h-4"/> Conditions to notice</div><div className="flex flex-wrap gap-2">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium">{condition}</span>)}</div></section>}{context?.recent_vitals?.[0] && <section className="rounded-xl border border-border p-3"><h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4"/> Latest recorded vitals</h4><p className="text-[11px] text-muted-foreground mt-1">{new Date(context.recent_vitals[0].recorded_at).toLocaleString()}</p><div className="grid grid-cols-2 gap-2 mt-3 text-xs"><span>BP: <b>{context.recent_vitals[0].systolic ?? '—'}/{context.recent_vitals[0].diastolic ?? '—'}</b></span><span>Pulse: <b>{context.recent_vitals[0].pulse_rate ?? '—'}</b></span><span>Temp: <b>{context.recent_vitals[0].temperature ?? '—'}</b></span><span>SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? '—'}%</b></span></div></section>}<section><h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-primary"/> Previous encounters</h4>{!context?.previous_encounters?.length ? <p className="text-sm text-muted-foreground">No previous encounters recorded.</p> : <div className="space-y-3">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-xl border border-border p-3 bg-background/70"><div className="flex justify-between gap-2"><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span><span className="text-xs rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-sm font-semibold mt-2">{item.principal_diagnosis || item.diagnoses[0] || 'Clinical encounter'}</p>{item.symptoms && <p className="text-xs mt-2"><b>Presentation:</b> {item.symptoms}</p>}{item.treatment_plan && <p className="text-xs text-muted-foreground mt-1"><b className="text-foreground">Previous plan:</b> {item.treatment_plan}</p>}</article>)}</div>}</section></aside>;
+function ClinicalSafetyContext({
+  patientId,
+  encounterId,
+}: {
+  patientId: string;
+  encounterId?: string;
+}) {
+  const [context, setContext] = useState<ClinicalContext | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      const { data, error } = await db.rpc("get_encounter_clinical_context", {
+        _patient_id: patientId,
+        _encounter_id: encounterId ?? null,
+      });
+      if (!active) return;
+      if (error)
+        toast({
+          title: "Clinical history unavailable",
+          description: error.message,
+          variant: "destructive",
+        });
+      setContext((data ?? null) as ClinicalContext | null);
+      setLoading(false);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [patientId, encounterId]);
+  const patient = context?.patient;
+  const conditions = useMemo(() => {
+    const historical = (context?.previous_encounters ?? [])
+      .flatMap((e) => [e.principal_diagnosis, ...e.diagnoses])
+      .filter((v): v is string => Boolean(v));
+    const chronic = patient?.chronic_conditions?.split(/[,;\n]+/) ?? [];
+    return Array.from(
+      new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean)),
+    ).slice(0, 12);
+  }, [context, patient]);
+  return (
+    <aside className="card-medical p-5 space-y-4 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-critical" /> Patient safety
+            context
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            High-value history stays beside the active encounter.
+          </p>
+        </div>
+        {loading && (
+          <span className="text-xs text-muted-foreground">Loading…</span>
+        )}
+      </div>
+      {patient && (
+        <section className="rounded-xl border border-border p-3">
+          <p className="font-medium text-sm">{patient.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {patient.patient_code}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div>
+              Blood group
+              <p className="font-medium">
+                {patient.blood_group || "Not recorded"}
+              </p>
+            </div>
+            <div>
+              Genotype
+              <p className="font-medium">
+                {patient.genotype || "Not recorded"}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+      <BMIContextCard patientId={patientId} />
+      {patient?.allergies && (
+        <section className="rounded-xl border border-critical/40 bg-critical/5 p-4">
+          <div className="flex items-center gap-2 font-semibold text-sm text-critical">
+            <AlertTriangle className="w-4 h-4" /> Allergies / alerts
+          </div>
+          <p className="text-sm mt-2 whitespace-pre-wrap">
+            {patient.allergies}
+          </p>
+        </section>
+      )}
+      {conditions.length > 0 && (
+        <section className="rounded-xl border border-warning/40 bg-warning/5 p-4">
+          <div className="flex items-center gap-2 font-semibold text-sm mb-2">
+            <AlertTriangle className="w-4 h-4" /> Conditions to notice
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {conditions.map((condition) => (
+              <span
+                key={condition}
+                className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium"
+              >
+                {condition}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+      {context?.recent_vitals?.[0] && (
+        <section className="rounded-xl border border-border p-4">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <HeartPulse className="w-4 h-4" /> Latest recorded vitals
+          </h4>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {new Date(context.recent_vitals[0].recorded_at).toLocaleString()}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <span>
+              BP:{" "}
+              <b>
+                {context.recent_vitals[0].systolic ?? "—"}/
+                {context.recent_vitals[0].diastolic ?? "—"}
+              </b>
+            </span>
+            <span>
+              Pulse: <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b>
+            </span>
+            <span>
+              Temp: <b>{context.recent_vitals[0].temperature ?? "—"}</b>
+            </span>
+            <span>
+              SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b>
+            </span>
+          </div>
+        </section>
+      )}
+      <section>
+        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <History className="w-4 h-4 text-primary" /> Previous encounters
+        </h4>
+        {!context?.previous_encounters?.length ? (
+          <p className="text-sm text-muted-foreground">
+            No previous encounters recorded.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {context.previous_encounters.map((item) => (
+              <article
+                key={item.id}
+                className="rounded-xl border border-border p-3 bg-background/70"
+              >
+                <div className="flex justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(item.created_at).toLocaleString()}
+                  </span>
+                  <span className="text-xs rounded-full bg-muted px-2 py-0.5">
+                    {item.status}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold mt-2">
+                  {item.principal_diagnosis ||
+                    item.diagnoses[0] ||
+                    "Clinical encounter"}
+                </p>
+                {item.symptoms && (
+                  <p className="text-xs mt-2">
+                    <b>Presentation:</b> {item.symptoms}
+                  </p>
+                )}
+                {item.treatment_plan && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <b className="text-foreground">Previous plan:</b>{" "}
+                    {item.treatment_plan}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </aside>
+  );
 }
 
 export default function Encounters() {
-  const [searchParams] = useSearchParams(); const [patients, setPatients] = useState<Patient[]>([]); const [encounters, setEncounters] = useState<Encounter[]>([]); const [selected, setSelected] = useState<Encounter | null>(null); const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]); const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [patientId, setPatientId] = useState(searchParams.get('patient') || ''); const [symptoms, setSymptoms] = useState(''); const [clerking, setClerking] = useState(''); const [newDx, setNewDx] = useState(''); const [med, setMed] = useState(''); const [dose, setDose] = useState(''); const [freq, setFreq] = useState(''); const [duration, setDuration] = useState('');
+  const [searchParams] = useSearchParams();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [selected, setSelected] = useState<Encounter | null>(null);
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
+  const [symptoms, setSymptoms] = useState("");
+  const [clerking, setClerking] = useState("");
+  const [newDx, setNewDx] = useState("");
+  const [newDxCode, setNewDxCode] = useState("");
+  const [med, setMed] = useState("");
+  const [dose, setDose] = useState("");
+  const [freq, setFreq] = useState("");
+  const [duration, setDuration] = useState("");
   const activePatientId = selected?.patient_id || patientId;
-  const loadAll = async () => { const [{ data: pts }, { data: encs }] = await Promise.all([supabase.from('patients').select('id, first_name, last_name, patient_code').order('created_at', { ascending: false }).limit(200), supabase.from('encounters').select('id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, created_at').order('created_at', { ascending: false }).limit(50)]); setPatients((pts ?? []) as Patient[]); setEncounters((encs ?? []) as Encounter[]); };
-  const loadDetails = async (id: string) => { const [{ data: dx }, { data: rx }] = await Promise.all([supabase.from('diagnoses').select('*').eq('encounter_id', id), supabase.from('prescriptions').select('*').eq('encounter_id', id).order('created_at', { ascending: false })]); setDiagnoses((dx ?? []) as Diagnosis[]); setPrescriptions((rx ?? []) as Prescription[]); };
-  useEffect(() => { void loadAll(); }, []); useEffect(() => { const id = searchParams.get('encounter'); const p = searchParams.get('patient'); if (p) setPatientId(p); if (id) { const found = encounters.find((e) => e.id === id); if (found) setSelected(found); } }, [searchParams, encounters]); useEffect(() => { if (selected) void loadDetails(selected.id); }, [selected]);
-  const createEncounter = async (event: React.FormEvent) => { event.preventDefault(); if (!patientId) return toast({ title: 'Select a patient', variant: 'destructive' }); const { data, error } = await db.rpc('create_encounter_workflow', { _patient_id: patientId, _symptoms: symptoms || null, _clerking_notes: clerking || null }); if (error) return toast({ title: 'Encounter creation failed', description: error.message, variant: 'destructive' }); setSymptoms(''); setClerking(''); setSelected(data as Encounter); void loadAll(); };
-  const addDiagnosis = async () => { if (!selected || !newDx.trim()) return; const { error } = await db.rpc('add_encounter_diagnosis', { _encounter_id: selected.id, _diagnosis: newDx.trim() }); if (error) return toast({ title: 'Diagnosis failed', description: error.message, variant: 'destructive' }); setNewDx(''); void loadDetails(selected.id); };
-  const setPrincipal = async (dx: Diagnosis) => { if (!selected) return; const { data, error } = await db.rpc('set_principal_diagnosis', { _encounter_id: selected.id, _diagnosis_id: dx.id }); if (error) return toast({ title: 'Principal diagnosis failed', description: error.message, variant: 'destructive' }); setSelected({ ...selected, principal_diagnosis: data?.diagnosis ?? dx.diagnosis }); void loadDetails(selected.id); };
-  const removeDiagnosis = async (id: string) => { if (!selected) return; const { error } = await db.rpc('remove_encounter_diagnosis', { _diagnosis_id: id }); if (error) return toast({ title: 'Diagnosis removal failed', description: error.message, variant: 'destructive' }); void loadDetails(selected.id); };
-  const addPrescription = async (event: React.FormEvent) => { event.preventDefault(); if (!selected || !med.trim()) return; const { error } = await db.rpc('create_encounter_prescription', { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null }); if (error) return toast({ title: 'Prescription failed', description: error.message, variant: 'destructive' }); setMed(''); setDose(''); setFreq(''); setDuration(''); void loadDetails(selected.id); };
-  const completeEncounter = async () => { if (!selected) return; const { data, error } = await db.rpc('complete_encounter_workflow', { _encounter_id: selected.id }); if (error) return toast({ title: 'Encounter completion failed', description: error.message, variant: 'destructive' }); setSelected(data as Encounter); void loadAll(); };
+  const loadAll = async () => {
+    const [{ data: pts }, { data: encs }] = await Promise.all([
+      supabase
+        .from("patients")
+        .select("id, first_name, last_name, patient_code")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("encounters")
+        .select(
+          "id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+    setPatients((pts ?? []) as Patient[]);
+    setEncounters((encs ?? []) as Encounter[]);
+  };
+  const loadDetails = async (id: string) => {
+    const [{ data: dx }, { data: rx }] = await Promise.all([
+      supabase.from("diagnoses").select("*").eq("encounter_id", id),
+      supabase
+        .from("prescriptions")
+        .select("*")
+        .eq("encounter_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
+    setDiagnoses((dx ?? []) as Diagnosis[]);
+    setPrescriptions((rx ?? []) as Prescription[]);
+  };
+  useEffect(() => {
+    void loadAll();
+  }, []);
+  useEffect(() => {
+    const id = searchParams.get("encounter");
+    const p = searchParams.get("patient");
+    if (p) setPatientId(p);
+    if (id) {
+      const found = encounters.find((e) => e.id === id);
+      if (found) setSelected(found);
+    }
+  }, [searchParams, encounters]);
+  useEffect(() => {
+    if (selected) void loadDetails(selected.id);
+  }, [selected]);
+  const createEncounter = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!patientId)
+      return toast({ title: "Select a patient", variant: "destructive" });
+    const { data, error } = await db.rpc("create_encounter_workflow", {
+      _patient_id: patientId,
+      _symptoms: symptoms || null,
+      _clerking_notes: clerking || null,
+    });
+    if (error)
+      return toast({
+        title: "Encounter creation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    setSymptoms("");
+    setClerking("");
+    setSelected(data as Encounter);
+    void loadAll();
+  };
+  const addDiagnosis = async () => {
+    if (!selected || !newDx.trim() || !newDxCode)
+      return toast({
+        title: "Select a coded diagnosis",
+        description:
+          "Choose an ICD-10 or STG-Ghana suggestion before adding it.",
+        variant: "destructive",
+      });
+    const diagnosisLabel = newDx.replace(/\s*\[[^\]]+\]\s*$/, "").trim();
+    const { error } = await db.rpc("add_encounter_diagnosis", {
+      _encounter_id: selected.id,
+      _diagnosis: diagnosisLabel,
+      _icd_code: newDxCode,
+    });
+    if (error)
+      return toast({
+        title: "Diagnosis failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    setNewDx("");
+    setNewDxCode("");
+    void loadDetails(selected.id);
+  };
+  const setPrincipal = async (dx: Diagnosis) => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("set_principal_diagnosis", {
+      _encounter_id: selected.id,
+      _diagnosis_id: dx.id,
+    });
+    if (error)
+      return toast({
+        title: "Principal diagnosis failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    setSelected({
+      ...selected,
+      principal_diagnosis: data?.diagnosis ?? dx.diagnosis,
+    });
+    void loadDetails(selected.id);
+  };
+  const removeDiagnosis = async (id: string) => {
+    if (!selected) return;
+    const { error } = await db.rpc("remove_encounter_diagnosis", {
+      _diagnosis_id: id,
+    });
+    if (error)
+      return toast({
+        title: "Diagnosis removal failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    void loadDetails(selected.id);
+  };
+  const addPrescription = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected || !med.trim()) return;
+    const { error } = await db.rpc("create_encounter_prescription", {
+      _encounter_id: selected.id,
+      _medication: med.trim(),
+      _dosage: dose || null,
+      _frequency: freq || null,
+      _duration: duration || null,
+    });
+    if (error)
+      return toast({
+        title: "Prescription failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    setMed("");
+    setDose("");
+    setFreq("");
+    setDuration("");
+    void loadDetails(selected.id);
+  };
+  const completeEncounter = async () => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("complete_encounter_workflow", {
+      _encounter_id: selected.id,
+    });
+    if (error)
+      return toast({
+        title: "Encounter completion failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    setSelected(data as Encounter);
+    void loadAll();
+  };
 
-  return <div className="space-y-6 animate-fade-in"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Stethoscope className="w-6 h-6 text-primary"/> Clinical Encounters</h1><p className="text-muted-foreground">Assessment, diagnosis and prescribing are server-authorized and supported by patient safety context.</p></div><div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)_280px] lg:items-start"><div className="space-y-4 lg:order-1"><form onSubmit={createEncounter} className="card-medical p-5 space-y-3"><h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4"/> New Encounter</h2><select value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}</select><textarea value={symptoms} onChange={(e) => setSymptoms(e.target.value)} placeholder="Symptoms" className="input-medical w-full" rows={2}/><textarea value={clerking} onChange={(e) => setClerking(e.target.value)} placeholder="Clerking notes" className="input-medical w-full" rows={2}/><button className="btn-primary w-full">Start encounter</button></form><div className="card-medical p-5"><h2 className="font-semibold mb-3">Recent encounters</h2><div className="space-y-2 max-h-[480px] overflow-auto">{encounters.map((item) => { const p = patients.find((x) => x.id === item.patient_id); return <button type="button" key={item.id} onClick={() => setSelected(item)} className={`w-full text-left rounded-xl border p-3 ${selected?.id === item.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/40'}`}><p className="font-medium text-sm">{p ? `${p.first_name} ${p.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>{item.principal_diagnosis && <p className="text-xs mt-1 truncate">Dx: {item.principal_diagnosis}</p>}</button>; })}</div></div></div><div className="contents"><div className="card-medical p-6 lg:order-2">{!selected ? <div className="py-16 text-center text-muted-foreground">Select or create an encounter to begin.</div> : <div className="space-y-6"><div className="flex justify-between items-start gap-3"><div><h2 className="text-lg font-semibold flex items-center gap-2"><FileText className="w-5 h-5"/> Encounter</h2><p className="text-sm text-muted-foreground">Started {new Date(selected.created_at).toLocaleString()}</p></div>{selected.status !== 'completed' && <button onClick={completeEncounter} className="btn-primary inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4"/> Complete</button>}</div><section><h3 className="font-semibold mb-2">Symptoms</h3><p className="text-sm text-muted-foreground">{selected.symptoms || '—'}</p></section><section><h3 className="font-semibold mb-2">Clerking notes</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{selected.clerking_notes || '—'}</p></section><section><h3 className="font-semibold mb-2">Diagnoses</h3><div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add diagnosis" className="input-medical flex-1"/><button type="button" onClick={addDiagnosis} className="btn-primary">Add</button></div><div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal && <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span>}</div><div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4"/></button></div></div>)}</div></section><section><h3 className="font-semibold flex items-center gap-2 mb-2"><Pill className="w-4 h-4"/> Prescribing</h3><form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required/><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical"/><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical"/><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical"/><button className="btn-primary md:col-span-2">Add prescription</button></form><div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || 'Dose not recorded'} · {rx.frequency || 'Frequency not recorded'} · {rx.duration || 'Duration not recorded'}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div></section></div>}</div><div className="lg:order-3">{activePatientId && <ClinicalSafetyContext patientId={activePatientId} encounterId={selected?.id}/>}</div></div></div></div>;
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
+          <Stethoscope className="w-6 h-6 text-primary" /> Clinical Encounters
+        </h1>
+        <p className="text-muted-foreground">
+          Assessment, diagnosis and prescribing are server-authorized and
+          supported by patient safety context.
+        </p>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_minmax(240px,320px)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <form
+            onSubmit={createEncounter}
+            className="card-medical p-5 space-y-3"
+          >
+            <h2 className="font-semibold flex items-center gap-2">
+              <Plus className="w-4 h-4" /> New Encounter
+            </h2>
+            <select
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+              className="input-medical w-full"
+              required
+            >
+              <option value="">Select patient…</option>
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.first_name} {p.last_name} ({p.patient_code})
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={symptoms}
+              onChange={(e) => setSymptoms(e.target.value)}
+              placeholder="Symptoms"
+              className="input-medical w-full"
+              rows={2}
+            />
+            <textarea
+              value={clerking}
+              onChange={(e) => setClerking(e.target.value)}
+              placeholder="Clerking notes"
+              className="input-medical w-full"
+              rows={2}
+            />
+            <button className="btn-primary w-full">Start encounter</button>
+          </form>
+          <div className="card-medical p-5">
+            <h2 className="font-semibold mb-3">Recent encounters</h2>
+            <div className="space-y-2 max-h-[480px] overflow-auto">
+              {encounters.map((item) => {
+                const p = patients.find((x) => x.id === item.patient_id);
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => setSelected(item)}
+                    className={`w-full text-left rounded-xl border p-3 ${selected?.id === item.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}
+                  >
+                    <p className="font-medium text-sm">
+                      {p ? `${p.first_name} ${p.last_name}` : "Patient"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                    {item.principal_diagnosis && (
+                      <p className="text-xs mt-1 truncate">
+                        Dx: {item.principal_diagnosis}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        {activePatientId && (
+          <ClinicalSafetyContext
+            patientId={activePatientId}
+            encounterId={selected?.id}
+          />
+        )}
+        <div className="space-y-6">
+          <div className="card-medical p-6">
+            {!selected ? (
+              <div className="py-16 text-center text-muted-foreground">
+                Select or create an encounter to begin.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <FileText className="w-5 h-5" /> Encounter
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Started {new Date(selected.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  {selected.status !== "completed" && (
+                    <button
+                      onClick={completeEncounter}
+                      className="btn-primary inline-flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Complete
+                    </button>
+                  )}
+                </div>
+                <section>
+                  <h3 className="font-semibold mb-2">Symptoms</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selected.symptoms || "—"}
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold mb-2">Clerking notes</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selected.clerking_notes || "—"}
+                  </p>
+                </section>
+                <section>
+                  <h3 className="font-semibold mb-2">Diagnoses</h3>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      value={newDx}
+                      onChange={(e) => setNewDx(e.target.value)}
+                      placeholder="Add diagnosis"
+                      className="input-medical flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={addDiagnosis}
+                      className="btn-primary"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {diagnoses.map((dx) => (
+                      <div
+                        key={dx.id}
+                        className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"
+                      >
+                        <div>
+                          <span className="font-medium text-sm">
+                            {dx.diagnosis}
+                          </span>
+                          {dx.is_principal && (
+                            <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          {!dx.is_principal && (
+                            <button
+                              type="button"
+                              onClick={() => setPrincipal(dx)}
+                              className="btn-ghost text-xs"
+                            >
+                              Set principal
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeDiagnosis(dx.id)}
+                            className="text-destructive p-2"
+                            aria-label="Remove diagnosis"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <h3 className="font-semibold flex items-center gap-2 mb-2">
+                    <Pill className="w-4 h-4" /> Prescribing
+                  </h3>
+                  <form
+                    onSubmit={addPrescription}
+                    className="grid gap-2 md:grid-cols-2"
+                  >
+                    <input
+                      value={med}
+                      onChange={(e) => setMed(e.target.value)}
+                      placeholder="Medication"
+                      className="input-medical"
+                      required
+                    />
+                    <input
+                      value={dose}
+                      onChange={(e) => setDose(e.target.value)}
+                      placeholder="Dose"
+                      className="input-medical"
+                    />
+                    <input
+                      value={freq}
+                      onChange={(e) => setFreq(e.target.value)}
+                      placeholder="Frequency"
+                      className="input-medical"
+                    />
+                    <input
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      placeholder="Duration"
+                      className="input-medical"
+                    />
+                    <button className="btn-primary md:col-span-2">
+                      Add prescription
+                    </button>
+                  </form>
+                  <div className="space-y-2 mt-3">
+                    {prescriptions.map((rx) => (
+                      <div
+                        key={rx.id}
+                        className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"
+                      >
+                        <span>
+                          <b>{rx.medication}</b> ·{" "}
+                          {rx.dosage || "Dose not recorded"} ·{" "}
+                          {rx.frequency || "Frequency not recorded"} ·{" "}
+                          {rx.duration || "Duration not recorded"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {rx.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
