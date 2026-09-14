@@ -1,0 +1,116 @@
+-- Production reconciliation for Reports Center.
+-- This migration mirrors the schema/function contract applied to the production
+-- Supabase project so the repository and remote migration history remain aligned.
+-- All objects are intentionally idempotent.
+
+CREATE TABLE IF NOT EXISTS public.healthcare_facilities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, facility_code TEXT UNIQUE,
+  facility_type TEXT NOT NULL CHECK (facility_type IN ('chps_compound','health_centre','district_hospital','regional_hospital','teaching_hospital','hiv_clinic','maternity_home','specialist_clinic','other')),
+  district TEXT, region TEXT, dhims2_uid TEXT UNIQUE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.facility_memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), facility_id UUID NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, access_scope TEXT NOT NULL DEFAULT 'facility' CHECK (access_scope IN ('facility','district','regional','national')),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(facility_id,user_id)
+);
+CREATE TABLE IF NOT EXISTS public.report_categories (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL UNIQUE, display_order INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS public.report_definitions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), report_code TEXT NOT NULL UNIQUE, report_name TEXT NOT NULL,
+  category_id UUID REFERENCES public.report_categories(id) ON DELETE SET NULL, description TEXT,
+  frequency TEXT NOT NULL DEFAULT 'monthly' CHECK (frequency IN ('weekly','monthly','quarterly','annual')),
+  parameters JSONB NOT NULL DEFAULT '[]'::jsonb, default_parameters JSONB NOT NULL DEFAULT '{}'::jsonb, extractor_key TEXT NOT NULL,
+  supported_formats TEXT[] NOT NULL DEFAULT ARRAY['xlsx','csv'], submission_deadline_day INTEGER NOT NULL DEFAULT 5 CHECK (submission_deadline_day BETWEEN 1 AND 28),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE, implementation_status TEXT NOT NULL DEFAULT 'seeded' CHECK (implementation_status IN ('seeded','mapped','validated','retired')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.facility_report_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), facility_id UUID NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  report_id UUID NOT NULL REFERENCES public.report_definitions(id) ON DELETE CASCADE, is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  submission_deadline_day INTEGER CHECK (submission_deadline_day BETWEEN 1 AND 28), custom_parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(facility_id,report_id)
+);
+CREATE TABLE IF NOT EXISTS public.report_generation_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), facility_id UUID NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  period_start DATE NOT NULL, period_end DATE NOT NULL, frequency TEXT NOT NULL DEFAULT 'monthly' CHECK (frequency IN ('weekly','monthly','quarterly','annual')),
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','processing','completed','partial_failed','failed','cancelled')),
+  total_reports INTEGER NOT NULL DEFAULT 0, success_count INTEGER NOT NULL DEFAULT 0, warning_count INTEGER NOT NULL DEFAULT 0, failed_count INTEGER NOT NULL DEFAULT 0,
+  parameters JSONB NOT NULL DEFAULT '{}'::jsonb, bundle_manifest JSONB NOT NULL DEFAULT '[]'::jsonb, created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.report_generation_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), run_id UUID NOT NULL REFERENCES public.report_generation_runs(id) ON DELETE CASCADE,
+  report_id UUID NOT NULL REFERENCES public.report_definitions(id) ON DELETE RESTRICT, status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','processing','completed','failed','warning')),
+  output_format TEXT NOT NULL DEFAULT 'xlsx' CHECK (output_format IN ('xlsx','csv','pdf')), file_name TEXT, data_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  validation_messages JSONB NOT NULL DEFAULT '[]'::jsonb, error_message TEXT, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(run_id,report_id)
+);
+CREATE TABLE IF NOT EXISTS public.report_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), report_id UUID NOT NULL REFERENCES public.report_definitions(id) ON DELETE RESTRICT,
+  facility_id UUID NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE, period_start DATE NOT NULL, period_end DATE NOT NULL, due_date DATE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','submitted','overdue','accepted','rejected')), submitted_at TIMESTAMPTZ,
+  submitted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL, submission_reference TEXT, data_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(report_id,facility_id,period_start,period_end)
+);
+
+CREATE INDEX IF NOT EXISTS idx_facility_memberships_user ON public.facility_memberships(user_id,is_active);
+CREATE INDEX IF NOT EXISTS idx_facility_memberships_facility ON public.facility_memberships(facility_id,is_active);
+CREATE INDEX IF NOT EXISTS idx_facility_report_config_enabled ON public.facility_report_config(facility_id,is_enabled);
+CREATE INDEX IF NOT EXISTS idx_report_generation_runs_facility_period ON public.report_generation_runs(facility_id,period_start,period_end);
+CREATE INDEX IF NOT EXISTS idx_report_generation_items_run ON public.report_generation_items(run_id,status);
+CREATE INDEX IF NOT EXISTS idx_report_submissions_dashboard ON public.report_submissions(facility_id,period_start,status);
+
+INSERT INTO public.report_categories(name,display_order) VALUES
+('Morbidity & OPD',10),('HIV/AIDS & Related',20),('Maternal & Child Health',30),('Surgical & Clinical',40),('Disease Surveillance & Programs',50),('Other Programs & Administration',60)
+ON CONFLICT(name) DO NOTHING;
+
+INSERT INTO public.report_definitions(report_code,report_name,category_id,frequency,parameters,extractor_key)
+SELECT x.code,x.name,c.id,x.frequency,x.params::jsonb,x.extractor
+FROM (VALUES
+('RPT-001','Monthly OPD Morbidity Return','Morbidity & OPD','monthly','["period","facility","age_group","case_type","icd_code"]','opd_morbidity'),('RPT-002','Monthly OPD Statement','Morbidity & OPD','monthly','["period","facility","case_type"]','opd_attendance'),('RPT-003','Monthly Malaria Data on Anti-malarial','Morbidity & OPD','monthly','["period","facility"]','malaria'),('RPT-004','Causes of Death Statement','Morbidity & OPD','monthly','["period","facility","cause"]','mortality'),
+('RPT-005','HIV/AIDS Return (HTS)','HIV/AIDS & Related','monthly','["period","facility"]','hiv_hts'),('RPT-006','ART Visits (New Adult)','HIV/AIDS & Related','monthly','["period","facility"]','art_adult_new'),('RPT-007','ART Visits (Established Adult)','HIV/AIDS & Related','monthly','["period","facility"]','art_adult_followup'),('RPT-008','ART Visits (Pediatrics)','HIV/AIDS & Related','monthly','["period","facility"]','art_paediatric'),('RPT-009','PMTCT Monthly Return Form','HIV/AIDS & Related','monthly','["period","facility"]','pmtct'),('RPT-010','STI Return','HIV/AIDS & Related','monthly','["period","facility"]','sti'),('RPT-011','VMMC (Male Circumcision)','HIV/AIDS & Related','monthly','["period","facility"]','vmmc'),
+('RPT-012','Midwife''s Form A (Monthly Returns)','Maternal & Child Health','monthly','["period","facility"]','mch_midwife_a'),('RPT-013','Form B — Family Planning Returns','Maternal & Child Health','monthly','["period","facility"]','family_planning'),('RPT-014','Form C','Maternal & Child Health','monthly','["period","facility"]','mch_form_c'),('RPT-015','Antenatal Total','Maternal & Child Health','monthly','["period","facility"]','antenatal'),('RPT-016','Delivery Report','Maternal & Child Health','monthly','["period","facility"]','delivery'),('RPT-017','Postnatal Care (PNC)','Maternal & Child Health','monthly','["period","facility"]','pnc'),('RPT-018','Comprehensive Abortion Care (CAC)','Maternal & Child Health','monthly','["period","facility"]','cac'),('RPT-019','EPI (Immunization) Report','Maternal & Child Health','monthly','["period","facility"]','epi'),('RPT-020','Monthly Nutrition Report','Maternal & Child Health','monthly','["period","facility"]','nutrition'),('RPT-021','Births & Birthweight','Maternal & Child Health','monthly','["period","facility"]','births'),('RPT-022','Hb Screening','Maternal & Child Health','monthly','["period","facility"]','hb_screening'),
+('RPT-023','Surgeries Report','Surgical & Clinical','monthly','["period","facility"]','surgeries'),('RPT-024','Inpatient Days (IP Days)','Surgical & Clinical','monthly','["period","facility"]','inpatient_days'),('RPT-025','IP Admission / Discharge','Surgical & Clinical','monthly','["period","facility"]','ip_admission_discharge'),('RPT-026','IP Morbidity','Surgical & Clinical','monthly','["period","facility"]','ip_morbidity'),('RPT-027','Gynaecology & Obstetrics Report','Surgical & Clinical','monthly','["period","facility"]','gynae_obstetrics'),('RPT-028','Accidents & Emergency','Surgical & Clinical','monthly','["period","facility"]','emergency'),('RPT-029','Dental Report','Surgical & Clinical','monthly','["period","facility"]','dental'),('RPT-030','Mental Health Report','Surgical & Clinical','monthly','["period","facility"]','mental_health'),('RPT-031','Active MTMSG','Surgical & Clinical','monthly','["period","facility"]','active_case_finding'),
+('RPT-032','IDSR Weekly Reports','Disease Surveillance & Programs','weekly','["period","facility","disease"]','idsr_weekly'),('RPT-033','IDSR Monthly Reports','Disease Surveillance & Programs','monthly','["period","facility","disease"]','idsr_monthly'),('RPT-034','TB Case Findings (New)','Disease Surveillance & Programs','monthly','["period","facility"]','tb_new'),('RPT-035','Malnutrition (Under 5)','Disease Surveillance & Programs','monthly','["period","facility"]','malnutrition_u5'),('RPT-036','Schistosomiasis & FGS','Disease Surveillance & Programs','monthly','["period","facility"]','schistosomiasis'),('RPT-037','Buruli Ulcer','Disease Surveillance & Programs','monthly','["period","facility"]','buruli_ulcer'),
+('RPT-038','SBCC Report','Other Programs & Administration','monthly','["period","facility"]','sbcc'),('RPT-039','Community Health (CHIS)','Other Programs & Administration','monthly','["period","facility"]','chis'),('RPT-040','Administrative Reporting','Other Programs & Administration','monthly','["period","facility"]','administrative'),('RPT-041','Laboratory Reports','Other Programs & Administration','monthly','["period","facility","test_type"]','laboratory')
+) AS x(code,name,category,frequency,params,extractor) JOIN public.report_categories c ON c.name=x.category
+ON CONFLICT(report_code) DO UPDATE SET report_name=EXCLUDED.report_name,category_id=EXCLUDED.category_id,frequency=EXCLUDED.frequency,parameters=EXCLUDED.parameters,extractor_key=EXCLUDED.extractor_key,updated_at=now();
+
+CREATE OR REPLACE FUNCTION public.has_facility_access(_user_id UUID,_facility_id UUID) RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS(SELECT 1 FROM public.facility_memberships WHERE user_id=_user_id AND facility_id=_facility_id AND is_active) OR public.has_role(_user_id,'admin') $$;
+CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id UUID) RETURNS VOID LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ BEGIN IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF; INSERT INTO public.facility_report_config(facility_id,report_id,is_enabled,submission_deadline_day) SELECT _facility_id,id,TRUE,submission_deadline_day FROM public.report_definitions WHERE is_active ON CONFLICT(facility_id,report_id) DO NOTHING; END $$;
+CREATE OR REPLACE FUNCTION public.create_reports_facility(_name TEXT,_facility_code TEXT DEFAULT NULL,_facility_type TEXT DEFAULT 'district_hospital',_district TEXT DEFAULT NULL,_region TEXT DEFAULT NULL,_dhims2_uid TEXT DEFAULT NULL) RETURNS public.healthcare_facilities LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.healthcare_facilities; BEGIN IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Only administrators may create healthcare facilities'; END IF; INSERT INTO public.healthcare_facilities(name,facility_code,facility_type,district,region,dhims2_uid,created_by) VALUES(trim(_name),NULLIF(trim(_facility_code),''),_facility_type,NULLIF(trim(_district),''),NULLIF(trim(_region),''),NULLIF(trim(_dhims2_uid),''),auth.uid()) RETURNING * INTO v; INSERT INTO public.facility_memberships(facility_id,user_id) VALUES(v.id,auth.uid()) ON CONFLICT(facility_id,user_id) DO UPDATE SET is_active=TRUE; PERFORM public.seed_facility_reports(v.id); RETURN v; END $$;
+CREATE OR REPLACE FUNCTION public.recover_stale_report_run(_run_id UUID,_stale_after_minutes INTEGER DEFAULT 30) RETURNS public.report_generation_runs LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.report_generation_runs; c INTEGER; w INTEGER; f INTEGER; t INTEGER; BEGIN SELECT * INTO v FROM public.report_generation_runs WHERE id=_run_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Report generation run not found'; END IF; IF NOT public.has_facility_access(auth.uid(),v.facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; IF v.status NOT IN ('queued','processing') OR COALESCE(v.started_at,v.created_at)>now()-(GREATEST(_stale_after_minutes,5)||' minutes')::interval THEN RETURN v; END IF; UPDATE public.report_generation_items SET status='failed',error_message='Recovered stale report generation item',completed_at=now() WHERE run_id=_run_id AND status IN ('queued','processing'); SELECT count(*) FILTER(WHERE status='completed'),count(*) FILTER(WHERE status='warning'),count(*) FILTER(WHERE status='failed'),count(*) INTO c,w,f,t FROM public.report_generation_items WHERE run_id=_run_id; UPDATE public.report_generation_runs SET success_count=c,warning_count=w,failed_count=f,status=CASE WHEN f=t THEN 'failed' ELSE 'partial_failed' END,completed_at=now() WHERE id=_run_id RETURNING * INTO v; RETURN v; END $$;
+CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(_report_id UUID,_facility_id UUID,_period_start DATE,_period_end DATE,_due_date DATE,_data_snapshot JSONB DEFAULT '{}'::jsonb) RETURNS public.report_submissions LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.report_submissions; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; INSERT INTO public.report_submissions(report_id,facility_id,period_start,period_end,due_date,data_snapshot) VALUES(_report_id,_facility_id,_period_start,_period_end,_due_date,COALESCE(_data_snapshot,'{}'::jsonb)) ON CONFLICT(report_id,facility_id,period_start,period_end) DO UPDATE SET due_date=EXCLUDED.due_date,data_snapshot=EXCLUDED.data_snapshot,updated_at=now() WHERE public.report_submissions.status IN ('pending','overdue') RETURNING * INTO v; IF v.id IS NULL THEN SELECT * INTO v FROM public.report_submissions WHERE report_id=_report_id AND facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end; END IF; RETURN v; END $$;
+CREATE OR REPLACE FUNCTION public.sync_overdue_report_submissions(_facility_id UUID,_period_start DATE,_period_end DATE) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; UPDATE public.report_submissions SET status='overdue',updated_at=now() WHERE facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end AND status='pending' AND due_date<current_date; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
+CREATE OR REPLACE FUNCTION public.mark_report_submissions_submitted(_submission_ids UUID[]) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Report submission permission denied'; END IF; UPDATE public.report_submissions SET status='submitted',submitted_at=now(),submitted_by=auth.uid(),updated_at=now() WHERE id=ANY(_submission_ids) AND public.has_facility_access(auth.uid(),facility_id) AND status IN ('pending','overdue'); GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
+
+ALTER TABLE public.healthcare_facilities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facility_memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_definitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facility_report_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_generation_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_generation_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_submissions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS reports_facilities_read ON public.healthcare_facilities; CREATE POLICY reports_facilities_read ON public.healthcare_facilities FOR SELECT TO authenticated USING(public.has_facility_access(auth.uid(),id));
+DROP POLICY IF EXISTS reports_memberships_read ON public.facility_memberships; CREATE POLICY reports_memberships_read ON public.facility_memberships FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS reports_categories_read ON public.report_categories; CREATE POLICY reports_categories_read ON public.report_categories FOR SELECT TO authenticated USING(TRUE);
+DROP POLICY IF EXISTS reports_definitions_read ON public.report_definitions; CREATE POLICY reports_definitions_read ON public.report_definitions FOR SELECT TO authenticated USING(TRUE);
+DROP POLICY IF EXISTS reports_config_access ON public.facility_report_config; CREATE POLICY reports_config_access ON public.facility_report_config FOR SELECT TO authenticated USING(public.has_facility_access(auth.uid(),facility_id));
+DROP POLICY IF EXISTS reports_config_admin_write ON public.facility_report_config; CREATE POLICY reports_config_admin_write ON public.facility_report_config FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS reports_runs_access ON public.report_generation_runs; CREATE POLICY reports_runs_access ON public.report_generation_runs FOR SELECT TO authenticated USING(public.has_facility_access(auth.uid(),facility_id));
+DROP POLICY IF EXISTS reports_runs_insert ON public.report_generation_runs; CREATE POLICY reports_runs_insert ON public.report_generation_runs FOR INSERT TO authenticated WITH CHECK(public.has_facility_access(auth.uid(),facility_id) AND created_by=auth.uid());
+DROP POLICY IF EXISTS reports_runs_update ON public.report_generation_runs; CREATE POLICY reports_runs_update ON public.report_generation_runs FOR UPDATE TO authenticated USING(created_by=auth.uid() OR public.has_role(auth.uid(),'admin')) WITH CHECK(created_by=auth.uid() OR public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS reports_items_access ON public.report_generation_items; CREATE POLICY reports_items_access ON public.report_generation_items FOR SELECT TO authenticated USING(EXISTS(SELECT 1 FROM public.report_generation_runs r WHERE r.id=run_id AND public.has_facility_access(auth.uid(),r.facility_id)));
+DROP POLICY IF EXISTS reports_items_insert ON public.report_generation_items; CREATE POLICY reports_items_insert ON public.report_generation_items FOR INSERT TO authenticated WITH CHECK(EXISTS(SELECT 1 FROM public.report_generation_runs r WHERE r.id=run_id AND (r.created_by=auth.uid() OR public.has_role(auth.uid(),'admin'))));
+DROP POLICY IF EXISTS reports_items_update ON public.report_generation_items; CREATE POLICY reports_items_update ON public.report_generation_items FOR UPDATE TO authenticated USING(EXISTS(SELECT 1 FROM public.report_generation_runs r WHERE r.id=run_id AND (r.created_by=auth.uid() OR public.has_role(auth.uid(),'admin')))) WITH CHECK(EXISTS(SELECT 1 FROM public.report_generation_runs r WHERE r.id=run_id AND (r.created_by=auth.uid() OR public.has_role(auth.uid(),'admin'))));
+DROP POLICY IF EXISTS reports_submissions_access ON public.report_submissions; CREATE POLICY reports_submissions_access ON public.report_submissions FOR SELECT TO authenticated USING(public.has_facility_access(auth.uid(),facility_id));
+DROP POLICY IF EXISTS reports_submissions_insert ON public.report_submissions; CREATE POLICY reports_submissions_insert ON public.report_submissions FOR INSERT TO authenticated WITH CHECK(public.has_facility_access(auth.uid(),facility_id));
+DROP POLICY IF EXISTS reports_submissions_update ON public.report_submissions; CREATE POLICY reports_submissions_update ON public.report_submissions FOR UPDATE TO authenticated USING(public.has_facility_access(auth.uid(),facility_id) AND (submitted_by IS NULL OR submitted_by=auth.uid() OR public.has_role(auth.uid(),'admin'))) WITH CHECK(public.has_facility_access(auth.uid(),facility_id));
+
+REVOKE ALL ON FUNCTION public.seed_facility_reports(UUID) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.seed_facility_reports(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.create_reports_facility(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.create_reports_facility(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.recover_stale_report_run(UUID,INTEGER) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.recover_stale_report_run(UUID,INTEGER) TO authenticated;
+REVOKE ALL ON FUNCTION public.upsert_report_submission_tracking(UUID,UUID,DATE,DATE,DATE,JSONB) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.upsert_report_submission_tracking(UUID,UUID,DATE,DATE,DATE,JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.sync_overdue_report_submissions(UUID,DATE,DATE) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.sync_overdue_report_submissions(UUID,DATE,DATE) TO authenticated;
+REVOKE ALL ON FUNCTION public.mark_report_submissions_submitted(UUID[]) FROM PUBLIC; GRANT EXECUTE ON FUNCTION public.mark_report_submissions_submitted(UUID[]) TO authenticated;
