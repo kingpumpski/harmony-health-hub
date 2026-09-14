@@ -81,7 +81,18 @@ export async function searchPatients(query: string) {
   if (q) req = req.or(`patient_code.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,ghana_card_number.ilike.%${q}%,email.ilike.%${q}%`);
   const { data, error } = await req;
   if (error) { console.error('[searchPatients]', error); return []; }
-  return (data ?? []).map((p) => ({ id:p.id, patientId:p.patient_code, firstName:p.first_name, lastName:p.last_name, fullName:`${p.first_name} ${p.last_name}`, phone:p.phone, ghanaCardNumber:p.ghana_card_number, status:p.status, insuranceProvider:p.insurance_provider, membershipType:p.membership_type, membershipExpiresAt:p.membership_expires_at }));
+  const normalizedQuery = q.toLocaleLowerCase();
+  const ranked = (data ?? []).map((p) => {
+    const fields = [p.patient_code, p.first_name, p.last_name, p.phone, p.ghana_card_number, p.email].filter(Boolean).map((value) => String(value).toLocaleLowerCase());
+    const score = fields.reduce((best, field) => {
+      if (field === normalizedQuery) return Math.max(best, 100);
+      if (field.startsWith(normalizedQuery)) return Math.max(best, 75);
+      if (field.includes(normalizedQuery)) return Math.max(best, 50);
+      return best;
+    }, 0);
+    return { score, patient: { id:p.id, patientId:p.patient_code, firstName:p.first_name, lastName:p.last_name, fullName:`${p.first_name} ${p.last_name}`, phone:p.phone, ghanaCardNumber:p.ghana_card_number, status:p.status, insuranceProvider:p.insurance_provider, membershipType:p.membership_type, membershipExpiresAt:p.membership_expires_at } };
+  });
+  return ranked.sort((a, b) => b.score - a.score).map(({ patient }) => patient);
 }
 
 export async function getPatientById(id: string) { const { data } = await supabase.from('patients').select('*').eq('id', id).maybeSingle(); return data; }
