@@ -1,4 +1,4 @@
-import { enqueueOfflineMutation } from '@/lib/offlineSync';
+import { enqueueOfflineMutation, upsertOfflineReadModel } from '@/lib/offlineSync';
 import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ygqoptvezotdqhtimdkr.supabase.co';
@@ -37,7 +37,7 @@ export async function queueOfflineTriageAssessment(
     throw new Error('You must be signed in to save an offline triage assessment.');
   }
 
-  await enqueueOfflineMutation({
+  const queued = await enqueueOfflineMutation({
     url: `${SUPABASE_URL}/rest/v1/triage_assessments?on_conflict=id`,
     method: 'POST',
     headers: {
@@ -47,6 +47,13 @@ export async function queueOfflineTriageAssessment(
       prefer: 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(stableRow),
+  });
+
+  await upsertOfflineReadModel({
+    id,
+    mutationId: queued.id,
+    kind: 'triage',
+    data: stableRow,
   });
 
   return { id, patientId, row: stableRow };
