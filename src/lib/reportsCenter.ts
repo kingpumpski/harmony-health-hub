@@ -100,6 +100,26 @@ function dueDateFor(period: string, deadline: number) {
   return new Date(Date.UTC(year, month - 1, effectiveDeadline)).toISOString().slice(0, 10);
 }
 
+async function reconcileFailedRun(runId: string, reason: string): Promise<void> {
+  const { data: currentItems, error: readError } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at');
+  if (readError) throw new Error(`${reason} Unable to inspect run items: ${readError.message}`);
+  const items = (currentItems ?? []) as ReportRunItem[];
+  const incomplete = items.filter((item) => item.status === 'queued' || item.status === 'processing');
+  if (incomplete.length) {
+    const { error } = await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: reason, completed_at: new Date().toISOString() }).eq('run_id', runId).in('status', ['queued', 'processing']);
+    if (error) throw new Error(`${reason} Unable to mark incomplete report items as failed: ${error.message}`);
+  }
+  const { data: reconciledItems, error: reconciledReadError } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at');
+  if (reconciledReadError) throw new Error(`${reason} Unable to re-read run items: ${reconciledReadError.message}`);
+  const finalItems = (reconciledItems ?? []) as ReportRunItem[];
+  const success = finalItems.filter((item) => item.status === 'completed').length;
+  const warning = finalItems.filter((item) => item.status === 'warning').length;
+  const failed = finalItems.filter((item) => item.status === 'failed').length;
+  const finalStatus = finalItems.length === 0 || failed === finalItems.length ? 'failed' : 'partial_failed';
+  const { error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', runId);
+  if (finalError) throw new Error(`${reason} Unable to finalize the failed report run: ${finalError.message}`);
+}
+
 export async function generateRun(facilityId: string, period: string, configs: FacilityReportConfig[]) {
   const { start, end } = monthBounds(period);
   const enabled = configs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
@@ -113,30 +133,37 @@ export async function generateRun(facilityId: string, period: string, configs: F
   const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('*').single();
   if (runError) { if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.'); throw new Error(runError.message); }
   const run = runData as ReportRun;
-  const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('*');
-  if (itemError) throw new Error(itemError.message);
-  const items = itemData as ReportRunItem[];
-  let success = 0; let warning = 0; let failed = 0;
-  for (const item of items) {
-    const config = enabled.find((entry) => entry.report_id === item.report_id);
-    if (!config?.report) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: 'Report definition was not available for the activated configuration.', completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
-    const snapshot = await extractSnapshot(config.report, period);
-    if (snapshot.error) {
-      failed += 1;
-      await reportsDb.from('report_generation_items').update({ status: 'failed', data_snapshot: snapshot, validation_messages: [snapshot.error], error_message: snapshot.error, file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
-      continue;
+  try {
+    const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('*');
+    if (itemError) throw new Error(itemError.message);
+    const items = itemData as ReportRunItem[];
+    let success = 0; let warning = 0; let failed = 0;
+    for (const item of items) {
+      const config = enabled.find((entry) => entry.report_id === item.report_id);
+      if (!config?.report) { failed += 1; const { error } = await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: 'Report definition was not available for the activated configuration.', completed_at: new Date().toISOString() }).eq('id', item.id); if (error) throw new Error(error.message); continue; }
+      const snapshot = await extractSnapshot(config.report, period);
+      if (snapshot.error) {
+        failed += 1;
+        const { error } = await reportsDb.from('report_generation_items').update({ status: 'failed', data_snapshot: snapshot, validation_messages: [snapshot.error], error_message: snapshot.error, file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
+        if (error) throw new Error(error.message);
+        continue;
+      }
+      const hasWarning = Boolean(snapshot.warning); const status: ReportStatus = hasWarning ? 'warning' : 'completed';
+      const { error: itemUpdateError } = await reportsDb.from('report_generation_items').update({ status, data_snapshot: snapshot, validation_messages: snapshot.warning ? [snapshot.warning] : [], file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
+      if (itemUpdateError) { const { error } = await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: itemUpdateError.message, completed_at: new Date().toISOString() }).eq('id', item.id); if (error) throw new Error(error.message); failed += 1; continue; }
+      if (hasWarning) warning += 1; else success += 1;
+      const submissionResult = await reportsDb.rpc('upsert_report_submission_tracking', { _report_id: config.report_id, _facility_id: facilityId, _period_start: start.slice(0, 10), _period_end: end.slice(0, 10), _due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day), _data_snapshot: snapshot });
+      if (submissionResult.error) { const { error } = await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id); if (error) throw new Error(error.message); if (!hasWarning) { success -= 1; warning += 1; } }
     }
-    const hasWarning = Boolean(snapshot.warning); const status: ReportStatus = hasWarning ? 'warning' : 'completed';
-    const { error: itemUpdateError } = await reportsDb.from('report_generation_items').update({ status, data_snapshot: snapshot, validation_messages: snapshot.warning ? [snapshot.warning] : [], file_name: `${config.report.report_code}_${period}.xlsx`, completed_at: new Date().toISOString() }).eq('id', item.id);
-    if (itemUpdateError) { failed += 1; await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: itemUpdateError.message, completed_at: new Date().toISOString() }).eq('id', item.id); continue; }
-    if (hasWarning) warning += 1; else success += 1;
-    const submissionResult = await reportsDb.rpc('upsert_report_submission_tracking', { _report_id: config.report_id, _facility_id: facilityId, _period_start: start.slice(0, 10), _period_end: end.slice(0, 10), _due_date: dueDateFor(period, config.submission_deadline_day ?? config.report.submission_deadline_day), _data_snapshot: snapshot });
-    if (submissionResult.error) { await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id); if (!hasWarning) { success -= 1; warning += 1; } }
+    const finalStatus = failed > 0 ? (failed === enabled.length ? 'failed' : 'partial_failed') : 'completed';
+    const { data: finalData, error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', run.id).select('*').single();
+    if (finalError) throw new Error(finalError.message);
+    return finalData as ReportRun;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Report generation failed unexpectedly.';
+    try { await reconcileFailedRun(run.id, reason); } catch (reconciliationError) { const reconciliationMessage = reconciliationError instanceof Error ? reconciliationError.message : 'Unable to reconcile the failed report run.'; throw new Error(`${reason} ${reconciliationMessage}`); }
+    throw new Error(reason);
   }
-  const finalStatus = failed > 0 ? (failed === enabled.length ? 'failed' : 'partial_failed') : 'completed';
-  const { data: finalData, error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', run.id).select('*').single();
-  if (finalError) throw new Error(finalError.message);
-  return finalData as ReportRun;
 }
 
 export async function getRunItems(runId: string): Promise<ReportRunItem[]> { const { data, error } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at'); if (error) throw new Error(error.message); return (data ?? []) as ReportRunItem[]; }
