@@ -15,6 +15,33 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
+const OFFLINE_CONTINUITY_TABLES = new Set(['patients', 'triage_assessments']);
+
+/**
+ * Keep direct PostgREST continuity writes POST-only. Existing online PATCH/
+ * DELETE operations must never become offline queue entries merely because
+ * they target an allow-listed table. Their normal online behavior is retained;
+ * when offline, they fail normally and the caller can handle the failure.
+ */
+function continuitySafeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const request = new Request(input, init);
+  const url = new URL(request.url);
+  const restPrefix = '/rest/v1/';
+  const tableName = url.pathname.split(restPrefix)[1]?.split('/')[0] ?? '';
+  const isDirectPostgrestMutation =
+    request.method !== 'POST' &&
+    ['PUT', 'PATCH', 'DELETE'].includes(request.method) &&
+    url.pathname.includes(restPrefix) &&
+    !url.pathname.includes('/rpc/') &&
+    OFFLINE_CONTINUITY_TABLES.has(tableName);
+
+  if (isDirectPostgrestMutation) {
+    return fetch(request);
+  }
+
+  return offlineAwareFetch(request);
+}
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: brokeredPreviewStorage(),
@@ -22,7 +49,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   },
   global: {
-    fetch: offlineAwareFetch,
+    fetch: continuitySafeFetch,
   },
 });
 
