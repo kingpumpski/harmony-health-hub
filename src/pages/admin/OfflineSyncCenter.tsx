@@ -5,10 +5,12 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getOfflineMutations,
+  getOfflineReadModels,
   getOfflineSyncHistory,
   syncOfflineMutations,
   subscribeToOfflineSync,
   type OfflineMutation,
+  type OfflineReadModel,
   type OfflineSyncHistory,
 } from '@/lib/offlineSync';
 
@@ -28,20 +30,33 @@ function statusClass(event: OfflineSyncHistory['event']): string {
   return 'badge-warning';
 }
 
+function continuityLabel(item: OfflineReadModel): string {
+  if (item.kind === 'patient') {
+    return `${String(item.data.first_name ?? '')} ${String(item.data.last_name ?? '')}`.trim() || String(item.data.patient_code ?? item.id);
+  }
+  return `Triage · ${String(item.data.patient_id ?? item.id)}`;
+}
+
 export default function OfflineSyncCenter() {
   const { user } = useAuth();
   const [online, setOnline] = useState(() => navigator.onLine);
   const [pending, setPending] = useState<OfflineMutation[]>([]);
   const [history, setHistory] = useState<OfflineSyncHistory[]>([]);
+  const [continuity, setContinuity] = useState<OfflineReadModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [queue, events] = await Promise.all([getOfflineMutations(), getOfflineSyncHistory(250)]);
+      const [queue, events, records] = await Promise.all([
+        getOfflineMutations(),
+        getOfflineSyncHistory(250),
+        getOfflineReadModels(undefined, 100),
+      ]);
       setPending(queue);
       setHistory(events);
+      setContinuity(records);
     } finally {
       setLoading(false);
     }
@@ -98,10 +113,15 @@ export default function OfflineSyncCenter() {
         <div className="card-medical rounded-2xl p-4"><p className="text-xs text-muted-foreground">Connectivity</p><div className="mt-2 flex items-center gap-2 font-semibold">{online ? <Cloud className="w-5 h-5 text-emerald-600" /> : <CloudOff className="w-5 h-5 text-amber-600" />}{online ? 'Online' : 'Offline'}</div></div>
         <div className="card-medical rounded-2xl p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="mt-2 text-2xl font-bold">{pending.length}</p></div>
         <div className="card-medical rounded-2xl p-4"><p className="text-xs text-muted-foreground">Failed events</p><p className="mt-2 text-2xl font-bold">{failed.length}</p></div>
-        <div className="card-medical rounded-2xl p-4"><p className="text-xs text-muted-foreground">History retained</p><p className="mt-2 text-2xl font-bold">{history.length}</p></div>
+        <div className="card-medical rounded-2xl p-4"><p className="text-xs text-muted-foreground">Continuity records</p><p className="mt-2 text-2xl font-bold">{continuity.length}</p></div>
       </div>
 
       {!online && <div className="rounded-2xl border border-amber-300/50 bg-amber-50/50 p-4 text-sm flex gap-3"><WifiOff className="w-5 h-5 shrink-0 text-amber-600" /><span>Connectivity is unavailable. Queued work remains on this device and will not be discarded.</span></div>}
+
+      <section className="card-medical rounded-3xl overflow-hidden">
+        <div className="p-5 border-b border-border"><h2 className="font-semibold">Offline continuity records</h2><p className="text-xs text-muted-foreground mt-1">Locally retained patient and triage records remain visible while disconnected. Status changes to server-confirmed only after successful synchronization.</p></div>
+        {loading ? <div className="p-8 text-center text-muted-foreground">Loading continuity records…</div> : continuity.length === 0 ? <div className="p-8 text-center text-muted-foreground">No offline continuity records on this device.</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">Created</th><th className="p-3">Type</th><th className="p-3">Record</th><th className="p-3">Status</th></tr></thead><tbody>{continuity.map((item) => <tr key={item.id} className="border-b border-border"><td className="p-3 whitespace-nowrap">{new Date(item.createdAt).toLocaleString()}</td><td className="p-3 capitalize">{item.kind}</td><td className="p-3 font-medium">{continuityLabel(item)}</td><td className="p-3"><span className={item.status === 'server-confirmed' ? 'badge-success' : 'badge-warning'}>{item.status === 'server-confirmed' ? 'Server confirmed' : 'Queued locally'}</span></td></tr>)}</tbody></table></div>}
+      </section>
 
       <section className="card-medical rounded-3xl overflow-hidden">
         <div className="p-5 border-b border-border"><h2 className="font-semibold">Pending synchronization queue</h2><p className="text-xs text-muted-foreground mt-1">Payload contents are intentionally not displayed here to reduce unnecessary exposure of clinical data.</p></div>
