@@ -1,0 +1,112 @@
+# Offline-first and synchronization
+
+## Purpose
+
+Harmony Health Hub must remain usable when a facility temporarily loses internet connectivity. This branch introduces an offline-first foundation without replacing the existing Supabase architecture. The design goal is operational continuity: connectivity loss must not unnecessarily stop supported facility work, and locally captured work must remain durable until it can be synchronized.
+
+## Current architecture
+
+- **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
+- **Cold-start production shell:** Vite emits `.vite/manifest.json`; the service worker reads that manifest during installation and precaches discovered production JavaScript, CSS and asset chunks. This means a device that has successfully loaded the production application and completed service-worker installation can reopen the application with its required hashed assets even if connectivity is already unavailable.
+- **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
+- **Mutation interception:** `src/lib/offlineSync.ts` handles an explicit allow-list of low-risk PostgREST table writes (`patients` and `triage_assessments`) plus explicitly contracted appointment and vital-sign RPC workflows. It does **not** automatically make arbitrary `/rest/v1/` writes offline-capable.
+- **POST-only direct-table continuity:** patient and triage direct-table continuity is limited to `POST`. Existing `PUT`, `PATCH`, and `DELETE` operations against those tables bypass the offline queue and retain their normal online behavior; they are not silently converted into offline mutations.
+- **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
+- **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, after page/focus resume, and periodically while the application remains open. A network can report itself as online while requests still fail; those network failures are retained and retried with bounded exponential backoff.
+- **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
+- **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The generic queue does not claim that this header alone provides server-side duplicate protection.
+- **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
+- **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB.
+- **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work; the admin-only `/admin/offline-sync` screen provides a local-device reconciliation view without exposing queued mutation payload bodies.
+
+## Retry and blocked-state policy
+
+Queued mutations have two runtime states: `pending` and `blocked`. Older queue entries that do not contain a state are treated as `pending`, so the IndexedDB version does not need a destructive schema migration merely to add these properties.
+
+- **Transient/network failures:** network errors, HTTP 408/425/429 and HTTP 5xx responses remain `pending`. The next attempt is delayed using bounded exponential backoff: 15 seconds, 30 seconds, 60 seconds, then doubling up to a 15-minute maximum. This prevents the foreground synchronization coordinator from hammering a recovering or unhealthy server.
+- **Permanent/authorization/conflict failures:** HTTP 400, 401, 403, 404, 409 and other 4xx validation failures are marked `blocked`. The mutation remains durably stored, but automatic synchronization will not repeatedly submit it.
+- **Manual recovery:** an administrator can use **Retry** in `/admin/offline-sync` to release a blocked mutation. The action clears the previous error, makes the mutation immediately eligible, and then attempts synchronization when the browser is online.
+- **No silent deletion:** failed or blocked mutations are never discarded merely because the server rejected them. They remain available for operator reconciliation until they successfully synchronize or are deliberately handled through a future explicit administrative workflow.
+- **Ordering:** synchronization still processes queued work in creation order. A transient or blocked response stops the current replay pass so later mutations are not advanced around a potentially important earlier operation.
+- **Server authority:** releasing a blocked mutation does not bypass server authorization, validation, RLS or workflow-specific conflict rules. It only permits the existing queued request to be submitted again.
+
+This policy is intentionally conservative. The purpose of offline continuity is to preserve work during connectivity crises, not to conceal server-side validation or conflict decisions.
+
+## Explicit offline workflows
+
+### Patient registration
+
+Patient registration has an explicit offline command with a stable client-generated patient UUID and patient code. The queued PostgREST command uses the patient's primary key as its conflict target and `resolution=ignore-duplicates`, so a replay after a successfully committed request with a lost response does not create a second patient. The UI distinguishes locally queued registration from server-confirmed registration. Patient documents/photos remain online-only until Storage synchronization is explicitly designed.
+
+### Triage assessment
+
+Triage has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`, `on_conflict=id`, and `resolution=ignore-duplicates`; a replay after a lost response therefore becomes a server-side no-op for the same assessment ID. The UI explicitly states that an offline assessment is not yet server-confirmed. Server-side validation and RLS remain authoritative when synchronization occurs.
+
+### Vital signs
+
+Vital signs have an explicit offline contract without opening direct client writes to `vital_signs`. When the existing `record_patient_vitals` workflow is invoked while disconnected, the fetch boundary converts that specific command into `record_patient_vitals_offline` and attaches a stable UUID. The server-side `SECURITY DEFINER` function re-checks the clinical role, inserts using the supplied UUID, calculates BMI when height and weight are available, and returns an existing-record result if the UUID has already been committed. This makes an interrupted response safe to replay without creating a second vital-sign record.
+
+### Appointment scheduling
+
+Appointment scheduling has an explicit offline contract because it is an operational workflow with a server-authoritative role check. The existing `create_patient_appointment` command is converted only while offline into `create_patient_appointment_offline`, with a stable UUID. The server-side function checks the allowed roles, inserts the supplied UUID, and returns an existing-record result when a replay encounters an appointment already committed with the same UUID. This prevents duplicate appointments caused by an interrupted synchronization response.
+
+## Local continuity/read models
+
+Patient registration, triage, selected vital signs and appointment scheduling write explicit local read models alongside their queued mutation. These records are intentionally scoped to workflows that already have stable identifiers and explicit offline contracts.
+
+- Records are marked **Queued locally** immediately after local persistence.
+- A record changes to **Server confirmed** only after its associated queued mutation receives a successful HTTP response during synchronization.
+- The admin Offline Synchronization Center displays these continuity records without displaying raw queued clinical payloads.
+- Local continuity is not a substitute for the authoritative Supabase record and is not treated as server confirmation.
+- The IndexedDB schema is version 4; existing queued mutations and synchronization history are retained during upgrade. Retry state is stored as additional properties on existing queue records.
+
+This does **not** make every clinical workflow offline. Emergency actions, medication administration, prescriptions, financial operations, admissions, laboratory orders and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
+
+## Safety boundaries
+
+This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments, storage uploads and uncontracted RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
+
+The direct PostgREST allow-list is intentionally narrow: only `POST` mutations for `patients` and `triage_assessments` are eligible for generic offline queuing. Existing update and delete operations against those tables bypass the offline queue, so a temporary connection failure cannot turn an ordinary online correction/removal into a durable offline mutation. Protected workflows must use an explicit server-side offline contract instead.
+
+A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
+
+The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. Patient registration and triage currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics. Vital signs and appointments achieve retry safety through explicit server RPC contracts and stable UUIDs. These are deliberately workflow-specific contracts rather than a universal database idempotency layer.
+
+## Merge communication
+
+This branch is designed to merge into `main` as a continuity layer, not as a parallel application. The main application's existing Supabase client remains the single network boundary; its persisted authentication session supplies replay credentials; `OfflineStatus` remains mounted in the main application shell; `offlineSync.ts` remains the single outbox/read-model service; and `harmony:offline-sync` remains the browser event used to communicate queue/synchronization state across the application shell. Offline database migrations and their client contracts must be released together. No second queue, synchronization provider, or clinical data service should be introduced after merge.
+
+## Testing checklist
+
+1. Run a production build and confirm `.vite/manifest.json` is emitted.
+2. Load the production application online and navigate through screens required for offline testing.
+3. Confirm the service worker is active and has completed installation.
+4. Sign in while online and keep the session persisted.
+5. Disable network access completely, including before a new navigation/reload.
+6. Refresh and verify the cached application entry point **and hashed production JS/CSS assets** continue to load.
+7. Verify patient registration can be saved locally and later synchronized.
+8. Verify triage can be captured locally and later synchronized with its stable UUID.
+9. Verify vital signs can be captured through the existing Patient Hub vital-sign workflow while disconnected and appear as queued locally.
+10. Verify appointment scheduling can be captured through the existing Patient Hub appointment workflow while disconnected and appear as queued locally.
+11. Restore connectivity and verify patient, triage, vital-sign and appointment queues drain.
+12. Verify offline continuity records change to server-confirmed only after successful replay.
+13. Verify mutations requiring `return=representation` are not falsely queued.
+14. Verify an unrelated/high-risk PostgREST table mutation is **not** automatically queued merely because it uses `/rest/v1/`.
+15. Verify `PUT`, `PATCH`, and `DELETE` operations against `patients` and `triage_assessments` are never converted into offline queue entries.
+16. Simulate a server 5xx/network failure during replay and verify the item remains pending with an increased `nextAttemptAt` rather than being hammered continuously.
+17. Simulate a 401/403/409 or validation 4xx during replay and verify the item becomes blocked and is not automatically retried every 15 seconds.
+18. Use the Offline Synchronization Center's **Retry** action to release a blocked item and verify it can synchronize once the underlying issue is resolved.
+19. Open two tabs and verify only one performs queue replay at a time.
+20. Verify document/photo uploads remain online-only during offline registration.
+21. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
+22. Open `/admin/offline-sync` as an administrator and verify pending, blocked, continuity records, failure history, connectivity state, retry timing and manual retry are visible without displaying queued mutation payload bodies.
+23. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+
+## Production hardening still required
+
+- Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
+- Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
+- Replace the local synchronization history view with durable server-side synchronization/reconciliation events when multi-device facility-wide reconciliation is required.
+- Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, POST-only direct-table queuing, duplicate replay protection, backoff and blocked recovery, and cold-start offline asset availability.
+- Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
+- Extend local read models to additional workflows only after inspecting their schemas, authorization model, mutation path, and conflict/idempotency requirements.

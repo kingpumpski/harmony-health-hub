@@ -2,12 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
+import { offlineAwareFetch, setOfflineAuthHeaderProvider } from '@/lib/offlineSync';
 
-// Vite exposes only VITE_* variables to the browser. Hosted builds that do not
-// inherit the repository's .env.example otherwise fail during module evaluation
-// with "supabaseUrl is required", leaving the application completely blank.
-// The Supabase URL and publishable key are intentionally public client values;
-// secrets must never be placed here. Environment variables remain authoritative.
 const DEFAULT_SUPABASE_URL = 'https://ygqoptvezotdqhtimdkr.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OWOl70nV57PKXtYPEtOvKg_mpTloQrH';
 
@@ -19,13 +15,45 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+const OFFLINE_CONTINUITY_TABLES = new Set(['patients', 'triage_assessments']);
+
+/**
+ * Keep direct PostgREST continuity writes POST-only. Existing online PATCH/
+ * DELETE operations must never become offline queue entries merely because
+ * they target an allow-listed table. Their normal online behavior is retained;
+ * when offline, they fail normally and the caller can handle the failure.
+ */
+function continuitySafeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const request = new Request(input, init);
+  const url = new URL(request.url);
+  const restPrefix = '/rest/v1/';
+  const tableName = url.pathname.split(restPrefix)[1]?.split('/')[0] ?? '';
+  const isDirectPostgrestMutation =
+    request.method !== 'POST' &&
+    ['PUT', 'PATCH', 'DELETE'].includes(request.method) &&
+    url.pathname.includes(restPrefix) &&
+    !url.pathname.includes('/rpc/') &&
+    OFFLINE_CONTINUITY_TABLES.has(tableName);
+
+  if (isDirectPostgrestMutation) {
+    return fetch(request);
+  }
+
+  return offlineAwareFetch(request);
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: {
+    fetch: continuitySafeFetch,
+  },
+});
+
+setOfflineAuthHeaderProvider(async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token;
 });

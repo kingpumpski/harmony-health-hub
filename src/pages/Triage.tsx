@@ -4,92 +4,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { evaluateTriagePriority } from '@/lib/healthApi';
+import { queueOfflineTriageAssessment } from '@/lib/offlineTriage';
 
 type Priority = 'Critical' | 'Urgent' | 'Moderate' | 'Routine';
 interface Patient { id: string; patient_code: string | null; first_name: string; last_name: string }
 interface TriageRow { id: string; patient_id: string; priority: string; systolic: number; diastolic: number; heart_rate: number; temperature: number; oxygen_saturation: number; weight_kg: number | null; height_m: number | null; bmi: number | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
 
-const priorityLabel = (value: string): Priority => {
-  const normalized = value.toLowerCase();
-  if (normalized === 'critical') return 'Critical';
-  if (normalized === 'urgent') return 'Urgent';
-  if (normalized === 'moderate') return 'Moderate';
-  return 'Routine';
-};
-
-const bmiCategory = (value: number) => {
-  if (!value || value <= 0) return 'Unavailable';
-  if (value < 18.5) return 'Underweight';
-  if (value < 25) return 'Healthy range';
-  if (value < 30) return 'Overweight';
-  return 'Obesity range';
-};
+const priorityLabel = (value: string): Priority => { const n = value.toLowerCase(); if (n === 'critical') return 'Critical'; if (n === 'urgent') return 'Urgent'; if (n === 'moderate') return 'Moderate'; return 'Routine'; };
+const bmiCategory = (value: number) => { if (!value || value <= 0) return 'Unavailable'; if (value < 18.5) return 'Underweight'; if (value < 25) return 'Healthy range'; if (value < 30) return 'Overweight'; return 'Obesity range'; };
 
 export default function Triage() {
   const { user } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [history, setHistory] = useState<TriageRow[]>([]);
-  const [patientId, setPatientId] = useState('');
-  const [systolic, setSystolic] = useState(120); const [diastolic, setDiastolic] = useState(80);
-  const [heartRate, setHeartRate] = useState(80); const [temperature, setTemperature] = useState(36.8);
-  const [respiratoryRate, setRespiratoryRate] = useState(18); const [oxygenSaturation, setOxygenSaturation] = useState(98);
-  const [weight, setWeight] = useState(70); const [height, setHeight] = useState(1.7);
-  const [pain, setPain] = useState(0); const [consciousness, setConsciousness] = useState('Alert');
-  const [complaint, setComplaint] = useState(''); const [notes, setNotes] = useState('');
-  const [priority, setPriority] = useState<Priority>('Routine'); const [saving, setSaving] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]); const [history, setHistory] = useState<TriageRow[]>([]);
+  const [patientId, setPatientId] = useState(''); const [systolic, setSystolic] = useState(120); const [diastolic, setDiastolic] = useState(80);
+  const [heartRate, setHeartRate] = useState(80); const [temperature, setTemperature] = useState(36.8); const [respiratoryRate, setRespiratoryRate] = useState(18); const [oxygenSaturation, setOxygenSaturation] = useState(98);
+  const [weight, setWeight] = useState(70); const [height, setHeight] = useState(1.7); const [pain, setPain] = useState(0); const [consciousness, setConsciousness] = useState('Alert');
+  const [complaint, setComplaint] = useState(''); const [notes, setNotes] = useState(''); const [priority, setPriority] = useState<Priority>('Routine'); const [saving, setSaving] = useState(false); const [offlineQueued, setOfflineQueued] = useState(false);
   const bmi = useMemo(() => height > 0 && weight > 0 ? Number((weight / (height * height)).toFixed(2)) : 0, [weight, height]);
-
-  const load = async () => {
-    const [{ data: pts }, { data: rows }] = await Promise.all([
-      supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300),
-      supabase.from('triage_assessments' as never).select('id, patient_id, priority, systolic, diastolic, heart_rate, temperature, oxygen_saturation, weight_kg, height_m, bmi, created_at, patients(first_name,last_name)').order('created_at', { ascending: false }).limit(50),
-    ]);
-    setPatients((pts ?? []) as Patient[]); setHistory((rows ?? []) as unknown as TriageRow[]);
-  };
+  const load = async () => { const [{ data: pts }, { data: rows }] = await Promise.all([supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300), supabase.from('triage_assessments' as never).select('id, patient_id, priority, systolic, diastolic, heart_rate, temperature, oxygen_saturation, weight_kg, height_m, bmi, created_at, patients(first_name,last_name)').order('created_at', { ascending: false }).limit(50)]); setPatients((pts ?? []) as Patient[]); setHistory((rows ?? []) as unknown as TriageRow[]); };
   useEffect(() => { void load(); }, []);
-
   const evaluate = () => setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic, diastolic }, heartRate, temperature, respiratoryRate, oxygenSaturation, weight, height, notes, isCritical: false }) as Priority);
-
   const save = async (event: React.FormEvent) => {
-    event.preventDefault(); if (!patientId || !user?.id) return; setSaving(true);
-    const normalized = priority.toLowerCase();
-    const { error } = await supabase.rpc('record_triage_assessment' as never, {
-      _patient_id: patientId,
-      _systolic: systolic,
-      _diastolic: diastolic,
-      _heart_rate: heartRate,
-      _temperature: temperature,
-      _respiratory_rate: respiratoryRate,
-      _oxygen_saturation: oxygenSaturation,
-      _weight_kg: weight || null,
-      _height_m: height || null,
-      _pain_score: pain,
-      _consciousness: consciousness,
-      _presenting_complaint: complaint || null,
-      _clinical_notes: notes || null,
-      _priority: normalized,
-    } as never);
-    setSaving(false);
-    if (error) return toast({ title: 'Triage save failed', description: error.message, variant: 'destructive' });
-    toast({ title: 'Triage recorded', description: `${priority} priority saved with BMI ${bmi || 'not available'}.` });
-    setPatientId(''); setComplaint(''); setNotes(''); setPain(0); setPriority('Routine'); void load();
+    event.preventDefault(); if (!patientId || !user?.id) return; setSaving(true); setOfflineQueued(false); const normalized = priority.toLowerCase();
+    const row = { id: crypto.randomUUID(), patient_id: patientId, recorded_by: user.id, systolic, diastolic, heart_rate: heartRate, temperature, respiratory_rate: respiratoryRate, oxygen_saturation: oxygenSaturation, weight_kg: weight || null, height_m: height || null, pain_score: pain, consciousness, presenting_complaint: complaint || null, clinical_notes: notes || null, priority: normalized, is_critical: normalized === 'critical' };
+    if (!navigator.onLine) { try { await queueOfflineTriageAssessment(row); setSaving(false); setOfflineQueued(true); toast({ title: 'Triage saved offline', description: `${priority} assessment queued for synchronization when connectivity returns.` }); return; } catch (error) { setSaving(false); return toast({ title: 'Offline triage unavailable', description: error instanceof Error ? error.message : 'Unable to queue this assessment.', variant: 'destructive' }); } }
+    const { error } = await supabase.rpc('record_triage_assessment' as never, { _patient_id: patientId, _systolic: systolic, _diastolic: diastolic, _heart_rate: heartRate, _temperature: temperature, _respiratory_rate: respiratoryRate, _oxygen_saturation: oxygenSaturation, _weight_kg: weight || null, _height_m: height || null, _pain_score: pain, _consciousness: consciousness, _presenting_complaint: complaint || null, _clinical_notes: notes || null, _priority: normalized } as never);
+    setSaving(false); if (error) return toast({ title: 'Triage save failed', description: error.message, variant: 'destructive' }); toast({ title: 'Triage recorded', description: `${priority} priority saved with BMI ${bmi || 'not available'}.` }); setPatientId(''); setComplaint(''); setNotes(''); setPain(0); setPriority('Routine'); void load();
   };
-
-  return <div className="space-y-6 animate-fade-in">
-    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><HeartPulse className="w-6 h-6 text-primary" /> Triage & Vital Signs</h1><p className="text-muted-foreground">Persistent clinical triage with deterministic priority and BMI decision support. BMI supports clinical assessment; it does not prescribe treatment.</p></div>
-    <form onSubmit={save} className="card-medical p-5 space-y-5">
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select>
-        <input value={complaint} onChange={e => setComplaint(e.target.value)} placeholder="Presenting complaint" className="input-medical" />
-        <select value={consciousness} onChange={e => setConsciousness(e.target.value)} className="input-medical"><option>Alert</option><option>Confused</option><option>Drowsy</option><option>Unresponsive</option></select>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[['SBP',systolic,setSystolic],['DBP',diastolic,setDiastolic],['Heart rate',heartRate,setHeartRate],['Temperature °C',temperature,setTemperature],['Respiratory rate',respiratoryRate,setRespiratoryRate],['SpO₂ %',oxygenSaturation,setOxygenSaturation],['Weight kg',weight,setWeight],['Height m',height,setHeight]].map(([label,value,setter]) => <label key={String(label)} className="text-xs">{String(label)}<input type="number" step={String(label).includes('Temperature') || String(label).includes('Weight') || String(label).includes('Height') ? '0.1' : '1'} value={value as number} onChange={e => (setter as (v:number)=>void)(Number(e.target.value))} className="input-medical mt-1 w-full" /></label>)}
-      </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]"><label className="text-xs">Pain score (0–10)<input type="number" min="0" max="10" value={pain} onChange={e => setPain(Number(e.target.value))} className="input-medical mt-1 w-full" /></label><div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"><span className="text-muted-foreground">Calculated BMI</span><strong className="block text-xl">{bmi || '—'}</strong>{bmi > 0 && <span className="text-xs text-muted-foreground">{bmiCategory(bmi)} · kg/m²</span>}<p className="text-[11px] text-muted-foreground mt-1">Server-calculated when saved.</p></div><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Clinical notes" className="input-medical w-full" /></div>
-      <div className="flex flex-wrap items-center justify-between gap-3"><div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"><span className="text-xs text-muted-foreground">Decision-support priority</span><strong className="block text-lg">{priority}</strong></div><div className="flex gap-2"><button type="button" onClick={evaluate} className="btn-ghost">Evaluate</button><button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save triage'}</button></div></div>
-    </form>
-    <div className="card-medical p-5"><div className="flex items-center gap-2 mb-4"><ListChecks className="w-5 h-5 text-primary" /><h2 className="font-semibold">Recent triage assessments</h2></div><div className="space-y-2">{history.map(row => <div key={row.id} className="rounded-xl border border-border p-3 flex flex-wrap justify-between gap-2 text-sm"><span><strong>{row.patients?.first_name} {row.patients?.last_name}</strong> · BP {row.systolic}/{row.diastolic} · SpO₂ {row.oxygen_saturation}% {row.bmi ? `· BMI ${row.bmi}` : ''}</span><span className={row.priority === 'critical' ? 'text-critical font-semibold' : row.priority === 'urgent' ? 'text-warning font-semibold' : 'text-muted-foreground'}>{priorityLabel(row.priority)} · {new Date(row.created_at).toLocaleString()}</span></div>)}{history.length === 0 && <p className="text-sm text-muted-foreground">No saved triage assessments yet.</p>}</div></div>
-    <div className="rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground flex gap-2"><AlertTriangle className="w-4 h-4 text-warning shrink-0" /> BMI is a clinical measurement and decision-support input. Authorized clinicians remain responsible for interpreting BMI alongside age, pregnancy status, diagnoses, medications, examination findings and other relevant factors.</div>
-  </div>;
+  return <div className="space-y-6 animate-fade-in"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><HeartPulse className="w-6 h-6 text-primary" /> Triage & Vital Signs</h1><p className="text-muted-foreground">Persistent clinical triage with deterministic priority and BMI decision support. BMI supports clinical assessment; it does not prescribe treatment.</p></div>{offlineQueued && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">This triage assessment is <strong>saved locally and queued for synchronization</strong>. It is not yet server-confirmed.</div>}<form onSubmit={save} className="card-medical p-5 space-y-5"><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"><select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select><input value={complaint} onChange={e => setComplaint(e.target.value)} placeholder="Presenting complaint" className="input-medical" /><select value={consciousness} onChange={e => setConsciousness(e.target.value)} className="input-medical"><option>Alert</option><option>Confused</option><option>Drowsy</option><option>Unresponsive</option></select></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[['SBP',systolic,setSystolic],['DBP',diastolic,setDiastolic],['Heart rate',heartRate,setHeartRate],['Temperature °C',temperature,setTemperature],['Respiratory rate',respiratoryRate,setRespiratoryRate],['SpO₂ %',oxygenSaturation,setOxygenSaturation],['Weight kg',weight,setWeight],['Height m',height,setHeight]].map(([label,value,setter]) => <label key={String(label)} className="text-xs">{String(label)}<input type="number" step={String(label).includes('Temperature') || String(label).includes('Weight') || String(label).includes('Height') ? '0.1' : '1'} value={value as number} onChange={e => (setter as (v:number)=>void)(Number(e.target.value))} className="input-medical mt-1 w-full" /></label>)}</div><div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]"><label className="text-xs">Pain score (0–10)<input type="number" min="0" max="10" value={pain} onChange={e => setPain(Number(e.target.value))} className="input-medical mt-1 w-full" /></label><div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"><span className="text-muted-foreground">Calculated BMI</span><strong className="block text-xl">{bmi || '—'}</strong>{bmi > 0 && <span className="text-xs text-muted-foreground">{bmiCategory(bmi)} · kg/m²</span>}<p className="text-[11px] text-muted-foreground mt-1">Server-calculated when saved.</p></div><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Clinical notes" className="input-medical w-full" /></div><div className="flex flex-wrap items-center justify-between gap-3"><div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"><span className="text-xs text-muted-foreground">Decision-support priority</span><strong className="block text-lg">{priority}</strong></div><div className="flex gap-2"><button type="button" onClick={evaluate} className="btn-ghost">Evaluate</button><button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save triage'}</button></div></div></form><div className="card-medical p-5"><div className="flex items-center gap-2 mb-4"><ListChecks className="w-5 h-5 text-primary" /><h2 className="font-semibold">Recent triage assessments</h2></div><div className="space-y-2">{history.map(row => <div key={row.id} className="rounded-xl border border-border p-3 flex flex-wrap justify-between gap-2 text-sm"><span><strong>{row.patients?.first_name} {row.patients?.last_name}</strong> · BP {row.systolic}/{row.diastolic} · SpO₂ {row.oxygen_saturation}% {row.bmi ? `· BMI ${row.bmi}` : ''}</span><span className={row.priority === 'critical' ? 'text-critical font-semibold' : row.priority === 'urgent' ? 'text-warning font-semibold' : 'text-muted-foreground'}>{priorityLabel(row.priority)} · {new Date(row.created_at).toLocaleString()}</span></div>)}{history.length === 0 && <p className="text-sm text-muted-foreground">No saved triage assessments yet.</p>}</div></div><div className="rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground flex gap-2"><AlertTriangle className="w-4 h-4 text-warning shrink-0" /> BMI is a clinical measurement and decision-support input. Authorized clinicians remain responsible for interpreting BMI alongside age, pregnancy status, diagnoses, medications, examination findings and other relevant factors.</div></div>;
 }

@@ -1,0 +1,10 @@
+{
+  "name": "Harmony Health Hub",
+  "short_name": "Harmony Health",
+  "description": "Offline-capable healthcare information management platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "scope": "/"
+}
