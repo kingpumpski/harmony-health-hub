@@ -83,10 +83,19 @@ export async function searchPatients(query: string) {
     .select('id, patient_code, first_name, last_name, phone, ghana_card_number, status, insurance_provider, email, membership_type, membership_expires_at')
     .order('created_at', { ascending: false });
 
-  for (const term of terms) {
-    req = req.or(
-      `patient_code.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,phone.ilike.%${term}%,ghana_card_number.ilike.%${term}%,email.ilike.%${term}%`,
+  if (terms.length > 0) {
+    const searchableColumns = [
+      'patient_code',
+      'first_name',
+      'last_name',
+      'phone',
+      'ghana_card_number',
+      'email',
+    ];
+    const orGroups = terms.map((term) =>
+      `or(${searchableColumns.map((column) => `${column}.ilike.%${term}%`).join(',')})`,
     );
+    req = req.or(`and(${orGroups.join(',')})`);
   }
 
   const { data, error } = await req.limit(50);
