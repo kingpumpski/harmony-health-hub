@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
-import { offlineAwareFetch } from '@/lib/offlineSync';
+import { offlineAwareFetch, setOfflineAuthHeaderProvider } from '@/lib/offlineSync';
 
 const DEFAULT_SUPABASE_URL = 'https://ygqoptvezotdqhtimdkr.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OWOl70nV57PKXtYPEtOvKg_mpTloQrH';
@@ -24,4 +24,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     fetch: offlineAwareFetch,
   },
+});
+
+setOfflineAuthHeaderProvider(async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token;
 });
