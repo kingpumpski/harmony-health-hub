@@ -24,7 +24,7 @@ export default function DataImport() {
   const assessWorkbook = (file: File) => {
     setFileName(file.name); setRows([]); setErrors([]); setAssessment([]);
     if (!/\.(xlsx|xls)$/i.test(file.name)) { toast({ title: 'Diagnosis assessment requires Excel', description: 'Select an .xlsx or .xls workbook.', variant: 'destructive' }); return; }
-    const reader = new FileReader(); reader.onload = e => { try {
+    const reader = new FileReader(); reader.onload = async e => { try {
       const workbook = XLSX.read(e.target?.result, { type: 'array', cellDates: true });
       const sheets: SheetAssessment[] = workbook.SheetNames.map(name => {
         const sheet = workbook.Sheets[name]; const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null }); const data = normalizeRows(raw);
@@ -34,7 +34,12 @@ export default function DataImport() {
         return { name, rows: data.length, columns, missingHeaders, duplicateRows, preview: data.slice(0, 5) };
       });
       setAssessment(sheets);
-      toast({ title: 'Workbook assessed', description: `${sheets.length} worksheet${sheets.length === 1 ? '' : 's'} detected. No database records were changed.` });
+      const totalRows = sheets.reduce((sum, sheet) => sum + sheet.rows, 0);
+      const duplicateRows = sheets.reduce((sum, sheet) => sum + sheet.duplicateRows, 0);
+      const validationErrors = sheets.flatMap(sheet => sheet.missingHeaders.map(reason => ({ sheet: sheet.name, reason })));
+      const { error: batchError } = await supabase.from('diagnosis_import_batches').insert({ file_name: file.name, source_format: file.name.toLowerCase().endsWith('.xls') ? 'xls' : 'xlsx', assessment_only: true, status: 'assessed', total_sheets: sheets.length, total_rows: totalRows, duplicate_rows: duplicateRows, validation_errors: validationErrors, sheet_assessments: sheets.map(({ preview, ...summary }) => summary), created_by: user?.id ?? null } as never);
+      if (batchError) console.warn('Diagnosis assessment audit could not be persisted', batchError);
+      toast({ title: 'Workbook assessed', description: `${sheets.length} worksheet${sheets.length === 1 ? '' : 's'} detected; ${totalRows} rows assessed. No diagnosis records were changed.` });
     } catch (error) { toast({ title: 'Workbook assessment failed', description: error instanceof Error ? error.message : 'Invalid workbook.', variant: 'destructive' }); } };
     reader.readAsArrayBuffer(file);
   };
