@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v1';
+const CACHE_NAME = 'harmony-health-hub-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -33,6 +33,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
+      .catch(() => caches.match(request).then((cached) => {
+        if (cached) return cached;
+        if (request.mode === 'navigate') return caches.match('/index.html');
+        return Response.error();
+      }))
   );
 });
