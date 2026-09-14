@@ -1,12 +1,55 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v2';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
+const CACHE_NAME = 'harmony-health-hub-shell-v3';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/.vite/manifest.json'];
+
+async function precacheProductionAssets() {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.addAll(APP_SHELL);
+
+  try {
+    const manifestResponse = await fetch('/.vite/manifest.json', { cache: 'no-store' });
+    if (!manifestResponse.ok) return;
+
+    const manifest = await manifestResponse.json();
+    const assets = new Set(['/index.html']);
+
+    const visit = (entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      if (typeof entry.file === 'string') assets.add(`/${entry.file}`);
+      if (Array.isArray(entry.css)) {
+        entry.css.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
+      }
+      if (Array.isArray(entry.assets)) {
+        entry.assets.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
+      }
+      if (Array.isArray(entry.imports)) {
+        entry.imports.forEach((key) => visit(manifest[key]));
+      }
+      if (Array.isArray(entry.dynamicImports)) {
+        entry.dynamicImports.forEach((key) => visit(manifest[key]));
+      }
+    };
+
+    Object.values(manifest).forEach(visit);
+
+    await Promise.allSettled(
+      [...assets].map(async (asset) => {
+        try {
+          const response = await fetch(asset, { cache: 'no-store' });
+          if (response.ok) await cache.put(asset, response.clone());
+        } catch {
+          // A single optional asset must not prevent the application shell
+          // from becoming available offline.
+        }
+      })
+    );
+  } catch {
+    // Runtime caching remains the fallback when the production manifest is
+    // unavailable during installation.
+  }
+}
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(precacheProductionAssets().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
