@@ -150,7 +150,7 @@ export async function listSubmissions(facilityId: string, period: string): Promi
 export async function markSubmissionsSubmitted(ids: string[]) { if (!ids.length) return; const result = await reportsDb.rpc('mark_report_submissions_submitted', { _submission_ids: ids }); if (result.error) throw new Error(result.error.message); }
 
 function uniqueSheetName(rawName: string, used: Set<string>) {
-  const base = (rawName.replace(/[:\\/?*\[\]]/g, '').slice(0, 31) || 'Report').trim() || 'Report';
+  const base = (rawName.replace(/[:\\/?*[\]]/g, '').slice(0, 31) || 'Report').trim() || 'Report';
   let name = base; let suffix = 2;
   while (used.has(name.toLowerCase())) { const suffixText = `_${suffix++}`; name = `${base.slice(0, 31 - suffixText.length)}${suffixText}`; }
   used.add(name.toLowerCase()); return name;
