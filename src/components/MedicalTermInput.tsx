@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { searchTerms } from '@/lib/medicalTerms';
+import { searchTerms, type DiagnosisSuggestion } from '@/lib/medicalTerms';
 import { supabase } from '@/integrations/supabase/client';
 import { Mic, MicOff } from 'lucide-react';
-
-export interface DiagnosisSuggestion {
-  label: string;
-  code: string;
-  source: string;
-}
 
 interface Props {
   value: string;
