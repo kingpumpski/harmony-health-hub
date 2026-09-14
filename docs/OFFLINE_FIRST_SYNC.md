@@ -15,7 +15,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 - **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The generic queue does not claim that this header alone provides server-side duplicate protection.
 - **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
 - **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB.
-- **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work.
+- **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work; the admin-only `/admin/offline-sync` screen provides a local-device reconciliation view without exposing queued clinical payload bodies.
 
 ## Explicit offline workflows
 
@@ -53,14 +53,15 @@ The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity unt
 12. Open two tabs and verify only one performs queue replay at a time.
 13. Verify document/photo uploads remain online-only during offline registration.
 14. Repeat synchronization after a deliberately interrupted response and verify patient/triage primary-key replay is idempotent.
-15. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+15. Open `/admin/offline-sync` as an administrator and verify pending mutations, failure history, connectivity state and manual synchronization are visible without displaying queued payload bodies.
+16. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
 - Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
 - Add local read models for registration, triage/vitals, encounters, medication administration, appointments, queue/roster and selected billing operations where clinically safe.
 - Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
-- Add an auditable administrator synchronization/reconciliation screen backed by durable server-side events.
+- Replace the local synchronization history view with durable server-side synchronization/reconciliation events when multi-device facility-wide reconciliation is required.
 - Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, and duplicate replay protection.
 - Expand service-worker precaching to production hashed JS/CSS assets if full cold-start offline navigation is required.
 - Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
