@@ -47,7 +47,7 @@ export default function CriticalAlertOverlay() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user?.id, user?.role]);
+  }, [user]);
 
   const dismiss = async (id: string) => {
     await supabase.from('vital_alerts').update({ acknowledged_by: user?.id, acknowledged_at: new Date().toISOString() }).eq('id', id);
@@ -57,9 +57,9 @@ export default function CriticalAlertOverlay() {
   if (!alerts.length) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[9998] space-y-2 max-w-sm">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex max-h-[min(60vh,28rem)] w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto">
       {alerts.map(a => (
-        <div key={a.id} className="rounded-xl border-2 border-critical bg-critical text-critical-foreground p-4 shadow-elevated animate-scale-in pulse-critical">
+        <div key={a.id} className="pointer-events-auto rounded-xl border-2 border-critical bg-critical text-critical-foreground p-4 shadow-elevated animate-scale-in pulse-critical">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />

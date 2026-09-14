@@ -28,6 +28,7 @@ interface AccountsOrder {
     patient_code: string | null;
     insurance_provider: string | null;
     insurance_number: string | null;
+    partner_company: string | null;
   } | null;
 }
 
@@ -42,7 +43,7 @@ export default function AccountsApprovals() {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('service_orders')
-      .select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number)')
+      .select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number,partner_company)')
       .eq('status', filter)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -97,6 +98,23 @@ export default function AccountsApprovals() {
       await load();
     } catch (error) {
       toast({ title: 'Cancellation failed', description: error instanceof Error ? error.message : 'Unable to cancel order.', variant: 'destructive' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const activateCoverage = async (order: AccountsOrder) => {
+    setBusyId(order.id);
+    try {
+      const { error } = await supabase.rpc('activate_patient_visit_coverage' as never, {
+        _patient_id: order.patient_id,
+        _source: 'accounts',
+        _appointment_id: null,
+      } as never);
+      if (error) throw error;
+      toast({ title: 'Daily coverage activated', description: 'New eligible orders created today will release automatically.' });
+    } catch (error) {
+      toast({ title: 'Coverage activation failed', description: error instanceof Error ? error.message : 'Unable to activate coverage.', variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
@@ -169,6 +187,9 @@ export default function AccountsApprovals() {
                 <span className="text-lg font-semibold">GHS {Number(order.amount).toFixed(2)}</span>
                 {order.status === 'pending_payment_approval' && (
                   <>
+                    {(patient?.insurance_provider || patient?.partner_company) && <button disabled={busy} onClick={() => void activateCoverage(order)} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50">
+                      <ShieldCheck className="w-4 h-4" /> Activate today's coverage
+                    </button>}
                     <button disabled={busy} onClick={() => void approve(order)} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
                       <BadgeCheck className="w-4 h-4" /> Approve & release
                     </button>

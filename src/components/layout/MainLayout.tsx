@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -6,6 +7,7 @@ import CriticalAlertOverlay from '@/components/CriticalAlertOverlay';
 
 export default function MainLayout() {
   const { isAuthenticated, loading } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (loading) {
     return (
@@ -21,10 +23,10 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="pl-64 transition-all duration-300">
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
+      <div className={`min-w-0 pl-20 transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
         <Header />
-        <main className="p-6 animate-fade-in">
+        <main className="min-w-0 p-4 sm:p-6 animate-fade-in">
           <Outlet />
         </main>
       </div>
