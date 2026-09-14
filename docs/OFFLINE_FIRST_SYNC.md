@@ -7,7 +7,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 ## Current architecture
 
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
-- **Local persistence:** IndexedDB stores queued Supabase table mutations in `harmony-health-hub-offline` and keeps durable synchronization history.
+- **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
 - **Mutation interception:** `src/lib/offlineSync.ts` handles eligible PostgREST table writes. RPC calls are excluded until each RPC has an explicit offline contract.
 - **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
 - **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, and periodically while the application remains open.
@@ -15,7 +15,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 - **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The generic queue does not claim that this header alone provides server-side duplicate protection.
 - **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
 - **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB.
-- **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work; the admin-only `/admin/offline-sync` screen provides a local-device reconciliation view without exposing queued clinical payload bodies.
+- **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work; the admin-only `/admin/offline-sync` screen provides a local-device reconciliation view without exposing queued mutation payload bodies.
 
 ## Explicit offline workflows
 
@@ -26,6 +26,16 @@ Patient registration has an explicit offline command with a stable client-genera
 ### Triage assessment
 
 Triage has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`, `on_conflict=id`, and `resolution=ignore-duplicates`; a replay after a lost response therefore becomes a server-side no-op for the same assessment ID. The UI explicitly states that an offline assessment is not yet server-confirmed. Server-side validation and RLS remain authoritative when synchronization occurs.
+
+## Local continuity/read models
+
+Patient registration and triage now write an explicit local read model alongside their queued mutation. These records are intentionally scoped to workflows that already have stable identifiers and explicit offline contracts.
+
+- Records are marked **Queued locally** immediately after local persistence.
+- A record changes to **Server confirmed** only after its associated queued mutation receives a successful HTTP response during synchronization.
+- The admin Offline Synchronization Center displays these continuity records without displaying raw queued clinical payloads.
+- Local continuity is not a substitute for the authoritative Supabase record and is not treated as server confirmation.
+- The IndexedDB schema was upgraded to version 4; existing queued mutations and synchronization history are retained during upgrade.
 
 This does **not** make every clinical workflow offline. Emergency actions, RPC workflows, medication administration, financial operations and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
 
@@ -53,15 +63,15 @@ The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity unt
 12. Open two tabs and verify only one performs queue replay at a time.
 13. Verify document/photo uploads remain online-only during offline registration.
 14. Repeat synchronization after a deliberately interrupted response and verify patient/triage primary-key replay is idempotent.
-15. Open `/admin/offline-sync` as an administrator and verify pending mutations, failure history, connectivity state and manual synchronization are visible without displaying queued payload bodies.
+15. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
 16. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
 - Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
-- Add local read models for registration, triage/vitals, encounters, medication administration, appointments, queue/roster and selected billing operations where clinically safe.
 - Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
 - Replace the local synchronization history view with durable server-side synchronization/reconciliation events when multi-device facility-wide reconciliation is required.
 - Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, and duplicate replay protection.
 - Expand service-worker precaching to production hashed JS/CSS assets if full cold-start offline navigation is required.
 - Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
+- Extend local read models to additional workflows only after inspecting their schemas, authorization model, mutation path, and conflict/idempotency requirements.
