@@ -42,8 +42,8 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
     if (!ids.length) return;
     setSaving(true);
     try {
-      const updated = await markSubmissionsSubmitted(ids);
-      toast.success(updated === ids.length ? `${updated} reporting record${updated === 1 ? '' : 's'} marked as submitted.` : `${updated} of ${ids.length} reporting records were updated.`);
+      await markSubmissionsSubmitted(ids);
+      toast.success('Selected reporting records marked as submitted.');
       await load();
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to update submissions.'); }
     finally { setSaving(false); }
