@@ -51,13 +51,19 @@ export default function ReportsCenter() {
       setFacilities(facilityRows); setDefinitions(definitionRows);
       const preferred = selectedFacilityId || facilityRows[0]?.id || '';
       setSelectedFacilityId(preferred);
-      if (preferred) setConfigs(await listFacilityConfigs(preferred)); else setConfigs([]);
+      setRun(null); setRunItems([]);
+      // Facility configuration is loaded by the selected-facility effect below.
+      if (!preferred) setConfigs([]);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to load Reports Center.'); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { void load(); }, []);
-  useEffect(() => { if (!selectedFacilityId) return; listFacilityConfigs(selectedFacilityId).then(setConfigs).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility reports.')); }, [selectedFacilityId]);
+  useEffect(() => {
+    if (!selectedFacilityId) { setConfigs([]); return; }
+    setRun(null); setRunItems([]);
+    listFacilityConfigs(selectedFacilityId).then(setConfigs).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility reports.'));
+  }, [selectedFacilityId]);
 
   async function toggle(config: FacilityReportConfig) {
     if (!isAdmin) return;
@@ -78,12 +84,28 @@ export default function ReportsCenter() {
     if (!selectedFacility) { toast.error('Select a facility first.'); return; }
     setGenerating(true); setRun(null); setRunItems([]);
     try {
-      const nextRun = await generateRun(selectedFacility.id, period, configs); setRun(nextRun); setRunItems(await getRunItems(nextRun.id)); toast.success('Reports Center generation completed. Review warnings before submission.');
+      const nextRun = await generateRun(selectedFacility.id, period, configs);
+      const nextItems = await getRunItems(nextRun.id);
+      setRun(nextRun); setRunItems(nextItems);
+      if (nextRun.status === 'completed') toast.success('Reports Center generation completed successfully.');
+      else if (nextRun.status === 'partial_failed') toast.warning('Reports Center generation completed with failed reports. Review the run before submission.');
+      else if (nextRun.status === 'failed') toast.error('Reports Center generation failed. Review the run details.');
+      else toast.info(`Reports Center run is ${nextRun.status}.`);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Report generation failed.'); }
     finally { setGenerating(false); }
   }
 
-  async function refreshRun() { if (run) setRunItems(await getRunItems(run.id)); }
+  async function refreshRun() {
+    if (!run) return;
+    try {
+      const refreshedItems = await getRunItems(run.id);
+      const successCount = refreshedItems.filter((item) => item.status === 'completed').length;
+      const warningCount = refreshedItems.filter((item) => item.status === 'warning').length;
+      const failedCount = refreshedItems.filter((item) => item.status === 'failed').length;
+      setRunItems(refreshedItems);
+      setRun((current) => current ? { ...current, total_reports: refreshedItems.length || current.total_reports, success_count: successCount, warning_count: warningCount, failed_count: failedCount } : current);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to refresh report run.'); }
+  }
 
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -128,7 +150,7 @@ export default function ReportsCenter() {
             <button disabled={generating || !enabledConfigs.length} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50" onClick={() => void generateAll()}>{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}{generating ? 'Generating…' : 'Generate All Monthly Reports'}</button>
           </div>
           {run && <div className="mt-5 rounded-2xl border border-border p-4 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Run {run.period_start.slice(0, 7)}</p><p className="text-xs text-muted-foreground">{run.success_count} complete · {run.warning_count} warning · {run.failed_count} failed</p></div><div className="flex gap-2"><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void refreshRun()}><RefreshCw className="h-4 w-4" /> Refresh</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void downloadRunWorkbook(run, runItems, selectedFacility!)}><Download className="h-4 w-4" /> Excel</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => downloadManifestCsv(run, runItems, selectedFacility!)}><FileText className="h-4 w-4" /> Manifest CSV</button></div></div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Run {run.period_start.slice(0, 7)}</p><p className="text-xs text-muted-foreground">{run.status} · {run.success_count} complete · {run.warning_count} warning · {run.failed_count} failed</p></div><div className="flex gap-2"><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void refreshRun()}><RefreshCw className="h-4 w-4" /> Refresh</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void downloadRunWorkbook(run, runItems, selectedFacility!)}><Download className="h-4 w-4" /> Excel</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => downloadManifestCsv(run, runItems, selectedFacility!)}><FileText className="h-4 w-4" /> Manifest CSV</button></div></div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{runItems.map((item) => <div key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-start gap-2">{item.status === 'completed' ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" /> : item.status === 'warning' ? <TriangleAlert className="mt-0.5 h-4 w-4 text-warning" /> : <TriangleAlert className="mt-0.5 h-4 w-4 text-critical" />}<div className="min-w-0"><p className="text-sm font-medium truncate">{item.file_name ?? item.report_id}</p><p className="text-xs text-muted-foreground">{item.data_snapshot.total} source records · {item.status}</p>{item.validation_messages[0] && <p className="mt-1 text-xs text-warning line-clamp-2">{item.validation_messages[0]}</p>}</div></div></div>)}</div>
           </div>}
         </section>
