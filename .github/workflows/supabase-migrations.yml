@@ -124,7 +124,7 @@ jobs:
         if: ${{ env.BASELINE_MODE == 'true' }}
         run: |
           set -euo pipefail
-          supabase gen types --lang typescript --linked --schema public > src/integrations/supabase/types.ts
+          supabase gen types typescript --linked --schema public > src/integrations/supabase/types.ts
           test -s src/integrations/supabase/types.ts
           grep -q 'export type Database' src/integrations/supabase/types.ts
           echo "Generated TypeScript contract from the canonical production public schema."
