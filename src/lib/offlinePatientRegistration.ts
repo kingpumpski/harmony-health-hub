@@ -1,4 +1,5 @@
 import { enqueueOfflineMutation } from '@/lib/offlineSync';
+import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ygqoptvezotdqhtimdkr.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
@@ -29,25 +30,17 @@ export async function queueOfflinePatientRegistration(
   );
   const stableRow = { ...row, id, patient_code: patientCode };
 
-  const session = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      authorization: `Bearer ${await getAccessToken()}`,
-    },
-  });
-  if (!session.ok) {
-    throw new Error('Your session could not be verified. Sign in again before saving an offline patient registration.');
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) {
+    throw new Error('You must be signed in to save an offline patient registration.');
   }
-
-  const token = await getAccessToken();
-  if (!token) throw new Error('You must be signed in to save an offline patient registration.');
 
   await enqueueOfflineMutation({
     url: `${SUPABASE_URL}/rest/v1/patients`,
     method: 'POST',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
-      authorization: `Bearer ${token}`,
+      authorization: `Bearer ${data.session.access_token}`,
       'content-type': 'application/json',
       prefer: 'return=minimal',
     },
@@ -55,17 +48,4 @@ export async function queueOfflinePatientRegistration(
   });
 
   return { id, patientCode, row: stableRow };
-}
-
-async function getAccessToken(): Promise<string> {
-  const storageKeys = Object.keys(localStorage).filter((key) => key.startsWith('sb-') && key.endsWith('-auth-token'));
-  for (const key of storageKeys) {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(key) || 'null') as { access_token?: string } | null;
-      if (parsed?.access_token) return parsed.access_token;
-    } catch {
-      // Continue searching for the brokered Supabase session key.
-    }
-  }
-  return '';
 }
