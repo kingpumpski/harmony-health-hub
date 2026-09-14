@@ -33,9 +33,8 @@ export default tseslint.config(
     },
   },
   {
-    // DataImport is currently a compact legacy module and contains a conditional
-    // expression statement in its file-selection handler. Keep this non-blocking
-    // while the module is progressively decomposed; no runtime behavior changes.
+    // DataImport contains a legacy compact file-selection expression. Keep both
+    // base and TypeScript variants non-blocking until the handler is refactored.
     files: ["src/pages/admin/DataImport.tsx"],
     rules: {
       "no-unused-expressions": "warn",
