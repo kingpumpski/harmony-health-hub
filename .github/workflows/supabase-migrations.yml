@@ -111,11 +111,15 @@ jobs:
           printf 'Y\n' | supabase db pull --linked canonical_remote_schema
           test -n "$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -print -quit)"
 
-      - name: Capture storage policy delta after public baseline
+      - name: Capture storage policy delta without mutating migration history
         if: ${{ env.BASELINE_MODE == 'true' }}
         run: |
           set -euo pipefail
-          printf 'Y\n' | supabase db pull --linked storage_policy_baseline --schema storage || true
+          mkdir -p /tmp/harmony-migration-baseline
+          supabase db dump --linked --schema storage -f /tmp/harmony-migration-baseline/storage.sql
+          test -s /tmp/harmony-migration-baseline/storage.sql
+          cp /tmp/harmony-migration-baseline/storage.sql supabase/storage-policy-baseline.sql
+          echo "Captured storage schema/policies without creating a migration-history record."
 
       - name: Verify canonical migration history after baseline
         if: ${{ env.BASELINE_MODE == 'true' }}
@@ -123,7 +127,7 @@ jobs:
           set -euo pipefail
           supabase migration list --linked | tee migration-history-after-baseline.txt
           versions=$(grep -oE '[0-9]{14}' migration-history-after-baseline.txt | sort -u | wc -l | tr -d ' ')
-          test "$versions" -ge 1
+          test "$versions" -eq 1
           supabase db lint --linked --fail-on error
 
       - name: Commit canonical migration baseline
@@ -148,7 +152,7 @@ jobs:
             echo
             echo 'The archived migrations remain available under `supabase/migrations-archive/` for audit/reference but are no longer part of the executable migration chain.'
           } > docs/migrations/MIGRATION_HISTORY_BASELINE.md
-          git add supabase/migrations supabase/migrations-archive docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
+          git add supabase/migrations supabase/migrations-archive supabase/storage-policy-baseline.sql docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
           git commit -m "chore: establish canonical production migration baseline [migration-baseline-complete]"
           git push origin HEAD:${GITHUB_REF_NAME}
 
@@ -173,9 +177,6 @@ jobs:
         if: ${{ env.BASELINE_MODE != 'true' && env.WORKFLOW_MODE == 'apply' }}
         run: supabase db lint --linked --fail-on error
 
-      # Baseline runs intentionally repeat the live-schema capture after any
-      # production-side contract reconciliation so the committed baseline is
-      # reproducible from the actual production schema.
       - name: Report workflow duration
         if: ${{ always() }}
         run: |
