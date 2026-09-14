@@ -39,6 +39,7 @@ export default tseslint.config(
     files: ["src/pages/admin/DataImport.tsx"],
     rules: {
       "no-unused-expressions": "warn",
+      "@typescript-eslint/no-unused-expressions": "warn",
     },
   },
 );
