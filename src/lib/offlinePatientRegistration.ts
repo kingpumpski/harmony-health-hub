@@ -16,9 +16,8 @@ export type OfflinePatientRegistration = {
  * Explicit offline command for patient registration.
  *
  * Unlike the generic PostgREST interceptor, this command supplies stable IDs
- * and uses return=minimal, so the queued write does not pretend to have an
- * authoritative server response. The patient identifier is therefore known
- * before synchronization and remains stable across retries.
+ * and uses a primary-key conflict-safe PostgREST write. A replay after a lost
+ * response therefore becomes a no-op instead of creating a second patient.
  */
 export async function queueOfflinePatientRegistration(
   row: Record<string, unknown>,
@@ -36,13 +35,13 @@ export async function queueOfflinePatientRegistration(
   }
 
   await enqueueOfflineMutation({
-    url: `${SUPABASE_URL}/rest/v1/patients`,
+    url: `${SUPABASE_URL}/rest/v1/patients?on_conflict=id`,
     method: 'POST',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${data.session.access_token}`,
       'content-type': 'application/json',
-      prefer: 'return=minimal',
+      prefer: 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(stableRow),
   });
