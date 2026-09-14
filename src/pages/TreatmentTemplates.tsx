@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import MedicalTermInput from '@/components/MedicalTermInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Layers, Plus, Sparkles } from 'lucide-react';
@@ -59,7 +60,7 @@ export default function TreatmentTemplates() {
           <form onSubmit={save} className="card-medical p-5 space-y-3">
             <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New template</h2>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name (e.g. Adult Malaria Protocol)" className="input-medical w-full" />
-            <input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Diagnosis covered" className="input-medical w-full" />
+            <MedicalTermInput value={diagnosis} onChange={setDiagnosis} placeholder="Diagnosis covered" className="w-full" diagnosisOnly />
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description / when to apply" rows={2} className="input-medical w-full" />
             <textarea value={rxText} onChange={(e) => setRxText(e.target.value)} placeholder={`One per line:\nMedication | Dose | Frequency | Duration\nAmoxicillin | 500mg | TDS | 7 days`} rows={4} className="input-medical w-full font-mono text-xs" />
             <button className="btn-primary w-full">Save template</button>
@@ -68,7 +69,7 @@ export default function TreatmentTemplates() {
           <div className="card-medical p-5 space-y-3">
             <h2 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI protocol synthesis</h2>
             <p className="text-xs text-muted-foreground">Generate a house protocol from past cases. Needs ≥3 cases for that diagnosis.</p>
-            <input value={synthDx} onChange={(e) => setSynthDx(e.target.value)} placeholder="Diagnosis (e.g. Hypertension)" className="input-medical w-full" />
+            <MedicalTermInput value={synthDx} onChange={setSynthDx} placeholder="Diagnosis (e.g. Hypertension)" className="w-full" diagnosisOnly />
             <button onClick={synthesize} disabled={synthBusy} className="btn-accent w-full">{synthBusy ? 'Synthesizing…' : 'Synthesize'}</button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, ClipboardList, Stethoscope, Plus, Sparkles, BookOpen, CheckCircle, ShieldCheck } from 'lucide-react';
 import { addDiagnosisToConsultation, completeConsultation, createConsultationEncounter } from '@/lib/healthApi';
+import MedicalTermInput from '@/components/MedicalTermInput';
 
 const patientProfile = {
   id: 'P-0004',
@@ -145,11 +146,12 @@ export default function Consultation() {
               <div>
                 <label className="block text-sm font-medium mb-2">Provisional Diagnoses</label>
                 <div className="flex items-center gap-3 mb-3">
-                  <input
+                    <MedicalTermInput
                     value={newDiagnosis}
-                    onChange={(e) => setNewDiagnosis(e.target.value)}
+                    onChange={setNewDiagnosis}
                     placeholder="Add a provisional diagnosis"
                     className="input-medical flex-1"
+                      diagnosisOnly
                   />
                   <button type="button" onClick={handleAddDiagnosis} className="btn-secondary inline-flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Add
