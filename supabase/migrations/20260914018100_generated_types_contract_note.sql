@@ -1,0 +1,4 @@
+-- Repository contract marker for the production schema/type reconciliation.
+-- Generated Supabase TypeScript definitions are maintained from the canonical
+-- production schema; this migration intentionally contains no database changes.
+-- It exists only to preserve the reconciliation checkpoint in migration history.
