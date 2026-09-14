@@ -7,60 +7,59 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 ## Current architecture
 
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
-- **Local persistence:** IndexedDB stores queued Supabase table mutations in `harmony-health-hub-offline` and keeps a durable synchronization history.
-- **Mutation interception:** `src/lib/offlineSync.ts` is supplied as the Supabase client's `global.fetch`. `POST`, `PUT`, `PATCH`, and `DELETE` requests to `/rest/v1/` are queueable when the browser is offline or a network failure occurs. RPC calls are deliberately excluded until each RPC has an explicit offline contract.
-- **Representation safety:** requests using `Prefer: return=representation` are not queued. Those callers require authoritative server-generated data such as IDs, defaults, computed values, or returned rows and must use an explicit offline command/read-model implementation instead.
-- **Automatic replay:** queued work is replayed in creation order when connectivity returns, when the application starts, and every 30 seconds while the application remains open.
-- **Fresh authentication:** replay asks the active Supabase client for the current access token before each queued request, so an expired token captured while offline is not blindly reused.
-- **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key` that is preserved across retries. The header is ready for server-side idempotency enforcement; the client does not claim duplicate protection until the server/workflow honors the key.
-- **Cross-tab coordination:** a short-lived local-storage lock prevents multiple open tabs from replaying the same queue concurrently. The lock expires automatically to avoid permanent deadlocks after a crashed tab.
-- **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB and can be read through `getOfflineSyncHistory()` for future reconciliation UI and diagnostics.
+- **Local persistence:** IndexedDB stores queued Supabase table mutations in `harmony-health-hub-offline` and keeps durable synchronization history.
+- **Mutation interception:** `src/lib/offlineSync.ts` handles eligible PostgREST table writes. RPC calls are excluded until each RPC has an explicit offline contract.
+- **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
+- **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, and periodically while the application remains open.
+- **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
+- **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The client does not claim duplicate protection until the server/workflow honors that key.
+- **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
+- **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB.
 - **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work.
 
-## Explicit offline patient registration
+## Explicit offline workflows
 
-Patient registration now has a dedicated offline command rather than relying on a synthetic `return=representation` response.
+### Patient registration
 
-- `src/lib/healthApi.ts` uses the persisted Supabase session so registration can be initiated while disconnected.
-- `src/lib/offlinePatientRegistration.ts` creates a stable UUID and local `OFF-YYYYMMDD-XXXXXXXX` patient code before queuing the `patients` insert.
-- The queued request uses `return=minimal`; the client does not pretend that the server returned an authoritative patient row.
-- The stable patient UUID and patient code remain unchanged when the command is replayed.
-- Registration data is queued locally and synchronized through the existing authenticated mutation queue.
-- Profile photos and supporting documents are **not** queued by this workflow. Supabase Storage requires a separate binary/offline-storage design, so the registration screen explicitly leaves those uploads for after synchronization.
-- The registration screen labels the patient as **Saved offline** and tells staff that synchronization is pending.
+Patient registration has an explicit offline command with a stable client-generated patient UUID and patient code. The UI distinguishes locally queued registration from server-confirmed registration. Patient documents/photos remain online-only until Storage synchronization is explicitly designed.
 
-This workflow should still receive server-side idempotency/duplicate handling before production deployment. A client-generated stable UUID prevents the offline command from changing identity between retries, but it is not by itself a database-level idempotency contract.
+### Triage assessment
+
+Triage now has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`; the UI explicitly states that an offline assessment is not yet server-confirmed. The selected clinical priority and measured values are persisted with the queued assessment. Server-side validation remains authoritative when synchronization occurs.
+
+This does **not** make every clinical workflow offline. Emergency actions, RPC workflows, medication administration, financial operations and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
 
 ## Safety boundaries
 
-This is intentionally not a blanket offline database replica. Authentication, AI functions, payments, notifications, and RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
+This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments and RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
 
-A queued mutation receives an HTTP 202 response with an empty JSON collection and explicit `X-Harmony-Offline-Queued` metadata. Workflows that depend on a server-generated returned row are intentionally not queued because a fake representation could cause the UI to treat an uncommitted record as authoritative.
+A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
 
-The stable idempotency key alone is not a server-side guarantee. Until database/workflow-specific idempotency handling is implemented, replay of a request whose server response was lost can still theoretically duplicate the underlying write. High-risk clinical and financial operations must therefore remain online-only or receive explicit server-side idempotency before production offline use.
+The stable idempotency key alone is not a server-side guarantee. Until database/workflow-specific idempotency handling is implemented, replay of a request whose server response was lost can theoretically duplicate the underlying write. High-risk clinical and financial operations must therefore remain online-only or receive explicit server-side idempotency before production offline use.
 
 ## Testing checklist
 
-1. Load the application online at least once and navigate through the screens required for the offline test.
-2. Confirm the service worker is active in browser developer tools.
+1. Load the application online at least once and navigate through screens required for offline testing.
+2. Confirm the service worker is active.
 3. Sign in while online and keep the session persisted.
 4. Disable network access.
-5. Refresh. Previously cached application resources should continue to load.
-6. Open Patient Registration and create a patient without uploading documents. The screen should report **Saved offline** and show a generated offline membership number.
-7. Confirm the offline status indicator shows one pending synchronization item.
-8. Verify that a mutation requiring `return=representation` fails normally while offline rather than being falsely reported as queued.
-9. Restore network access. The patient registration should synchronize and the pending count should return to zero after a successful server response.
-10. Verify a replayed mutation uses the current Supabase access token rather than a stale token captured before the outage.
-11. Simulate a server error during replay. The failed mutation must remain queued rather than being discarded, and a failure event must appear in synchronization history.
-12. Open two application tabs and restore connectivity. Only one tab should own queue replay at a time.
-13. Test repeated network loss/recovery to verify that the queue does not lose entries.
-14. Test each clinical/financial workflow independently before enabling it for offline use; do not assume that every screen is safe merely because the shell is offline-capable.
+5. Refresh and verify cached application resources continue to load.
+6. Verify patient registration can be saved locally and later synchronized.
+7. Verify triage can be captured locally and later synchronized with its stable UUID.
+8. Verify offline registration/triage screens distinguish queued records from server-confirmed records.
+9. Verify mutations requiring `return=representation` are not falsely queued.
+10. Restore connectivity and verify eligible queues drain.
+11. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
+12. Open two tabs and verify only one performs queue replay at a time.
+13. Verify document/photo uploads remain online-only during offline registration.
+14. Test duplicate/retry behavior for every clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
-- Implement database/workflow-specific server-side idempotency for retryable writes, using the stable `X-Harmony-Idempotency-Key`.
-- Add local read models for high-value workflows (registration, triage/vitals, encounters, medication administration, appointments, queue/roster and selected billing operations).
-- Add conflict detection using server version/timestamps rather than last-write-wins for clinical records.
+- Implement database/workflow-specific server-side idempotency for retryable writes using `X-Harmony-Idempotency-Key`.
+- Add local read models for registration, triage/vitals, encounters, medication administration, appointments, queue/roster and selected billing operations where clinically safe.
+- Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
 - Add an auditable administrator synchronization/reconciliation screen backed by durable server-side events.
 - Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, and duplicate replay protection.
-- Expand service-worker precaching to the production build's hashed JS/CSS assets if full cold-start offline navigation is required. The current runtime cache only guarantees assets that have already been fetched online.
+- Expand service-worker precaching to production hashed JS/CSS assets if full cold-start offline navigation is required.
+- Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
