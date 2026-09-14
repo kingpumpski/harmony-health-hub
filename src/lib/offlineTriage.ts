@@ -15,10 +15,9 @@ export type OfflineTriageAssessment = {
 /**
  * Explicit offline triage command.
  *
- * Triage is only accepted offline as a structured assessment with a
- * client-generated stable UUID. It is queued with return=minimal so the UI
- * never treats a synthetic response as a server-authoritative clinical row.
- * The server remains authoritative when synchronization occurs.
+ * Triage uses a stable client UUID and PostgREST's primary-key conflict-safe
+ * insert semantics. If synchronization reaches the server but its response
+ * is lost, replaying the same assessment is therefore a no-op.
  */
 export async function queueOfflineTriageAssessment(
   row: Record<string, unknown>,
@@ -39,13 +38,13 @@ export async function queueOfflineTriageAssessment(
   }
 
   await enqueueOfflineMutation({
-    url: `${SUPABASE_URL}/rest/v1/triage_assessments`,
+    url: `${SUPABASE_URL}/rest/v1/triage_assessments?on_conflict=id`,
     method: 'POST',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${data.session.access_token}`,
       'content-type': 'application/json',
-      prefer: 'return=minimal',
+      prefer: 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(stableRow),
   });
