@@ -1,35 +1,43 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v3';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/.vite/manifest.json'];
+const CACHE_NAME = 'harmony-health-hub-shell-v4';
+const REQUIRED_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
+const PRODUCTION_MANIFEST = '/.vite/manifest.json';
 
-async function precacheProductionAssets() {
-  const cache = await caches.open(CACHE_NAME);
-  await cache.addAll(APP_SHELL);
+async function cacheRequiredShell(cache) {
+  await cache.addAll(REQUIRED_SHELL);
+}
 
+async function precacheProductionAssets(cache) {
   try {
-    const manifestResponse = await fetch('/.vite/manifest.json', { cache: 'no-store' });
+    const manifestResponse = await fetch(PRODUCTION_MANIFEST, { cache: 'no-store' });
     if (!manifestResponse.ok) return;
 
     const manifest = await manifestResponse.json();
     const assets = new Set(['/index.html']);
 
-    const visit = (entry) => {
-      if (!entry || typeof entry !== 'object') return;
+    const visit = (entry, visited = new Set()) => {
+      if (!entry || typeof entry !== 'object' || visited.has(entry)) return;
+      visited.add(entry);
+
       if (typeof entry.file === 'string') assets.add(`/${entry.file}`);
       if (Array.isArray(entry.css)) {
-        entry.css.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
+        entry.css
+          .filter((file) => typeof file === 'string')
+          .forEach((file) => assets.add(`/${file}`));
       }
       if (Array.isArray(entry.assets)) {
-        entry.assets.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
+        entry.assets
+          .filter((file) => typeof file === 'string')
+          .forEach((file) => assets.add(`/${file}`));
       }
       if (Array.isArray(entry.imports)) {
-        entry.imports.forEach((key) => visit(manifest[key]));
+        entry.imports.forEach((key) => visit(manifest[key], visited));
       }
       if (Array.isArray(entry.dynamicImports)) {
-        entry.dynamicImports.forEach((key) => visit(manifest[key]));
+        entry.dynamicImports.forEach((key) => visit(manifest[key], visited));
       }
     };
 
-    Object.values(manifest).forEach(visit);
+    Object.values(manifest).forEach((entry) => visit(entry));
 
     await Promise.allSettled(
       [...assets].map(async (asset) => {
@@ -37,25 +45,41 @@ async function precacheProductionAssets() {
           const response = await fetch(asset, { cache: 'no-store' });
           if (response.ok) await cache.put(asset, response.clone());
         } catch {
-          // A single optional asset must not prevent the application shell
-          // from becoming available offline.
+          // Optional hashed assets are retried by the normal runtime cache.
         }
       })
     );
+
+    // Keep the manifest itself available for diagnostics and future installs.
+    const manifestCopy = await fetch(PRODUCTION_MANIFEST, { cache: 'no-store' });
+    if (manifestCopy.ok) await cache.put(PRODUCTION_MANIFEST, manifestCopy.clone());
   } catch {
-    // Runtime caching remains the fallback when the production manifest is
-    // unavailable during installation.
+    // The application shell remains installable even if the production
+    // manifest cannot be reached during this installation.
   }
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheProductionAssets().then(() => self.skipWaiting()));
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cacheRequiredShell(cache);
+      await precacheProductionAssets(cache);
+      await self.skipWaiting();
+    })()
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
@@ -76,10 +100,12 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => {
-        if (cached) return cached;
-        if (request.mode === 'navigate') return caches.match('/index.html');
-        return Response.error();
-      }))
+      .catch(() =>
+        caches.match(request).then((cached) => {
+          if (cached) return cached;
+          if (request.mode === 'navigate') return caches.match('/index.html');
+          return Response.error();
+        })
+      )
   );
 });
