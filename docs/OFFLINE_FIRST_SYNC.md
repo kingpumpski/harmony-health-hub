@@ -8,7 +8,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
 - **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
-- **Mutation interception:** `src/lib/offlineSync.ts` handles eligible PostgREST table writes. RPC calls are excluded until each RPC has an explicit offline contract.
+- **Mutation interception:** `src/lib/offlineSync.ts` handles eligible PostgREST table writes plus the explicitly contracted `record_patient_vitals` RPC. Other RPC calls remain excluded.
 - **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
 - **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, and periodically while the application remains open.
 - **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
@@ -27,25 +27,31 @@ Patient registration has an explicit offline command with a stable client-genera
 
 Triage has an explicit offline command using the existing `triage_assessments` schema. The assessment receives a stable client-generated UUID and is queued with `return=minimal`, `on_conflict=id`, and `resolution=ignore-duplicates`; a replay after a lost response therefore becomes a server-side no-op for the same assessment ID. The UI explicitly states that an offline assessment is not yet server-confirmed. Server-side validation and RLS remain authoritative when synchronization occurs.
 
+### Vital signs
+
+Vital signs now have an explicit offline contract without opening direct client writes to `vital_signs`. When the existing `record_patient_vitals` workflow is invoked while disconnected, the fetch boundary converts that specific command into `record_patient_vitals_offline` and attaches a stable UUID. The server-side `SECURITY DEFINER` function re-checks the clinical role, inserts using the supplied UUID, calculates BMI when height and weight are available, and returns an existing-record result if the UUID has already been committed. This makes an interrupted response safe to replay without creating a second vital-sign record.
+
+The offline vital-sign read model contains only the structured clinical values needed for local continuity and is explicitly marked **Queued locally** until successful synchronization. It never represents server confirmation while disconnected.
+
 ## Local continuity/read models
 
-Patient registration and triage now write an explicit local read model alongside their queued mutation. These records are intentionally scoped to workflows that already have stable identifiers and explicit offline contracts.
+Patient registration, triage and selected vital signs write explicit local read models alongside their queued mutation. These records are intentionally scoped to workflows that already have stable identifiers and explicit offline contracts.
 
 - Records are marked **Queued locally** immediately after local persistence.
 - A record changes to **Server confirmed** only after its associated queued mutation receives a successful HTTP response during synchronization.
 - The admin Offline Synchronization Center displays these continuity records without displaying raw queued clinical payloads.
 - Local continuity is not a substitute for the authoritative Supabase record and is not treated as server confirmation.
-- The IndexedDB schema was upgraded to version 4; existing queued mutations and synchronization history are retained during upgrade.
+- The IndexedDB schema is version 4; existing queued mutations and synchronization history are retained during upgrade.
 
-This does **not** make every clinical workflow offline. Emergency actions, RPC workflows, medication administration, financial operations and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
+This does **not** make every clinical workflow offline. Emergency actions, medication administration, prescriptions, financial operations, admissions and other high-risk operations remain online-only until they receive an explicit workflow contract, server-side idempotency, and conflict handling.
 
 ## Safety boundaries
 
-This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments and RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
+This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments and uncontracted RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
 
 A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
 
-The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. The patient-registration and triage commands currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics; this is deliberately scoped to those workflows rather than treated as a universal database idempotency layer.
+The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. Patient registration and triage currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics. Vital signs achieve retry safety through their explicit server RPC and stable UUID. These are deliberately workflow-specific contracts rather than a universal database idempotency layer.
 
 ## Testing checklist
 
@@ -56,15 +62,16 @@ The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity unt
 5. Refresh and verify cached application resources continue to load.
 6. Verify patient registration can be saved locally and later synchronized.
 7. Verify triage can be captured locally and later synchronized with its stable UUID.
-8. Verify offline registration/triage screens distinguish queued records from server-confirmed records.
-9. Verify mutations requiring `return=representation` are not falsely queued.
-10. Restore connectivity and verify eligible queues drain.
-11. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
-12. Open two tabs and verify only one performs queue replay at a time.
-13. Verify document/photo uploads remain online-only during offline registration.
-14. Repeat synchronization after a deliberately interrupted response and verify patient/triage primary-key replay is idempotent.
-15. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
-16. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+8. Verify vital signs can be captured through the existing Patient Hub vital-sign workflow while disconnected and appear as queued locally.
+9. Restore connectivity and verify patient, triage and vital-sign queues drain.
+10. Verify offline continuity records change to server-confirmed only after successful replay.
+11. Verify mutations requiring `return=representation` are not falsely queued.
+12. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
+13. Open two tabs and verify only one performs queue replay at a time.
+14. Verify document/photo uploads remain online-only during offline registration.
+15. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign retry behavior is idempotent.
+16. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
+17. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
