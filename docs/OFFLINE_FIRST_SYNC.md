@@ -9,6 +9,7 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
 - **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
 - **Mutation interception:** `src/lib/offlineSync.ts` handles an explicit allow-list of low-risk PostgREST table writes (`patients` and `triage_assessments`) plus explicitly contracted appointment and vital-sign RPC workflows. It does **not** automatically make arbitrary `/rest/v1/` writes offline-capable.
+- **POST-only direct-table continuity:** patient and triage direct-table continuity is limited to `POST`. Existing `PUT`, `PATCH`, and `DELETE` operations against those tables bypass the offline queue and retain their normal online behavior; they are not silently converted into offline mutations.
 - **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
 - **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, after page/focus resume, and periodically while the application remains open. A network can report itself as online while requests still fail; those network failures are also retained and retried.
 - **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
@@ -51,6 +52,8 @@ This does **not** make every clinical workflow offline. Emergency actions, medic
 
 This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments, storage uploads and uncontracted RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
 
+The direct PostgREST allow-list is intentionally narrow: only `POST` mutations for `patients` and `triage_assessments` are eligible for generic offline queuing. Existing update and delete operations against those tables bypass the offline queue, so a temporary connection failure cannot turn an ordinary online correction/removal into a durable offline mutation. Protected workflows must use an explicit server-side offline contract instead.
+
 A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
 
 The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. Patient registration and triage currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics. Vital signs and appointments achieve retry safety through explicit server RPC contracts and stable UUIDs. These are deliberately workflow-specific contracts rather than a universal database idempotency layer.
@@ -74,19 +77,20 @@ This branch is designed to merge into `main` as a continuity layer, not as a par
 11. Verify offline continuity records change to server-confirmed only after successful replay.
 12. Verify mutations requiring `return=representation` are not falsely queued.
 13. Verify an unrelated/high-risk PostgREST table mutation is **not** automatically queued merely because it uses `/rest/v1/`.
-14. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
-15. Open two tabs and verify only one performs queue replay at a time.
-16. Verify document/photo uploads remain online-only during offline registration.
-17. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
-18. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
-19. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+14. Verify `PUT`, `PATCH`, and `DELETE` operations against `patients` and `triage_assessments` are never converted into offline queue entries.
+15. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
+16. Open two tabs and verify only one performs queue replay at a time.
+17. Verify document/photo uploads remain online-only during offline registration.
+18. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
+19. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
+20. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
 - Extend server-side retry/idempotency contracts to additional explicit workflows rather than treating the generic header as sufficient.
 - Add conflict detection using server versions/timestamps rather than last-write-wins for clinical records.
 - Replace the local synchronization history view with durable server-side synchronization/reconciliation events when multi-device facility-wide reconciliation is required.
-- Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, and duplicate replay protection.
+- Add automated browser tests for offline/online transitions, authentication refresh, concurrent-tab locking, representation safety, POST-only direct-table queuing, and duplicate replay protection.
 - Expand service-worker precaching to production hashed JS/CSS assets if full cold-start offline navigation is required.
 - Add Storage-aware offline document synchronization only if the facility requires it and after defining encryption, retention, authorization, and conflict behavior.
 - Extend local read models to additional workflows only after inspecting their schemas, authorization model, mutation path, and conflict/idempotency requirements.
