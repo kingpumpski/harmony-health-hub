@@ -13,6 +13,21 @@ export const MEDICAL_TERMS = [
   'Artemether-Lumefantrine','Doxycycline','Ibuprofen','Diclofenac','Tramadol','Morphine','Codeine',
 ];
 
+export interface DiagnosisSuggestion {
+  label: string;
+  code: string;
+  source: string;
+}
+
+export function searchDiagnosisTerms(q: string, limit = 8): DiagnosisSuggestion[] {
+  if (!q || q.trim().length < 2) return [];
+  const lower = q.trim().toLowerCase();
+  return MEDICAL_TERMS
+    .filter((term) => term.toLowerCase().includes(lower))
+    .slice(0, limit)
+    .map((label) => ({ label, code: '', source: 'Clinical terms' }));
+}
+
 export function searchTerms(q: string, limit = 8) {
   if (!q || q.length < 2) return [];
   const lower = q.toLowerCase();
