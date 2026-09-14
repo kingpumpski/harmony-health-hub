@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { CreditCard, Image as ImageIcon, Plus, CheckCircle2 } from 'lucide-react';
-import { markServiceOrderInProgress, completeServiceOrder } from '@/lib/workflow';
 
 interface ImagingOrder {
   id: string;
@@ -53,6 +52,7 @@ export default function Imaging() {
     if (!patientId || !studyName.trim() || !user?.id) return;
     const { data, error } = await supabase.rpc('create_imaging_order_with_payment_gate' as never, {
       _patient_id: patientId,
+      _encounter_id: null,
       _modality: modality,
       _study_name: studyName,
       _body_site: bodySite || null,
@@ -68,18 +68,28 @@ export default function Imaging() {
   };
 
   const start = async (order: ImagingOrder) => {
-    if (!order.service_order_id) return;
-    try { await markServiceOrderInProgress(order.service_order_id); await supabase.from('imaging_orders').update({ status: 'in_progress', performed_by: user?.id }).eq('id', order.id); void load(); }
-    catch (error) { toast({ title: 'Cannot start imaging', description: error instanceof Error ? error.message : 'Payment release is required.', variant: 'destructive' }); }
+    const { error } = await supabase.rpc('start_imaging_order' as never, {
+      _imaging_order_id: order.id,
+    } as never);
+    if (error) {
+      toast({ title: 'Cannot start imaging', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Imaging started' });
+    void load();
   };
 
   const saveReport = async (order: ImagingOrder) => {
     const value = reports[order.id] ?? { report: '', impression: '' };
     if (!value.report.trim() && !value.impression.trim()) return;
-    const { error } = await supabase.from('imaging_orders').update({ report: value.report, impression: value.impression, status: 'completed' }).eq('id', order.id);
+    const { error } = await supabase.rpc('complete_imaging_order' as never, {
+      _imaging_order_id: order.id,
+      _report: value.report,
+      _impression: value.impression,
+    } as never);
     if (error) return toast({ title: 'Report failed', description: error.message, variant: 'destructive' });
-    if (order.service_order_id) { try { await completeServiceOrder(order.service_order_id); } catch { /* clinical report remains saved; queue completion can be retried */ } }
-    toast({ title: 'Imaging report saved' }); void load();
+    toast({ title: 'Imaging report saved' });
+    void load();
   };
 
   return (
