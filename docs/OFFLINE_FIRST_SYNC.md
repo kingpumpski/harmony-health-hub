@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Harmony Health Hub must remain usable when a facility temporarily loses internet connectivity. This branch introduces an offline-first foundation without replacing the existing Supabase architecture.
+Harmony Health Hub must remain usable when a facility temporarily loses internet connectivity. This branch introduces an offline-first foundation without replacing the existing Supabase architecture. The design goal is operational continuity: connectivity loss must not unnecessarily stop supported facility work, and locally captured work must remain durable until it can be synchronized.
 
 ## Current architecture
 
 - **Application shell:** `public/sw.js` caches the application entry point and same-origin GET responses so previously visited screens/assets can continue loading while offline. Navigation falls back to the cached `index.html`; non-navigation assets are never replaced with HTML responses.
 - **Local persistence:** IndexedDB stores queued Supabase table mutations, synchronization history, and explicit local continuity/read models in `harmony-health-hub-offline`.
-- **Mutation interception:** `src/lib/offlineSync.ts` handles eligible PostgREST table writes plus explicitly contracted appointment and vital-sign RPC workflows. Other RPC calls remain excluded.
+- **Mutation interception:** `src/lib/offlineSync.ts` handles an explicit allow-list of low-risk PostgREST table writes (`patients` and `triage_assessments`) plus explicitly contracted appointment and vital-sign RPC workflows. It does **not** automatically make arbitrary `/rest/v1/` writes offline-capable.
 - **Representation safety:** requests using `Prefer: return=representation` are not queued because those callers require authoritative server-generated data.
-- **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, and periodically while the application remains open.
+- **Automatic replay:** queued work is replayed in creation order when connectivity returns, at application startup, after page/focus resume, and periodically while the application remains open. A network can report itself as online while requests still fail; those network failures are also retained and retried.
 - **Fresh authentication:** replay obtains the active Supabase access token before each queued request.
 - **Retry identity:** each queued mutation receives a stable `X-Harmony-Idempotency-Key`. The generic queue does not claim that this header alone provides server-side duplicate protection.
 - **Cross-tab coordination:** a short-lived local-storage lock prevents common concurrent replay races.
@@ -49,11 +49,15 @@ This does **not** make every clinical workflow offline. Emergency actions, medic
 
 ## Safety boundaries
 
-This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments and uncontracted RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
+This is intentionally not a blanket offline database replica. Authentication, AI functions, notifications, payments, storage uploads and uncontracted RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
 
 A queued mutation receives an HTTP 202 response with explicit offline metadata. Workflows that depend on an authoritative returned row are intentionally not queued.
 
 The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity until a server workflow explicitly consumes it. Patient registration and triage currently achieve retry safety through stable primary keys plus PostgREST duplicate-ignore semantics. Vital signs and appointments achieve retry safety through explicit server RPC contracts and stable UUIDs. These are deliberately workflow-specific contracts rather than a universal database idempotency layer.
+
+## Merge communication
+
+This branch is designed to merge into `main` as a continuity layer, not as a parallel application. The main application's existing Supabase client remains the single network boundary; its persisted authentication session supplies replay credentials; `OfflineStatus` remains mounted in the main application shell; `offlineSync.ts` remains the single outbox/read-model service; and `harmony:offline-sync` remains the browser event used to communicate queue/synchronization state across the application shell. Offline database migrations and their client contracts must be released together. No second queue, synchronization provider, or clinical data service should be introduced after merge.
 
 ## Testing checklist
 
@@ -69,12 +73,13 @@ The generic `X-Harmony-Idempotency-Key` remains a client-side retry identity unt
 10. Restore connectivity and verify patient, triage, vital-sign and appointment queues drain.
 11. Verify offline continuity records change to server-confirmed only after successful replay.
 12. Verify mutations requiring `return=representation` are not falsely queued.
-13. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
-14. Open two tabs and verify only one performs queue replay at a time.
-15. Verify document/photo uploads remain online-only during offline registration.
-16. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
-17. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
-18. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
+13. Verify an unrelated/high-risk PostgREST table mutation is **not** automatically queued merely because it uses `/rest/v1/`.
+14. Simulate a server error during replay and verify the failed item remains queued with synchronization history.
+15. Open two tabs and verify only one performs queue replay at a time.
+16. Verify document/photo uploads remain online-only during offline registration.
+17. Repeat synchronization after a deliberately interrupted response and verify patient/triage/vital-sign/appointment retry behavior is idempotent.
+18. Open `/admin/offline-sync` as an administrator and verify pending mutations, continuity records, failure history, connectivity state and manual synchronization are visible without displaying queued mutation payload bodies.
+19. Test duplicate/retry behavior for every additional clinical and financial workflow before enabling it offline.
 
 ## Production hardening still required
 
