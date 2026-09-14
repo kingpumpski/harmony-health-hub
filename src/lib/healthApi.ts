@@ -62,15 +62,34 @@ export async function registerPatient(payload: PatientRegistrationPayload) {
   return { success: true, patientId: data.patient_code, patient: data };
 }
 
+function escapePatientSearchTerm(term: string) {
+  return term
+    .replace(/\\/g, '\\\\')
+    .replace(/[%_]/g, '\\$&')
+    .replace(/,/g, '\\,')
+    .replace(/[()]/g, '\\$&');
+}
+
 export async function searchPatients(query: string) {
-  const q = query.trim();
+  const terms = query
+    .trim()
+    .split(/\s+/)
+    .map(escapePatientSearchTerm)
+    .filter(Boolean)
+    .slice(0, 6);
+
   let req = supabase
     .from('patients')
     .select('id, patient_code, first_name, last_name, phone, ghana_card_number, status, insurance_provider, email, membership_type, membership_expires_at')
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (q) req = req.or(`patient_code.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,ghana_card_number.ilike.%${q}%,email.ilike.%${q}%`);
-  const { data, error } = await req;
+    .order('created_at', { ascending: false });
+
+  for (const term of terms) {
+    req = req.or(
+      `patient_code.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,phone.ilike.%${term}%,ghana_card_number.ilike.%${term}%,email.ilike.%${term}%`,
+    );
+  }
+
+  const { data, error } = await req.limit(50);
   if (error) {
     console.error('[searchPatients]', error);
     return [];
