@@ -120,7 +120,16 @@ jobs:
           test "$versions" -eq 1
           supabase db lint --linked --fail-on error
 
-      - name: Commit canonical migration baseline
+      - name: Regenerate production database TypeScript contract
+        if: ${{ env.BASELINE_MODE == 'true' }}
+        run: |
+          set -euo pipefail
+          supabase gen types --lang typescript --linked --schema public > src/integrations/supabase/types.ts
+          test -s src/integrations/supabase/types.ts
+          grep -q 'export type Database' src/integrations/supabase/types.ts
+          echo "Generated TypeScript contract from the canonical production public schema."
+
+      - name: Commit canonical migration baseline and generated contract
         if: ${{ env.BASELINE_MODE == 'true' }}
         run: |
           set -euo pipefail
@@ -141,8 +150,10 @@ jobs:
             echo '```'
             echo
             echo 'The archived migrations remain available under `supabase/migrations-archive/` for audit/reference but are no longer part of the executable migration chain.'
+            echo
+            echo 'The checked-in Supabase TypeScript contract is regenerated from the same production schema baseline.'
           } > docs/migrations/MIGRATION_HISTORY_BASELINE.md
-          git add supabase/migrations supabase/migrations-archive docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
+          git add supabase/migrations supabase/migrations-archive docs/migrations/MIGRATION_HISTORY_BASELINE.md src/integrations/supabase/types.ts supabase/config.toml
           git commit -m "chore: establish canonical production migration baseline [migration-baseline-complete]"
           git push origin HEAD:${GITHUB_REF_NAME}
 
