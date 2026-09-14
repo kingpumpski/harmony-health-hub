@@ -111,16 +111,6 @@ jobs:
           printf 'Y\n' | supabase db pull --linked canonical_remote_schema
           test -n "$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -print -quit)"
 
-      - name: Capture storage policy snapshot without mutating migration history
-        if: ${{ env.BASELINE_MODE == 'true' }}
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/harmony-migration-baseline
-          supabase db dump --linked --schema storage -f /tmp/harmony-migration-baseline/storage.sql
-          test -s /tmp/harmony-migration-baseline/storage.sql
-          cp /tmp/harmony-migration-baseline/storage.sql supabase/storage-policy-baseline.sql
-          echo "Captured storage schema/policies without creating a migration-history record."
-
       - name: Verify canonical migration history after baseline
         if: ${{ env.BASELINE_MODE == 'true' }}
         run: |
@@ -152,7 +142,7 @@ jobs:
             echo
             echo 'The archived migrations remain available under `supabase/migrations-archive/` for audit/reference but are no longer part of the executable migration chain.'
           } > docs/migrations/MIGRATION_HISTORY_BASELINE.md
-          git add supabase/migrations supabase/migrations-archive supabase/storage-policy-baseline.sql docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
+          git add supabase/migrations supabase/migrations-archive docs/migrations/MIGRATION_HISTORY_BASELINE.md supabase/config.toml
           git commit -m "chore: establish canonical production migration baseline [migration-baseline-complete]"
           git push origin HEAD:${GITHUB_REF_NAME}
 
