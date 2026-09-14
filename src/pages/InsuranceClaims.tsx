@@ -26,8 +26,20 @@ type Patient = {
   last_name: string;
 };
 
+type Invoice = {
+  id: string;
+  invoice_number: string;
+  patient_id: string;
+  total_amount: number;
+  paid_amount: number;
+  outstanding_amount: number;
+  status: string;
+  created_at: string;
+};
+
 type DraftForm = {
   patientId: string;
+  invoiceId: string;
   payerName: string;
   memberNumber: string;
   amountClaimed: string;
@@ -55,6 +67,7 @@ const statuses = [
 
 const emptyDraft: DraftForm = {
   patientId: '',
+  invoiceId: '',
   payerName: '',
   memberNumber: '',
   amountClaimed: '',
@@ -64,6 +77,7 @@ export default function InsuranceClaims() {
   const { toast } = useToast();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -100,6 +114,40 @@ export default function InsuranceClaims() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const patientId = draft.patientId;
+    if (!patientId) {
+      setInvoices([]);
+      return;
+    }
+
+    let active = true;
+    const loadInvoices = async () => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id,invoice_number,patient_id,total_amount,paid_amount,outstanding_amount,status,created_at')
+        .eq('patient_id', patientId)
+        .neq('status', 'cancelled')
+        .gt('total_amount', 0)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (!active) return;
+      if (error) {
+        setInvoices([]);
+        toast({ title: 'Unable to load patient invoices', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      setInvoices((data ?? []) as Invoice[]);
+    };
+
+    void loadInvoices();
+    return () => {
+      active = false;
+    };
+  }, [draft.patientId, toast]);
+
   const patient = (id: string) => {
     const match = patients.find((item) => item.id === id);
     return match ? `${match.patient_code} — ${match.first_name} ${match.last_name}` : 'Patient';
@@ -107,12 +155,12 @@ export default function InsuranceClaims() {
 
   const createDraft = async () => {
     const amount = Number(draft.amountClaimed);
-    if (!draft.patientId || !draft.payerName.trim()) {
-      toast({ title: 'Patient and payer are required', variant: 'destructive' });
+    if (!draft.patientId || !draft.invoiceId || !draft.payerName.trim()) {
+      toast({ title: 'Patient, invoice and payer are required', variant: 'destructive' });
       return;
     }
-    if (!Number.isFinite(amount) || amount < 0) {
-      toast({ title: 'Enter a valid non-negative claim amount', variant: 'destructive' });
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({ title: 'Enter a valid claim amount greater than zero', variant: 'destructive' });
       return;
     }
 
@@ -124,7 +172,7 @@ export default function InsuranceClaims() {
         _payer_name: draft.payerName.trim(),
         _member_number: draft.memberNumber.trim() || null,
         _amount_claimed: amount,
-        _invoice_id: null,
+        _invoice_id: draft.invoiceId,
       } as never,
     );
     setBusy(false);
@@ -136,6 +184,7 @@ export default function InsuranceClaims() {
 
     toast({ title: 'Claim draft created' });
     setDraft(emptyDraft);
+    setInvoices([]);
     setShowCreate(false);
     await load();
   };
@@ -240,19 +289,23 @@ export default function InsuranceClaims() {
             <ShieldCheck className="h-5 w-5" />
             <div>
               <h2 className="font-semibold">Create claim draft</h2>
-              <p className="text-xs text-muted-foreground">Creates the draft through the server-authoritative claims workflow.</p>
+              <p className="text-xs text-muted-foreground">Select the exact patient invoice that supports this claim before creating the draft.</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <select value={draft.patientId} onChange={(event) => setDraft((current) => ({ ...current, patientId: event.target.value }))} className="rounded-md border bg-background p-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <select value={draft.patientId} onChange={(event) => setDraft((current) => ({ ...current, patientId: event.target.value, invoiceId: '' }))} className="rounded-md border bg-background p-2">
               <option value="">Select patient</option>
               {patients.map((item) => <option key={item.id} value={item.id}>{item.patient_code} — {item.first_name} {item.last_name}</option>)}
             </select>
+            <select disabled={!draft.patientId || invoices.length === 0} value={draft.invoiceId} onChange={(event) => setDraft((current) => ({ ...current, invoiceId: event.target.value }))} className="rounded-md border bg-background p-2">
+              <option value="">{!draft.patientId ? 'Select patient first' : invoices.length === 0 ? 'No eligible invoices' : 'Select invoice'}</option>
+              {invoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoice_number} — {Number(invoice.total_amount || 0).toLocaleString()} — {invoice.status}</option>)}
+            </select>
             <input placeholder="Payer / insurer" value={draft.payerName} onChange={(event) => setDraft((current) => ({ ...current, payerName: event.target.value }))} className="rounded-md border bg-background p-2" />
             <input placeholder="Member number" value={draft.memberNumber} onChange={(event) => setDraft((current) => ({ ...current, memberNumber: event.target.value }))} className="rounded-md border bg-background p-2" />
-            <input type="number" min="0" step="0.01" placeholder="Amount claimed" value={draft.amountClaimed} onChange={(event) => setDraft((current) => ({ ...current, amountClaimed: event.target.value }))} className="rounded-md border bg-background p-2" />
+            <input type="number" min="0.01" step="0.01" placeholder="Amount claimed" value={draft.amountClaimed} onChange={(event) => setDraft((current) => ({ ...current, amountClaimed: event.target.value }))} className="rounded-md border bg-background p-2" />
           </div>
-          <button disabled={busy} onClick={() => void createDraft()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Creating…' : 'Create draft'}</button>
+          <button disabled={busy || !draft.invoiceId} onClick={() => void createDraft()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Creating…' : 'Create draft'}</button>
         </section>
       )}
 
