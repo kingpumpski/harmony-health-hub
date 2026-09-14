@@ -23,12 +23,8 @@ function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(META_STORE)) {
-        db.createObjectStore(META_STORE, { keyPath: 'key' });
-      }
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, { keyPath: 'key' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open offline database'));
@@ -39,20 +35,14 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, mode);
-    const store = transaction.objectStore(STORE_NAME);
-    const request = fn(store);
+    const request = fn(transaction.objectStore(STORE_NAME));
     transaction.oncomplete = () => resolve(request ? (request as IDBRequest).result as T : undefined);
     transaction.onerror = () => reject(transaction.error ?? new Error('Offline database transaction failed'));
   }).finally(() => db.close());
 }
 
 export async function enqueueOfflineMutation(mutation: Omit<OfflineMutation, 'id' | 'createdAt' | 'attempts'>): Promise<OfflineMutation> {
-  const queued: OfflineMutation = {
-    ...mutation,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    attempts: 0,
-  };
+  const queued: OfflineMutation = { ...mutation, id: crypto.randomUUID(), createdAt: new Date().toISOString(), attempts: 0 };
   await withStore('readwrite', (store) => store.put(queued));
   window.dispatchEvent(new CustomEvent(SYNC_EVENT));
   return queued;
@@ -70,13 +60,8 @@ export async function getOfflineMutations(): Promise<OfflineMutation[]> {
   });
 }
 
-export async function removeOfflineMutation(id: string): Promise<void> {
-  await withStore('readwrite', (store) => store.delete(id));
-}
-
-export async function updateOfflineMutation(mutation: OfflineMutation): Promise<void> {
-  await withStore('readwrite', (store) => store.put(mutation));
-}
+export async function removeOfflineMutation(id: string): Promise<void> { await withStore('readwrite', (store) => store.delete(id)); }
+export async function updateOfflineMutation(mutation: OfflineMutation): Promise<void> { await withStore('readwrite', (store) => store.put(mutation)); }
 
 export function isNetworkError(error: unknown): boolean {
   if (!navigator.onLine) return true;
@@ -87,57 +72,52 @@ export function isNetworkError(error: unknown): boolean {
 function shouldQueue(request: Request): boolean {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return false;
   const url = new URL(request.url);
-  if (!url.pathname.includes('/rest/v1/')) return false;
-  if (url.pathname.includes('/rpc/')) return false;
-  return true;
+  return url.pathname.includes('/rest/v1/') && !url.pathname.includes('/rpc/');
 }
 
 async function requestToMutation(request: Request): Promise<Omit<OfflineMutation, 'id' | 'createdAt' | 'attempts'>> {
   const headers: Record<string, string> = {};
   request.headers.forEach((value, key) => { headers[key] = value; });
-  return {
-    url: request.url,
-    method: request.method,
-    headers,
-    body: await request.clone().text(),
-  };
+  return { url: request.url, method: request.method, headers, body: await request.clone().text() };
 }
 
-export async function offlineAwareFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const request = new Request(input, init);
-  if (!shouldQueue(request) || navigator.onLine) {
-    return fetch(request);
-  }
-
-  const mutation = await requestToMutation(request);
-  const queued = await enqueueOfflineMutation(mutation);
-  return new Response(JSON.stringify({ offline: true, queued: true, queueId: queued.id }), {
+function queuedResponse(id: string): Response {
+  return new Response(JSON.stringify({ offline: true, queued: true, queueId: id }), {
     status: 202,
     headers: { 'Content-Type': 'application/json' },
   });
 }
 
+export async function offlineAwareFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const request = new Request(input, init);
+  if (!shouldQueue(request)) return fetch(request);
+
+  if (!navigator.onLine) return queuedResponse((await enqueueOfflineMutation(await requestToMutation(request))).id);
+
+  try {
+    return await fetch(request);
+  } catch (error) {
+    if (!isNetworkError(error)) throw error;
+    const queued = await enqueueOfflineMutation(await requestToMutation(request));
+    return queuedResponse(queued.id);
+  }
+}
+
 let syncing = false;
 
 export async function syncOfflineMutations(): Promise<{ synced: number; remaining: number }> {
-  if (!isBrowser || !navigator.onLine || syncing) {
-    return { synced: 0, remaining: (await getOfflineMutations()).length };
-  }
+  if (!isBrowser || !navigator.onLine || syncing) return { synced: 0, remaining: (await getOfflineMutations()).length };
   syncing = true;
   let synced = 0;
   try {
-    const queue = await getOfflineMutations();
-    for (const item of queue) {
+    for (const item of await getOfflineMutations()) {
       try {
-        const response = await fetch(item.url, {
-          method: item.method,
-          headers: item.headers,
-          body: item.body ?? undefined,
-        });
+        const response = await fetch(item.url, { method: item.method, headers: item.headers, body: item.body ?? undefined });
         if (!response.ok) {
           item.attempts += 1;
           item.lastError = `HTTP ${response.status}`;
           await updateOfflineMutation(item);
+          if (response.status >= 500) break;
           continue;
         }
         await removeOfflineMutation(item.id);
