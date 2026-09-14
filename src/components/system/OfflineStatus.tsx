@@ -21,11 +21,19 @@ export default function OfflineStatus() {
   const synchronize = async () => {
     if (!navigator.onLine) return;
     setSyncing(true);
-    try { await syncOfflineMutations(); } finally { setSyncing(false); await refresh(); }
+    try {
+      await syncOfflineMutations();
+    } finally {
+      setSyncing(false);
+      await refresh();
+    }
   };
 
   useEffect(() => {
-    const onOnline = () => { setOnline(true); void synchronize(); };
+    const onOnline = () => {
+      setOnline(true);
+      void synchronize();
+    };
     const onOffline = () => setOnline(false);
     const onOperation = (event: Event) => {
       const detail = (event as CustomEvent<OfflineOperationEvent>).detail;
@@ -38,17 +46,32 @@ export default function OfflineStatus() {
         setOperationMessage(`${operationLabel(detail.kind)} is still waiting for synchronization.`);
       }
     };
+    const onResume = () => {
+      setOnline(navigator.onLine);
+      void refresh();
+      if (navigator.onLine) void synchronize();
+    };
+
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
+    window.addEventListener('focus', onResume);
+    window.addEventListener('pageshow', onResume);
     window.addEventListener('harmony:offline-sync', onOperation);
     const unsubscribe = subscribeToOfflineSync(() => void refresh());
+
     void refresh();
     void synchronize();
-    const retryTimer = window.setInterval(() => void synchronize(), 30000);
+
+    // Keep the outbox draining during intermittent connectivity, while avoiding
+    // aggressive traffic when the facility is disconnected for a prolonged period.
+    const retryTimer = window.setInterval(() => void synchronize(), 15000);
     const messageTimer = window.setInterval(() => setOperationMessage(null), 8000);
+
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
+      window.removeEventListener('focus', onResume);
+      window.removeEventListener('pageshow', onResume);
       window.removeEventListener('harmony:offline-sync', onOperation);
       unsubscribe();
       window.clearInterval(retryTimer);
