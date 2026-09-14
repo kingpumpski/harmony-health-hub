@@ -1,6 +1,7 @@
 const DB_NAME = 'harmony-health-hub-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'mutation-queue';
+const HISTORY_STORE_NAME = 'sync-history';
 const META_STORE = 'meta';
 const SYNC_EVENT = 'harmony:offline-sync';
 const SYNC_LOCK_KEY = 'harmony:offline-sync-lock';
@@ -19,6 +20,17 @@ export type OfflineMutation = {
   idempotencyKey: string;
 };
 
+export type OfflineSyncHistory = {
+  id: string;
+  mutationId: string;
+  idempotencyKey: string;
+  event: 'queued' | 'synced' | 'failed';
+  occurredAt: string;
+  attempts: number;
+  status?: number;
+  error?: string;
+};
+
 const isBrowser = typeof window !== 'undefined' && typeof indexedDB !== 'undefined';
 
 let authHeaderProvider: (() => Promise<string | undefined>) | undefined;
@@ -34,6 +46,11 @@ function openDb(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(HISTORY_STORE_NAME)) {
+        const history = db.createObjectStore(HISTORY_STORE_NAME, { keyPath: 'id' });
+        history.createIndex('mutationId', 'mutationId', { unique: false });
+        history.createIndex('occurredAt', 'occurredAt', { unique: false });
+      }
       if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, { keyPath: 'key' });
     };
     request.onsuccess = () => resolve(request.result);
@@ -41,14 +58,45 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest | void): Promise<T | undefined> {
+async function withStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  fn: (store: IDBObjectStore) => IDBRequest | void,
+): Promise<T | undefined> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, mode);
-    const request = fn(transaction.objectStore(STORE_NAME));
+    const transaction = db.transaction(storeName, mode);
+    const request = fn(transaction.objectStore(storeName));
     transaction.oncomplete = () => resolve(request ? (request as IDBRequest).result as T : undefined);
     transaction.onerror = () => reject(transaction.error ?? new Error('Offline database transaction failed'));
   }).finally(() => db.close());
+}
+
+async function recordSyncHistory(
+  record: Omit<OfflineSyncHistory, 'id' | 'occurredAt'>,
+): Promise<void> {
+  if (!isBrowser) return;
+  await withStore(HISTORY_STORE_NAME, 'readwrite', (store) => store.put({
+    ...record,
+    id: crypto.randomUUID(),
+    occurredAt: new Date().toISOString(),
+  }));
+}
+
+export async function getOfflineSyncHistory(limit = 200): Promise<OfflineSyncHistory[]> {
+  if (!isBrowser) return [];
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(HISTORY_STORE_NAME, 'readonly');
+    const request = transaction.objectStore(HISTORY_STORE_NAME).getAll();
+    request.onsuccess = () => resolve(
+      (request.result as OfflineSyncHistory[])
+        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+        .slice(0, Math.max(1, limit)),
+    );
+    request.onerror = () => reject(request.error ?? new Error('Unable to read offline sync history'));
+    transaction.oncomplete = () => db.close();
+  });
 }
 
 export async function enqueueOfflineMutation(
@@ -65,7 +113,8 @@ export async function enqueueOfflineMutation(
     createdAt: new Date().toISOString(),
     attempts: 0,
   };
-  await withStore('readwrite', (store) => store.put(queued));
+  await withStore(STORE_NAME, 'readwrite', (store) => store.put(queued));
+  await recordSyncHistory({ mutationId: id, idempotencyKey, event: 'queued', attempts: 0 });
   window.dispatchEvent(new CustomEvent(SYNC_EVENT));
   return queued;
 }
@@ -83,11 +132,11 @@ export async function getOfflineMutations(): Promise<OfflineMutation[]> {
 }
 
 export async function removeOfflineMutation(id: string): Promise<void> {
-  await withStore('readwrite', (store) => store.delete(id));
+  await withStore(STORE_NAME, 'readwrite', (store) => store.delete(id));
 }
 
 export async function updateOfflineMutation(mutation: OfflineMutation): Promise<void> {
-  await withStore('readwrite', (store) => store.put(mutation));
+  await withStore(STORE_NAME, 'readwrite', (store) => store.put(mutation));
 }
 
 export function isNetworkError(error: unknown): boolean {
@@ -99,7 +148,14 @@ export function isNetworkError(error: unknown): boolean {
 function shouldQueue(request: Request): boolean {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return false;
   const url = new URL(request.url);
-  return url.pathname.includes('/rest/v1/') && !url.pathname.includes('/rpc/');
+  if (!url.pathname.includes('/rest/v1/') || url.pathname.includes('/rpc/')) return false;
+
+  // Supabase callers using `return=representation` require authoritative server-generated
+  // data (IDs, defaults, computed columns, etc.). Do not fake that response offline.
+  const prefer = request.headers.get('prefer')?.toLowerCase() ?? '';
+  if (prefer.includes('return=representation')) return false;
+
+  return true;
 }
 
 async function requestToMutation(request: Request): Promise<Omit<OfflineMutation, 'id' | 'createdAt' | 'attempts' | 'idempotencyKey'>> {
@@ -174,15 +230,37 @@ export async function syncOfflineMutations(): Promise<{ synced: number; remainin
           item.attempts += 1;
           item.lastError = `HTTP ${response.status}`;
           await updateOfflineMutation(item);
+          await recordSyncHistory({
+            mutationId: item.id,
+            idempotencyKey: item.idempotencyKey,
+            event: 'failed',
+            attempts: item.attempts,
+            status: response.status,
+            error: item.lastError,
+          });
           if (response.status === 401 || response.status === 403 || response.status >= 500) break;
           continue;
         }
         await removeOfflineMutation(item.id);
+        await recordSyncHistory({
+          mutationId: item.id,
+          idempotencyKey: item.idempotencyKey,
+          event: 'synced',
+          attempts: item.attempts + 1,
+          status: response.status,
+        });
         synced += 1;
       } catch (error) {
         item.attempts += 1;
         item.lastError = error instanceof Error ? error.message : 'Network error';
         await updateOfflineMutation(item);
+        await recordSyncHistory({
+          mutationId: item.id,
+          idempotencyKey: item.idempotencyKey,
+          event: 'failed',
+          attempts: item.attempts,
+          error: item.lastError,
+        });
         break;
       }
     }
