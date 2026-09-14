@@ -37,10 +37,8 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
       .limit(1)
       .maybeSingle(),
   ]);
-
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
   if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
-
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? '',
@@ -59,54 +57,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
     const applySession = async (nextSession: Session | null) => {
       if (!mounted) return;
       setSession(nextSession);
-      if (!nextSession?.user) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
+      if (!nextSession?.user) { setUser(null); setLoading(false); return; }
       try {
         const appUser = await loadAppUser(nextSession.user);
         if (mounted) setUser(appUser);
       } catch (error) {
         console.error('Auth profile bootstrap failed; continuing with session.', error);
-        if (mounted) {
-          setUser({
-            id: nextSession.user.id,
-            email: nextSession.user.email ?? '',
-            firstName: '',
-            lastName: '',
-            role: 'patient',
-          });
-        }
+        if (mounted) setUser({ id: nextSession.user.id, email: nextSession.user.email ?? '', firstName: '', lastName: '', role: 'patient' });
       } finally {
         if (mounted) setLoading(false);
       }
     };
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      void applySession(newSession);
-    });
-
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => { void applySession(newSession); });
     void supabase.auth.getSession()
       .then(({ data: { session: existing } }) => applySession(existing))
       .catch((error) => {
         console.error('Unable to restore authentication session.', error);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setLoading(false);
-        }
+        if (mounted) { setSession(null); setUser(null); setLoading(false); }
       });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -116,36 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { first_name: firstName, last_name: lastName },
-      },
-    });
+    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectUrl, data: { first_name: firstName, last_name: lastName } } });
     if (error) throw error;
   }, []);
 
-  const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-  }, []);
+  const logout = useCallback(async () => { await supabase.auth.signOut(); setUser(null); setSession(null); }, []);
+  const switchRole = useCallback((_role: UserRole) => { /* Legacy compatibility function. Real roles come from the database. */ }, []);
 
-  const switchRole = useCallback((_role: UserRole) => {
-    // Legacy compatibility function. Real roles come from the database.
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
+export function useAuth() { const ctx = useContext(AuthContext); if (!ctx) throw new Error('useAuth must be used within AuthProvider'); return ctx; }

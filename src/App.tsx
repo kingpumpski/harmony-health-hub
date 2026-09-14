@@ -33,7 +33,8 @@ const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
 const MedicalRecords = lazy(() => import('./pages/MedicalRecords'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoundAlerts = lazy(() => import('./pages/SoundAlerts'));
-const PublicHealthReports = lazy(() => import('./pages/PublicHealthReports'));
+const ReportsCenter = lazy(() => import('./pages/ReportsCenter'));
+const ReportsSubmissionDashboard = lazy(() => import('./pages/ReportsSubmissionDashboard'));
 const RosterGenerator = lazy(() => import('./pages/RosterGenerator'));
 const AIClinicalHub = lazy(() => import('./pages/AIClinicalHub'));
 const Encounters = lazy(() => import('./pages/Encounters'));
@@ -68,19 +69,12 @@ const Profile = lazy(() => import('./pages/Profile'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      staleTime: 60000,
-      gcTime: 300000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
+    queries: { staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false, retry: 1 },
   },
 });
 
 const PageFallback = () => (
-  <div className="flex min-h-[40vh] items-center justify-center p-12 text-sm text-muted-foreground">
-    Loading…
-  </div>
+  <div className="flex min-h-[40vh] items-center justify-center p-12 text-sm text-muted-foreground">Loading…</div>
 );
 
 interface ErrorBoundaryProps { children: ReactNode }
@@ -88,32 +82,18 @@ interface ErrorBoundaryState { error: Error | null }
 
 class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error };
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Harmony Health Hub render error', error, info.componentStack);
-  }
-
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('Harmony Health Hub render error', error, info.componentStack); }
   handleReload = () => window.location.reload();
-
   render() {
     if (!this.state.error) return this.props.children;
     return (
       <div className="min-h-screen bg-background px-6 py-16 text-foreground">
         <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h1 className="text-xl font-semibold">Harmony Health Hub could not display this page</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The application encountered a runtime error. Your session and data have not been cleared.
-          </p>
-          <p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-            {this.state.error.message || 'Unknown application error'}
-          </p>
-          <button type="button" onClick={this.handleReload} className="btn-primary mt-4">
-            Reload application
-          </button>
+          <p className="mt-2 text-sm text-muted-foreground">The application encountered a runtime error. Your session and data have not been cleared.</p>
+          <p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">{this.state.error.message || 'Unknown application error'}</p>
+          <button type="button" onClick={this.handleReload} className="btn-primary mt-4">Reload application</button>
         </div>
       </div>
     );
@@ -127,83 +107,33 @@ export default function App() {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <TooltipProvider>
-              <Toaster />
-              <Sonner />
+              <Toaster /><Sonner />
               <BrowserRouter>
                 <Suspense fallback={<PageFallback />}>
                   <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/login" element={<Login />} />
+                    <Route path="/" element={<Index />} /><Route path="/login" element={<Login />} />
                     <Route element={<MainLayout />}>
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/registration" element={<PatientRegistration />} />
-                      <Route path="/patients" element={<PatientSearch />} />
-                      <Route path="/patients/:patientId" element={<PatientHub />} />
-                      <Route path="/patients/:patientId/continuity" element={<PatientCareContinuity />} />
-                      <Route path="/patients/:patientId/audit" element={<PatientAudit />} />
-                      <Route path="/patients/:patientId/chat" element={<PatientChat />} />
-                      <Route path="/patient-portal" element={<PatientPortal />} />
-                      <Route path="/appointments" element={<Appointments />} />
-                      <Route path="/vitals" element={<Triage />} />
-                      <Route path="/consultation" element={<Consultation />} />
-                      <Route path="/encounters" element={<Encounters />} />
-                      <Route path="/clinical-operations" element={<ClinicalOperations />} />
-                      <Route path="/ward-bed-board" element={<WardBedBoard />} />
-                      <Route path="/nursing-handover" element={<NursingHandover />} />
-                      <Route path="/insurance-claims" element={<InsuranceClaims />} />
-                      <Route path="/emergency-board" element={<EmergencyBoard />} />
-                      <Route path="/theatre-board" element={<TheatreBoard />} />
-                      <Route path="/transfusion-board" element={<TransfusionBoard />} />
-                      <Route path="/ophthalmology" element={<Ophthalmology />} />
-                      <Route path="/accounts-approvals" element={<AccountsApprovals />} />
-                      <Route path="/department-queue" element={<DepartmentQueue />} />
-                      <Route path="/laboratory" element={<Laboratory />} />
-                      <Route path="/lab-results" element={<Laboratory />} />
-                      <Route path="/lab-requests" element={<Laboratory />} />
-                      <Route path="/results-entry" element={<Laboratory />} />
-                      <Route path="/imaging" element={<Imaging />} />
-                      <Route path="/radiology" element={<Imaging />} />
-                      <Route path="/pharmacy" element={<Pharmacy />} />
-                      <Route path="/medications" element={<MedicationAdministration />} />
-                      <Route path="/dispensing" element={<Pharmacy />} />
-                      <Route path="/inventory" element={<Pharmacy />} />
-                      <Route path="/stock-alerts" element={<SoundAlerts />} />
-                      <Route path="/sound-alerts" element={<SoundAlerts />} />
-                      <Route path="/records" element={<MedicalRecords />} />
-                      <Route path="/inpatients" element={<AdmissionManagement />} />
-                      <Route path="/admissions" element={<AdmissionManagement />} />
-                      <Route path="/monitoring" element={<Monitoring />} />
-                      <Route path="/maternity" element={<Maternity />} />
-                      <Route path="/care-transitions" element={<CareTransitions />} />
-                      <Route path="/billing" element={<Billing />} />
-                      <Route path="/invoices" element={<Billing />} />
-                      <Route path="/insurance" element={<Billing />} />
-                      <Route path="/financial-reports" element={<Billing />} />
-                      <Route path="/telemedicine" element={<Telemedicine />} />
-                      <Route path="/fertility" element={<Fertility />} />
-                      <Route path="/dental" element={<Dental />} />
-                      <Route path="/procedures" element={<ProcedureNotes />} />
-                      <Route path="/anesthesia" element={<AnestheticAssessment />} />
-                      <Route path="/treatment-templates" element={<TreatmentTemplates />} />
-                      <Route path="/outside-lab" element={<OutsideLabUploads />} />
-                      <Route path="/ai-report" element={<AIReportGenerator />} />
-                      <Route path="/menu" element={<CanteenMeals />} />
-                      <Route path="/orders" element={<CanteenMeals />} />
-                      <Route path="/dietary-plans" element={<CanteenMeals />} />
-                      <Route path="/reports" element={<PublicHealthReports />} />
-                      <Route path="/public-health" element={<PublicHealthReports />} />
-                      <Route path="/roster" element={<RosterGenerator />} />
-                      <Route path="/ai-clinical" element={<AIClinicalHub />} />
-                      <Route path="/admin/users" element={<AdminUsers />} />
-                      <Route path="/admin/system" element={<SystemLibrary />} />
-                      <Route path="/admin/roles" element={<AdminUsers />} />
-                      <Route path="/admin/settings" element={<Settings />} />
-                      <Route path="/admin/shifts" element={<ShiftManagement />} />
-                      <Route path="/admin/bulk-upload" element={<BulkUpload />} />
-                      <Route path="/admin/data-import" element={<DataImport />} />
-                      <Route path="/admin/logs" element={<SystemLogs />} />
-                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/dashboard" element={<Dashboard />} /><Route path="/profile" element={<Profile />} />
+                      <Route path="/registration" element={<PatientRegistration />} /><Route path="/patients" element={<PatientSearch />} />
+                      <Route path="/patients/:patientId" element={<PatientHub />} /><Route path="/patients/:patientId/continuity" element={<PatientCareContinuity />} />
+                      <Route path="/patients/:patientId/audit" element={<PatientAudit />} /><Route path="/patients/:patientId/chat" element={<PatientChat />} />
+                      <Route path="/patient-portal" element={<PatientPortal />} /><Route path="/appointments" element={<Appointments />} />
+                      <Route path="/vitals" element={<Triage />} /><Route path="/consultation" element={<Consultation />} /><Route path="/encounters" element={<Encounters />} />
+                      <Route path="/clinical-operations" element={<ClinicalOperations />} /><Route path="/ward-bed-board" element={<WardBedBoard />} /><Route path="/nursing-handover" element={<NursingHandover />} />
+                      <Route path="/insurance-claims" element={<InsuranceClaims />} /><Route path="/emergency-board" element={<EmergencyBoard />} /><Route path="/theatre-board" element={<TheatreBoard />} /><Route path="/transfusion-board" element={<TransfusionBoard />} />
+                      <Route path="/ophthalmology" element={<Ophthalmology />} /><Route path="/accounts-approvals" element={<AccountsApprovals />} /><Route path="/department-queue" element={<DepartmentQueue />} />
+                      <Route path="/laboratory" element={<Laboratory />} /><Route path="/lab-results" element={<Laboratory />} /><Route path="/lab-requests" element={<Laboratory />} /><Route path="/results-entry" element={<Laboratory />} />
+                      <Route path="/imaging" element={<Imaging />} /><Route path="/radiology" element={<Imaging />} /><Route path="/pharmacy" element={<Pharmacy />} /><Route path="/medications" element={<MedicationAdministration />} />
+                      <Route path="/dispensing" element={<Pharmacy />} /><Route path="/inventory" element={<Pharmacy />} /><Route path="/stock-alerts" element={<SoundAlerts />} /><Route path="/sound-alerts" element={<SoundAlerts />} />
+                      <Route path="/records" element={<MedicalRecords />} /><Route path="/inpatients" element={<AdmissionManagement />} /><Route path="/admissions" element={<AdmissionManagement />} /><Route path="/monitoring" element={<Monitoring />} />
+                      <Route path="/maternity" element={<Maternity />} /><Route path="/care-transitions" element={<CareTransitions />} /><Route path="/billing" element={<Billing />} /><Route path="/invoices" element={<Billing />} /><Route path="/insurance" element={<Billing />} /><Route path="/financial-reports" element={<Billing />} />
+                      <Route path="/telemedicine" element={<Telemedicine />} /><Route path="/fertility" element={<Fertility />} /><Route path="/dental" element={<Dental />} /><Route path="/procedures" element={<ProcedureNotes />} /><Route path="/anesthesia" element={<AnestheticAssessment />} />
+                      <Route path="/treatment-templates" element={<TreatmentTemplates />} /><Route path="/outside-lab" element={<OutsideLabUploads />} /><Route path="/ai-report" element={<AIReportGenerator />} />
+                      <Route path="/menu" element={<CanteenMeals />} /><Route path="/orders" element={<CanteenMeals />} /><Route path="/dietary-plans" element={<CanteenMeals />} />
+                      <Route path="/reports" element={<ReportsCenter />} /><Route path="/reports/submissions" element={<ReportsSubmissionDashboard />} /><Route path="/public-health" element={<ReportsCenter />} />
+                      <Route path="/roster" element={<RosterGenerator />} /><Route path="/ai-clinical" element={<AIClinicalHub />} />
+                      <Route path="/admin/users" element={<AdminUsers />} /><Route path="/admin/system" element={<SystemLibrary />} /><Route path="/admin/roles" element={<AdminUsers />} /><Route path="/admin/settings" element={<Settings />} />
+                      <Route path="/admin/shifts" element={<ShiftManagement />} /><Route path="/admin/bulk-upload" element={<BulkUpload />} /><Route path="/admin/data-import" element={<DataImport />} /><Route path="/admin/logs" element={<SystemLogs />} /><Route path="/notifications" element={<Notifications />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
