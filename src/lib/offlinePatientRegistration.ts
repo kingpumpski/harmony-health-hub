@@ -1,4 +1,4 @@
-import { enqueueOfflineMutation } from '@/lib/offlineSync';
+import { enqueueOfflineMutation, upsertOfflineReadModel } from '@/lib/offlineSync';
 import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ygqoptvezotdqhtimdkr.supabase.co';
@@ -34,7 +34,7 @@ export async function queueOfflinePatientRegistration(
     throw new Error('You must be signed in to save an offline patient registration.');
   }
 
-  await enqueueOfflineMutation({
+  const queued = await enqueueOfflineMutation({
     url: `${SUPABASE_URL}/rest/v1/patients?on_conflict=id`,
     method: 'POST',
     headers: {
@@ -44,6 +44,13 @@ export async function queueOfflinePatientRegistration(
       prefer: 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(stableRow),
+  });
+
+  await upsertOfflineReadModel({
+    id,
+    mutationId: queued.id,
+    kind: 'patient',
+    data: stableRow,
   });
 
   return { id, patientCode, row: stableRow };
