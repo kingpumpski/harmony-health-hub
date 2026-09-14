@@ -17,6 +17,20 @@ Harmony Health Hub must remain usable when a facility temporarily loses internet
 - **Synchronization audit:** queue, success, and failure events are persisted in IndexedDB and can be read through `getOfflineSyncHistory()` for future reconciliation UI and diagnostics.
 - **Operator visibility:** `OfflineStatus` displays offline state and pending synchronization work.
 
+## Explicit offline patient registration
+
+Patient registration now has a dedicated offline command rather than relying on a synthetic `return=representation` response.
+
+- `src/lib/healthApi.ts` uses the persisted Supabase session so registration can be initiated while disconnected.
+- `src/lib/offlinePatientRegistration.ts` creates a stable UUID and local `OFF-YYYYMMDD-XXXXXXXX` patient code before queuing the `patients` insert.
+- The queued request uses `return=minimal`; the client does not pretend that the server returned an authoritative patient row.
+- The stable patient UUID and patient code remain unchanged when the command is replayed.
+- Registration data is queued locally and synchronized through the existing authenticated mutation queue.
+- Profile photos and supporting documents are **not** queued by this workflow. Supabase Storage requires a separate binary/offline-storage design, so the registration screen explicitly leaves those uploads for after synchronization.
+- The registration screen labels the patient as **Saved offline** and tells staff that synchronization is pending.
+
+This workflow should still receive server-side idempotency/duplicate handling before production deployment. A client-generated stable UUID prevents the offline command from changing identity between retries, but it is not by itself a database-level idempotency contract.
+
 ## Safety boundaries
 
 This is intentionally not a blanket offline database replica. Authentication, AI functions, payments, notifications, and RPC workflows remain online-only unless their workflow is explicitly designed for offline operation. This prevents the client from fabricating clinical, financial, or authorization results while disconnected.
@@ -29,16 +43,18 @@ The stable idempotency key alone is not a server-side guarantee. Until database/
 
 1. Load the application online at least once and navigate through the screens required for the offline test.
 2. Confirm the service worker is active in browser developer tools.
-3. Disable network access.
-4. Refresh. Previously cached application resources should continue to load.
-5. Perform a supported table mutation that does not require `return=representation`. The bottom status indicator should report that the change is queued locally.
-6. Verify that a mutation requiring `return=representation` fails normally while offline rather than being falsely reported as queued.
-7. Restore network access. The queue should drain automatically and the pending count should return to zero after successful server responses.
-8. Verify a replayed mutation uses the current Supabase access token rather than a stale token captured before the outage.
-9. Simulate a server error during replay. The failed mutation must remain queued rather than being discarded, and a failure event must appear in synchronization history.
-10. Open two application tabs and restore connectivity. Only one tab should own queue replay at a time.
-11. Test repeated network loss/recovery to verify that the queue does not lose entries.
-12. Test each clinical/financial workflow independently before enabling it for offline use; do not assume that every screen is safe merely because the shell is offline-capable.
+3. Sign in while online and keep the session persisted.
+4. Disable network access.
+5. Refresh. Previously cached application resources should continue to load.
+6. Open Patient Registration and create a patient without uploading documents. The screen should report **Saved offline** and show a generated offline membership number.
+7. Confirm the offline status indicator shows one pending synchronization item.
+8. Verify that a mutation requiring `return=representation` fails normally while offline rather than being falsely reported as queued.
+9. Restore network access. The patient registration should synchronize and the pending count should return to zero after a successful server response.
+10. Verify a replayed mutation uses the current Supabase access token rather than a stale token captured before the outage.
+11. Simulate a server error during replay. The failed mutation must remain queued rather than being discarded, and a failure event must appear in synchronization history.
+12. Open two application tabs and restore connectivity. Only one tab should own queue replay at a time.
+13. Test repeated network loss/recovery to verify that the queue does not lose entries.
+14. Test each clinical/financial workflow independently before enabling it for offline use; do not assume that every screen is safe merely because the shell is offline-capable.
 
 ## Production hardening still required
 
