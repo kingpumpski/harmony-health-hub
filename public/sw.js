@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v4';
+const CACHE_NAME = 'harmony-health-hub-shell-v5';
 const REQUIRED_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 const PRODUCTION_MANIFEST = '/.vite/manifest.json';
 
@@ -37,7 +37,8 @@ async function precacheProductionAssets(cache) {
       }
     };
 
-    Object.values(manifest).forEach((entry) => visit(entry));
+    const entry = manifest['index.html'];
+    if (entry) visit(entry);
 
     await Promise.allSettled(
       [...assets].map(async (asset) => {
@@ -90,6 +91,16 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+        if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+        return response;
+      }))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(request)
