@@ -9,14 +9,49 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  refresh-lock:
+    if: ${{ github.ref == 'refs/heads/feature/operational-workflow-hardening' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        run: |
+          set -euo pipefail
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
+
+      - name: Refresh lockfile when SheetJS uses the official CDN distribution
+        run: |
+          set -euo pipefail
+          if ! grep -q 'https://cdn.sheetjs.com/xlsx-' package.json; then
+            echo "No CDN-pinned SheetJS dependency; lock refresh not required."
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts
+          node -e 'const l=require("./package-lock.json"); const p=l.packages["node_modules/xlsx"]; if(!p || !String(p.resolved).includes("cdn.sheetjs.com")) process.exit(1); console.log(`Locked SheetJS ${p.version}: ${p.resolved}`);'
+          if git diff --quiet -- package-lock.json; then
+            echo "Lockfile already matches package.json."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: refresh lockfile for patched SheetJS"
+          git push origin "HEAD:feature/operational-workflow-hardening"
+
   quality:
+    needs: refresh-lock
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
