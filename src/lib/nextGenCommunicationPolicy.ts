@@ -55,9 +55,10 @@ export function evaluateCommunicationRequest(
   request: CommunicationRequest,
 ): CommunicationDecision {
   const language = request.language || preferences.preferredLanguage || 'en';
-  const minimumNecessary = request.containsSensitiveData === true;
+  const emergencyOverride = request.emergency === true && preferences.emergencyOverrideAllowed === true;
+  const minimumNecessary = request.containsSensitiveData === true || request.category === 'emergency';
 
-  if (!preferences.preferredChannels.includes(request.channel)) {
+  if (!preferences.preferredChannels.includes(request.channel) && !emergencyOverride) {
     return { allowed: false, channel: request.channel, language, reason: 'Channel is not consented', minimumNecessary };
   }
 
@@ -72,6 +73,10 @@ export function evaluateCommunicationRequest(
 
   if (request.category === 'emergency' && request.emergency !== true) {
     return { allowed: false, channel: request.channel, language, reason: 'Emergency category requires explicit emergency context', minimumNecessary };
+  }
+
+  if (request.emergency === true && !preferences.emergencyOverrideAllowed && !preferences.preferredChannels.includes(request.channel)) {
+    return { allowed: false, channel: request.channel, language, reason: 'Emergency override is not authorized for this channel', minimumNecessary };
   }
 
   return { allowed: true, channel: request.channel, language, minimumNecessary };
