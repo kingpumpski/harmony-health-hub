@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v6';
+const CACHE_NAME = 'harmony-health-hub-shell-v7';
 const REQUIRED_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 const PRODUCTION_MANIFEST = '/.vite/manifest.json';
 const NETWORK_ONLY_PATHS = new Set([
@@ -27,21 +27,13 @@ async function precacheProductionAssets(cache) {
 
       if (typeof entry.file === 'string') assets.add(`/${entry.file}`);
       if (Array.isArray(entry.css)) {
-        entry.css
-          .filter((file) => typeof file === 'string')
-          .forEach((file) => assets.add(`/${file}`));
+        entry.css.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
       }
       if (Array.isArray(entry.assets)) {
-        entry.assets
-          .filter((file) => typeof file === 'string')
-          .forEach((file) => assets.add(`/${file}`));
+        entry.assets.filter((file) => typeof file === 'string').forEach((file) => assets.add(`/${file}`));
       }
-      if (Array.isArray(entry.imports)) {
-        entry.imports.forEach((key) => visit(manifest[key], visited));
-      }
-      if (Array.isArray(entry.dynamicImports)) {
-        entry.dynamicImports.forEach((key) => visit(manifest[key], visited));
-      }
+      if (Array.isArray(entry.imports)) entry.imports.forEach((key) => visit(manifest[key], visited));
+      if (Array.isArray(entry.dynamicImports)) entry.dynamicImports.forEach((key) => visit(manifest[key], visited));
     };
 
     const entry = manifest['index.html'];
@@ -60,8 +52,8 @@ async function precacheProductionAssets(cache) {
         })
     );
   } catch {
-    // The application shell remains installable even if the production
-    // manifest cannot be reached during this installation.
+    // The application shell remains installable even if the production manifest
+    // cannot be reached during this installation.
   }
 }
 
@@ -79,13 +71,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-        )
-      )
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -121,12 +107,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() =>
-        caches.match(request).then((cached) => {
-          if (cached) return cached;
-          if (request.mode === 'navigate') return caches.match('/index.html');
-          return Response.error();
-        })
-      )
+      .catch(() => caches.match(request).then((cached) => {
+        if (cached) return cached;
+        if (request.mode === 'navigate') return caches.match('/index.html');
+        return Response.error();
+      }))
   );
 });
