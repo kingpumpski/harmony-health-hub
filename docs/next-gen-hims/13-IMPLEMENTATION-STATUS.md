@@ -43,9 +43,10 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 - `nextGenIntegrationRuntime.ts`: structural envelope validation, message-idempotency boundary, delivery failure classification, exponential retry scheduling, maximum-attempt quarantine and replay eligibility requiring authorization and explicit confirmation.
 - `nextGenAIGovernance.ts`: active-model allowlisting, evaluation-evidence enforcement, intended/prohibited-use checks and confidence-driven human review.
 - `nextGenDeploymentProfile.ts`: effective-date validation, jurisdiction profile resolution, residency/configuration access and duplicate module normalization.
-- `nextGenCommunicationPolicy.ts`: channel consent, category consent, language selection, quiet-hour enforcement, minimum-necessary handling and explicit emergency override semantics.
+- `nextGenCommunicationPolicy.ts`: channel consent, category consent, language selection, fail-closed quiet-hour configuration, minimum-necessary handling and explicit emergency override semantics.
 - `nextGenRuntimeGuards.ts`: centralized composition boundary for clinical action, AI output, communication and deployment-module enforcement.
-- `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering envelope rejection/idempotency, retry/quarantine/replay authorization, AI lifecycle/evaluation/prohibited-use/human-review controls, communication consent/quiet-hours/emergency handling, deployment module boundaries and fail-closed clinical actions.
+- `supabase/migrations/20260915170000_nextgen_communication_consent.sql`: persists explicit emergency communication override consent without exposing patient communication preferences to general authenticated access.
+- `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering supported interoperability standards, envelope rejection/idempotency, retry/quarantine/replay authorization, AI lifecycle/evaluation/prohibited-use/human-review controls, communication consent/quiet-hours/emergency handling, deployment module boundaries and fail-closed clinical actions.
 
 These boundaries are deliberately transport/configuration/governance primitives. They do not create a parallel clinical source of truth and cannot independently authorize clinical actions.
 
