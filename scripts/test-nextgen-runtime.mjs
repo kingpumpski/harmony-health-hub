@@ -68,7 +68,7 @@ try {
   if (integration.nextRetry({ messageId: 'm', correlationId: 'c', state: 'failed', attemptCount: 5 }).state !== 'quarantined') throw new Error('Maximum-attempt quarantine failed');
   if (integration.nextRetry({ messageId: 'm', correlationId: 'c', state: 'delivered', attemptCount: 99 }).state !== 'delivered') throw new Error('Delivered record was incorrectly rescheduled');
   if (integration.nextRetry({ messageId: 'm', correlationId: 'c', state: 'replayed', attemptCount: 99 }).state !== 'replayed') throw new Error('Replayed record was incorrectly rescheduled');
-  if (integration.nextRetry({ messageId: 'm', correlationId: 'c', state: 'failed', attemptCount: -1 }).state) throw new Error('Invalid attempt count accepted');
+  expectThrow(() => integration.nextRetry({ messageId: 'm', correlationId: 'c', state: 'failed', attemptCount: -1 }), 'Invalid attempt count accepted');
   if (integration.canReplay({ messageId: 'm', correlationId: 'c', state: 'quarantined', attemptCount: 5 }, { authorised: false, confirmed: true })) throw new Error('Unauthorized replay permitted');
   if (integration.canReplay({ messageId: 'm', correlationId: 'c', state: 'quarantined', attemptCount: 5 }, { authorised: true, confirmed: false })) throw new Error('Unconfirmed replay permitted');
   const replayable = { messageId: 'm', correlationId: 'c', state: 'quarantined', attemptCount: 5 };
