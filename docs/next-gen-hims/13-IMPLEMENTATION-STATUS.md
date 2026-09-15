@@ -46,7 +46,10 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 - `nextGenCommunicationPolicy.ts`: channel consent, category consent, language selection, timezone-aware and fail-closed quiet-hour configuration, minimum-necessary handling and explicit emergency override semantics.
 - `nextGenRuntimeGuards.ts`: centralized composition boundary for clinical action, AI output, communication and deployment-module enforcement.
 - `supabase/migrations/20260915170000_nextgen_communication_consent.sql`: persists explicit emergency communication override consent without exposing patient communication preferences to general authenticated access.
+- `supabase/migrations/20260915182000_nextgen_integration_payload_integrity.sql`: enables `pgcrypto`, computes authoritative SHA-256 payload hashes in a database trigger, backfills existing delivery records, and enforces a 64-character lowercase SHA-256 format constraint.
 - `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering supported interoperability standards, envelope rejection/idempotency/collision handling, retry/quarantine/replay transitions, AI lifecycle/evaluation/prohibited-use/model identity/provenance/human-review controls, communication consent/quiet-hours/timezone/emergency handling, deployment module boundaries and fail-closed clinical actions.
+
+The interoperability runtime's in-memory fingerprint remains a duplicate-detection aid only; it is not treated as the authoritative persisted integrity hash. The durable ledger migration now enforces the cryptographic boundary in PostgreSQL.
 
 These boundaries are deliberately transport/configuration/governance primitives. They do not create a parallel clinical source of truth and cannot independently authorize clinical actions.
 
