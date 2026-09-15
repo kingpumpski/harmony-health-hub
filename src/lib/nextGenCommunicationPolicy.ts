@@ -37,16 +37,27 @@ const consentedCategories: Record<CommunicationRequest['category'], keyof Commun
   emergency: undefined,
 };
 
+function parseMinutes(value: string): number | undefined {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return undefined;
+  return hours * 60 + minutes;
+}
+
+function quietHoursValidity(quietHours?: CommunicationPreferences['quietHours']): 'absent' | 'valid' | 'invalid' {
+  if (!quietHours || (!quietHours.start && !quietHours.end)) return 'absent';
+  if (!quietHours.start || !quietHours.end) return 'invalid';
+  return parseMinutes(quietHours.start) !== undefined && parseMinutes(quietHours.end) !== undefined ? 'valid' : 'invalid';
+}
+
 function withinQuietHours(now: Date, quietHours?: CommunicationPreferences['quietHours']): boolean {
   if (!quietHours?.start || !quietHours.end) return false;
-  const toMinutes = (value: string) => {
-    const match = /^(\d{2}):(\d{2})$/.exec(value);
-    return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
-  };
-  const current = now.getHours() * 60 + now.getMinutes();
-  const start = toMinutes(quietHours.start);
-  const end = toMinutes(quietHours.end);
+  const start = parseMinutes(quietHours.start);
+  const end = parseMinutes(quietHours.end);
   if (start === undefined || end === undefined) return false;
+  const current = now.getHours() * 60 + now.getMinutes();
   return start <= end ? current >= start && current < end : current >= start || current < end;
 }
 
@@ -57,6 +68,11 @@ export function evaluateCommunicationRequest(
   const language = request.language || preferences.preferredLanguage || 'en';
   const emergencyOverride = request.emergency === true && preferences.emergencyOverrideAllowed === true;
   const minimumNecessary = request.containsSensitiveData === true || request.category === 'emergency';
+  const quietHoursState = quietHoursValidity(preferences.quietHours);
+
+  if (quietHoursState === 'invalid') {
+    return { allowed: false, channel: request.channel, language, reason: 'Invalid quiet-hours configuration', minimumNecessary };
+  }
 
   if (!preferences.preferredChannels.includes(request.channel) && !emergencyOverride) {
     return { allowed: false, channel: request.channel, language, reason: 'Channel is not consented', minimumNecessary };
