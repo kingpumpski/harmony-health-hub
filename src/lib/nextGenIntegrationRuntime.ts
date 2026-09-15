@@ -22,6 +22,11 @@ export interface IntegrationRuntimeStore {
   enqueue(record: IntegrationDeliveryRecord): void;
 }
 
+export interface IntegrationReplayContext {
+  authorised: boolean;
+  confirmed: boolean;
+}
+
 const DEFAULT_POLICY: IntegrationRuntimePolicy = { maxAttempts: 5, retryBaseDelayMs: 1000 };
 
 export function classifyDeliveryFailure(error: unknown): DeliveryFailureClass {
@@ -46,6 +51,7 @@ export function evaluateIncomingEnvelope(value: unknown, store: IntegrationRunti
 }
 
 export function nextRetry(record: IntegrationDeliveryRecord, policy: IntegrationRuntimePolicy = DEFAULT_POLICY): IntegrationDeliveryRecord {
+  if (policy.maxAttempts < 1 || policy.retryBaseDelayMs < 0) throw new Error('Invalid integration retry policy');
   if (record.attemptCount >= policy.maxAttempts) {
     return { ...record, state: 'quarantined', lastError: record.lastError ?? 'Maximum delivery attempts exceeded' };
   }
@@ -53,6 +59,7 @@ export function nextRetry(record: IntegrationDeliveryRecord, policy: Integration
   return { ...record, state: 'failed', nextAttemptAt: new Date(Date.now() + delay).toISOString() };
 }
 
-export function canReplay(record: IntegrationDeliveryRecord): boolean {
+export function canReplay(record: IntegrationDeliveryRecord, context: IntegrationReplayContext): boolean {
+  if (!context.authorised || !context.confirmed) return false;
   return ['failed', 'quarantined', 'replay_pending'].includes(record.state);
 }
