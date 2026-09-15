@@ -24,3 +24,7 @@ This archive was created from the production Supabase project before repairing m
 ```
 
 The archived migrations remain available under `supabase/migrations-archive/` for audit/reference but are no longer part of the executable migration chain.
+
+## Reconciliation checkpoint
+
+The production migration history subsequently diverged again as additional production-side reconciliation migrations were applied. The repository workflow will establish a fresh canonical production baseline from the live schema before further migration development continues. This preserves the production schema as authoritative while retaining the prior migration archive for audit/reference.
