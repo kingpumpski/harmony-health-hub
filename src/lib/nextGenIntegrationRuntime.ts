@@ -51,6 +51,12 @@ function stablePayloadFingerprint(envelope: InteroperabilityEnvelope): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+function validateRetryPolicy(policy: IntegrationRuntimePolicy): void {
+  if (!Number.isInteger(policy.maxAttempts) || policy.maxAttempts < 1 || policy.retryBaseDelayMs < 0 || !Number.isFinite(policy.retryBaseDelayMs)) {
+    throw new Error('Invalid integration retry policy');
+  }
+}
+
 export function classifyDeliveryFailure(error: unknown): DeliveryFailureClass {
   const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : '';
   if (['AUTH', 'SCHEMA', 'UNSUPPORTED_STANDARD', 'INVALID_MESSAGE'].includes(code)) return 'permanent';
@@ -80,11 +86,11 @@ export function evaluateIncomingEnvelope(value: unknown, store: IntegrationRunti
 }
 
 export function nextRetry(record: IntegrationDeliveryRecord, policy: IntegrationRuntimePolicy = DEFAULT_POLICY): IntegrationDeliveryRecord {
-  if (!Number.isInteger(policy.maxAttempts) || policy.maxAttempts < 1 || policy.retryBaseDelayMs < 0 || !Number.isFinite(policy.retryBaseDelayMs)) {
-    throw new Error('Invalid integration retry policy');
-  }
+  validateRetryPolicy(policy);
   if (!Number.isInteger(record.attemptCount) || record.attemptCount < 0) throw new Error('Invalid integration attempt count');
   if (record.state === 'delivered' || record.state === 'replayed') return record;
+  if (record.state === 'quarantined') return record;
+  if (record.state !== 'failed') throw new Error(`Retry requires failed state, received ${record.state}`);
   if (record.attemptCount >= policy.maxAttempts) {
     return { ...record, state: 'quarantined', nextAttemptAt: undefined, lastError: record.lastError ?? 'Maximum delivery attempts exceeded' };
   }
@@ -94,7 +100,7 @@ export function nextRetry(record: IntegrationDeliveryRecord, policy: Integration
 
 export function canReplay(record: IntegrationDeliveryRecord, context: IntegrationReplayContext): boolean {
   if (!context.authorised || !context.confirmed) return false;
-  return ['failed', 'quarantined', 'replay_pending'].includes(record.state);
+  return ['failed', 'quarantined'].includes(record.state);
 }
 
 export function prepareReplay(record: IntegrationDeliveryRecord, context: IntegrationReplayContext): IntegrationDeliveryRecord {
