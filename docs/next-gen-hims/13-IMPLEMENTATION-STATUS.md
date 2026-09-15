@@ -30,12 +30,22 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 | Inventory | Existing pharmacy/inventory surface | supply-chain controls and device/material lifecycle | reconciliation, audit |
 | Workforce | roster/shift management | workforce scheduling and operational capacity | authorization, continuity |
 | Public health | reporting foundation | surveillance/export and population-health boundaries | privacy, jurisdictional review |
-| Patient engagement | portal/chat/notifications | consented multichannel communication and accessibility | privacy, accessibility, audit |
-| Interoperability | existing Supabase functions/integration boundaries | typed envelope, idempotency, retry, quarantine and replay | security, resilience, conformance |
+| Patient engagement | portal/chat/notifications | consented multichannel communication, language, quiet hours, minimum-necessary disclosure and accessibility | privacy, accessibility, audit |
+| Interoperability | existing Supabase functions/integration boundaries | typed envelope, idempotency, retry, quarantine and replay with durable delivery ledger | security, resilience, conformance |
 | Device integration | existing laboratory/imaging surfaces | registry, protocol boundary and lifecycle | vendor validation, safety, security |
-| AI clinical | AI Clinical Hub/report tooling | governed model registry, provenance and human review | AI safety, privacy, clinical review |
+| AI clinical | AI Clinical Hub/report tooling | governed model registry, intended/prohibited use, evaluation evidence, provenance and human review | AI safety, privacy, clinical review |
+| Deployment/localization | existing application configuration | versioned jurisdiction profile with locale, timezone, currency, residency, regulatory, security and module enablement | migration replay, jurisdiction review, configuration integrity |
 | Accessibility | existing responsive UI | persistent user preferences and WCAG-oriented behavior | automated + manual accessibility testing |
 | Security/audit | existing auth/RLS/audit foundations | deny-by-default platform controls and traceability | RLS/security review, audit verification |
+
+## Newly implemented runtime boundaries
+
+- `nextGenIntegrationRuntime.ts`: structural envelope validation, message-idempotency boundary, delivery failure classification, exponential retry scheduling, maximum-attempt quarantine and replay eligibility.
+- `nextGenAIGovernance.ts`: active-model allowlisting, evaluation-evidence enforcement, intended/prohibited-use checks and confidence-driven human review.
+- `nextGenDeploymentProfile.ts`: effective-date validation, jurisdiction profile resolution, residency/configuration access and duplicate module normalization.
+- `nextGenCommunicationPolicy.ts`: channel consent, category consent, language selection, quiet-hour enforcement, minimum-necessary handling and explicit emergency override semantics.
+
+These boundaries are deliberately transport/configuration/governance primitives. They do not create a parallel clinical source of truth and cannot independently authorize clinical actions.
 
 ## Implementation rule
 
@@ -45,17 +55,19 @@ A row is not complete merely because its route exists. Completion requires a con
 
 1. Exact-head GitHub quality workflow passes.
 2. Typecheck, lint and production build pass.
-3. Contract verification passes.
+3. Contract verification passes, including integration, AI governance, deployment-profile and communication-policy boundaries.
 4. All new Supabase migrations replay cleanly against a disposable database and reconcile against the deployed schema.
 5. RLS tests demonstrate allowed and denied access for representative roles.
 6. Clinical safety scenarios pass, including downtime/recovery and duplicate/concurrent action controls.
 7. Interoperability fixtures pass validation, idempotency, retry, quarantine and replay tests.
 8. Accessibility automated checks pass and keyboard/screen-reader/manual checks are recorded.
 9. AI governance tests demonstrate model allowlisting, provenance, uncertainty and human-review enforcement.
-10. Performance/resilience checks meet the project's agreed thresholds.
-11. The deployed artifact is verified against the exact final commit.
-12. Only after all evidence is current may the draft PR become merge-ready.
+10. Communication tests demonstrate consent, quiet-hours, language and emergency-override behavior without leaking PHI into telemetry.
+11. Deployment-profile tests demonstrate effective-date, jurisdiction, residency and module-boundary behavior.
+12. Performance/resilience checks meet the project's agreed thresholds.
+13. The deployed artifact is verified against the exact final commit.
+14. Only after all evidence is current may the draft PR become merge-ready.
 
 ## Known external blocker policy
 
-A Vercel build-rate-limit failure or GitHub Actions infrastructure/startup failure is recorded as an infrastructure blocker. It must not be converted into a false green result by removing checks, weakening assertions, or relying on an older commit.
+A Vercel build-rate-limit failure or GitHub Actions infrastructure/startup failure is recorded as an infrastructure blocker. It must not be converted into a false green result by removing checks, weakening assertions, or relying on an older commit. Likewise, absence of the correct connected Supabase project blocks migration replay evidence but does not justify applying migrations to an unrelated project.
