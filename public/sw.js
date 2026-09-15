@@ -1,6 +1,13 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v5';
+const CACHE_NAME = 'harmony-health-hub-shell-v6';
 const REQUIRED_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 const PRODUCTION_MANIFEST = '/.vite/manifest.json';
+const NETWORK_ONLY_PATHS = new Set([
+  '/',
+  '/index.html',
+  '/sw.js',
+  '/manifest.webmanifest',
+  PRODUCTION_MANIFEST,
+]);
 
 async function cacheRequiredShell(cache) {
   await cache.addAll(REQUIRED_SHELL);
@@ -41,19 +48,17 @@ async function precacheProductionAssets(cache) {
     if (entry) visit(entry);
 
     await Promise.allSettled(
-      [...assets].map(async (asset) => {
-        try {
-          const response = await fetch(asset, { cache: 'no-store' });
-          if (response.ok) await cache.put(asset, response.clone());
-        } catch {
-          // Optional hashed assets are retried by the normal runtime cache.
-        }
-      })
+      [...assets]
+        .filter((asset) => !NETWORK_ONLY_PATHS.has(asset))
+        .map(async (asset) => {
+          try {
+            const response = await fetch(asset, { cache: 'no-store' });
+            if (response.ok) await cache.put(asset, response.clone());
+          } catch {
+            // Optional hashed assets are retried by the normal runtime cache.
+          }
+        })
     );
-
-    // Keep the manifest itself available for diagnostics and future installs.
-    const manifestCopy = await fetch(PRODUCTION_MANIFEST, { cache: 'no-store' });
-    if (manifestCopy.ok) await cache.put(PRODUCTION_MANIFEST, manifestCopy.clone());
   } catch {
     // The application shell remains installable even if the production
     // manifest cannot be reached during this installation.
@@ -91,6 +96,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (NETWORK_ONLY_PATHS.has(url.pathname)) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
