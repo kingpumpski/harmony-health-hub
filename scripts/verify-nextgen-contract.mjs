@@ -23,7 +23,7 @@ for (const token of ['message_id TEXT NOT NULL UNIQUE','UNIQUE(message_id, attem
 const contracts = fs.readFileSync(path.join(root, 'src/lib/nextGenContracts.ts'), 'utf8');
 for (const token of ['InteroperabilityEnvelope','validateEnvelope','requiresHumanReview','INTEGRATION_STANDARDS','Date.parse']) if (!contracts.includes(token)) throw new Error(`Runtime contract missing: ${token}`);
 const safety = fs.readFileSync(path.join(root, 'src/lib/nextGenClinicalSafety.ts'), 'utf8');
-for (const token of ['medication-administration','blood-product-administration','diagnostic-result-finalisation','ai-clinical-recommendation','assertClinicalActionSafe']) if (!safety.includes(token)) throw new Error(`Clinical safety guard missing: ${token}`);
+for (const token of ['medication-administration','blood-product-administration','diagnostic-result-finalisation','ai-clinical-recommendation','assertClinicalActionSafe','requiresAudit','audited']) if (!safety.includes(token)) throw new Error(`Clinical safety guard missing: ${token}`);
 const integration = fs.readFileSync(path.join(root, 'src/lib/nextGenIntegrationRuntime.ts'), 'utf8');
 for (const token of ['evaluateIncomingEnvelope','classifyDeliveryFailure','nextRetry','canReplay','IntegrationReplayContext','authorised','confirmed']) if (!integration.includes(token)) throw new Error(`Integration runtime boundary missing: ${token}`);
 const ai = fs.readFileSync(path.join(root, 'src/lib/nextGenAIGovernance.ts'), 'utf8');
@@ -33,7 +33,7 @@ for (const token of ['resolveDeploymentProfile','isModuleAllowed','effectiveFrom
 const communication = fs.readFileSync(path.join(root, 'src/lib/nextGenCommunicationPolicy.ts'), 'utf8');
 for (const token of ['evaluateCommunicationRequest','preferredChannels','quietHours','minimumNecessary','emergencyOverrideAllowed']) if (!communication.includes(token)) throw new Error(`Communication-policy boundary missing: ${token}`);
 const runtimeGuards = fs.readFileSync(path.join(root, 'src/lib/nextGenRuntimeGuards.ts'), 'utf8');
-for (const token of ['guardClinicalAction','guardAIOutput','guardCommunication','guardDeploymentModule']) if (!runtimeGuards.includes(token)) throw new Error(`Runtime guard composition missing: ${token}`);
+for (const token of ['guardClinicalAction','guardAIOutput','guardCommunication','guardDeploymentModule','audited']) if (!runtimeGuards.includes(token)) throw new Error(`Runtime guard composition missing: ${token}`);
 const manifest = fs.readFileSync(path.join(root, 'src/lib/nextGenModuleManifest.ts'), 'utf8');
 for (const token of ['getModuleContract','getModuleContracts','getUncontractedModules']) if (!manifest.includes(token)) throw new Error(`Module manifest missing: ${token}`);
-console.log(`Next-gen contract verification passed: ${ids.length} modules; ${required.length} required artifacts; executable runtime fixtures wired; RLS, lifecycle, idempotency, safety, integration-runtime, AI-governance, deployment-profile, communication-policy and runtime-composition checks present.`);
+console.log(`Next-gen contract verification passed: ${ids.length} modules; ${required.length} required artifacts; executable runtime fixtures wired; RLS, lifecycle, idempotency, safety, audit, integration-runtime, AI-governance, deployment-profile, communication-policy and runtime-composition checks present.`);
