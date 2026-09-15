@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Choose whether to validate or apply the migration chain'
+        description: 'Choose whether to validate, apply, or verify the migration chain'
         required: true
         default: validate
         type: choice
         options:
           - validate
           - apply
+          - verify
 
 permissions:
   contents: read
@@ -49,5 +50,9 @@ jobs:
         run: supabase db push --linked
 
       - name: Verify database lint
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase db lint --linked --fail-on error
+
+      - name: Verify operational schema contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/operational_read_schema_contract.sql
