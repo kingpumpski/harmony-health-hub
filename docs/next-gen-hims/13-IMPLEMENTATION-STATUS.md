@@ -31,7 +31,7 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 | Workforce | roster/shift management | workforce scheduling and operational capacity | authorization, continuity |
 | Public health | reporting foundation | surveillance/export and population-health boundaries | privacy, jurisdictional review |
 | Patient engagement | portal/chat/notifications | consented multichannel communication, language, quiet hours, minimum-necessary disclosure and accessibility | privacy, accessibility, audit |
-| Interoperability | existing Supabase functions/integration boundaries | typed envelope, idempotency, retry, quarantine and replay with durable delivery ledger | security, resilience, conformance |
+| Interoperability | existing Supabase functions/integration boundaries | typed envelope, idempotency, retry, quarantine and authorized replay with durable delivery ledger | security, resilience, conformance |
 | Device integration | existing laboratory/imaging surfaces | registry, protocol boundary and lifecycle | vendor validation, safety, security |
 | AI clinical | AI Clinical Hub/report tooling | governed model registry, intended/prohibited use, evaluation evidence, provenance and human review | AI safety, privacy, clinical review |
 | Deployment/localization | existing application configuration | versioned jurisdiction profile with locale, timezone, currency, residency, regulatory, security and module enablement | migration replay, jurisdiction review, configuration integrity |
@@ -40,10 +40,12 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 
 ## Newly implemented runtime boundaries
 
-- `nextGenIntegrationRuntime.ts`: structural envelope validation, message-idempotency boundary, delivery failure classification, exponential retry scheduling, maximum-attempt quarantine and replay eligibility.
+- `nextGenIntegrationRuntime.ts`: structural envelope validation, message-idempotency boundary, delivery failure classification, exponential retry scheduling, maximum-attempt quarantine and replay eligibility requiring authorization and explicit confirmation.
 - `nextGenAIGovernance.ts`: active-model allowlisting, evaluation-evidence enforcement, intended/prohibited-use checks and confidence-driven human review.
 - `nextGenDeploymentProfile.ts`: effective-date validation, jurisdiction profile resolution, residency/configuration access and duplicate module normalization.
 - `nextGenCommunicationPolicy.ts`: channel consent, category consent, language selection, quiet-hour enforcement, minimum-necessary handling and explicit emergency override semantics.
+- `nextGenRuntimeGuards.ts`: centralized composition boundary for clinical action, AI output, communication and deployment-module enforcement.
+- `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering envelope rejection/idempotency, retry/quarantine/replay authorization, AI lifecycle/evaluation/prohibited-use/human-review controls, communication consent/quiet-hours/emergency handling, deployment module boundaries and fail-closed clinical actions.
 
 These boundaries are deliberately transport/configuration/governance primitives. They do not create a parallel clinical source of truth and cannot independently authorize clinical actions.
 
@@ -55,11 +57,11 @@ A row is not complete merely because its route exists. Completion requires a con
 
 1. Exact-head GitHub quality workflow passes.
 2. Typecheck, lint and production build pass.
-3. Contract verification passes, including integration, AI governance, deployment-profile and communication-policy boundaries.
+3. Contract verification and executable runtime fixtures pass, including integration, AI governance, deployment-profile and communication-policy boundaries.
 4. All new Supabase migrations replay cleanly against a disposable database and reconcile against the deployed schema.
 5. RLS tests demonstrate allowed and denied access for representative roles.
 6. Clinical safety scenarios pass, including downtime/recovery and duplicate/concurrent action controls.
-7. Interoperability fixtures pass validation, idempotency, retry, quarantine and replay tests.
+7. Interoperability fixtures pass validation, idempotency, retry, quarantine and authorized replay tests across the supported protocol envelope.
 8. Accessibility automated checks pass and keyboard/screen-reader/manual checks are recorded.
 9. AI governance tests demonstrate model allowlisting, provenance, uncertainty and human-review enforcement.
 10. Communication tests demonstrate consent, quiet-hours, language and emergency-override behavior without leaking PHI into telemetry.
