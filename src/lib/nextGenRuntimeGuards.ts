@@ -7,6 +7,7 @@ import { DeploymentProfile, isModuleAllowed, resolveDeploymentProfile, Deploymen
 export interface RuntimeGuardContext {
   authorised: boolean;
   confirmed: boolean;
+  audited: boolean;
   online: boolean;
 }
 
