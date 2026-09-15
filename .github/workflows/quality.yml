@@ -40,5 +40,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Next-generation contract verification
+        run: npm run verify:nextgen
+
       - name: Production build
         run: npm run build
