@@ -9,30 +9,31 @@ on:
       - .github/workflows/refresh-xlsx-lock.yml
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  SHEETJS_VERSION: 0.20.3
 
 jobs:
   refresh:
-    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
           ref: feature/operational-workflow-hardening
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Refresh package lock
         run: npm install --package-lock-only --ignore-scripts
 
-      - name: Commit refreshed lockfile
+      - name: Verify SheetJS lock entry
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            echo "No lockfile changes required."
-            exit 0
-          fi
-          git commit -m "chore: refresh lockfile for patched SheetJS"
-          git push origin feature/operational-workflow-hardening
+          node -e 'const l=require("./package-lock.json"); const p=l.packages["node_modules/xlsx"]; if(!p || p.version !== process.env.SHEETJS_VERSION || !String(p.resolved).includes("cdn.sheetjs.com")) process.exit(1); console.log(p.version, p.resolved);'
+
+      - name: Upload refreshed lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-health-hub-sheetjs-lock-${{ github.sha }}
+          path: package-lock.json
+          if-no-files-found: error
