@@ -76,12 +76,16 @@ try {
   if (!deployment.isModuleAllowed(profile, 'appointments')) throw new Error('Enabled deployment module denied');
   if (deployment.isModuleAllowed(profile, 'pharmacy')) throw new Error('Disabled deployment module allowed');
 
-  for (const context of [{ authorised: false, confirmed: true, online: true }, { authorised: true, confirmed: false, online: true }]) {
+  for (const context of [
+    { authorised: false, confirmed: true, audited: true, online: true },
+    { authorised: true, confirmed: false, audited: true, online: true },
+    { authorised: true, confirmed: true, audited: false, online: true },
+  ]) {
     try { guards.guardClinicalAction('medication-administration', context); throw new Error('Unsafe clinical action permitted'); } catch (error) {
       if (error.message === 'Unsafe clinical action permitted') throw error;
     }
   }
-  clinical.assertClinicalActionSafe('medication-administration', { authorised: true, confirmed: true, online: true });
+  clinical.assertClinicalActionSafe('medication-administration', { authorised: true, confirmed: true, audited: true, online: true });
 
   console.log('Next-gen runtime contract tests passed.');
 } finally {
