@@ -1,0 +1,69 @@
+{
+  "version": "1.0.0",
+  "purpose": "Synthetic non-PHI fixtures for interoperability envelope validation; payloads are illustrative only and must not be interpreted as clinical decision logic.",
+  "fixtures": [
+    {
+      "id": "fhir-r4-patient-update",
+      "standard": "FHIR_R4",
+      "direction": "inbound",
+      "eventType": "Patient.updated",
+      "schemaVersion": "R4",
+      "classification": "clinical",
+      "payload": { "resourceType": "Patient", "id": "fixture-patient-001", "active": true }
+    },
+    {
+      "id": "fhir-r5-observation-result",
+      "standard": "FHIR_R5",
+      "direction": "outbound",
+      "eventType": "Observation.final",
+      "schemaVersion": "R5",
+      "classification": "clinical",
+      "payload": { "resourceType": "Observation", "id": "fixture-observation-001", "status": "final" }
+    },
+    {
+      "id": "hl7-v2-adt",
+      "standard": "HL7_V2",
+      "direction": "inbound",
+      "eventType": "ADT^A01",
+      "schemaVersion": "2.5.1",
+      "classification": "clinical",
+      "payload": { "messageType": "ADT", "trigger": "A01", "controlId": "FIXTURE-001" }
+    },
+    {
+      "id": "dicom-study-complete",
+      "standard": "DICOM",
+      "direction": "bidirectional",
+      "eventType": "Study.completed",
+      "schemaVersion": "PS3.3",
+      "classification": "clinical",
+      "payload": { "studyInstanceUid": "2.25.999999999999999999999999999999001", "modality": "CT" }
+    },
+    {
+      "id": "astm-lab-result",
+      "standard": "ASTM",
+      "direction": "inbound",
+      "eventType": "Result.final",
+      "schemaVersion": "E1394",
+      "classification": "clinical",
+      "payload": { "instrument": "FIXTURE-LAB-01", "sampleId": "FIXTURE-SAMPLE-001", "status": "final" }
+    },
+    {
+      "id": "rest-json-inventory",
+      "standard": "REST_JSON",
+      "direction": "bidirectional",
+      "eventType": "Inventory.updated",
+      "schemaVersion": "1.0",
+      "classification": "operational",
+      "payload": { "sku": "FIXTURE-SKU-001", "quantity": 25, "unit": "each" }
+    },
+    {
+      "id": "soap-xml-claim",
+      "standard": "SOAP_XML",
+      "direction": "outbound",
+      "eventType": "Claim.submitted",
+      "schemaVersion": "1.2",
+      "classification": "financial",
+      "payload": { "claimReference": "FIXTURE-CLAIM-001", "status": "submitted" }
+    }
+  ]
+}
