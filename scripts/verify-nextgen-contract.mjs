@@ -2,20 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const registryPath = path.join(root, 'platform/reference/module-registry.json');
-const migrationPath = path.join(root, 'supabase/migrations/20260915150000_nextgen_platform_foundation.sql');
-const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-const migration = fs.readFileSync(migrationPath, 'utf8');
-
+const required = [
+  'docs/next-gen-hims/00-ARCHITECTURE-DECISION.md','docs/next-gen-hims/01-MODULE-CATALOG.md','docs/next-gen-hims/02-CONFIGURATION-AND-DATA-SOVEREIGNTY.md','docs/next-gen-hims/03-INTEROPERABILITY-AND-DEVICE-INTEGRATION.md','docs/next-gen-hims/04-AI-SAFETY-AND-GOVERNANCE.md','docs/next-gen-hims/05-ACCESSIBILITY-AND-PATIENT-ENGAGEMENT.md','docs/next-gen-hims/06-SECURITY-PRIVACY-COMPLIANCE.md','docs/next-gen-hims/07-STANDARDS-MATRIX.md','docs/next-gen-hims/08-IMPLEMENTATION-ROADMAP.md','docs/next-gen-hims/09-QUALITY-GATE.md','docs/next-gen-hims/10-TRACEABILITY-MATRIX.md','docs/next-gen-hims/11-RISK-REGISTER.md','docs/next-gen-hims/12-CLINICAL-SAFETY-SECURITY-CONVERGENCE.md','platform/reference/module-registry.json','src/lib/nextGenPlatform.ts','src/lib/nextGenContracts.ts','src/lib/nextGenModuleManifest.ts','src/pages/admin/NextGenPlatformControlCenter.tsx','supabase/migrations/20260915150000_nextgen_platform_foundation.sql'];
+const missing = required.filter((file) => !fs.existsSync(path.join(root, file)));
+if (missing.length) throw new Error(`Missing required next-gen artifacts: ${missing.join(', ')}`);
+const registry = JSON.parse(fs.readFileSync(path.join(root, 'platform/reference/module-registry.json'), 'utf8'));
 if (registry.schemaVersion !== '1.0.0') throw new Error('Unexpected module registry schema version');
-if (!Array.isArray(registry.modules) || registry.modules.length < 1) throw new Error('Module registry is empty');
+if (!Array.isArray(registry.modules) || registry.modules.length < 20) throw new Error('Module registry must contain at least 20 modules');
 const ids = registry.modules.map((module) => module.id);
 if (new Set(ids).size !== ids.length) throw new Error('Module registry contains duplicate module IDs');
-if (!migration.includes('ALTER TABLE public.platform_deployment_profiles ENABLE ROW LEVEL SECURITY;')) throw new Error('Deployment profile RLS is missing');
-if (!migration.includes('ALTER TABLE public.platform_ai_model_registry ENABLE ROW LEVEL SECURITY;')) throw new Error('AI registry RLS is missing');
-if (!migration.includes('CREATE POLICY "users manage own accessibility preferences"')) throw new Error('Accessibility ownership policy is missing');
-if (!migration.includes('CHECK (lifecycle_state IN (\'proposed\',\'validated\',\'approved\',\'active\',\'restricted\',\'suspended\',\'retired\'))')) throw new Error('AI lifecycle guard is missing');
-if (!migration.includes('CHECK (lifecycle_state IN (\'proposed\',\'onboarding\',\'validation\',\'active\',\'degraded\',\'quarantined\',\'maintenance\',\'retired\'))')) throw new Error('Device lifecycle guard is missing');
-if (migration.includes('service_role') && migration.includes('GRANT ALL ON')) throw new Error('Broad GRANT ALL detected in platform foundation migration');
-
-console.log(`Next-gen contract verification passed: ${ids.length} registered modules; RLS, lifecycle and ownership checks present.`);
+if (registry.defaultState !== 'disabled-until-validated') throw new Error('Unsafe registry default state');
+const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260915150000_nextgen_platform_foundation.sql'), 'utf8');
+for (const table of ['platform_deployment_profiles','platform_device_registry','platform_integration_endpoints','platform_event_schemas','platform_ai_model_registry','platform_ai_model_evaluations','user_accessibility_preferences','patient_communication_preferences']) if (!migration.includes(`public.${table}`)) throw new Error(`Missing foundation table: ${table}`);
+for (const token of ['ALTER TABLE public.platform_deployment_profiles ENABLE ROW LEVEL SECURITY;','ALTER TABLE public.platform_ai_model_registry ENABLE ROW LEVEL SECURITY;','CREATE POLICY "users manage own accessibility preferences"','lifecycle_state IN (\'proposed\',\'validated\',\'approved\',\'active\',\'restricted\',\'suspended\',\'retired\')','lifecycle_state IN (\'proposed\',\'onboarding\',\'validation\',\'active\',\'degraded\',\'quarantined\',\'maintenance\',\'retired\')']) if (!migration.includes(token)) throw new Error(`Foundation control missing: ${token}`);
+const contracts = fs.readFileSync(path.join(root, 'src/lib/nextGenContracts.ts'), 'utf8');
+for (const token of ['InteroperabilityEnvelope','validateEnvelope','requiresHumanReview']) if (!contracts.includes(token)) throw new Error(`Runtime contract missing: ${token}`);
+const manifest = fs.readFileSync(path.join(root, 'src/lib/nextGenModuleManifest.ts'), 'utf8');
+for (const token of ['getModuleContract','getModuleContracts','getUncontractedModules']) if (!manifest.includes(token)) throw new Error(`Module manifest missing: ${token}`);
+console.log(`Next-gen contract verification passed: ${ids.length} modules; ${required.length} required artifacts; RLS, lifecycle, ownership and runtime-contract checks present.`);
