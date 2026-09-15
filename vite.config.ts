@@ -37,18 +37,6 @@ export default defineConfig(({ mode }) => ({
     // JavaScript/CSS chunks after the first successful online installation.
     manifest: true,
     chunkSizeWarningLimit: 350,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("xlsx")) return "vendor-xlsx";
-          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-          if (id.includes("react") || id.includes("react-dom") || id.includes("react-router") || id.includes("@tanstack")) return "vendor-react";
-          if (id.includes("@radix-ui") || id.includes("lucide-react") || id.includes("next-themes")) return "vendor-ui";
-          return "vendor";
-        },
-      },
-    },
   },
   plugins: [react(), mode === "production" && compressedAssets(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
