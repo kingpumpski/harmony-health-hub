@@ -49,7 +49,11 @@ function parseMinutes(value: string): number | undefined {
 function quietHoursValidity(quietHours?: CommunicationPreferences['quietHours']): 'absent' | 'valid' | 'invalid' {
   if (!quietHours || (!quietHours.start && !quietHours.end)) return 'absent';
   if (!quietHours.start || !quietHours.end) return 'invalid';
-  return parseMinutes(quietHours.start) !== undefined && parseMinutes(quietHours.end) !== undefined ? 'valid' : 'invalid';
+  if (parseMinutes(quietHours.start) === undefined || parseMinutes(quietHours.end) === undefined) return 'invalid';
+  if (quietHours.timezone) {
+    try { new Intl.DateTimeFormat('en-US', { timeZone: quietHours.timezone }).format(new Date()); } catch { return 'invalid'; }
+  }
+  return 'valid';
 }
 
 function withinQuietHours(now: Date, quietHours?: CommunicationPreferences['quietHours']): boolean {
@@ -57,7 +61,25 @@ function withinQuietHours(now: Date, quietHours?: CommunicationPreferences['quie
   const start = parseMinutes(quietHours.start);
   const end = parseMinutes(quietHours.end);
   if (start === undefined || end === undefined) return false;
-  const current = now.getHours() * 60 + now.getMinutes();
+  let currentDate = now;
+  if (quietHours.timezone) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: quietHours.timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).formatToParts(now);
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+      const minute = Number(parts.find((part) => part.type === 'minute')?.value);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) return false;
+      return start <= end ? hour * 60 + minute >= start && hour * 60 + minute < end : hour * 60 + minute >= start || hour * 60 + minute < end;
+    } catch {
+      return false;
+    }
+  }
+  currentDate = now;
+  const current = currentDate.getHours() * 60 + currentDate.getMinutes();
   return start <= end ? current >= start && current < end : current >= start || current < end;
 }
 
