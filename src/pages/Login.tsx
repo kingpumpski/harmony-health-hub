@@ -55,8 +55,8 @@ export default function Login() {
               <HeartPulse className="w-10 h-10 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-4xl font-heading font-bold text-sidebar-foreground">MediCare Pro</h1>
-              <p className="text-sidebar-foreground/70">Health Management System</p>
+              <h1 className="text-4xl font-heading font-bold text-sidebar-foreground">Harmony Health Hub</h1>
+              <p className="text-sidebar-foreground/70">Healthcare Management System</p>
             </div>
           </div>
 
@@ -97,8 +97,8 @@ export default function Login() {
               <HeartPulse className="w-7 h-7 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-heading font-bold">MediCare Pro</h1>
-              <p className="text-sm text-muted-foreground">Health Management System</p>
+              <h1 className="text-2xl font-heading font-bold">Harmony Health Hub</h1>
+              <p className="text-sm text-muted-foreground">Healthcare Management System</p>
             </div>
           </div>
 

@@ -9,8 +9,8 @@ export default function SplashScreen() {
           <span className="absolute inset-0 rounded-3xl ring-4 ring-primary/30 animate-ping" />
         </div>
         <div className="text-center animate-fade-in">
-          <h1 className="text-3xl font-heading font-bold tracking-tight">MediCare</h1>
-          <p className="text-sm text-muted-foreground">Pro Health System</p>
+          <h1 className="text-3xl font-heading font-bold tracking-tight">Harmony Health Hub</h1>
+          <p className="text-sm text-muted-foreground">Healthcare Management System</p>
         </div>
       </div>
     </div>
