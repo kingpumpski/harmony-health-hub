@@ -41,6 +41,12 @@ export interface AIClinicalOutput<T = unknown> {
   review: AIReviewState;
   output: T;
   generatedAt: string;
+  provenance?: {
+    sourceSystem?: string;
+    sourceRecordIds?: string[];
+    correlationId?: string;
+    auditRequired?: boolean;
+  };
 }
 
 export function createCorrelationId(prefix = 'harmony'): string {
@@ -62,7 +68,8 @@ export function validateEnvelope(value: unknown): value is InteroperabilityEnvel
   if (!CLASSIFICATIONS.has(candidate.classification as InteroperabilityEnvelope['classification'])) return false;
   if ('destinationSystem' in candidate && candidate.destinationSystem !== undefined && typeof candidate.destinationSystem !== 'string') return false;
   if ('patientReference' in candidate && candidate.patientReference !== undefined && typeof candidate.patientReference !== 'string') return false;
-  return 'payload' in candidate;
+  if (!('payload' in candidate) || candidate.payload === undefined) return false;
+  return true;
 }
 
 export function requiresHumanReview(confidence?: number): boolean {
