@@ -40,4 +40,9 @@ const runtimeGuards = fs.readFileSync(path.join(root, 'src/lib/nextGenRuntimeGua
 for (const token of ['guardClinicalAction','guardAIOutput','guardCommunication','guardDeploymentModule','audited']) if (!runtimeGuards.includes(token)) throw new Error(`Runtime guard composition missing: ${token}`);
 const manifest = fs.readFileSync(path.join(root, 'src/lib/nextGenModuleManifest.ts'), 'utf8');
 for (const token of ['getModuleContract','getModuleContracts','getUncontractedModules']) if (!manifest.includes(token)) throw new Error(`Module manifest missing: ${token}`);
-console.log(`Next-gen contract verification passed: ${ids.length} modules; ${required.length} required artifacts; executable adversarial runtime fixtures wired; RLS, lifecycle, idempotency, collision, replay, payload-integrity, safety, audit, integration-runtime, AI-governance, deployment-profile, communication-consent and runtime-composition checks present.`);
+const contractIds = [...manifest.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
+if (contractIds.length !== ids.length) throw new Error(`Module contract coverage mismatch: registry=${ids.length}, manifest=${contractIds.length}`);
+if (new Set(contractIds).size !== contractIds.length) throw new Error('Module contract manifest contains duplicate IDs');
+const missingContracts = ids.filter((id) => !contractIds.includes(id));
+if (missingContracts.length) throw new Error(`Uncontracted registry modules: ${missingContracts.join(', ')}`);
+console.log(`Next-gen contract verification passed: ${ids.length} modules; ${required.length} required artifacts; complete module-contract coverage; executable adversarial runtime fixtures wired; RLS, lifecycle, idempotency, collision, replay, payload-integrity, safety, audit, integration-runtime, AI-governance, deployment-profile, communication-consent and runtime-composition checks present.`);
