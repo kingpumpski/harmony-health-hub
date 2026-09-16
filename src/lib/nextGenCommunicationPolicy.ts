@@ -1,5 +1,8 @@
 export type CommunicationChannel = 'in_app' | 'sms' | 'email' | 'voice' | 'push' | 'portal';
 
+const communicationChannels: readonly CommunicationChannel[] = ['in_app', 'sms', 'email', 'voice', 'push', 'portal'];
+const communicationCategories = ['appointment', 'medication', 'result', 'marketing', 'operational', 'emergency'] as const;
+
 export interface CommunicationPreferences {
   preferredLanguage: string;
   preferredChannels: CommunicationChannel[];
@@ -12,7 +15,7 @@ export interface CommunicationPreferences {
 }
 
 export interface CommunicationRequest {
-  category: 'appointment' | 'medication' | 'result' | 'marketing' | 'operational' | 'emergency';
+  category: (typeof communicationCategories)[number];
   channel: CommunicationChannel;
   language?: string;
   now?: Date;
@@ -61,7 +64,6 @@ function withinQuietHours(now: Date, quietHours?: CommunicationPreferences['quie
   const start = parseMinutes(quietHours.start);
   const end = parseMinutes(quietHours.end);
   if (start === undefined || end === undefined) return false;
-  let currentDate = now;
   if (quietHours.timezone) {
     try {
       const parts = new Intl.DateTimeFormat('en-US', {
@@ -73,14 +75,22 @@ function withinQuietHours(now: Date, quietHours?: CommunicationPreferences['quie
       const hour = Number(parts.find((part) => part.type === 'hour')?.value);
       const minute = Number(parts.find((part) => part.type === 'minute')?.value);
       if (!Number.isFinite(hour) || !Number.isFinite(minute)) return false;
-      return start <= end ? hour * 60 + minute >= start && hour * 60 + minute < end : hour * 60 + minute >= start || hour * 60 + minute < end;
+      const current = hour * 60 + minute;
+      return start <= end ? current >= start && current < end : current >= start || current < end;
     } catch {
       return false;
     }
   }
-  currentDate = now;
-  const current = currentDate.getHours() * 60 + currentDate.getMinutes();
+  const current = now.getHours() * 60 + now.getMinutes();
   return start <= end ? current >= start && current < end : current >= start || current < end;
+}
+
+function invalidRequest(request: CommunicationRequest): string | undefined {
+  if (!communicationChannels.includes(request.channel)) return 'Unsupported communication channel';
+  if (!communicationCategories.includes(request.category)) return 'Unsupported communication category';
+  if (request.language !== undefined && request.language.trim() === '') return 'Invalid communication language';
+  if (request.now !== undefined && !(request.now instanceof Date && Number.isFinite(request.now.getTime()))) return 'Invalid communication timestamp';
+  return undefined;
 }
 
 export function evaluateCommunicationRequest(
@@ -90,8 +100,11 @@ export function evaluateCommunicationRequest(
   const language = request.language || preferences.preferredLanguage || 'en';
   const emergencyOverride = request.emergency === true && preferences.emergencyOverrideAllowed === true;
   const minimumNecessary = request.containsSensitiveData === true || request.category === 'emergency';
-  const quietHoursState = quietHoursValidity(preferences.quietHours);
+  const malformed = invalidRequest(request);
 
+  if (malformed) return { allowed: false, channel: request.channel, language, reason: malformed, minimumNecessary };
+
+  const quietHoursState = quietHoursValidity(preferences.quietHours);
   if (quietHoursState === 'invalid') {
     return { allowed: false, channel: request.channel, language, reason: 'Invalid quiet-hours configuration', minimumNecessary };
   }
