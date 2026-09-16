@@ -93,16 +93,30 @@ function invalidRequest(request: CommunicationRequest): string | undefined {
   return undefined;
 }
 
+function invalidPreferences(preferences: CommunicationPreferences): string | undefined {
+  if (!preferences || typeof preferences !== 'object') return 'Invalid communication preferences';
+  if (typeof preferences.preferredLanguage !== 'string' || preferences.preferredLanguage.trim() === '') return 'Invalid preferred language';
+  if (!Array.isArray(preferences.preferredChannels) || preferences.preferredChannels.length === 0) return 'Invalid preferred channel configuration';
+  const channels = preferences.preferredChannels as unknown[];
+  if (channels.some((channel) => typeof channel !== 'string' || !communicationChannels.includes(channel as CommunicationChannel))) return 'Invalid preferred channel configuration';
+  if (new Set(channels).size !== channels.length) return 'Invalid preferred channel configuration';
+  if (typeof preferences.appointmentReminders !== 'boolean' || typeof preferences.medicationReminders !== 'boolean' || typeof preferences.resultNotifications !== 'boolean' || typeof preferences.marketingMessages !== 'boolean') return 'Invalid communication consent configuration';
+  if (preferences.emergencyOverrideAllowed !== undefined && typeof preferences.emergencyOverrideAllowed !== 'boolean') return 'Invalid emergency override configuration';
+  return undefined;
+}
+
 export function evaluateCommunicationRequest(
   preferences: CommunicationPreferences,
   request: CommunicationRequest,
 ): CommunicationDecision {
-  const language = request.language || preferences.preferredLanguage || 'en';
-  const emergencyOverride = request.emergency === true && preferences.emergencyOverrideAllowed === true;
-  const minimumNecessary = request.containsSensitiveData === true || request.category === 'emergency';
-  const malformed = invalidRequest(request);
+  const preferenceError = invalidPreferences(preferences);
+  const language = typeof preferences?.preferredLanguage === 'string' && preferences.preferredLanguage.trim() ? preferences.preferredLanguage : 'en';
+  const emergencyOverride = request?.emergency === true && preferences?.emergencyOverrideAllowed === true;
+  const minimumNecessary = request?.containsSensitiveData === true || request?.category === 'emergency';
+  if (preferenceError) return { allowed: false, channel: request?.channel, language, reason: preferenceError, minimumNecessary };
 
-  if (malformed) return { allowed: false, channel: request.channel, language, reason: malformed, minimumNecessary };
+  const malformed = invalidRequest(request);
+  if (malformed) return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: malformed, minimumNecessary };
 
   const quietHoursState = quietHoursValidity(preferences.quietHours);
   if (quietHoursState === 'invalid') {
@@ -110,25 +124,25 @@ export function evaluateCommunicationRequest(
   }
 
   if (!preferences.preferredChannels.includes(request.channel) && !emergencyOverride) {
-    return { allowed: false, channel: request.channel, language, reason: 'Channel is not consented', minimumNecessary };
+    return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: 'Channel is not consented', minimumNecessary };
   }
 
   const consentKey = consentedCategories[request.category];
   if (consentKey && preferences[consentKey] !== true) {
-    return { allowed: false, channel: request.channel, language, reason: 'Communication category is not consented', minimumNecessary };
+    return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: 'Communication category is not consented', minimumNecessary };
   }
 
   if (!request.emergency && request.category !== 'emergency' && withinQuietHours(request.now ?? new Date(), preferences.quietHours)) {
-    return { allowed: false, channel: request.channel, language, reason: 'Quiet hours are active', minimumNecessary };
+    return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: 'Quiet hours are active', minimumNecessary };
   }
 
   if (request.category === 'emergency' && request.emergency !== true) {
-    return { allowed: false, channel: request.channel, language, reason: 'Emergency category requires explicit emergency context', minimumNecessary };
+    return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: 'Emergency category requires explicit emergency context', minimumNecessary };
   }
 
   if (request.emergency === true && !preferences.emergencyOverrideAllowed && !preferences.preferredChannels.includes(request.channel)) {
-    return { allowed: false, channel: request.channel, language, reason: 'Emergency override is not authorized for this channel', minimumNecessary };
+    return { allowed: false, channel: request.channel, language: request.language || preferences.preferredLanguage, reason: 'Emergency override is not authorized for this channel', minimumNecessary };
   }
 
-  return { allowed: true, channel: request.channel, language, minimumNecessary };
+  return { allowed: true, channel: request.channel, language: request.language || preferences.preferredLanguage, minimumNecessary };
 }
