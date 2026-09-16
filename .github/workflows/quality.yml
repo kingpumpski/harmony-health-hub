@@ -52,5 +52,8 @@ jobs:
       - name: Next-generation communication boundary tests
         run: npm run test:nextgen-communication
 
+      - name: Next-generation clinical workflow boundary tests
+        run: npm run test:nextgen-clinical-workflows
+
       - name: Production build
         run: npm run build
