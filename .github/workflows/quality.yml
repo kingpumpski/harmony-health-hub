@@ -61,5 +61,11 @@ jobs:
       - name: Next-generation AI session workflow boundary tests
         run: npm run test:nextgen-ai-session
 
+      - name: Next-generation device lifecycle boundary tests
+        run: npm run test:nextgen-device-lifecycle
+
+      - name: Next-generation device integration boundary tests
+        run: npm run test:nextgen-device-integration
+
       - name: Production build
         run: npm run build
