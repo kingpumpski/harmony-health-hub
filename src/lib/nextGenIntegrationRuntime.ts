@@ -94,7 +94,7 @@ export function nextRetry(record: IntegrationDeliveryRecord, policy: Integration
   if (record.attemptCount >= policy.maxAttempts) {
     return { ...record, state: 'quarantined', nextAttemptAt: undefined, lastError: record.lastError ?? 'Maximum delivery attempts exceeded' };
   }
-  const delay = policy.retryBaseDelayMs * 2 ** Math.max(0, record.attemptCount - 1);
+  const delay = policy.retryBaseDelayMs * 2 ** record.attemptCount;
   return { ...record, state: 'failed', nextAttemptAt: new Date(Date.now() + delay).toISOString() };
 }
 
