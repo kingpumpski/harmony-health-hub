@@ -29,6 +29,7 @@ Updated: 2026-09-16
 - Authorization helper execute surface was hardened: arbitrary-user helper probes (`has_role`, `is_clinical_staff`, `has_facility_access`, `can_edit_patient_record`) are no longer callable by Data API client roles; current-user helper functions remain available to authenticated clients.
 - Trigger-only patient-code generation was removed from the client-callable execute surface.
 - Deterministic repository contract checks now cover offline idempotency/retry/blocked-state invariants plus service-order, imaging and laboratory server-authority contracts. The checks run as part of the main Quality workflow before the production build.
+- Offline replay now unconditionally removes any persisted `Authorization` header before replay and only applies a fresh bearer token supplied by the active auth provider. A missing fresh token therefore cannot fall back to the historical queued credential.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -49,7 +50,7 @@ Updated: 2026-09-16
 - Do not consolidate RLS policies merely because their names appear in the same advisor finding. Their combined boolean semantics must be proven equivalent first.
 - Do not remove unused indexes solely because the development dataset has not exercised them.
 - Do not convert an `ALL` policy into a different set of policies unless the resulting INSERT/UPDATE/DELETE/SELECT `USING` and `WITH CHECK` semantics are explicitly equivalent.
-- The offline replay path still needs a browser-runtime regression test for stale persisted Authorization headers. The current implementation refreshes the token when an auth provider returns one, but a missing token must not fall back to a historical persisted credential. This remains an explicit pre-deployment security gate; no quality rule is being weakened to bypass it.
+- The source-level stale-credential replay vulnerability is now hardened: persisted `Authorization` is stripped unconditionally before replay, and only a fresh session token may be attached. A browser-runtime regression test is still required to evidence the behavior in an actual browser; this remains an explicit pre-deployment security gate.
 
 ## Do-not-break rules
 
