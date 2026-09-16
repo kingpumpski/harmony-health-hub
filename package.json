@@ -24,6 +24,7 @@
     "test:nextgen-claims-adjudication": "node scripts/test-nextgen-claims-adjudication.mjs",
     "test:nextgen-medication-pharmacy-safety": "node scripts/test-nextgen-medication-pharmacy-safety.mjs",
     "test:nextgen-transfusion-safety": "node scripts/test-nextgen-transfusion-safety.mjs",
+    "test:nextgen-theatre-emergency": "node scripts/test-nextgen-theatre-emergency.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
