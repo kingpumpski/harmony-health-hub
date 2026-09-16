@@ -76,5 +76,8 @@ jobs:
       - name: Next-generation imaging RIS/PACS integrity tests
         run: npm run test:nextgen-imaging-ris-pacs
 
+      - name: Next-generation claims adjudication concurrency and financial tests
+        run: npm run test:nextgen-claims-adjudication
+
       - name: Production build
         run: npm run build
