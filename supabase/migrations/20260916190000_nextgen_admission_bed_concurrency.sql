@@ -24,6 +24,11 @@ BEGIN
   IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN
     RAISE EXCEPTION 'Patient not found';
   END IF;
+
+  -- Serialize admission creation for the same patient. A plain duplicate
+  -- SELECT is not sufficient because two concurrent transactions can both
+  -- observe no active admission before either inserts one.
+  PERFORM pg_advisory_xact_lock(hashtextextended('hims:admission:' || _patient_id::text, 0));
   IF EXISTS (SELECT 1 FROM public.admissions WHERE patient_id=_patient_id AND status='admitted' AND discharged_at IS NULL) THEN
     RAISE EXCEPTION 'Patient already has an active admission';
   END IF;
