@@ -46,5 +46,8 @@ jobs:
       - name: Next-generation runtime contract tests
         run: npm run test:nextgen-runtime
 
+      - name: Next-generation interoperability fixture tests
+        run: npm run test:nextgen-interoperability
+
       - name: Production build
         run: npm run build
