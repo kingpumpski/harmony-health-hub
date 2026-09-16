@@ -358,6 +358,7 @@ async function replayMutation(item: OfflineMutation): Promise<Response> {
   const headers = { ...item.headers, [IDEMPOTENCY_HEADER]: item.idempotencyKey };
   if (authHeaderProvider) {
     const accessToken = await authHeaderProvider();
+    delete headers.authorization;
     if (accessToken) headers.authorization = `Bearer ${accessToken}`;
   }
   return fetch(item.url, { method: item.method, headers, body: item.body ?? undefined });
