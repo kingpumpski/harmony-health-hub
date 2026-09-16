@@ -50,6 +50,13 @@ assert(
 );
 
 assert(
+  'offline replay removes stale authorization before applying the current session',
+  offline.includes('delete headers.authorization;') &&
+    offline.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'),
+  'replay must never fall back to a persisted stale Authorization header',
+);
+
+assert(
   'service-order release is database-authoritative',
   workflow.includes("workflowRpc.rpc('release_service_order'") && serviceOrderMigration.includes('FOR UPDATE'),
   'frontend release must delegate to the locked server-side lifecycle function',
