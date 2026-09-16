@@ -70,5 +70,8 @@ jobs:
       - name: Next-generation laboratory device reconciliation tests
         run: npm run test:nextgen-lab-device-reconciliation
 
+      - name: Next-generation appointment concurrency and state-transition tests
+        run: npm run test:nextgen-appointment-concurrency
+
       - name: Production build
         run: npm run build
