@@ -49,11 +49,17 @@ assert(
   'replay must send the persisted payload rather than reconstructing it',
 );
 
+const replayStart = offline.indexOf('async function replayMutation');
+const retryStart = offline.indexOf('function retryDelayMs', replayStart);
+const replaySection = replayStart >= 0 && retryStart > replayStart
+  ? offline.slice(replayStart, retryStart)
+  : '';
+
 assert(
   'offline replay removes stale authorization before applying the current session',
-  offline.includes('delete headers.authorization;') &&
-    offline.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'),
-  'replay must never fall back to a persisted stale Authorization header',
+  /const headers = \{ \.\.\.item\.headers, \[IDEMPOTENCY_HEADER\]: item\.idempotencyKey \};\s*delete headers\.authorization;\s*if \(authHeaderProvider\)/s.test(replaySection) &&
+    replaySection.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'),
+  'replay must remove persisted Authorization unconditionally before optionally applying a fresh session token',
 );
 
 assert(
