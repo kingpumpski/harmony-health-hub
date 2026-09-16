@@ -12,6 +12,7 @@
     "verify:nextgen": "node scripts/verify-nextgen-contract.mjs",
     "test:nextgen-runtime": "node scripts/test-nextgen-runtime.mjs",
     "test:nextgen-interoperability": "node scripts/test-nextgen-interoperability.mjs",
+    "test:nextgen-communication": "node scripts/test-nextgen-communication.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -35,7 +36,7 @@
     "@radix-ui/react-scroll-area": "^1.2.9",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-separator": "^1.1.7",
-    "@radix-ui/react-slider": "^1.3.5",
+    "@radix-ui/react-slider": "^1.3.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.12",
