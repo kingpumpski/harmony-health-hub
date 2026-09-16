@@ -87,12 +87,6 @@ BEGIN
       evaluation = CASE WHEN _status = 'completed' THEN NULLIF(btrim(_evaluation), '') ELSE evaluation END,
       updated_at = now()
   WHERE id = _plan_id;
-  IF NULLIF(btrim(COALESCE(_reason, '')), '') IS NOT NULL THEN
-    INSERT INTO public.system_audit_logs(action, entity_type, entity_id, details, actor_id)
-    SELECT 'nursing_care_plan_transition', 'nursing_care_plan', _plan_id,
-           jsonb_build_object('status', _status, 'reason', btrim(_reason)), auth.uid()
-    WHERE to_regclass('public.system_audit_logs') IS NOT NULL;
-  END IF;
   RETURN _plan_id;
 END;
 $$;
@@ -159,9 +153,7 @@ BEGIN
   END IF;
   SELECT * INTO v_handover FROM public.nursing_shift_handovers WHERE id = _handover_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Nursing handover not found'; END IF;
-  IF v_handover.acknowledged_at IS NOT NULL THEN
-    RETURN _handover_id;
-  END IF;
+  IF v_handover.acknowledged_at IS NOT NULL THEN RETURN _handover_id; END IF;
   IF auth.uid() IS DISTINCT FROM v_handover.incoming_officer AND NOT public.has_role(auth.uid(), 'admin') THEN
     RAISE EXCEPTION 'Only the designated incoming officer or an administrator can acknowledge this handover';
   END IF;
