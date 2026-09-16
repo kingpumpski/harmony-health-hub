@@ -1,7 +1,7 @@
 -- Converge high-value clinical workflow mutations with the existing
 -- append-only system audit boundary. No new audit subsystem is introduced.
--- The existing audit trigger function is reused so appointment and MAR
--- lifecycle mutations are traceable through the canonical audit surface.
+-- The existing audit trigger function is reused across the major clinical
+-- workflow domains so next-generation safety boundaries share one audit surface.
 
 DO $$
 DECLARE
@@ -10,7 +10,11 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'appointments',
-    'medication_administrations'
+    'medication_administrations',
+    'lab_orders',
+    'lab_results',
+    'imaging_orders',
+    'insurance_claims'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NOT NULL
        AND to_regprocedure('public.audit_clinical_record_change()') IS NOT NULL THEN
@@ -31,3 +35,15 @@ COMMENT ON TABLE public.appointments IS
 
 COMMENT ON TABLE public.medication_administrations IS
   'Medication administration lifecycle is server-authoritative through authenticated clinical RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.lab_orders IS
+  'Laboratory order lifecycle is server-authoritative through authenticated workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.lab_results IS
+  'Laboratory result lifecycle is server-authoritative through authenticated workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.imaging_orders IS
+  'Imaging lifecycle is server-authoritative through authenticated workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.insurance_claims IS
+  'Insurance claim lifecycle and financial changes are server-authoritative through authenticated workflow RPCs and converged clinical audit.';
