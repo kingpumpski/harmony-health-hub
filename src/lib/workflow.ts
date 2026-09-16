@@ -152,7 +152,7 @@ export async function completeServiceOrder(orderId: string) {
   return data;
 }
 
-/** A department may work only after Accounts has released the order. */
+/** A department may work only after Accounts has released the order. Missing orders fail closed. */
 export async function isReleased(relatedEntityId: string) {
   const { data, error } = await supabase
     .from('service_orders')
@@ -160,7 +160,10 @@ export async function isReleased(relatedEntityId: string) {
     .eq('related_entity_id', relatedEntityId)
     .maybeSingle();
   if (error) throw error;
-  return !data || data.status === 'released' || data.status === 'in_progress' || data.status === 'completed';
+  return Boolean(
+    data &&
+    (data.status === 'released' || data.status === 'in_progress' || data.status === 'completed'),
+  );
 }
 
 export const STATUS_LABEL: Record<ServiceOrderStatus, string> = {
