@@ -2,8 +2,10 @@ import fs from 'node:fs';
 
 const migrationPath = 'supabase/migrations/20260916195000_nextgen_nursing_continuity_integrity.sql';
 const canonicalWorkflowPath = 'supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql';
+const pagePath = 'src/pages/NursingHandover.tsx';
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const canonicalWorkflow = fs.readFileSync(canonicalWorkflowPath, 'utf8');
+const page = fs.readFileSync(pagePath, 'utf8');
 
 const required = [
   'ALTER TABLE public.nursing_shift_handovers',
@@ -21,7 +23,7 @@ const required = [
   'Evaluation is required before completing a nursing care plan',
   'An active care plan cannot remain active after admission closure',
   'CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover',
-  'The existing seven-argument create_nursing_shift_handover contract remains intact',
+  'Preserve the established seven-argument handover function exactly as the',
   'Handover must reference an active admission',
   'patient_id, admission_id, outgoing_officer, incoming_officer, shift_label',
   'clinical_summary, pending_tasks, safety_concerns, escalation_required',
@@ -36,32 +38,31 @@ const required = [
   'GRANT EXECUTE ON FUNCTION public.create_nursing_shift_handover',
   'GRANT EXECUTE ON FUNCTION public.acknowledge_nursing_shift_handover',
 ];
-
 for (const token of required) {
   if (!sql.includes(token)) throw new Error(`Nursing continuity control missing: ${token}`);
 }
 
-// Verify the pre-existing seven-argument contract is still present in the
-// canonical reconciliation migration. This prevents the next-gen overload
-// from silently replacing the established UI-facing function signature.
 const canonicalSignature = 'create_nursing_shift_handover(\n  _patient_id UUID,\n  _shift_label TEXT,\n  _clinical_summary TEXT,\n  _pending_tasks TEXT DEFAULT NULL,\n  _safety_concerns TEXT DEFAULT NULL,\n  _escalation_required BOOLEAN DEFAULT FALSE,\n  _ward_id UUID DEFAULT NULL';
-if (!canonicalWorkflow.includes(canonicalSignature)) {
-  throw new Error('Canonical seven-argument nursing handover signature is missing');
-}
+if (!canonicalWorkflow.includes(canonicalSignature)) throw new Error('Canonical seven-argument nursing handover signature is missing');
 
-// The canonical handover schema uses shift_label/pending_tasks/safety_concerns.
-// Reject the earlier speculative column names so a migration replay cannot drift.
 for (const forbidden of ['shift_date DATE', 'shift_name TEXT', 'outstanding_tasks TEXT', 'risks_and_alerts TEXT']) {
   if (sql.includes(forbidden)) throw new Error(`Non-canonical handover column leaked into migration: ${forbidden}`);
 }
 
-// The canonical admission lifecycle currently uses 'admitted' as its active state.
 if (!sql.includes("v_admission_status <> 'admitted'")) throw new Error('Admission active-state reconciliation missing');
 if (!sql.includes("v_status <> 'admitted'")) throw new Error('Handover admission active-state reconciliation missing');
+if (!sql.includes("v_plan.status IN ('completed','cancelled')")) throw new Error('Closed-state guard missing');
 
-const closedStates = ['completed', 'cancelled'];
-for (const state of closedStates) {
-  if (!sql.includes(`v_plan.status IN ('completed','cancelled')`)) throw new Error(`Closed-state guard missing: ${state}`);
+const pageRequired = [
+  ['handover UI loads active admissions', /from\('admissions'\)\.select\('id,patient_id,status,discharged_at'\)\.eq\('status','admitted'\)\.is\('discharged_at',null\)/],
+  ['handover UI builds admission map', /admissionMap\[admission\.patient_id\]=admission\.id/],
+  ['handover UI uses admission-aware RPC', /_admission_id:admissionId/],
+  ['handover UI uses next-gen acknowledgement RPC', /acknowledge_nursing_shift_handover/],
+  ['handover UI blocks non-admitted patients', /Active admission required/],
+  ['handover UI only offers admitted patients', /patients\.filter\(p=>Boolean\(activeAdmissions\[p\.id\]\)\)/],
+];
+for (const [label, pattern] of pageRequired) {
+  if (!pattern.test(page)) throw new Error(`Nursing UI continuity contract missing: ${label}`);
 }
 
-console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, preserved legacy handover signature, admission linkage, row-locking, care-plan lifecycle, required evaluation/reasons, designated handover acknowledgement, incoming-role validation, and direct-write lockdown are present.');
+console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, preserved legacy handover signature, admission-linked UI/RPC workflow, row-locking, care-plan lifecycle, designated acknowledgement, role validation, and direct-write lockdown are present.');
