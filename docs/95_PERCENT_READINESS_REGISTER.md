@@ -25,20 +25,29 @@ Updated: 2026-09-16
 - Telemedicine join/start actions are gated by session lifecycle rather than weakening the server RPC.
 - Offline architecture remains deliberately allow-listed and high-risk financial/clinical workflows remain online-only until explicit contracts exist.
 - RLS `auth_rls_initplan` remediation was applied to public policies using `auth.uid()`, preserving the policy predicates while wrapping stable auth evaluation in scalar subqueries. A repository migration records the same reconciliation for future environments.
-- Post-change performance advisors no longer report the `auth_rls_initplan` warning; the remaining performance advisories are the 195 informational unused-index findings and 21 multiple-permissive-policy findings.
+- Post-change performance advisors no longer report the `auth_rls_initplan` warning.
 - Authorization helper execute surface was hardened: arbitrary-user helper probes (`has_role`, `is_clinical_staff`, `has_facility_access`, `can_edit_patient_record`) are no longer callable by Data API client roles; current-user helper functions remain available to authenticated clients.
+- Trigger-only patient-code generation was removed from the client-callable execute surface.
 
 ## Current advisor findings that require continued reconciliation
 
 ### Performance
 
-- 21 tables have multiple permissive policies for the same authenticated action. These should be consolidated only after verifying that the combined boolean semantics are identical; policy deletion must not be used as a blanket lint-suppression mechanism.
-- 195 indexes are currently reported as unused. These are not automatically removable: many cover foreign keys, workflow lookup paths, audit trails, or future operational query patterns. Removal requires workload evidence and duplicate/coverage analysis.
+- **21 multiple-permissive-policy findings remain.** The affected SELECT surfaces have intentionally different access predicates in several cases (for example staff/admin read versus patient self-read, or admin write versus broader read). They are therefore not being collapsed mechanically. Policies whose `ALL` predicate also covers SELECT require an explicit ALL-to-INSERT/UPDATE/DELETE rewrite before SELECT consolidation can be semantics-preserving.
+- **195 unused-index findings remain.** These are informational in the current low-volume dataset and are not being dropped blindly. The foreign-key index reconciliation is already complete; future removals require workload evidence and duplicate/coverage analysis.
 
 ### Security
 
-- The SECURITY DEFINER surface is still being classified function-by-function. Authenticated execution is retained where a function is an intentional server-authoritative workflow with internal authorization checks; internal helper/maintenance functions are being removed from the exposed API surface where appropriate.
-- Supabase Auth leaked-password protection is currently disabled. This is an Auth project setting rather than a database migration and must be enabled through the Supabase Auth configuration before final deployment hardening.
+- The current Supabase security advisor reports **85 authenticated-executable SECURITY DEFINER findings**. The earlier count of 89 is stale. The reduction includes removal of arbitrary-user authorization helper execution and the trigger-only patient-code helper from the client surface.
+- The remaining SECURITY DEFINER functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate.
+- Supabase Auth leaked-password protection remains disabled. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
+
+## Reconciliation decisions recorded in this pass
+
+- Do not reduce the SECURITY DEFINER advisor count by revoking legitimate clinical/financial workflow RPCs merely to make the advisor green.
+- Do not consolidate RLS policies merely because their names appear in the same advisor finding. Their combined boolean semantics must be proven equivalent first.
+- Do not remove unused indexes solely because the development dataset has not exercised them.
+- Do not convert an `ALL` policy into a different set of policies unless the resulting INSERT/UPDATE/DELETE/SELECT `USING` and `WITH CHECK` semantics are explicitly equivalent.
 
 ## Do-not-break rules
 
