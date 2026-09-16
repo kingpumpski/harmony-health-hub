@@ -356,9 +356,11 @@ function releaseSyncLock(): void {
 
 async function replayMutation(item: OfflineMutation): Promise<Response> {
   const headers = { ...item.headers, [IDEMPOTENCY_HEADER]: item.idempotencyKey };
+  // Persisted Authorization headers are never replayed. A queued mutation may
+  // only use a fresh credential supplied by the active session provider.
+  delete headers.authorization;
   if (authHeaderProvider) {
     const accessToken = await authHeaderProvider();
-    delete headers.authorization;
     if (accessToken) headers.authorization = `Bearer ${accessToken}`;
   }
   return fetch(item.url, { method: item.method, headers, body: item.body ?? undefined });
