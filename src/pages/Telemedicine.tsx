@@ -57,11 +57,21 @@ export default function Telemedicine() {
   };
 
   const startSession = async (s: Session) => {
+    if (s.provider !== 'jitsi') return toast({ title: 'Unsupported video provider', description: `Provider ${s.provider} is not configured.`, variant: 'destructive' });
+    if (s.status === 'active') {
+      window.open(`https://meet.jit.si/${s.room_name}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const billingStatus = s.service_order_id ? billing[s.service_order_id] : undefined;
+    const released = billingStatus === 'released' || billingStatus === 'in_progress' || billingStatus === 'completed';
+    const paymentSatisfied = !s.payment_required || s.payment_received || released;
+    if (!['scheduled', 'ready'].includes(s.status) || !paymentSatisfied) {
+      return toast({ title: 'Session not ready', description: 'The session must be assigned, within its start lifecycle, and released by Billing before joining.', variant: 'destructive' });
+    }
     const { data, error } = await (supabase as any).rpc('start_video_session', { _session_id: s.id });
     if (error) return toast({ title: 'Unable to start session', description: error.message, variant: 'destructive' });
     const started = Array.isArray(data) ? data[0] : data;
     if (!started?.room_name) return toast({ title: 'Session room unavailable', variant: 'destructive' });
-    if (started.provider !== 'jitsi') return toast({ title: 'Unsupported video provider', description: `Provider ${started.provider} is not configured.`, variant: 'destructive' });
     window.open(`https://meet.jit.si/${started.room_name}`, '_blank', 'noopener,noreferrer');
     void loadAll();
   };
@@ -102,6 +112,7 @@ export default function Telemedicine() {
               const p = patients.find((x) => x.id === s.patient_id);
               const billingStatus = s.service_order_id ? billing[s.service_order_id] : undefined;
               const released = billingStatus === 'released' || billingStatus === 'in_progress' || billingStatus === 'completed';
+              const canJoin = s.status === 'active' || (['scheduled', 'ready'].includes(s.status) && (!s.payment_required || s.payment_received || released));
               return <div key={s.id} className="rounded-xl border border-border p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
                   <div className="min-w-0"><p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : '—'}</p><p className="text-xs text-muted-foreground">{new Date(s.scheduled_at).toLocaleString()} · Room: {s.room_name}</p></div>
@@ -110,7 +121,7 @@ export default function Telemedicine() {
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
                   {s.payment_required && !released && <span className="text-xs text-warning">Billing release required</span>}
                   {released && <span className="text-xs text-success">✓ Billing released</span>}
-                  {s.status !== 'completed' && <button type="button" onClick={() => void startSession(s)} className="btn-primary text-xs inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Join call</button>}
+                  {canJoin && <button type="button" onClick={() => void startSession(s)} className="btn-primary text-xs inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> Join call</button>}
                   {s.status === 'active' && <button type="button" onClick={() => void endSession(s.id)} className="btn-ghost text-xs">End</button>}
                 </div>
               </div>;
