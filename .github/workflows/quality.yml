@@ -79,5 +79,8 @@ jobs:
       - name: Next-generation claims adjudication concurrency and financial tests
         run: npm run test:nextgen-claims-adjudication
 
+      - name: Next-generation medication and pharmacy safety tests
+        run: npm run test:nextgen-medication-pharmacy-safety
+
       - name: Production build
         run: npm run build
