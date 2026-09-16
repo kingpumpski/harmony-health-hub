@@ -35,7 +35,7 @@ BEGIN
     WHERE bed_number=btrim(_bed)
       AND status='available'
       AND patient_id IS NULL
-      AND ward_id IN (SELECT id FROM public.wards WHERE name=btrim(_ward))
+      AND ward_id IN (SELECT id FROM public.ward_units WHERE name=btrim(_ward))
     FOR UPDATE;
     IF v_bed.id IS NULL THEN RAISE EXCEPTION 'Requested bed is not available in the selected ward'; END IF;
   END IF;
