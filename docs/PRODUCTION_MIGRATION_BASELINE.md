@@ -13,7 +13,7 @@ The production `supabase_migrations.schema_migrations` ledger currently contains
 - `20260916002251` — `canonical_remote_schema`
 - `20260916003113` — `fix_start_imaging_order_queue_contract`
 - `20260916085626` — `reconcile_imaging_lifecycle_server_authority`
-- the later approved `reconcile_service_order_workflow_authority` application, whose generated ledger version should be treated as production evidence rather than fabricated into the repository migration filename.
+- the later approved service-order workflow reconciliation applications, whose generated ledger versions should be treated as production evidence rather than fabricated into repository migration filenames.
 
 The first two migration versions/names are not present in the repository's `supabase/migrations` directory on `main`.
 
@@ -34,9 +34,11 @@ The approved production reconciliation restored the canonical service-order work
 - `mark_service_order_in_progress`;
 - `complete_service_order`.
 
-The resulting RPCs remain `SECURITY DEFINER`, use the existing role/clinical-staff authorization helpers, and are executable by authenticated clients through the intended workflow boundary. The resulting schema and RPC presence were verified with read-only production checks after application.
+A subsequent read-only contract audit identified that the restored RPC/event contract referenced four lifecycle metadata columns that were absent from the canonical production schema: `released_at`, `released_by`, `release_reason`, and `cancelled_at`. These were restored additively through the approved `reconcile_service_order_lifecycle_metadata` migration, with existing approval timestamps/users backfilled into release metadata where appropriate. No existing service-order rows were otherwise rewritten.
 
-The repository's existing source migration `20260911241000_phase2_legacy_queue_compatibility.sql` remains the reference implementation for this compatibility contract. It is not duplicated under a new migration filename because production migration history is already baselined independently.
+The resulting RPCs remain `SECURITY DEFINER`, use the existing role/clinical-staff authorization helpers, deny anonymous execution, and are executable by authenticated clients through the intended workflow boundary. The resulting schema and RPC presence were verified with read-only production checks after application.
+
+The repository's existing source migrations `20260911241000_phase2_legacy_queue_compatibility.sql` and `20260911233000_phase2_service_order_payment_gating.sql` remain the reference implementations for this compatibility contract. They are not duplicated under new migration filenames because production migration history is already baselined independently.
 
 ## Why this is a controlled migration boundary
 
@@ -68,6 +70,6 @@ The desired end state is:
 
 ## Evidence currently established
 
-The production schema has been verified for the operational read contracts used by Theatre, Insurance Claims, Pharmacy, and Accounts. The imaging lifecycle RPCs have been reconciled to server-authoritative execution and verified after application. The service-order compatibility contract has now also been reconciled and verified.
+The production schema has been verified for the operational read contracts used by Theatre, Insurance Claims, Pharmacy, and Accounts. The imaging lifecycle RPCs have been reconciled to server-authoritative execution and verified after application. The service-order compatibility contract and its lifecycle metadata dependencies have now also been reconciled and verified.
 
 The remaining migration-baseline task is therefore a **migration tracking reconciliation**, not a request to rebuild or overwrite the production schema.
