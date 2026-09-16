@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harmony-health-hub-shell-v7';
+const CACHE_NAME = 'harmony-health-hub-shell-v8';
 const REQUIRED_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 const PRODUCTION_MANIFEST = '/.vite/manifest.json';
 const NETWORK_ONLY_PATHS = new Set([
@@ -90,10 +90,17 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-        if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-        return response;
-      }))
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            // Clone before any cache operation can consume the response body.
+            const cacheCopy = response.clone();
+            void caches.open(CACHE_NAME).then((cache) => cache.put(request, cacheCopy)).catch(() => undefined);
+          }
+          return response;
+        });
+      })
     );
     return;
   }
@@ -102,8 +109,10 @@ self.addEventListener('fetch', (event) => {
     fetch(request)
       .then((response) => {
         if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          // Clone immediately while the response body is still unused. The
+          // original response is returned to the browser; the clone is cached.
+          const cacheCopy = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(request, cacheCopy)).catch(() => undefined);
         }
         return response;
       })
