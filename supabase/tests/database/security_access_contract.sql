@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(8);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -92,6 +92,18 @@ select ok(
       and pg_get_function_identity_arguments(p.oid) = 'uuid, _reason text'
   ) ilike '%has_role(auth.uid(),''front_desk'')%',
   'payment release is authenticated-only and permits the front-desk payment workflow'
+);
+
+select ok(
+  (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'grant_service_order_override'
+      and pg_get_function_identity_arguments(p.oid) = 'uuid, _reason text'
+  ) ilike '%status <> ''pending_payment_approval''%',
+  'billing overrides are restricted to orders awaiting payment approval'
 );
 
 select * from finish();
