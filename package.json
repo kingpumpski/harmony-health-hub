@@ -20,6 +20,7 @@
     "test:nextgen-device-integration": "node scripts/test-nextgen-device-integration-boundary.mjs",
     "test:nextgen-lab-device-reconciliation": "node scripts/test-nextgen-lab-device-reconciliation.mjs",
     "test:nextgen-appointment-concurrency": "node scripts/test-nextgen-appointment-concurrency.mjs",
+    "test:nextgen-imaging-ris-pacs": "node scripts/test-nextgen-imaging-ris-pacs.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -47,7 +48,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.1.2",
     "@radix-ui/react-tabs": "^1.1.12",
-    "@radix-ui/react-toast": "^1.1.14",
+    "@radix-ui/react-toast": "^1.7.0",
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.1.8",
