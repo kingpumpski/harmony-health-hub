@@ -30,6 +30,7 @@ Updated: 2026-09-16
 - Trigger-only patient-code generation was removed from the client-callable execute surface.
 - Deterministic repository contract checks now cover offline idempotency/retry/blocked-state invariants plus service-order, imaging and laboratory server-authority contracts. The checks run as part of the main Quality workflow before the production build.
 - Offline replay now unconditionally removes any persisted `Authorization` header before replay and only applies a fresh bearer token supplied by the active auth provider. A missing fresh token therefore cannot fall back to the historical queued credential.
+- Internal audit logging helper `record_system_audit(text,text,text,uuid,text,jsonb)` is no longer executable by `authenticated` or `anon`; the production boundary was verified and the corresponding migration is now committed to `main` as `20260916114500_harden_record_system_audit_execute_boundary`.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -40,8 +41,7 @@ Updated: 2026-09-16
 
 ### Security
 
-- The current Supabase security advisor reports **85 authenticated-executable SECURITY DEFINER findings**. The earlier count of 89 is stale. The reduction includes removal of arbitrary-user authorization helper execution and the trigger-only patient-code helper from the client surface.
-- The remaining SECURITY DEFINER functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate.
+- The current Supabase security advisor reports **84 authenticated-executable SECURITY DEFINER findings** after the audit-helper execute-boundary hardening. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate.
 - Supabase Auth leaked-password protection remains disabled. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
 
 ## Reconciliation decisions recorded in this pass
