@@ -77,6 +77,18 @@ BEGIN
     RAISE EXCEPTION 'Admission not found or is no longer active';
   END IF;
 
+  -- Inpatient nursing plans are clinical continuity records. Discharge cannot
+  -- silently strand an active admission-linked plan; the plan must first be
+  -- explicitly completed or cancelled through its own audited lifecycle RPC.
+  IF EXISTS (
+    SELECT 1
+    FROM public.nursing_care_plans
+    WHERE admission_id=_admission_id
+      AND status='active'
+  ) THEN
+    RAISE EXCEPTION 'Active nursing care plans must be completed or cancelled before discharge';
+  END IF;
+
   UPDATE public.admissions
   SET status='discharged', discharged_at=now(), discharge_summary=COALESCE(NULLIF(btrim(_summary),''),'Discharged from inpatient admission.')
   WHERE id=_admission_id;
