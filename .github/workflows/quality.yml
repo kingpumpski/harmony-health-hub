@@ -58,5 +58,8 @@ jobs:
       - name: Next-generation EMPI workflow boundary tests
         run: npm run test:nextgen-empi
 
+      - name: Next-generation AI session workflow boundary tests
+        run: npm run test:nextgen-ai-session
+
       - name: Production build
         run: npm run build
