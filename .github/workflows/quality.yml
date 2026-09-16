@@ -42,5 +42,8 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: Offline replay security contract
+        run: npm run test:offline-replay
+
       - name: Production build
         run: npm run build
