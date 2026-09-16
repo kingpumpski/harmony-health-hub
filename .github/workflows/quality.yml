@@ -73,5 +73,8 @@ jobs:
       - name: Next-generation appointment concurrency and state-transition tests
         run: npm run test:nextgen-appointment-concurrency
 
+      - name: Next-generation imaging RIS/PACS integrity tests
+        run: npm run test:nextgen-imaging-ris-pacs
+
       - name: Production build
         run: npm run build
