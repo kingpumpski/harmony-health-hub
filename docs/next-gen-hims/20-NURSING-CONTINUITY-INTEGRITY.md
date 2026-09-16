@@ -23,7 +23,7 @@ This boundary hardens the canonical `nursing_care_plans` and `nursing_shift_hand
 - The outgoing officer is the authenticated actor.
 - The incoming officer defaults to the authenticated actor but can be explicitly designated only when that user exists and holds an authorized nursing role.
 - The admission-aware handover UI now loads only active admissions, sends the admission identifier through the next-generation RPC, and no longer relies on the legacy patient-only handover call.
-- The explicit clinical shift date is now persisted in `nursing_shift_handovers.shift_date`; it is no longer accepted and discarded by the workflow.
+- The explicit clinical shift date is persisted in the canonical `nursing_shift_handovers.shift_date` field; it is not duplicated into a new column or accepted and discarded by the workflow.
 - Shift dates are constrained to a narrow operational window around the current date to prevent accidental backdating or future-dated handovers.
 - A handover can be acknowledged only by its designated incoming officer or an administrator.
 - Acknowledgement locks the handover row before mutation and is idempotent when already acknowledged.
@@ -34,4 +34,4 @@ Authenticated clients cannot directly insert, update, or delete nursing care pla
 
 ## Verification
 
-`npm run test:nextgen-nursing-continuity` verifies the migration contract, persisted shift-date semantics, and admission-linked UI/RPC boundary. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
+`npm run test:nextgen-nursing-continuity` verifies the migration contract, canonical shift-date usage, persisted shift-date semantics, and admission-linked UI/RPC boundary. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
