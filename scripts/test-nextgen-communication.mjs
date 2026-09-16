@@ -46,6 +46,38 @@ try {
     throw new Error('Invalid timezone did not fail closed');
   }
 
+  const invalidChannel = communication.evaluateCommunicationRequest(
+    { ...base },
+    { category: 'appointment', channel: 'carrier-pigeon' },
+  );
+  if (invalidChannel.allowed || invalidChannel.reason !== 'Unsupported communication channel') {
+    throw new Error('Unsupported communication channel did not fail closed');
+  }
+
+  const invalidCategory = communication.evaluateCommunicationRequest(
+    { ...base },
+    { category: 'diagnosis', channel: 'sms' },
+  );
+  if (invalidCategory.allowed || invalidCategory.reason !== 'Unsupported communication category') {
+    throw new Error('Unsupported communication category did not fail closed');
+  }
+
+  const invalidTimestamp = communication.evaluateCommunicationRequest(
+    { ...base },
+    { category: 'appointment', channel: 'sms', now: new Date('invalid') },
+  );
+  if (invalidTimestamp.allowed || invalidTimestamp.reason !== 'Invalid communication timestamp') {
+    throw new Error('Invalid communication timestamp did not fail closed');
+  }
+
+  const invalidLanguage = communication.evaluateCommunicationRequest(
+    { ...base },
+    { category: 'appointment', channel: 'sms', language: '   ' },
+  );
+  if (invalidLanguage.allowed || invalidLanguage.reason !== 'Invalid communication language') {
+    throw new Error('Blank communication language did not fail closed');
+  }
+
   const emergencyWithoutContext = communication.evaluateCommunicationRequest(
     { ...base, emergencyOverrideAllowed: true },
     { category: 'emergency', channel: 'email', emergency: false },
@@ -60,7 +92,7 @@ try {
     throw new Error('Authorized emergency override was rejected or not marked minimum-necessary');
   }
 
-  console.log('Next-gen communication timezone and emergency boundary tests passed.');
+  console.log('Next-gen communication input, timezone and emergency boundary tests passed.');
 } finally {
   rmSync(temp, { recursive: true, force: true });
 }
