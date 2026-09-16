@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(9);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -104,6 +104,25 @@ select ok(
       and pg_get_function_identity_arguments(p.oid) = 'uuid, _reason text'
   ) ilike '%status <> ''pending_payment_approval''%',
   'billing overrides are restricted to orders awaiting payment approval'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'create_lab_order_with_payment_gate',
+        'collect_lab_sample',
+        'enter_lab_result',
+        'approve_lab_result'
+      )
+      and p.prosecdef
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) = 4,
+  'laboratory workflow RPCs are security-definer and authenticated-only'
 );
 
 select * from finish();
