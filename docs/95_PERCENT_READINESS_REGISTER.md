@@ -28,6 +28,7 @@ Updated: 2026-09-16
 - Post-change performance advisors no longer report the `auth_rls_initplan` warning.
 - Authorization helper execute surface was hardened: arbitrary-user helper probes (`has_role`, `is_clinical_staff`, `has_facility_access`, `can_edit_patient_record`) are no longer callable by Data API client roles; current-user helper functions remain available to authenticated clients.
 - Trigger-only patient-code generation was removed from the client-callable execute surface.
+- Deterministic repository contract checks now cover offline idempotency/retry/blocked-state invariants plus service-order, imaging and laboratory server-authority contracts. The checks run as part of the main Quality workflow before the production build.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -48,6 +49,7 @@ Updated: 2026-09-16
 - Do not consolidate RLS policies merely because their names appear in the same advisor finding. Their combined boolean semantics must be proven equivalent first.
 - Do not remove unused indexes solely because the development dataset has not exercised them.
 - Do not convert an `ALL` policy into a different set of policies unless the resulting INSERT/UPDATE/DELETE/SELECT `USING` and `WITH CHECK` semantics are explicitly equivalent.
+- The offline replay path still needs a browser-runtime regression test for stale persisted Authorization headers. The current implementation refreshes the token when an auth provider returns one, but a missing token must not fall back to a historical persisted credential. This remains an explicit pre-deployment security gate; no quality rule is being weakened to bypass it.
 
 ## Do-not-break rules
 
@@ -69,13 +71,14 @@ The project should not be declared 95% deployment-ready until these gates are ev
 - TypeScript check passes.
 - ESLint passes without disabled quality rules.
 - Production build passes and emits the required service-worker manifest/assets.
+- Operational repository contract checks pass.
 - Database security contract passes.
 - Database schema/migration baseline is reconciled without altering the production migration ledger manually.
 - RLS performance advisories are reviewed and material high-volume policies are optimized without changing access semantics.
 - Security-definer RPCs have an explicit caller/authorization classification.
 - Financial lifecycle invariants are tested end-to-end.
 - Clinical order-to-department-queue lifecycle invariants are tested end-to-end.
-- Offline replay, backoff, blocked-state and duplicate-replay behavior is tested.
+- Offline replay, backoff, blocked-state and duplicate-replay behavior is tested, including stale-session credential handling.
 - Browser verification is performed against the deployed build, including console-error review and service-worker activation.
 - Vercel deployment succeeds; the current `build-rate-limit` failure is not treated as a successful deployment.
 
