@@ -67,5 +67,8 @@ jobs:
       - name: Next-generation device integration boundary tests
         run: npm run test:nextgen-device-integration
 
+      - name: Next-generation laboratory device reconciliation tests
+        run: npm run test:nextgen-lab-device-reconciliation
+
       - name: Production build
         run: npm run build
