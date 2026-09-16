@@ -21,7 +21,8 @@ This boundary hardens the canonical `nursing_care_plans` and `nursing_shift_hand
 - Handover creation requires an authenticated nursing role and a clinical summary.
 - Admission linkage is validated against the patient and active admission state.
 - The outgoing officer is the authenticated actor.
-- The incoming officer defaults to the authenticated actor but can be explicitly designated.
+- The incoming officer defaults to the authenticated actor but can be explicitly designated only when that user exists and holds an authorized nursing role.
+- The admission-aware handover UI now loads only active admissions, sends the admission identifier through the next-generation RPC, and no longer relies on the legacy patient-only handover call.
 - A handover can be acknowledged only by its designated incoming officer or an administrator.
 - Acknowledgement locks the handover row before mutation and is idempotent when already acknowledged.
 
@@ -31,4 +32,4 @@ Authenticated clients cannot directly insert, update, or delete nursing care pla
 
 ## Verification
 
-`npm run test:nextgen-nursing-continuity` verifies the migration contract. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
+`npm run test:nextgen-nursing-continuity` verifies the migration contract and admission-linked UI/RPC boundary. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
