@@ -9,12 +9,17 @@ DECLARE
   trigger_name TEXT;
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
+    'patients',
     'appointments',
+    'encounters',
+    'prescriptions',
     'medication_administrations',
     'lab_orders',
     'lab_results',
     'imaging_orders',
-    'insurance_claims'
+    'insurance_claims',
+    'invoices',
+    'payments'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NOT NULL
        AND to_regprocedure('public.audit_clinical_record_change()') IS NOT NULL THEN
@@ -30,8 +35,17 @@ BEGIN
 END;
 $$;
 
+COMMENT ON TABLE public.patients IS
+  'Patient identity/profile lifecycle is audit-converged; controlled workflow and access boundaries remain authoritative.';
+
 COMMENT ON TABLE public.appointments IS
   'Appointment lifecycle is server-authoritative through authenticated workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.encounters IS
+  'Encounter lifecycle is audit-converged; structured clinical workflow remains server-authoritative.';
+
+COMMENT ON TABLE public.prescriptions IS
+  'Prescription lifecycle is audit-converged; medication ordering and dispensing controls remain server-authoritative.';
 
 COMMENT ON TABLE public.medication_administrations IS
   'Medication administration lifecycle is server-authoritative through authenticated clinical RPCs and converged clinical audit.';
@@ -47,3 +61,9 @@ COMMENT ON TABLE public.imaging_orders IS
 
 COMMENT ON TABLE public.insurance_claims IS
   'Insurance claim lifecycle and financial changes are server-authoritative through authenticated workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.invoices IS
+  'Invoice lifecycle is audit-converged; financial mutation remains subject to existing billing workflow controls.';
+
+COMMENT ON TABLE public.payments IS
+  'Payment lifecycle is audit-converged; invoice totals remain governed by the canonical payment trigger/workflow.';
