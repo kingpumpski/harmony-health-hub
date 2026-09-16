@@ -56,3 +56,7 @@ jobs:
       - name: Verify operational schema contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/operational_read_schema_contract.sql
+
+      - name: Verify security access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/security_access_contract.sql
