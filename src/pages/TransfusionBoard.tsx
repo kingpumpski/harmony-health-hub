@@ -3,7 +3,7 @@ import { AlertTriangle, Droplets, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-type Row = { id: string; patient_id: string; blood_product: string; unit_identifier: string; blood_group: string | null; status: string; reaction_observed: boolean; reaction_notes: string | null };
+type Row = { id: string; patient_id: string; blood_product: string; unit_identifier: string; blood_group: string | null; status: string; compatibility_checked: boolean; witnessed_by: string | null; reaction_observed: boolean; reaction_notes: string | null };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
 const statuses = ['planned', 'issued', 'running', 'completed', 'stopped', 'cancelled'];
 
@@ -13,7 +13,7 @@ export default function TransfusionBoard() {
   const load = useCallback(async () => {
     const [p, r] = await Promise.all([
       supabase.from('patients').select('id,patient_code,first_name,last_name').limit(500),
-      supabase.from('transfusion_records').select('id,patient_id,blood_product,unit_identifier,blood_group,status,reaction_observed,reaction_notes').order('created_at', { ascending: false }).limit(150),
+      supabase.from('transfusion_records').select('id,patient_id,blood_product,unit_identifier,blood_group,status,compatibility_checked,witnessed_by,reaction_observed,reaction_notes').order('created_at', { ascending: false }).limit(150),
     ]);
     if (p.error || r.error) toast({ title: 'Unable to load transfusions', description: (p.error || r.error)?.message, variant: 'destructive' });
     setPatients((p.data ?? []) as Patient[]); setRows((r.data ?? []) as Row[]);
@@ -27,6 +27,12 @@ export default function TransfusionBoard() {
     if (error) { toast({ title: 'Transfusion record failed', description: error.message, variant: 'destructive' }); return; }
     setForm({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false }); toast({ title: 'Transfusion record created' }); void load();
   };
+  const verify = async (id: string) => {
+    const witness = window.prompt('Enter the independent clinical witness user ID. The administering actor cannot witness themselves.');
+    if (!witness?.trim()) return;
+    setBusy(true); const { error } = await (supabase as any).rpc('verify_transfusion_record', { _record_id: id, _witnessed_by: witness.trim() }); setBusy(false);
+    if (error) toast({ title: 'Verification failed', description: error.message, variant: 'destructive' }); else { toast({ title: 'Transfusion independently verified' }); void load(); }
+  };
   const transition = async (id: string, status: string) => {
     setBusy(true); const { error } = await (supabase as any).rpc('record_transfusion_event', { _record_id: id, _status: status, _reaction_observed: false, _reaction_notes: null }); setBusy(false);
     if (error) toast({ title: 'Transition failed', description: error.message, variant: 'destructive' }); else { toast({ title: 'Transfusion status updated' }); void load(); }
@@ -39,7 +45,7 @@ export default function TransfusionBoard() {
   const patient = (id: string) => { const p = patients.find((x) => x.id === id); return p ? `${p.patient_code} — ${p.first_name} ${p.last_name}` : 'Patient'; };
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Droplets className="h-6 w-6" />Transfusion Board</h1><p className="text-sm text-muted-foreground">Consent-gated transfusion intake, documented lifecycle and reaction reporting. Compatibility is never inferred.</p></div><button onClick={() => void load()} className="self-start rounded-md border p-2" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></header>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Droplets className="h-6 w-6" />Transfusion Board</h1><p className="text-sm text-muted-foreground">Consent-gated transfusion intake, independent verification, documented lifecycle and reaction reporting. Compatibility is never inferred.</p></div><button onClick={() => void load()} className="self-start rounded-md border p-2" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></header>
       <form onSubmit={create} className="rounded-xl border bg-card p-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
         <select required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="w-full rounded-md border bg-background p-2 text-sm"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select>
         <input required value={form.bloodProduct} onChange={(e) => setForm({ ...form, bloodProduct: e.target.value })} placeholder="Blood product" className="w-full rounded-md border bg-background p-2 text-sm" />
@@ -47,7 +53,7 @@ export default function TransfusionBoard() {
         <input value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })} placeholder="Recorded blood group" className="w-full rounded-md border bg-background p-2 text-sm" />
         <div className="flex flex-wrap items-center gap-3 md:col-span-2 lg:col-span-1"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.consentConfirmed} onChange={(e) => setForm({ ...form, consentConfirmed: e.target.checked })} /> Consent confirmed</label><button disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Saving…' : 'Schedule'}</button></div>
       </form>
-      <div className="grid gap-3">{rows.map((r) => <article key={r.id} className="rounded-xl border bg-card p-4"><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold break-words">{patient(r.patient_id)}</h2><p className="text-sm break-words">{r.blood_product} · unit {r.unit_identifier}</p><p className="text-xs text-muted-foreground">Blood group: {r.blood_group || 'Not recorded'} · {r.status}</p></div><div className="flex flex-wrap gap-2 w-full sm:w-auto"><select disabled={busy || ['completed', 'cancelled'].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="w-full sm:w-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s}>{s}</option>)}</select><button disabled={busy} onClick={() => void reaction(r.id)} className="rounded-md border px-2 py-1 text-sm inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Reaction</button></div></div>{r.reaction_observed && <p className="mt-2 text-sm text-destructive">Reaction documented: {r.reaction_notes || 'Details not recorded'}</p>}</article>)}{!rows.length && <p className="text-sm text-muted-foreground">No transfusion records found.</p>}</div>
+      <div className="grid gap-3">{rows.map((r) => <article key={r.id} className="rounded-xl border bg-card p-4"><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold break-words">{patient(r.patient_id)}</h2><p className="text-sm break-words">{r.blood_product} · unit {r.unit_identifier}</p><p className="text-xs text-muted-foreground">Blood group: {r.blood_group || 'Not recorded'} · {r.status} · {r.compatibility_checked ? 'Compatibility verified' : 'Verification pending'}</p></div><div className="flex flex-wrap gap-2 w-full sm:w-auto">{r.status === 'issued' && !r.compatibility_checked && <button disabled={busy} onClick={() => void verify(r.id)} className="w-full sm:w-auto rounded-md border px-2 py-1 text-sm">Verify unit</button>}<select disabled={busy || ['completed', 'cancelled'].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="w-full sm:w-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s}>{s}</option>)}</select><button disabled={busy} onClick={() => void reaction(r.id)} className="rounded-md border px-2 py-1 text-sm inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Reaction</button></div></div>{r.witnessed_by&&<p className="mt-2 text-xs text-muted-foreground">Independent witness recorded.</p>}{r.reaction_observed && <p className="mt-2 text-sm text-destructive">Reaction documented: {r.reaction_notes || 'Details not recorded'}</p>}</article>)}{!rows.length && <p className="text-sm text-muted-foreground">No transfusion records found.</p>}</div>
     </div>
   );
 }
