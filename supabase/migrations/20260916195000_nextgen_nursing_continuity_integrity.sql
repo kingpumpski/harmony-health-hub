@@ -2,6 +2,27 @@
 -- Reuses canonical nursing_care_plans and nursing_shift_handovers; no duplicate tables/services.
 -- Direct authenticated DML remains disabled. Lifecycle changes occur through locked RPCs.
 
+-- The canonical handover table predates admission continuity. Add only the missing
+-- relationship; existing shift_label/pending_tasks/safety_concerns fields remain canonical.
+ALTER TABLE public.nursing_shift_handovers
+  ADD COLUMN IF NOT EXISTS admission_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'nursing_shift_handovers_admission_id_fkey'
+      AND conrelid = 'public.nursing_shift_handovers'::regclass
+  ) THEN
+    ALTER TABLE public.nursing_shift_handovers
+      ADD CONSTRAINT nursing_shift_handovers_admission_id_fkey
+      FOREIGN KEY (admission_id) REFERENCES public.admissions(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_nursing_handover_admission
+  ON public.nursing_shift_handovers(admission_id, created_at DESC);
+
 CREATE OR REPLACE FUNCTION public.create_nursing_care_plan(
   _patient_id UUID,
   _problem TEXT,
@@ -16,11 +37,18 @@ DECLARE
   v_id UUID;
   v_admission_status TEXT;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), ARRAY['admin','nurse','midwife','specialist_nurse']::public.app_role[]) THEN
+  IF auth.uid() IS NULL OR NOT (
+    public.has_role(auth.uid(),'admin') OR
+    public.has_role(auth.uid(),'nurse') OR
+    public.has_role(auth.uid(),'midwife') OR
+    public.has_role(auth.uid(),'specialist_nurse')
+  ) THEN
     RAISE EXCEPTION 'Not authorized to create nursing care plans';
   END IF;
-  IF _patient_id IS NULL OR NULLIF(btrim(_problem), '') IS NULL OR NULLIF(btrim(_goal), '') IS NULL THEN
-    RAISE EXCEPTION 'Patient, nursing problem and goal are required';
+  IF _patient_id IS NULL OR NULLIF(btrim(_problem), '') IS NULL
+     OR NULLIF(btrim(_goal), '') IS NULL
+     OR NULLIF(btrim(_interventions), '') IS NULL THEN
+    RAISE EXCEPTION 'Patient, nursing problem, goal and interventions are required';
   END IF;
   IF _priority IS NULL OR _priority NOT IN ('routine','high','critical') THEN
     RAISE EXCEPTION 'Invalid nursing care-plan priority';
@@ -34,12 +62,12 @@ BEGIN
     WHERE id = _admission_id AND patient_id = _patient_id
     FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'Admission does not belong to patient'; END IF;
-    IF v_admission_status NOT IN ('admitted','active','in_progress') THEN
+    IF v_admission_status <> 'admitted' THEN
       RAISE EXCEPTION 'Care plans can only be created for an active admission';
     END IF;
   END IF;
   INSERT INTO public.nursing_care_plans(patient_id, encounter_id, admission_id, problem, goal, interventions, priority, created_by)
-  VALUES (_patient_id, _encounter_id, _admission_id, btrim(_problem), btrim(_goal), NULLIF(btrim(_interventions), ''), _priority, auth.uid())
+  VALUES (_patient_id, _encounter_id, _admission_id, btrim(_problem), btrim(_goal), btrim(_interventions), _priority, auth.uid())
   RETURNING id INTO v_id;
   RETURN v_id;
 END;
@@ -55,7 +83,13 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_plan public.nursing_care_plans;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), ARRAY['admin','practitioner','nurse','midwife','specialist_nurse']::public.app_role[]) THEN
+  IF auth.uid() IS NULL OR NOT (
+    public.has_role(auth.uid(),'admin') OR
+    public.has_role(auth.uid(),'practitioner') OR
+    public.has_role(auth.uid(),'nurse') OR
+    public.has_role(auth.uid(),'midwife') OR
+    public.has_role(auth.uid(),'specialist_nurse')
+  ) THEN
     RAISE EXCEPTION 'Not authorized to transition nursing care plans';
   END IF;
   IF _status IS NULL OR _status NOT IN ('active','on_hold','completed','cancelled') THEN
@@ -77,7 +111,7 @@ BEGIN
       SELECT 1 FROM public.admissions a
       WHERE a.id = v_plan.admission_id
         AND a.patient_id = v_plan.patient_id
-        AND a.status IN ('admitted','active','in_progress')
+        AND a.status = 'admitted'
     ) THEN
       RAISE EXCEPTION 'An active care plan cannot remain active after admission closure';
     END IF;
@@ -91,6 +125,8 @@ BEGIN
 END;
 $$;
 
+-- This is a new, admission-aware overload. The existing seven-argument
+-- create_nursing_shift_handover contract remains intact for current UI callers.
 CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover(
   _patient_id UUID,
   _admission_id UUID,
@@ -108,7 +144,12 @@ DECLARE
   v_incoming UUID := COALESCE(_incoming_officer, auth.uid());
   v_status TEXT;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), ARRAY['admin','nurse','midwife','specialist_nurse']::public.app_role[]) THEN
+  IF auth.uid() IS NULL OR NOT (
+    public.has_role(auth.uid(),'admin') OR
+    public.has_role(auth.uid(),'nurse') OR
+    public.has_role(auth.uid(),'midwife') OR
+    public.has_role(auth.uid(),'specialist_nurse')
+  ) THEN
     RAISE EXCEPTION 'Not authorized to create nursing handovers';
   END IF;
   IF _patient_id IS NULL OR NULLIF(btrim(_clinical_summary), '') IS NULL THEN
@@ -123,20 +164,18 @@ BEGIN
     WHERE id = _admission_id AND patient_id = _patient_id
     FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'Admission does not belong to patient'; END IF;
-    IF v_status NOT IN ('admitted','active','in_progress') THEN
-      RAISE EXCEPTION 'Handover must reference an active admission';
-    END IF;
+    IF v_status <> 'admitted' THEN RAISE EXCEPTION 'Handover must reference an active admission'; END IF;
   END IF;
   IF _incoming_officer IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users WHERE id = _incoming_officer) THEN
     RAISE EXCEPTION 'Incoming officer not found';
   END IF;
   INSERT INTO public.nursing_shift_handovers(
-    patient_id, admission_id, outgoing_officer, incoming_officer, shift_date, shift_name,
-    clinical_summary, outstanding_tasks, risks_and_alerts, escalation_required
+    patient_id, admission_id, outgoing_officer, incoming_officer, shift_label,
+    clinical_summary, pending_tasks, safety_concerns, escalation_required
   ) VALUES (
-    _patient_id, _admission_id, auth.uid(), v_incoming, _shift_date, btrim(_shift_name),
-    btrim(_clinical_summary), NULLIF(btrim(_outstanding_tasks), ''), NULLIF(btrim(_risks_and_alerts), ''),
-    COALESCE(_escalation_required, FALSE)
+    _patient_id, _admission_id, auth.uid(), v_incoming, btrim(_shift_name),
+    btrim(_clinical_summary), NULLIF(btrim(_outstanding_tasks), ''),
+    NULLIF(btrim(_risks_and_alerts), ''), COALESCE(_escalation_required, FALSE)
   ) RETURNING id INTO v_id;
   RETURN v_id;
 END;
@@ -148,7 +187,12 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_handover public.nursing_shift_handovers;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), ARRAY['admin','nurse','midwife','specialist_nurse']::public.app_role[]) THEN
+  IF auth.uid() IS NULL OR NOT (
+    public.has_role(auth.uid(),'admin') OR
+    public.has_role(auth.uid(),'nurse') OR
+    public.has_role(auth.uid(),'midwife') OR
+    public.has_role(auth.uid(),'specialist_nurse')
+  ) THEN
     RAISE EXCEPTION 'Not authorized to acknowledge nursing handovers';
   END IF;
   SELECT * INTO v_handover FROM public.nursing_shift_handovers WHERE id = _handover_id FOR UPDATE;
@@ -175,4 +219,4 @@ REVOKE INSERT, UPDATE, DELETE ON public.nursing_care_plans FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.nursing_shift_handovers FROM authenticated;
 
 COMMENT ON TABLE public.nursing_care_plans IS 'Server-authoritative nursing care plans with locked lifecycle transitions and admission continuity checks.';
-COMMENT ON TABLE public.nursing_shift_handovers IS 'Server-authoritative shift handover records with designated incoming-officer acknowledgement.';
+COMMENT ON TABLE public.nursing_shift_handovers IS 'Server-authoritative shift handover records with designated incoming-officer acknowledgement and optional admission linkage.';
