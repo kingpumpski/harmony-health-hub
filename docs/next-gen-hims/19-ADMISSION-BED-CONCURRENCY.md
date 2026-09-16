@@ -14,6 +14,7 @@ This boundary makes inpatient admission and ward-bed occupancy server-authoritat
 - Bed assignment row-locks the target bed and validates patient/admission ownership.
 - An admission cannot acquire a second bed through the assignment workflow.
 - Discharge row-locks the admission and releases its linked bed into `cleaning` atomically.
+- Discharge is blocked while an admission-linked nursing care plan remains `active`; the care plan must first be explicitly completed or cancelled through its nursing lifecycle RPC.
 - An occupied bed with an active admission cannot be manually released.
 - Direct authenticated INSERT/UPDATE/DELETE access to admission and bed tables remains disabled.
 - Public and anonymous execution of lifecycle RPCs is revoked.
@@ -21,6 +22,6 @@ This boundary makes inpatient admission and ward-bed occupancy server-authoritat
 
 ## Verification
 
-`test-nextgen-admission-bed-concurrency.mjs` checks the server-authoritative workflow, row locking, active-admission protection, bed availability, admission/bed linkage, direct-write lockdown, and Quality workflow wiring.
+`test-nextgen-admission-bed-concurrency.mjs` checks the server-authoritative workflow, row locking, active-admission protection, bed availability, admission/bed linkage, nursing care-plan discharge gate, direct-write lockdown, and Quality workflow wiring.
 
 Live migration replay and RLS execution remain dependent on access to the correct active Harmony Supabase project. Contract tests therefore do not substitute for eventual database replay and concurrency testing.
