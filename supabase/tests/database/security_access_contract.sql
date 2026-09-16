@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(14);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -144,6 +144,58 @@ select ok(
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
   ) = 6,
   'pharmacy workflow RPCs are security-definer and authenticated-only'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'create_insurance_claim_draft',
+        'transition_insurance_claim',
+        'update_insurance_claim_financials'
+      )
+      and p.prosecdef
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) = 3,
+  'insurance claim mutation RPCs are security-definer and authenticated-only'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.pay_selected_invoice_items(uuid,uuid[],text,text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.pay_selected_invoice_items(uuid,uuid[],text,text)', 'EXECUTE'),
+  'selected-invoice payment collection is authenticated-only'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'insurance_claims'
+      and policyname = 'staff read claims'
+      and qual is not null
+      and qual ilike '%has_role%'
+      and qual not in ('true', '(true)')
+  ),
+  'insurance claim reads are role-scoped rather than broadly exposed'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'payments'
+      and policyname = 'staff read payments'
+      and qual is not null
+      and qual ilike '%has_role%'
+      and qual not in ('true', '(true)')
+  ),
+  'payment reads are role-scoped rather than broadly exposed'
 );
 
 select * from finish();
