@@ -50,14 +50,16 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 - `supabase/migrations/20260916100000_ai_session_request_workflow_hardening.sql`: makes AI analysis requests atomic with their provenance event and restricts clinician review to completed, provider-generated sessions with persisted output/model provenance.
 - `supabase/migrations/20260916103000_nextgen_clinical_audit_convergence.sql`: reuses the canonical clinical audit trigger across appointments, medication administration, laboratory orders/results, imaging orders and insurance claims so the next-generation safety boundary converges on one append-only audit surface rather than introducing a parallel audit system.
 - `supabase/migrations/20260916120000_nextgen_empi_merge_workflow.sql`: adds a server-authoritative EMPI merge request/independent-approval workflow, locks both patient records during execution, re-points only explicit foreign keys referencing `patients(id)`, retains the source record with `status = 'merged'`, records affected tables and requires separate administrator approval.
+- `supabase/migrations/20260916130000_ai_session_creation_workflow_hardening.sql`: moves AI draft-session creation behind a `SECURITY DEFINER` RPC, validates patient ownership context and JSON snapshots, stamps server-side creator/provenance metadata, records the creation audit event atomically, and revokes authenticated direct INSERT/UPDATE/DELETE access to AI session rows.
 - `scripts/test-nextgen-clinical-workflows.mjs`: executable repository-level contract checks for clinical audit convergence, laboratory result lifecycle RPCs, imaging lifecycle RPCs, claims financial integrity and direct-write lockdowns.
 - `scripts/test-nextgen-empi-workflow.mjs`: executable EMPI contract checks for authorization, dual-record validation, independent approval, row locking, atomic child-row reassignment and source-record retention.
-- `AIClinicalHub.tsx`: routes analysis requests through the secure atomic RPC rather than separately mutating session state and audit state from the browser.
+- `scripts/test-nextgen-ai-session-workflow.mjs`: executable checks that AI session creation uses the secure RPC, preserves server-side workflow boundaries and has no direct client insert/audit path.
+- `AIClinicalHub.tsx`: routes AI session creation and analysis requests through secure RPC boundaries rather than directly mutating session state and audit state from the browser.
 - `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering supported interoperability standards, envelope rejection/idempotency/collision handling, retry/quarantine/replay transitions, AI lifecycle/evaluation/prohibited-use/model identity/provenance/human-review controls, communication consent/quiet-hours/timezone/emergency handling, deployment module boundaries and fail-closed clinical actions.
 
 The interoperability runtime's in-memory fingerprint remains a duplicate-detection aid only; it is not treated as the authoritative persisted integrity hash. The durable ledger migration now enforces the cryptographic boundary in PostgreSQL.
 
-The AI clinical workflow now follows a stricter server-side sequence: clinician-owned draft → atomic analysis request plus audit event → provider completion through the existing completion RPC → qualified clinician review only after output and model provenance exist. The browser does not get a direct path to manufacture completion or review state.
+The AI clinical workflow now follows a stricter server-side sequence: clinician-owned draft created through a privileged RPC → atomic analysis request plus audit event → provider completion through the existing completion RPC → qualified clinician review only after output and model provenance exist. The browser does not get a direct path to manufacture creation, completion or review state.
 
 The core clinical domains now converge on the existing clinical audit trigger. Existing server-authoritative RPCs remain the mutation boundary for laboratory collection/result approval, imaging start/completion and claims financial changes, while authenticated direct-write access remains locked down. These checks are contractually verified and included in the quality workflow; they are not a substitute for actual database replay/RLS execution.
 
@@ -73,7 +75,7 @@ A row is not complete merely because its route exists. Completion requires a con
 
 1. Exact-head GitHub quality workflow passes.
 2. Typecheck, lint and production build pass.
-3. Contract verification and executable runtime fixtures pass, including integration, AI governance, deployment-profile, communication-policy, clinical-workflow and EMPI boundaries.
+3. Contract verification and executable runtime fixtures pass, including integration, AI governance, deployment-profile, communication-policy, clinical-workflow, EMPI and AI-session creation boundaries.
 4. All new Supabase migrations replay cleanly against a disposable database and reconcile against the deployed schema.
 5. RLS tests demonstrate allowed and denied access for representative roles.
 6. Clinical safety scenarios pass, including downtime/recovery and duplicate/concurrent action controls.
