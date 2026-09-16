@@ -14,6 +14,7 @@ const mutationLockdown = read('supabase/migrations/20260914140000_clinical_direc
 const appointmentLockdown = read('supabase/migrations/20260914143000_appointment_direct_write_lockdown.sql');
 const appointmentWorkflow = read('supabase/migrations/20260913213000_operational_rpc_contract_reconciliation.sql');
 const medicationWorkflow = read('supabase/migrations/20260912032000_global_hims_secure_workflows.sql');
+const offlineSync = read('src/lib/offlineSync.ts');
 
 for (const table of ['patients', 'appointments', 'encounters', 'prescriptions', 'medication_administrations', 'lab_orders', 'lab_results', 'imaging_orders', 'insurance_claims', 'invoices', 'payments']) {
   if (!audit.includes(`'${table}'`)) throw new Error(`Clinical audit convergence missing ${table}`);
@@ -46,4 +47,13 @@ for (const token of ["IF v.status IN ('cancelled','administered','refused','omit
   if (!medicationWorkflow.includes(token)) throw new Error(`Medication administration safety boundary missing: ${token}`);
 }
 
-console.log('Next-gen clinical workflow boundary tests passed: audit convergence, appointment authority/concurrency, medication safety, laboratory finalisation, imaging lifecycle, claims integrity, and direct-write lockdowns are contractually wired.');
+// Offline authentication failures are retryable. A stale access token must never
+// permanently strand queued clinical work; replay obtains a fresh token from the
+// registered auth provider. Authorization failures (403), validation/conflict
+// failures and not-found responses remain blocked for human review.
+if (!offlineSync.includes('const isTransientFailure =') && !offlineSync.includes('function isTransientFailure')) throw new Error('Offline retry classification helper missing');
+if (!offlineSync.includes('status === 401')) throw new Error('Offline 401 authentication recovery is not retryable');
+if (!offlineSync.includes('status === 403')) throw new Error('Offline 403 authorization failure is not distinguished from authentication');
+if (!offlineSync.includes('authHeaderProvider')) throw new Error('Offline replay is missing the server-session token provider boundary');
+
+console.log('Next-gen clinical workflow boundary tests passed: audit convergence, appointment authority/concurrency, medication safety, laboratory finalisation, imaging lifecycle, claims integrity, direct-write lockdowns, and offline authentication recovery are contractually wired.');
