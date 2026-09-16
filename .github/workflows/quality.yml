@@ -55,5 +55,8 @@ jobs:
       - name: Next-generation clinical workflow boundary tests
         run: npm run test:nextgen-clinical-workflows
 
+      - name: Next-generation EMPI workflow boundary tests
+        run: npm run test:nextgen-empi
+
       - name: Production build
         run: npm run build
