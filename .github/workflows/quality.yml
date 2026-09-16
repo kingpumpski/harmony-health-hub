@@ -91,5 +91,8 @@ jobs:
       - name: Next-generation admission and bed concurrency tests
         run: npm run test:nextgen-admission-bed-concurrency
 
+      - name: Next-generation nursing continuity integrity tests
+        run: npm run test:nextgen-nursing-continuity
+
       - name: Production build
         run: npm run build
