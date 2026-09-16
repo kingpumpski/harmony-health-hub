@@ -49,5 +49,8 @@ jobs:
       - name: Next-generation interoperability fixture tests
         run: npm run test:nextgen-interoperability
 
+      - name: Next-generation communication boundary tests
+        run: npm run test:nextgen-communication
+
       - name: Production build
         run: npm run build
