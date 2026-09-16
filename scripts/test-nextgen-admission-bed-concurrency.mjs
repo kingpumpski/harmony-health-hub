@@ -15,6 +15,8 @@ const required = [
   ['assignment admission ownership check', /a\.patient_id <> _patient_id/],
   ['duplicate bed protection for admission', /Admission already has a bed/],
   ['active admission protection on bed release', /Active admission must be discharged before releasing its bed/],
+  ['active nursing care-plan discharge gate', /Active nursing care plans must be completed or cancelled before discharge/],
+  ['admission-linked care-plan check', /nursing_care_plans[\s\S]*?admission_id=_admission_id[\s\S]*?status='active'/],
   ['discharge releases linked bed', /status='cleaning'/],
   ['direct admissions DML lockdown', /REVOKE INSERT,UPDATE,DELETE ON TABLE public\.admissions FROM authenticated/],
   ['direct ward bed DML lockdown', /REVOKE INSERT,UPDATE,DELETE ON TABLE public\.ward_beds FROM authenticated/],
@@ -25,9 +27,8 @@ const required = [
 ];
 
 for (const [label, pattern] of required) {
-  if (!pattern.test(label === 'package wiring' ? JSON.stringify(packageJson.scripts) : label === 'quality workflow wiring' ? workflow : migration)) {
-    throw new Error(`Admission/bed contract missing: ${label}`);
-  }
+  const source = label === 'package wiring' ? JSON.stringify(packageJson.scripts) : label === 'quality workflow wiring' ? workflow : migration;
+  if (!pattern.test(source)) throw new Error(`Admission/bed contract missing: ${label}`);
 }
 
 if (packageJson.scripts['test:nextgen-admission-bed-concurrency'] !== 'node scripts/test-nextgen-admission-bed-concurrency.mjs') {
