@@ -21,52 +21,40 @@ SET search_path = public
 AS $$
 DECLARE
   device_id UUID;
+  device_facility_id UUID;
   endpoint_id UUID;
   message_record_id UUID;
   existing_hash TEXT;
   payload_hash TEXT;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  IF NULLIF(trim(_device_key), '') IS NULL
-     OR NULLIF(trim(_message_id), '') IS NULL
-     OR NULLIF(trim(_correlation_id), '') IS NULL
-     OR NULLIF(trim(_event_type), '') IS NULL
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NULLIF(trim(_device_key), '') IS NULL OR NULLIF(trim(_message_id), '') IS NULL
+     OR NULLIF(trim(_correlation_id), '') IS NULL OR NULLIF(trim(_event_type), '') IS NULL
      OR NULLIF(trim(_schema_version), '') IS NULL THEN
     RAISE EXCEPTION 'Device message identity fields are required';
   END IF;
+  IF _payload IS NULL OR jsonb_typeof(_payload) NOT IN ('object', 'array') THEN RAISE EXCEPTION 'Device payload must be a JSON object or array'; END IF;
+  IF _standard NOT IN ('FHIR_R4','FHIR_R5','HL7_V2','DICOM','ASTM','REST_JSON','SOAP_XML') THEN RAISE EXCEPTION 'Unsupported interoperability standard'; END IF;
+  IF _classification NOT IN ('clinical','operational','financial','administrative') THEN RAISE EXCEPTION 'Unsupported message classification'; END IF;
 
-  IF _payload IS NULL OR jsonb_typeof(_payload) NOT IN ('object', 'array') THEN
-    RAISE EXCEPTION 'Device payload must be a JSON object or array';
-  END IF;
-
-  IF _standard NOT IN ('FHIR_R4','FHIR_R5','HL7_V2','DICOM','ASTM','REST_JSON','SOAP_XML') THEN
-    RAISE EXCEPTION 'Unsupported interoperability standard';
-  END IF;
-
-  IF _classification NOT IN ('clinical','operational','financial','administrative') THEN
-    RAISE EXCEPTION 'Unsupported message classification';
-  END IF;
-
-  SELECT id INTO device_id
+  SELECT id, facility_id INTO device_id, device_facility_id
   FROM public.platform_device_registry
-  WHERE device_key = trim(_device_key)
-    AND lifecycle_state = 'active'
+  WHERE device_key = trim(_device_key) AND lifecycle_state = 'active'
   FOR UPDATE;
+  IF device_id IS NULL THEN RAISE EXCEPTION 'Device is not active'; END IF;
 
-  IF device_id IS NULL THEN
-    RAISE EXCEPTION 'Device is not active';
-  END IF;
-
+  -- Prevent a device from being routed through an enabled endpoint belonging to
+  -- another facility. NULL facilities intentionally match only NULL facilities.
   SELECT id INTO endpoint_id
   FROM public.platform_integration_endpoints
   WHERE integration_type = 'device'
     AND enabled = TRUE
+    AND direction IN ('inbound','bidirectional')
     AND standard = _standard
+    AND facility_id IS NOT DISTINCT FROM device_facility_id
   ORDER BY updated_at DESC
   LIMIT 1;
+  IF endpoint_id IS NULL THEN RAISE EXCEPTION 'No enabled device endpoint is available for this device facility and standard'; END IF;
 
   payload_hash := encode(digest(convert_to(_payload::text, 'UTF8'), 'sha256'), 'hex');
 
@@ -74,55 +62,25 @@ BEGIN
   FROM public.platform_integration_messages
   WHERE message_id = trim(_message_id)
   FOR UPDATE;
-
   IF message_record_id IS NOT NULL THEN
-    IF existing_hash <> payload_hash THEN
-      RAISE EXCEPTION 'Message ID collision with different payload';
-    END IF;
+    IF existing_hash <> payload_hash THEN RAISE EXCEPTION 'Message ID collision with different payload'; END IF;
     RETURN message_record_id;
   END IF;
 
   INSERT INTO public.platform_integration_messages (
-    message_id,
-    correlation_id,
-    endpoint_id,
-    source_system,
-    destination_system,
-    direction,
-    standard,
-    event_type,
-    schema_version,
-    classification,
-    patient_reference,
-    payload,
-    payload_hash,
-    lifecycle_state,
-    received_at,
-    updated_at
+    message_id, correlation_id, endpoint_id, source_system, destination_system,
+    direction, standard, event_type, schema_version, classification, patient_reference,
+    payload, payload_hash, lifecycle_state, received_at, updated_at
   ) VALUES (
-    trim(_message_id),
-    trim(_correlation_id),
-    endpoint_id,
-    'device:' || trim(_device_key),
-    'harmony-health-hub',
-    'inbound',
-    _standard,
-    trim(_event_type),
-    trim(_schema_version),
-    _classification,
-    NULLIF(trim(_patient_reference), ''),
-    _payload,
-    payload_hash,
-    'queued',
-    now(),
-    now()
+    trim(_message_id), trim(_correlation_id), endpoint_id, 'device:' || trim(_device_key),
+    'harmony-health-hub', 'inbound', _standard, trim(_event_type), trim(_schema_version),
+    _classification, NULLIF(trim(_patient_reference), ''), _payload, payload_hash,
+    'queued', now(), now()
   ) RETURNING id INTO message_record_id;
 
   UPDATE public.platform_device_registry
-  SET last_message_at = now(),
-      updated_at = now()
+  SET last_message_at = now(), updated_at = now()
   WHERE id = device_id;
-
   RETURN message_record_id;
 END;
 $$;
@@ -132,4 +90,4 @@ REVOKE ALL ON FUNCTION public.accept_device_integration_message(TEXT,TEXT,TEXT,T
 GRANT EXECUTE ON FUNCTION public.accept_device_integration_message(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB,TEXT) TO service_role;
 
 COMMENT ON FUNCTION public.accept_device_integration_message(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB,TEXT)
-IS 'Authenticated transport boundary for active clinical devices. Enqueues only into the interoperability ledger and never mutates canonical clinical results.';
+IS 'Service-role transport boundary for active clinical devices. Device and endpoint facility scope must match. Messages enter only the interoperability ledger and never mutate canonical clinical results.';
