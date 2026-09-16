@@ -22,6 +22,7 @@
     "test:nextgen-appointment-concurrency": "node scripts/test-nextgen-appointment-concurrency.mjs",
     "test:nextgen-imaging-ris-pacs": "node scripts/test-nextgen-imaging-ris-pacs.mjs",
     "test:nextgen-claims-adjudication": "node scripts/test-nextgen-claims-adjudication.mjs",
+    "test:nextgen-medication-pharmacy-safety": "node scripts/test-nextgen-medication-pharmacy-safety.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
