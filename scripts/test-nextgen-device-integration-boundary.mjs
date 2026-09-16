@@ -11,6 +11,9 @@ const required = [
   'auth.uid()',
   'platform_device_registry',
   "lifecycle_state = 'active'",
+  'device_facility_id',
+  'facility_id IS NOT DISTINCT FROM device_facility_id',
+  'direction IN (\'inbound\',\'bidirectional\')',
   'FOR UPDATE',
   'platform_integration_endpoints',
   "integration_type = 'device'",
@@ -22,7 +25,7 @@ const required = [
   'REVOKE ALL ON FUNCTION public.accept_device_integration_message',
   'GRANT EXECUTE ON FUNCTION public.accept_device_integration_message',
   'service_role',
-  'never mutates canonical clinical results',
+  'never mutate canonical clinical results',
 ];
 
 for (const token of required) {
@@ -37,4 +40,4 @@ for (const classification of ['clinical','operational','financial','administrati
   if (!migration.includes(`'${classification}'`)) throw new Error(`Message classification missing: ${classification}`);
 }
 
-console.log('Next-gen device interoperability boundary contract passed: active-device gating, row locking, standard/classification validation, cryptographic payload integrity, idempotent collision detection, durable transport-ledger intake, heartbeat/message timestamping, canonical clinical-write isolation, and service-role-only execution are present.');
+console.log('Next-gen device interoperability boundary contract passed: active-device gating, facility-scoped endpoint routing, inbound-direction validation, row locking, standard/classification validation, cryptographic payload integrity, idempotent collision detection, durable transport-ledger intake, heartbeat/message timestamping, canonical clinical-write isolation, and service-role-only execution are present.');
