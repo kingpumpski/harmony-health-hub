@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(10);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -123,6 +123,27 @@ select ok(
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
   ) = 4,
   'laboratory workflow RPCs are security-definer and authenticated-only'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'find_pharmacy_alternatives',
+        'prepare_pharmacy_dispensing',
+        'confirm_pharmacy_dispense',
+        'create_pharmacy_pos_sale',
+        'confirm_pharmacy_pos_sale',
+        'create_pharmacy_inventory_item'
+      )
+      and p.prosecdef
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) = 6,
+  'pharmacy workflow RPCs are security-definer and authenticated-only'
 );
 
 select * from finish();
