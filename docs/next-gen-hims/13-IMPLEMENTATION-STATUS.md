@@ -19,7 +19,7 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 | Patient identity | Patient registration/search/hub | EMPI contract, duplicate detection and controlled merge | clinical safety, privacy, RLS, audit |
 | Appointments | Appointments | lifecycle, claiming, conflict prevention and offline continuity | workflow, concurrency, RLS |
 | Encounters | Encounters/consultation | lifecycle and structured clinical documentation | clinical safety, audit |
-| Laboratory | Laboratory/requests/results | LIS boundary, device ingestion, QC and reconciliation | interoperability, safety, device validation |
+| Laboratory | Laboratory/requests/results | LIS boundary, device ingestion, specimen/order validation, QC and controlled reconciliation/finalization | interoperability, safety, device validation, QC evidence |
 | Imaging | Imaging/radiology | RIS/PACS boundary and DICOM exchange | interoperability, safety, image/report integrity |
 | Pharmacy | Pharmacy/MAR | medication ordering, dispensing and administration | medication safety, inventory, audit |
 | Inpatient | Admissions/ward/nursing | bed state, handover, transitions and escalation | clinical workflow, downtime recovery |
@@ -53,12 +53,14 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 - `supabase/migrations/20260916130000_ai_session_creation_workflow_hardening.sql`: moves AI draft-session creation behind a `SECURITY DEFINER` RPC, validates patient ownership context and JSON snapshots, stamps server-side creator/provenance metadata, records the creation audit event atomically, and revokes authenticated direct INSERT/UPDATE/DELETE access to AI session rows.
 - `supabase/migrations/20260916140000_nextgen_device_lifecycle_workflow.sql`: adds admin-only device onboarding, an explicit lifecycle state machine with row locking and required transition reasons, canonical audit convergence, authenticated direct-write lockdown, and a service-role-only heartbeat boundary that rejects retired/quarantined devices and future-dated timestamps.
 - `supabase/migrations/20260916150000_nextgen_device_integration_boundary.sql`: adds a service-role-only intake RPC that accepts messages only from active registered devices, validates supported interoperability standards/classifications, locks the device row, detects message-id collisions using the authoritative SHA-256 payload hash, enqueues transport state only in the durable interoperability ledger, updates device message activity, and explicitly prevents device transport from manufacturing canonical clinical results.
+- `supabase/migrations/20260916160000_nextgen_lab_device_result_reconciliation.sql`: adds a laboratory QC ledger and server-authoritative reconciliation RPC. Device ASTM/HL7 messages remain transport-only until an authorized laboratory technician/admin records a passed QC check; reconciliation then locks the message/order, requires sample/in-progress lifecycle state, verifies device patient reference against the order patient, validates an active catalogue entry when present, creates the canonical completed result, advances the order and marks the integration message delivered atomically. Direct authenticated laboratory result/order mutation remains revoked.
 - `src/lib/offlineSync.ts`: retains queued work across connectivity loss, refreshes the access token at replay time, treats HTTP 401 authentication expiry as retryable rather than permanently blocked, and continues to distinguish 403 authorization failures and validation/conflict responses as human-review states.
 - `scripts/test-nextgen-clinical-workflows.mjs`: executable repository-level contract checks for clinical audit convergence, laboratory result lifecycle RPCs, imaging lifecycle RPCs, claims financial integrity, direct-write lockdowns and offline authentication recovery.
 - `scripts/test-nextgen-empi-workflow.mjs`: executable EMPI contract checks for authorization, dual-record validation, independent approval, row locking, atomic child-row reassignment and source-record retention.
 - `scripts/test-nextgen-ai-session-workflow.mjs`: executable checks that AI session creation uses the secure RPC, preserves server-side workflow boundaries and has no direct client insert/audit path.
 - `scripts/test-nextgen-device-lifecycle.mjs`: executable checks for device onboarding validation, explicit lifecycle transitions, locking, audit, direct-write isolation, service heartbeat restrictions and quarantine/retirement protection.
 - `scripts/test-nextgen-device-integration-boundary.mjs`: executable contract checks for active-device gating, protocol/classification validation, cryptographic payload integrity, idempotent collision handling, transport-ledger isolation and service-role execution.
+- `scripts/test-nextgen-lab-device-reconciliation.mjs`: executable checks for laboratory QC gating, specimen/order lifecycle validation, patient-reference reconciliation, catalogue validation, canonical result creation, delivery acknowledgement and direct-write isolation.
 - `AIClinicalHub.tsx`: routes AI session creation and analysis requests through secure RPC boundaries rather than directly mutating session state and audit state from the browser.
 - `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering supported interoperability standards, envelope rejection/idempotency/collision handling, retry/quarantine/replay transitions, AI lifecycle/evaluation/prohibited-use/model identity/provenance/human-review controls, communication consent/quiet-hours/timezone/emergency handling, deployment module boundaries and fail-closed clinical actions.
 
@@ -67,6 +69,8 @@ The interoperability runtime's in-memory fingerprint remains a duplicate-detecti
 The AI clinical workflow now follows a stricter server-side sequence: clinician-owned draft created through a privileged RPC → atomic analysis request plus audit event → provider completion through the existing completion RPC → qualified clinician review only after output and model provenance exist. The browser does not get a direct path to manufacture creation, completion or review state.
 
 The core clinical domains now converge on the existing clinical audit trigger. Existing server-authoritative RPCs remain the mutation boundary for laboratory collection/result approval, imaging start/completion and claims financial changes, while authenticated direct-write access remains locked down. These checks are contractually verified and included in the quality workflow; they are not a substitute for actual database replay/RLS execution.
+
+Laboratory device transport now has an explicit clinical reconciliation boundary. The device intake function can only enqueue transport into the interoperability ledger; it cannot finalize `lab_results`. A separate authorized laboratory reconciliation workflow requires a matching lab order, an eligible sample/in-progress state, matching patient reference, a passed QC record and an active catalogue entry when configured. Only then is the canonical result created and the transport message marked delivered. This prevents raw ASTM/HL7 transport, stale orders, mismatched patients or unvalidated QC from becoming clinical truth.
 
 The EMPI boundary now separates merge request from approval, prohibits self-approval, preserves the source patient row for traceability, and reassigns only declared patient foreign keys inside the same database transaction. A unique/FK/security failure therefore rolls the merge back rather than leaving a partially reassigned patient record.
 
@@ -84,18 +88,19 @@ A row is not complete merely because its route exists. Completion requires a con
 
 1. Exact-head GitHub quality workflow passes.
 2. Typecheck, lint and production build pass.
-3. Contract verification and executable runtime fixtures pass, including integration, AI governance, deployment-profile, communication-policy, clinical-workflow, EMPI, AI-session creation, device-lifecycle and device-integration boundaries.
+3. Contract verification and executable runtime fixtures pass, including integration, AI governance, deployment-profile, communication-policy, clinical-workflow, EMPI, AI-session creation, device-lifecycle, device-integration and laboratory device-reconciliation boundaries.
 4. All new Supabase migrations replay cleanly against a disposable database and reconcile against the deployed schema.
 5. RLS tests demonstrate allowed and denied access for representative roles, including admin device lifecycle access and service-only device heartbeat/integration intake.
 6. Clinical safety scenarios pass, including downtime/recovery and duplicate/concurrent action controls.
 7. Interoperability fixtures pass validation, idempotency, collision quarantine, retry, quarantine and authorized replay tests across the supported protocol envelope, with device registry lifecycle, heartbeat and transport-ledger intake behavior validated against representative integrations.
-8. Accessibility automated checks pass and keyboard/screen-reader/manual checks are recorded.
-9. AI governance tests demonstrate model allowlisting, model/version integrity, provenance, uncertainty and human-review enforcement.
-10. Communication tests demonstrate consent, quiet-hours, timezone, language and emergency-override behavior without leaking PHI into telemetry.
-11. Deployment-profile tests demonstrate effective-date, jurisdiction, residency and module-boundary behavior.
-12. Performance/resilience checks meet the project's agreed thresholds.
-13. The deployed artifact is verified against the exact final commit.
-14. Only after all evidence is current may the draft PR become merge-ready.
+8. Laboratory device scenarios demonstrate that raw ASTM/HL7 transport cannot finalize a result, mismatched patients/orders are rejected, QC failure blocks reconciliation, and only authorized QC-passed messages can become canonical results.
+9. Accessibility automated checks pass and keyboard/screen-reader/manual checks are recorded.
+10. AI governance tests demonstrate model allowlisting, model/version integrity, provenance, uncertainty and human-review enforcement.
+11. Communication tests demonstrate consent, quiet-hours, timezone, language and emergency-override behavior without leaking PHI into telemetry.
+12. Deployment-profile tests demonstrate effective-date, jurisdiction, residency and module-boundary behavior.
+13. Performance/resilience checks meet the project's agreed thresholds.
+14. The deployed artifact is verified against the exact final commit.
+15. Only after all evidence is current may the draft PR become merge-ready.
 
 ## Known external blocker policy
 
