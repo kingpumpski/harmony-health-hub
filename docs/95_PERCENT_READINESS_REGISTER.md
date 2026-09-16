@@ -26,6 +26,7 @@ Updated: 2026-09-16
 - Offline architecture remains deliberately allow-listed and high-risk financial/clinical workflows remain online-only until explicit contracts exist.
 - RLS `auth_rls_initplan` remediation was applied to public policies using `auth.uid()`, preserving the policy predicates while wrapping stable auth evaluation in scalar subqueries. A repository migration records the same reconciliation for future environments.
 - Post-change performance advisors no longer report the `auth_rls_initplan` warning; the remaining performance advisories are the 195 informational unused-index findings and 21 multiple-permissive-policy findings.
+- Authorization helper execute surface was hardened: arbitrary-user helper probes (`has_role`, `is_clinical_staff`, `has_facility_access`, `can_edit_patient_record`) are no longer callable by Data API client roles; current-user helper functions remain available to authenticated clients.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -36,7 +37,7 @@ Updated: 2026-09-16
 
 ### Security
 
-- 89 `SECURITY DEFINER` functions are executable by `authenticated`. This is not by itself a defect because the application intentionally uses server-authoritative RPCs for protected clinical and financial workflows. Each function still requires an explicit authorization contract and should either validate the caller internally or be moved out of the exposed API surface where it is internal-only.
+- The SECURITY DEFINER surface is still being classified function-by-function. Authenticated execution is retained where a function is an intentional server-authoritative workflow with internal authorization checks; internal helper/maintenance functions are being removed from the exposed API surface where appropriate.
 - Supabase Auth leaked-password protection is currently disabled. This is an Auth project setting rather than a database migration and must be enabled through the Supabase Auth configuration before final deployment hardening.
 
 ## Do-not-break rules
