@@ -8,6 +8,7 @@ const required = [
   ['server-authoritative admission creation', /CREATE OR REPLACE FUNCTION public\.create_admission_workflow/],
   ['server-authoritative discharge', /CREATE OR REPLACE FUNCTION public\.discharge_admission_workflow/],
   ['active admission duplicate protection', /already has an active admission/],
+  ['patient admission concurrency lock', /pg_advisory_xact_lock\(hashtextextended\('hims:admission:' \|\| _patient_id::text, 0\)\)/],
   ['bed row locking during admission', /ward_beds[\s\S]*?FOR UPDATE/],
   ['available bed gate', /status='available'/],
   ['atomic admission-to-bed linkage', /admission_id=v_id/],
