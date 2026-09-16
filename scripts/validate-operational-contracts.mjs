@@ -44,9 +44,9 @@ assert(
 );
 
 assert(
-  'offline replay does not replace the persisted idempotency key',
-  !offline.includes('crypto.randomUUID() })') || offline.includes('[IDEMPOTENCY_HEADER]: item.idempotencyKey'),
-  'replay must preserve the original idempotency key',
+  'offline queue preserves the original mutation body during replay',
+  offline.includes('body: item.body ?? undefined'),
+  'replay must send the persisted payload rather than reconstructing it',
 );
 
 assert(
@@ -65,7 +65,7 @@ assert(
 assert(
   'service-order release creates the downstream queue entry',
   serviceOrderMigration.includes('INSERT INTO public.department_queues') &&
-    serviceOrderMigration.includes("status)\\n  VALUES(") &&
+    serviceOrderMigration.includes("reason, created_by, queued_at, status") &&
     serviceOrderMigration.includes("'queued'"),
   'released work must become available to the department queue',
 );
