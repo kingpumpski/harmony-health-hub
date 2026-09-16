@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(7);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -78,6 +78,20 @@ select ok(
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
   ) = 5,
   'service-order lifecycle RPCs are security-definer and authenticated-only'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.release_service_order(uuid,text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.release_service_order(uuid,text)', 'EXECUTE')
+  and (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'release_service_order'
+      and pg_get_function_identity_arguments(p.oid) = 'uuid, _reason text'
+  ) ilike '%has_role(auth.uid(),''front_desk'')%',
+  'payment release is authenticated-only and permits the front-desk payment workflow'
 );
 
 select * from finish();
