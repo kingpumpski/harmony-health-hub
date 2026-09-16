@@ -1,6 +1,6 @@
 begin;
 
-select plan(5);
+select plan(6);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -58,6 +58,26 @@ select ok(
       and qual not in ('true', '(true)')
   ),
   'patient reads are governed by an authorization predicate'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'grant_service_order_override',
+        'release_service_order',
+        'cancel_service_order',
+        'mark_service_order_in_progress',
+        'complete_service_order'
+      )
+      and p.prosecdef
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) = 5,
+  'service-order lifecycle RPCs are security-definer and authenticated-only'
 );
 
 select * from finish();
