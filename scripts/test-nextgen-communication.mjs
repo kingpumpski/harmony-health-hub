@@ -78,6 +78,38 @@ try {
     throw new Error('Blank communication language did not fail closed');
   }
 
+  const malformedChannels = communication.evaluateCommunicationRequest(
+    { ...base, preferredChannels: ['sms', 'sms'] },
+    { category: 'appointment', channel: 'sms' },
+  );
+  if (malformedChannels.allowed || malformedChannels.reason !== 'Invalid preferred channel configuration') {
+    throw new Error('Duplicate preferred channels did not fail closed');
+  }
+
+  const unsupportedPreferredChannel = communication.evaluateCommunicationRequest(
+    { ...base, preferredChannels: ['fax'] },
+    { category: 'appointment', channel: 'sms' },
+  );
+  if (unsupportedPreferredChannel.allowed || unsupportedPreferredChannel.reason !== 'Invalid preferred channel configuration') {
+    throw new Error('Unsupported preferred channel did not fail closed');
+  }
+
+  const malformedConsent = communication.evaluateCommunicationRequest(
+    { ...base, appointmentReminders: 'yes' },
+    { category: 'appointment', channel: 'sms' },
+  );
+  if (malformedConsent.allowed || malformedConsent.reason !== 'Invalid communication consent configuration') {
+    throw new Error('Malformed consent configuration did not fail closed');
+  }
+
+  const invalidPreferredLanguage = communication.evaluateCommunicationRequest(
+    { ...base, preferredLanguage: '   ' },
+    { category: 'appointment', channel: 'sms' },
+  );
+  if (invalidPreferredLanguage.allowed || invalidPreferredLanguage.reason !== 'Invalid preferred language') {
+    throw new Error('Malformed preferred language did not fail closed');
+  }
+
   const emergencyWithoutContext = communication.evaluateCommunicationRequest(
     { ...base, emergencyOverrideAllowed: true },
     { category: 'emergency', channel: 'email', emergency: false },
@@ -92,7 +124,7 @@ try {
     throw new Error('Authorized emergency override was rejected or not marked minimum-necessary');
   }
 
-  console.log('Next-gen communication input, timezone and emergency boundary tests passed.');
+  console.log('Next-gen communication input, preference, timezone and emergency boundary tests passed.');
 } finally {
   rmSync(temp, { recursive: true, force: true });
 }
