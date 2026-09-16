@@ -24,12 +24,13 @@ Updated: 2026-09-16
 - Internal medication maintenance RPCs remain protected and are no longer invoked by the client UI.
 - Telemedicine join/start actions are gated by session lifecycle rather than weakening the server RPC.
 - Offline architecture remains deliberately allow-listed and high-risk financial/clinical workflows remain online-only until explicit contracts exist.
+- RLS `auth_rls_initplan` remediation was applied to public policies using `auth.uid()`, preserving the policy predicates while wrapping stable auth evaluation in scalar subqueries. A repository migration records the same reconciliation for future environments.
+- Post-change performance advisors no longer report the `auth_rls_initplan` warning; the remaining performance advisories are the 195 informational unused-index findings and 21 multiple-permissive-policy findings.
 
 ## Current advisor findings that require continued reconciliation
 
 ### Performance
 
-- 77 RLS policies trigger the `auth_rls_initplan` advisory. The intended remediation is to evaluate stable auth functions through scalar subqueries such as `(select auth.uid())` so they are not re-evaluated per row. This must preserve the exact authorization semantics of every affected policy.
 - 21 tables have multiple permissive policies for the same authenticated action. These should be consolidated only after verifying that the combined boolean semantics are identical; policy deletion must not be used as a blanket lint-suppression mechanism.
 - 195 indexes are currently reported as unused. These are not automatically removable: many cover foreign keys, workflow lookup paths, audit trails, or future operational query patterns. Removal requires workload evidence and duplicate/coverage analysis.
 
