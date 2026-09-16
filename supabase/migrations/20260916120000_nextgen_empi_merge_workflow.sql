@@ -95,18 +95,22 @@ BEGIN
   END IF;
 
   PERFORM 1 FROM public.patients WHERE id = merge_row.source_patient_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Source patient record disappeared during merge validation'; END IF;
   PERFORM 1 FROM public.patients WHERE id = merge_row.target_patient_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Patient record disappeared during merge validation'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Target patient record disappeared during merge validation'; END IF;
 
-  -- Re-point every canonical public table that carries a patient_id FK.
+  -- Re-point only canonical foreign keys that explicitly reference patients(id).
   -- The merge is one transaction: any FK/unique/security failure rolls back all changes.
   FOR table_name IN
-    SELECT c.relname
+    SELECT DISTINCT c.relname
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    JOIN pg_attribute a ON a.attrelid = c.oid
+    JOIN pg_constraint fk ON fk.conrelid = c.oid
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(fk.conkey)
     WHERE n.nspname = 'public'
       AND c.relkind = 'r'
+      AND fk.contype = 'f'
+      AND fk.confrelid = 'public.patients'::regclass
       AND a.attname = 'patient_id'
       AND c.relname NOT IN ('patients','patient_identity_merges')
   LOOP
@@ -127,11 +131,6 @@ BEGIN
   WHERE id = _merge_id;
 
   RETURN jsonb_build_object('merge_id', _merge_id, 'status', 'completed', 'source_patient_id', merge_row.source_patient_id, 'target_patient_id', merge_row.target_patient_id, 'affected_tables', affected);
-EXCEPTION WHEN OTHERS THEN
-  UPDATE public.patient_identity_merges
-  SET status = 'failed', approved_by = auth.uid(), approved_at = now(), affected_tables = affected
-  WHERE id = _merge_id AND status = 'requested';
-  RAISE;
 END;
 $$;
 
