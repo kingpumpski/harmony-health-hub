@@ -82,5 +82,8 @@ jobs:
       - name: Next-generation medication and pharmacy safety tests
         run: npm run test:nextgen-medication-pharmacy-safety
 
+      - name: Next-generation transfusion safety tests
+        run: npm run test:nextgen-transfusion-safety
+
       - name: Production build
         run: npm run build
