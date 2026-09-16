@@ -19,6 +19,7 @@ The production `supabase_migrations.schema_migrations` ledger currently contains
 - `20260916093512` — `harden_selected_invoice_payment_service_release`
 - `20260916093546` — `complete_selected_invoice_service_order_release`
 - `20260916093817` — `allow_front_desk_payment_release_boundary`
+- `20260916094245` — `harden_service_order_override_and_release_contract`
 
 The first two migration versions/names are not present in the repository's `supabase/migrations` directory on `main`.
 
@@ -49,9 +50,13 @@ The production `pay_selected_invoice_items()` workflow creates or locates the se
 
 The approved `allow_front_desk_payment_release_boundary` reconciliation aligned the release authorization with the existing billing collection workflow. `release_service_order()` remains `SECURITY DEFINER`, denies anonymous execution, remains authenticated-only, and now permits the `front_desk` role in addition to `admin` and `accountant`. The payment gate, override handling, queue synchronization, and lifecycle metadata remain unchanged.
 
-The repository security contract now explicitly checks this boundary so future schema verification can detect regression.
+A follow-up hardening reconciliation, `harden_service_order_override_and_release_contract`, preserved the same release boundary while adding a state guard to `grant_service_order_override()`: an override can only be granted while the service order is still `pending_payment_approval`. Both billing RPCs remain anonymous-denied and authenticated-only. The repository security contract now explicitly checks both the front-desk release boundary and the override state boundary.
 
-The repository's existing source migrations `20260911241000_phase2_legacy_queue_compatibility.sql` and `20260911233000_phase2_service_order_payment_gating.sql` remain the reference implementations for the compatibility contract. They are not duplicated under new migration filenames because production migration history is already baselined independently.
+The repository's existing source migrations `20260911241000_phase2_legacy_queue_compatibility.sql` and `20260911233000_phase2_service_order_payment_gating.sql` remain the reference implementations for the compatibility contract. The newer hardening migration is now also present in `main` so future migration review retains the production authorization/state contract without modifying historical migration files.
+
+## Application service-order creation parity
+
+The frontend service-order creation helper now persists the optional `invoice_item_id`, `order_type`, and `service_code` fields instead of silently dropping values supplied by callers. When no order type is supplied, it explicitly persists the existing database default semantic of `service`. This preserves the current schema while preventing metadata loss for procedure and other billable workflow callers.
 
 ## Why this is a controlled migration boundary
 
@@ -83,6 +88,6 @@ The desired end state is:
 
 ## Evidence currently established
 
-The production schema has been verified for the operational read contracts used by Theatre, Insurance Claims, Pharmacy, and Accounts. The imaging lifecycle RPCs have been reconciled to server-authoritative execution and verified after application. The service-order compatibility contract and lifecycle metadata dependencies have also been reconciled and verified. The selected-invoice payment release path has been verified as authenticated-only and now has an authorization contract covering the existing front-desk billing workflow.
+The production schema has been verified for the operational read contracts used by Theatre, Insurance Claims, Pharmacy, and Accounts. The imaging lifecycle RPCs have been reconciled to server-authoritative execution and verified after application. The service-order compatibility contract and lifecycle metadata dependencies have also been reconciled and verified. The selected-invoice payment release path has been verified as authenticated-only and now has an authorization contract covering the existing front-desk billing workflow. The service-order override boundary has also been verified as authenticated-only and state-restricted to pending payment approval.
 
 The remaining migration-baseline task is therefore a **migration tracking reconciliation**, not a request to rebuild or overwrite the production schema.
