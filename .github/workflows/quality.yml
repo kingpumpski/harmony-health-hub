@@ -88,5 +88,8 @@ jobs:
       - name: Next-generation theatre and emergency lifecycle tests
         run: npm run test:nextgen-theatre-emergency
 
+      - name: Next-generation admission and bed concurrency tests
+        run: npm run test:nextgen-admission-bed-concurrency
+
       - name: Production build
         run: npm run build
