@@ -28,7 +28,6 @@ interface AccountsOrder {
     patient_code: string | null;
     insurance_provider: string | null;
     insurance_number: string | null;
-    partner_company: string | null;
   } | null;
 }
 
@@ -43,7 +42,7 @@ export default function AccountsApprovals() {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('service_orders')
-      .select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number,partner_company)')
+      .select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number)')
       .eq('status', filter)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -187,7 +186,7 @@ export default function AccountsApprovals() {
                 <span className="text-lg font-semibold">GHS {Number(order.amount).toFixed(2)}</span>
                 {order.status === 'pending_payment_approval' && (
                   <>
-                    {(patient?.insurance_provider || patient?.partner_company) && <button disabled={busy} onClick={() => void activateCoverage(order)} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50">
+                    {patient?.insurance_provider && <button disabled={busy} onClick={() => void activateCoverage(order)} className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50">
                       <ShieldCheck className="w-4 h-4" /> Activate today's coverage
                     </button>}
                     <button disabled={busy} onClick={() => void approve(order)} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
