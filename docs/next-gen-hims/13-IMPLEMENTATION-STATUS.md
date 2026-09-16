@@ -48,12 +48,15 @@ This document is the living completion ledger for `architecture/next-gen-hims-pl
 - `supabase/migrations/20260915170000_nextgen_communication_consent.sql`: persists explicit emergency communication override consent without exposing patient communication preferences to general authenticated access.
 - `supabase/migrations/20260915182000_nextgen_integration_payload_integrity.sql`: enables `pgcrypto`, computes authoritative SHA-256 payload hashes in a database trigger, backfills existing delivery records, and enforces a 64-character lowercase SHA-256 format constraint.
 - `supabase/migrations/20260916100000_ai_session_request_workflow_hardening.sql`: makes AI analysis requests atomic with their provenance event and restricts clinician review to completed, provider-generated sessions with persisted output/model provenance.
+- `supabase/migrations/20260916103000_nextgen_clinical_audit_convergence.sql`: reuses the canonical clinical audit trigger for appointment and medication-administration lifecycle mutations so next-generation safety boundaries converge on the existing append-only audit surface instead of introducing a parallel audit system.
 - `AIClinicalHub.tsx`: routes analysis requests through the secure atomic RPC rather than separately mutating session state and audit state from the browser.
 - `scripts/test-nextgen-runtime.mjs`: executable adversarial contract fixtures compiled against the TypeScript runtime, covering supported interoperability standards, envelope rejection/idempotency/collision handling, retry/quarantine/replay transitions, AI lifecycle/evaluation/prohibited-use/model identity/provenance/human-review controls, communication consent/quiet-hours/timezone/emergency handling, deployment module boundaries and fail-closed clinical actions.
 
 The interoperability runtime's in-memory fingerprint remains a duplicate-detection aid only; it is not treated as the authoritative persisted integrity hash. The durable ledger migration now enforces the cryptographic boundary in PostgreSQL.
 
 The AI clinical workflow now follows a stricter server-side sequence: clinician-owned draft → atomic analysis request plus audit event → provider completion through the existing completion RPC → qualified clinician review only after output and model provenance exist. The browser does not get a direct path to manufacture completion or review state.
+
+Clinical appointment and medication-administration mutations now converge on the existing clinical audit trigger, preserving a single audit surface while keeping direct table mutation locked down by the existing workflow RPC controls.
 
 These boundaries are deliberately transport/configuration/governance primitives. They do not create a parallel clinical source of truth and cannot independently authorize clinical actions.
 
