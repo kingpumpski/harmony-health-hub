@@ -125,8 +125,8 @@ BEGIN
 END;
 $$;
 
--- This is a new, admission-aware overload. The existing seven-argument
--- create_nursing_shift_handover contract remains intact for current UI callers.
+-- Preserve the established seven-argument handover function exactly as the
+-- canonical UI contract. The admission-aware workflow is a separate overload.
 CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover(
   _patient_id UUID,
   _admission_id UUID,
@@ -168,6 +168,14 @@ BEGIN
   END IF;
   IF _incoming_officer IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users WHERE id = _incoming_officer) THEN
     RAISE EXCEPTION 'Incoming officer not found';
+  END IF;
+  IF _incoming_officer IS NOT NULL AND NOT (
+    public.has_role(_incoming_officer,'admin') OR
+    public.has_role(_incoming_officer,'nurse') OR
+    public.has_role(_incoming_officer,'midwife') OR
+    public.has_role(_incoming_officer,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Incoming officer must hold an authorized nursing role';
   END IF;
   INSERT INTO public.nursing_shift_handovers(
     patient_id, admission_id, outgoing_officer, incoming_officer, shift_label,
