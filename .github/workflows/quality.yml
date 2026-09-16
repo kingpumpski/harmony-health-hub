@@ -85,5 +85,8 @@ jobs:
       - name: Next-generation transfusion safety tests
         run: npm run test:nextgen-transfusion-safety
 
+      - name: Next-generation theatre and emergency lifecycle tests
+        run: npm run test:nextgen-theatre-emergency
+
       - name: Production build
         run: npm run build
