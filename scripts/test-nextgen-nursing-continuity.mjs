@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 
 const migrationPath = 'supabase/migrations/20260916195000_nextgen_nursing_continuity_integrity.sql';
+const canonicalWorkflowPath = 'supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql';
 const sql = fs.readFileSync(migrationPath, 'utf8');
+const canonicalWorkflow = fs.readFileSync(canonicalWorkflowPath, 'utf8');
 
 const required = [
   'ALTER TABLE public.nursing_shift_handovers',
@@ -11,7 +13,7 @@ const required = [
   'CREATE OR REPLACE FUNCTION public.create_nursing_care_plan',
   "_priority TEXT DEFAULT 'routine'",
   "_admission_id UUID DEFAULT NULL",
-  "Care plans can only be created for an active admission",
+  'Care plans can only be created for an active admission',
   'CREATE OR REPLACE FUNCTION public.transition_nursing_care_plan',
   'SELECT * INTO v_plan FROM public.nursing_care_plans WHERE id = _plan_id FOR UPDATE',
   'Closed nursing care plans cannot be reopened',
@@ -25,6 +27,7 @@ const required = [
   'clinical_summary, pending_tasks, safety_concerns, escalation_required',
   'CREATE OR REPLACE FUNCTION public.acknowledge_nursing_shift_handover',
   'Only the designated incoming officer or an administrator can acknowledge this handover',
+  'Incoming officer must hold an authorized nursing role',
   'FOR UPDATE',
   'REVOKE INSERT, UPDATE, DELETE ON public.nursing_care_plans FROM authenticated',
   'REVOKE INSERT, UPDATE, DELETE ON public.nursing_shift_handovers FROM authenticated',
@@ -36,6 +39,14 @@ const required = [
 
 for (const token of required) {
   if (!sql.includes(token)) throw new Error(`Nursing continuity control missing: ${token}`);
+}
+
+// Verify the pre-existing seven-argument contract is still present in the
+// canonical reconciliation migration. This prevents the next-gen overload
+// from silently replacing the established UI-facing function signature.
+const canonicalSignature = 'create_nursing_shift_handover(\n  _patient_id UUID,\n  _shift_label TEXT,\n  _clinical_summary TEXT,\n  _pending_tasks TEXT DEFAULT NULL,\n  _safety_concerns TEXT DEFAULT NULL,\n  _escalation_required BOOLEAN DEFAULT FALSE,\n  _ward_id UUID DEFAULT NULL';
+if (!canonicalWorkflow.includes(canonicalSignature)) {
+  throw new Error('Canonical seven-argument nursing handover signature is missing');
 }
 
 // The canonical handover schema uses shift_label/pending_tasks/safety_concerns.
@@ -53,4 +64,4 @@ for (const state of closedStates) {
   if (!sql.includes(`v_plan.status IN ('completed','cancelled')`)) throw new Error(`Closed-state guard missing: ${state}`);
 }
 
-console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, admission linkage, row-locking, care-plan lifecycle, required evaluation/reasons, designated handover acknowledgement, and direct-write lockdown are present.');
+console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, preserved legacy handover signature, admission linkage, row-locking, care-plan lifecycle, required evaluation/reasons, designated handover acknowledgement, incoming-role validation, and direct-write lockdown are present.');
