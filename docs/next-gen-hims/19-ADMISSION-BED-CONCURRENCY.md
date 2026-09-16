@@ -7,6 +7,7 @@ This boundary makes inpatient admission and ward-bed occupancy server-authoritat
 ## Controls
 
 - Admission creation requires an authenticated authorized clinical role.
+- Admission creation takes a transaction-scoped advisory lock keyed to the patient before checking for an active admission, preventing two concurrent admission requests from both passing the duplicate check.
 - A patient cannot have two active admissions.
 - A requested bed is selected and row-locked before the admission is inserted.
 - Only an available, unoccupied bed in the requested ward unit can be attached to an admission.
@@ -22,6 +23,6 @@ This boundary makes inpatient admission and ward-bed occupancy server-authoritat
 
 ## Verification
 
-`test-nextgen-admission-bed-concurrency.mjs` checks the server-authoritative workflow, row locking, active-admission protection, bed availability, admission/bed linkage, nursing care-plan discharge gate, direct-write lockdown, and Quality workflow wiring.
+`test-nextgen-admission-bed-concurrency.mjs` checks the server-authoritative workflow, patient-level concurrency serialization, row locking, active-admission protection, bed availability, admission/bed linkage, nursing care-plan discharge gate, direct-write lockdown, and Quality workflow wiring.
 
 Live migration replay and RLS execution remain dependent on access to the correct active Harmony Supabase project. Contract tests therefore do not substitute for eventual database replay and concurrency testing.
