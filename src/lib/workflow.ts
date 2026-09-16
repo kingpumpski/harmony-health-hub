@@ -69,6 +69,9 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
       notes: input.notes ?? null,
       requested_by: input.requestedBy ?? null,
       invoice_id: input.invoiceId ?? null,
+      invoice_item_id: input.invoiceItemId ?? null,
+      order_type: input.orderType ?? undefined,
+      service_code: input.serviceCode ?? null,
       status: 'pending_payment_approval',
     })
     .select()
