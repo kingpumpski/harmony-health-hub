@@ -24,7 +24,8 @@ This boundary hardens the canonical `nursing_care_plans` and `nursing_shift_hand
 - The incoming officer defaults to the authenticated actor but can be explicitly designated only when that user exists and holds an authorized nursing role.
 - The admission-aware handover UI now loads only active admissions, sends the admission identifier through the next-generation RPC, and no longer relies on the legacy patient-only handover call.
 - The explicit clinical shift date is persisted in the canonical `nursing_shift_handovers.shift_date` field; it is not duplicated into a new column or accepted and discarded by the workflow.
-- Shift dates are constrained to a narrow operational window around the current date to prevent accidental backdating or future-dated handovers.
+- Future-dated handovers are rejected when the shift date is more than one day ahead of the database current date.
+- Historical shift dates remain permitted so legitimate late documentation and retrospective chart completion are not blocked by an arbitrary backdating window.
 - A handover can be acknowledged only by its designated incoming officer or an administrator.
 - Acknowledgement locks the handover row before mutation and is idempotent when already acknowledged.
 
@@ -34,4 +35,4 @@ Authenticated clients cannot directly insert, update, or delete nursing care pla
 
 ## Verification
 
-`npm run test:nextgen-nursing-continuity` verifies the migration contract, canonical shift-date usage, persisted shift-date semantics, and admission-linked UI/RPC boundary. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
+`npm run test:nextgen-nursing-continuity` verifies the migration contract, canonical shift-date usage, persisted shift-date semantics, future-date guard, late-documentation policy, and admission-linked UI/RPC boundary. Live database replay remains dependent on access to the correct active Harmony Supabase project; the repository test is therefore a contract test, not a substitute for live concurrency testing.
