@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(20);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -252,6 +252,60 @@ select ok(
       and pg_get_function_identity_arguments(p.oid) = '_invoice_id uuid, _item_ids uuid[], _method text, _reference text'
   ) ilike '%lower(trim(reference)) = lower(normalized_reference)%',
   'selected-invoice payment rejects duplicate references through an idempotent replay boundary'
+);
+
+select ok(
+  not has_function_privilege('public', 'public.audit_patient_change()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.audit_patient_change()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.audit_patient_change()', 'EXECUTE')
+  and not has_function_privilege('public', 'public.validate_service_order_encounter()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.validate_service_order_encounter()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.validate_service_order_encounter()', 'EXECUTE'),
+  'trigger-only SECURITY DEFINER helpers are outside the client execution surface'
+);
+
+select ok(
+  not has_function_privilege('public', 'public.notify_due_medications()', 'EXECUTE')
+  and not has_function_privilege('public', 'public.lock_overdue_medication_slots()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.notify_due_medications()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.lock_overdue_medication_slots()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.notify_due_medications()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.lock_overdue_medication_slots()', 'EXECUTE'),
+  'scheduler-only medication maintenance helpers are outside the client execution surface'
+);
+
+select ok(
+  not has_function_privilege('public', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
+  and not has_function_privilege('public', 'public.has_facility_access(uuid,uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.has_facility_access(uuid,uuid)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.has_facility_access(uuid,uuid)', 'EXECUTE'),
+  'arbitrary-user authorization helper probes are outside the client execution surface'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'grant_service_order_override',
+        'release_service_order',
+        'cancel_service_order',
+        'mark_service_order_in_progress',
+        'complete_service_order',
+        'create_lab_order_with_payment_gate',
+        'collect_lab_sample',
+        'enter_lab_result',
+        'approve_lab_result'
+      )
+      and p.prosecdef
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+  ) = 9,
+  'classified application SECURITY DEFINER workflow RPCs remain authenticated-only'
 );
 
 select * from finish();
