@@ -1,245 +1,140 @@
-import { useState } from 'react';
-import { BedDouble, HeartPulse, Syringe, FileText, AlertTriangle, Users, ThermometerSun, Activity } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import StatCard from '@/components/ui/StatCard';
-import AlertBanner from '@/components/ui/AlertBanner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
-const inpatients = [
-  { id: 1, bed: 'W1-B01', name: 'James Wilson', diagnosis: 'Post-surgery recovery', lastVitals: '15 min ago', status: 'stable', alerts: [] },
-  { id: 2, bed: 'W1-B02', name: 'Emma Taylor', diagnosis: 'Pneumonia', lastVitals: '8 min ago', status: 'critical', alerts: ['High Fever'] },
-  { id: 3, bed: 'W1-B03', name: 'Michael Brown', diagnosis: 'Cardiac monitoring', lastVitals: '5 min ago', status: 'attention', alerts: ['BP Elevated'] },
-  { id: 4, bed: 'W1-B04', name: 'Lisa Anderson', diagnosis: 'Diabetes management', lastVitals: '20 min ago', status: 'stable', alerts: [] },
-  { id: 5, bed: 'W2-B01', name: 'David Miller', diagnosis: 'Hip replacement', lastVitals: '12 min ago', status: 'stable', alerts: [] },
-];
+type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
+type DashboardRow = Record<string, any>;
 
-const pendingMedications = [
-  { id: 1, patient: 'James Wilson', bed: 'W1-B01', drug: 'Paracetamol 500mg', time: '10:00 AM', status: 'due' },
-  { id: 2, patient: 'Emma Taylor', bed: 'W1-B02', drug: 'Amoxicillin 500mg', time: '10:00 AM', status: 'overdue' },
-  { id: 3, patient: 'Michael Brown', bed: 'W1-B03', drug: 'Metoprolol 50mg', time: '10:30 AM', status: 'upcoming' },
-  { id: 4, patient: 'Lisa Anderson', bed: 'W1-B04', drug: 'Insulin 10 units', time: '10:30 AM', status: 'upcoming' },
-];
-
-const temperatureChart = [
-  { time: '6AM', temp: 37.2 },
-  { time: '8AM', temp: 37.5 },
-  { time: '10AM', temp: 38.1 },
-  { time: '12PM', temp: 38.8 },
-  { time: '2PM', temp: 39.2 },
-  { time: '4PM', temp: 38.5 },
-];
+const statusTone = (status: string) => status === 'critical' ? 'bg-critical/5 border-l-2 border-l-critical' : status === 'attention' ? 'bg-warning/5 border-l-2 border-l-warning' : '';
 
 export default function NurseDashboard() {
-  const [selectedWard, setSelectedWard] = useState('all');
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [admissions, setAdmissions] = useState<DashboardRow[]>([]);
+  const [medications, setMedications] = useState<DashboardRow[]>([]);
+  const [handovers, setHandovers] = useState<DashboardRow[]>([]);
+  const [triage, setTriage] = useState<DashboardRow[]>([]);
+  const [queue, setQueue] = useState<DashboardRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'critical' | 'attention'>('all');
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    const [{ data: p, error: pe }, { data: a, error: ae }, { data: m, error: me }, { data: h, error: he }, { data: t, error: te }, { data: q, error: qe }] = await Promise.all([
+      supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
+      supabase.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(250),
+      supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
+      supabase.from('nursing_shift_handovers').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
+      supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
+    ]);
+    const firstError = pe || ae || me || he || te || qe;
+    if (firstError) toast.error(`Nursing dashboard refresh: ${firstError.message}`);
+    setPatients((p ?? []) as Patient[]);
+    setAdmissions((a ?? []) as DashboardRow[]);
+    setMedications((m ?? []) as DashboardRow[]);
+    setHandovers((h ?? []) as DashboardRow[]);
+    setTriage((t ?? []) as DashboardRow[]);
+    setQueue((q ?? []) as DashboardRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medication_administrations' }, () => { playWorkflowSound('info'); void load(true); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'department_queues' }, () => void load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nursing_shift_handovers' }, () => void load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'triage_assessments' }, () => { playWorkflowSound('critical'); void load(true); })
+      .subscribe();
+    const timer = window.setInterval(() => void load(true), 60000);
+    return () => { void supabase.removeChannel(channel); window.clearInterval(timer); };
+  }, [load, user?.id]);
+
+  const patientName = (id?: string) => {
+    const p = patients.find(x => x.id === id);
+    return p ? `${p.first_name} ${p.last_name}` : 'Patient';
+  };
+  const activeAdmissions = useMemo(() => admissions.filter(a => !a.discharged_at && a.status !== 'discharged'), [admissions]);
+  const dueMeds = useMemo(() => medications.filter(m => m.status === 'scheduled' && !m.locked_at), [medications]);
+  const overdueMeds = useMemo(() => dueMeds.filter(m => m.scheduled_at && new Date(m.scheduled_at).getTime() < Date.now()), [dueMeds]);
+  const criticalPatients = useMemo(() => triage.filter(t => ['critical', 'urgent'].includes(String(t.priority ?? t.status ?? '').toLowerCase())).slice(0, 12), [triage]);
+  const pendingHandovers = useMemo(() => handovers.filter(h => !h.acknowledged_at), [handovers]);
+  const inpatientRows = useMemo(() => activeAdmissions.slice(0, 30).map(a => ({ ...a, status: criticalPatients.some(t => t.patient_id === a.patient_id) ? 'critical' : 'stable' })), [activeAdmissions, criticalPatients]);
+
+  const refresh = () => { void load(); };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Nursing Station</h1>
-          <p className="text-muted-foreground">Ward 1 & 2 • Day Shift</p>
+          <p className="text-muted-foreground">Live inpatient care, medication administration, handover and escalation workspace.</p>
         </div>
-        <div className="flex gap-3">
-          <button className="btn-secondary">
-            <FileText className="w-4 h-4" />
-            Nursing Notes
-          </button>
-          <button className="btn-primary">
-            <HeartPulse className="w-4 h-4" />
-            Record Vitals
-          </button>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/nursing-handover" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Handover</Link>
+          <Link to="/vitals" className="btn-primary"><HeartPulse className="w-4 h-4" /> Record Vitals</Link>
+          <button onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
         </div>
       </div>
 
-      {/* Critical Alert */}
-      <AlertBanner
-        type="critical"
-        title="Immediate Attention Required - Bed W1-B02"
-        message="Patient Emma Taylor has high fever (39.8°C). Doctor has been notified. Please monitor closely."
-      />
+      {criticalPatients.length > 0 && <div className="rounded-xl border border-critical/30 bg-critical/5 p-4 flex flex-wrap items-center justify-between gap-3 animate-pulse">
+        <div className="flex items-center gap-3"><AlertTriangle className="w-5 h-5 text-critical" /><div><p className="font-semibold text-critical">Clinical attention required</p><p className="text-sm text-muted-foreground">{criticalPatients.length} recent critical/urgent triage record(s) require nursing review.</p></div></div>
+        <Link to="/vitals" className="btn-secondary">Open vitals</Link>
+      </div>}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Inpatients"
-          value={24}
-          change="2 new admissions"
-          changeType="neutral"
-          icon={BedDouble}
-          iconColor="text-primary"
-        />
-        <StatCard
-          title="Pending Medications"
-          value={12}
-          change="2 overdue"
-          changeType="negative"
-          icon={Syringe}
-          iconColor="text-warning"
-        />
-        <StatCard
-          title="Vitals Due"
-          value={6}
-          change="Next in 15 min"
-          changeType="neutral"
-          icon={HeartPulse}
-          iconColor="text-info"
-        />
-        <StatCard
-          title="Critical Patients"
-          value={2}
-          change="Requires attention"
-          changeType="negative"
-          icon={AlertTriangle}
-          iconColor="text-critical"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard title="Active Inpatients" value={activeAdmissions.length} change="Open admissions" changeType="neutral" icon={BedDouble} iconColor="text-primary" />
+        <StatCard title="Medications Due" value={dueMeds.length} change={`${overdueMeds.length} overdue`} changeType={overdueMeds.length ? 'negative' : 'neutral'} icon={Pill} iconColor="text-warning" />
+        <StatCard title="Vitals / Escalations" value={criticalPatients.length} change="Critical or urgent" changeType={criticalPatients.length ? 'negative' : 'neutral'} icon={HeartPulse} iconColor="text-critical" />
+        <StatCard title="Unacknowledged Handovers" value={pendingHandovers.length} change="Continuity actions" changeType="neutral" icon={ClipboardList} iconColor="text-info" />
+        <StatCard title="Nursing Queue" value={queue.length} change="Waiting / claimed" changeType="neutral" icon={Users} iconColor="text-primary" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link to="/nursing-handover" className="card-medical p-4 bg-info/5 hover:bg-info/10 transition-all hover:-translate-y-0.5"><BellRing className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Handover</p><p className="text-2xl font-bold tabular-nums">{pendingHandovers.length}</p></Link>
+        <Link to="/medications" className="card-medical p-4 bg-warning/5 hover:bg-warning/10 transition-all hover:-translate-y-0.5"><Syringe className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Medication due</p><p className="text-2xl font-bold tabular-nums">{dueMeds.length}</p></Link>
+        <Link to="/vitals" className="card-medical p-4 bg-critical/5 hover:bg-critical/10 transition-all hover:-translate-y-0.5"><Activity className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Critical review</p><p className="text-2xl font-bold tabular-nums">{criticalPatients.length}</p></Link>
+        <Link to="/ward-bed-board" className="card-medical p-4 bg-primary/5 hover:bg-primary/10 transition-all hover:-translate-y-0.5"><BedDouble className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Ward / beds</p><p className="text-sm font-semibold mt-1">Open bed board →</p></Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Inpatient List */}
-        <div className="lg:col-span-2 card-medical">
-          <div className="p-5 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold">Inpatient Overview</h2>
-            <div className="flex gap-2">
-              {['all', 'critical', 'attention'].map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setSelectedWard(filter)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize',
-                    selectedWard === filter
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
+        <section className="lg:col-span-2 card-medical">
+          <div className="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-semibold">Current Inpatients</h2><p className="text-xs text-muted-foreground">Live admissions replace the former static demonstration list.</p></div>
+            <div className="flex gap-2">{(['all', 'critical', 'attention'] as const).map(f => <button key={f} onClick={() => setFilter(f)} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium capitalize', filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{f}</button>)}</div>
           </div>
           <div className="divide-y divide-border">
-            {inpatients
-              .filter(p => selectedWard === 'all' || p.status === selectedWard)
-              .map((patient) => (
-              <div
-                key={patient.id}
-                className={cn(
-                  'p-4 transition-colors hover:bg-muted/30',
-                  patient.status === 'critical' && 'bg-critical/5 border-l-2 border-l-critical',
-                  patient.status === 'attention' && 'bg-warning/5 border-l-2 border-l-warning'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center px-3 py-2 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Bed</p>
-                      <p className="font-bold text-sm">{patient.bed}</p>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{patient.name}</p>
-                        {patient.alerts.length > 0 && (
-                          <span className="badge-critical pulse-critical flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            {patient.alerts[0]}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{patient.diagnosis}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Last Vitals</p>
-                      <p className="text-sm font-medium">{patient.lastVitals}</p>
-                    </div>
-                    <button className="btn-secondary text-sm py-1.5">
-                      <HeartPulse className="w-4 h-4" />
-                      Vitals
-                    </button>
-                    <button className="btn-ghost text-sm py-1.5">
-                      <Syringe className="w-4 h-4" />
-                      Meds
-                    </button>
-                  </div>
+            {inpatientRows.filter(p => filter === 'all' || p.status === filter).map((patient, index) => (
+              <div key={patient.id ?? index} className={cn('p-4 transition-colors hover:bg-muted/30', statusTone(patient.status))}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3"><div className="text-center px-3 py-2 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Bed</p><p className="font-bold text-sm">{patient.bed_number ?? patient.bed ?? '—'}</p></div><div><p className="font-medium">{patientName(patient.patient_id)}</p><p className="text-xs text-muted-foreground">{patient.patient_id ?? 'Patient record'} · {patient.ward ?? patient.ward_name ?? 'Ward'}</p>{patient.status === 'critical' && <span className="badge-critical pulse-critical inline-flex mt-1"><AlertTriangle className="w-3 h-3 mr-1" />Clinical review</span>}</div></div>
+                  <div className="flex gap-2"><Link to="/vitals" className="btn-secondary text-sm py-1.5"><HeartPulse className="w-4 h-4" /> Vitals</Link><Link to="/medications" className="btn-ghost text-sm py-1.5"><Syringe className="w-4 h-4" /> Meds</Link></div>
                 </div>
               </div>
             ))}
+            {!inpatientRows.length && <div className="p-8 text-center text-sm text-muted-foreground">No active inpatients are currently available.</div>}
           </div>
-        </div>
+        </section>
 
-        {/* Medication Schedule */}
-        <div className="card-medical">
-          <div className="p-5 border-b border-border">
-            <h2 className="font-semibold">Medication Schedule</h2>
+        <section className="card-medical">
+          <div className="p-5 border-b border-border flex items-center justify-between"><div><h2 className="font-semibold">Medication Schedule</h2><p className="text-xs text-muted-foreground">Live MAR slots</p></div><Link to="/medications" className="text-sm text-primary">Open MAR</Link></div>
+          <div className="divide-y divide-border max-h-[28rem] overflow-y-auto">
+            {dueMeds.slice(0, 20).map((med, index) => <div key={med.id ?? index} className={cn('p-4', overdueMeds.some(x => x.id === med.id) && 'bg-critical/5')}><div className="flex items-start justify-between gap-2"><div><p className="font-medium text-sm">{med.medication_name}</p><p className="text-xs text-muted-foreground">{patientName(med.patient_id)} · {med.dose ?? 'dose not recorded'}</p></div><span className={cn('badge-status', overdueMeds.some(x => x.id === med.id) ? 'badge-critical pulse-critical' : 'badge-warning')}>{med.scheduled_at ? new Date(med.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Due'}</span></div></div>)}
+            {!dueMeds.length && <div className="p-8 text-center text-sm text-muted-foreground">No medication administrations are currently due.</div>}
           </div>
-          <div className="divide-y divide-border max-h-96 overflow-y-auto">
-            {pendingMedications.map((med) => (
-              <div
-                key={med.id}
-                className={cn(
-                  'p-4',
-                  med.status === 'overdue' && 'bg-critical/5'
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{med.patient}</p>
-                    <p className="text-xs text-muted-foreground">{med.bed}</p>
-                    <p className="text-sm mt-1">{med.drug}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={cn(
-                      'badge-status',
-                      med.status === 'overdue' && 'badge-critical pulse-critical',
-                      med.status === 'due' && 'badge-warning',
-                      med.status === 'upcoming' && 'badge-info'
-                    )}>
-                      {med.time}
-                    </span>
-                    <button className="btn-primary text-xs py-1 px-2 mt-2 w-full">
-                      Administer
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Temperature Monitoring */}
-      <div className="card-medical p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-semibold">Temperature Monitoring - Emma Taylor (W1-B02)</h2>
-            <p className="text-sm text-muted-foreground">Last 12 hours</p>
-          </div>
-          <span className="badge-critical">Current: 38.5°C</span>
-        </div>
-        <div className="flex items-end gap-4 h-40">
-          {temperatureChart.map((point, idx) => {
-            const height = ((point.temp - 36) / 4) * 100;
-            const isHigh = point.temp >= 38;
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    'w-full rounded-t-lg transition-all',
-                    isHigh ? 'bg-critical' : 'bg-primary'
-                  )}
-                  style={{ height: `${height}%` }}
-                />
-                <span className="text-xs text-muted-foreground">{point.time}</span>
-                <span className={cn(
-                  'text-xs font-medium',
-                  isHigh ? 'text-critical' : 'text-foreground'
-                )}>
-                  {point.temp}°C
-                </span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Handover & continuity</h2><p className="text-sm text-muted-foreground">Unacknowledged handovers remain visible until acknowledged.</p></div><Link to="/nursing-handover" className="text-sm text-primary">Open</Link></div><p className="text-3xl font-bold tabular-nums">{pendingHandovers.length}</p><p className="text-xs text-muted-foreground mt-1">pending acknowledgement</p></section>
+        <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Nursing service queue</h2><p className="text-sm text-muted-foreground">Patients awaiting or already claimed by nursing.</p></div><Link to="/department-queue" className="text-sm text-primary">Open queue</Link></div><p className="text-3xl font-bold tabular-nums">{queue.length}</p><p className="text-xs text-muted-foreground mt-1">active queue items</p></section>
       </div>
     </div>
   );
