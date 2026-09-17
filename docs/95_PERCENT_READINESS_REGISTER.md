@@ -33,6 +33,7 @@ Updated: 2026-09-17
 - Internal audit logging helper `record_system_audit(text,text,text,uuid,text,jsonb)` is no longer executable by `authenticated` or `anon`; the production boundary was verified and the corresponding migration is committed to `main` as `20260916114500_harden_record_system_audit_execute_boundary`.
 - The RLS reconciliation pass reduced the previously reported multiple-permissive SELECT findings from 21 to 0 without granting broader access or collapsing semantically distinct policies.
 - Cross-platform local development bootstrap is now documented and supported through PowerShell, CMD and Bash scripts; `verify:local` validates the Git root and dependency prerequisites before development starts.
+- The database security contract now explicitly covers facility routing administration, facility-scoped report recovery and duplicate-reference idempotency for selected-invoice payments. Production verification confirmed routing/report/payment RPCs are authenticated-only where intended, routing is administrator-gated, report recovery checks facility access, and payment replay detection remains present.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -43,7 +44,7 @@ Updated: 2026-09-17
 
 ### Security
 
-- The current Supabase security advisor reports **84 authenticated-executable SECURITY DEFINER findings** after the audit-helper execute-boundary hardening. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate.
+- The current Supabase security advisor reports **84 authenticated-executable SECURITY DEFINER findings** after the audit-helper execute-boundary hardening. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate. The latest classification pass verified that `set_facility_routing_mode` is administrator-gated and that `recover_stale_report_run` is facility-scoped; neither was revoked merely to reduce the advisor count.
 - Supabase Auth leaked-password protection remains disabled. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
 
 ### CI / deployment verification
@@ -59,6 +60,8 @@ Updated: 2026-09-17
 - Do not convert an `ALL` policy into a different set of policies unless the resulting INSERT/UPDATE/DELETE/SELECT `USING` and `WITH CHECK` semantics are explicitly equivalent.
 - The source-level stale-credential replay vulnerability is now hardened: persisted `Authorization` is stripped unconditionally before replay, and only a fresh session token may be attached. A browser-runtime regression test is still required to evidence the behavior in an actual browser; this remains an explicit pre-deployment security gate.
 - A GitHub Actions `startup_failure` must not be converted into a code-pass or code-fail claim; execution evidence is required before the corresponding readiness gate is marked complete.
+- Facility routing administration and report recovery were retained as authenticated SECURITY DEFINER application boundaries because their internal authorization checks are material to the workflow. The repository database contract now protects those semantics against accidental weakening.
+- Selected-invoice payment retry behavior remains explicitly idempotent by payment reference; the repository database contract now guards that invariant.
 
 ## Do-not-break rules
 
