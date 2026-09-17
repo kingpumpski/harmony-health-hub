@@ -98,6 +98,33 @@ assert(
 );
 
 assert(
+  'pharmacy lifecycle exposes the protected dispensing and POS workflow surface',
+  [
+    'find_pharmacy_alternatives',
+    'prepare_pharmacy_dispensing',
+    'confirm_pharmacy_dispense',
+    'create_pharmacy_pos_sale',
+    'confirm_pharmacy_pos_sale',
+    'create_pharmacy_inventory_item',
+  ].every((name) => securityContract.includes(`'${name}'`)),
+  'pharmacy preparation, dispensing, POS and inventory mutations must remain represented in the database security contract',
+);
+
+assert(
+  'insurance lifecycle exposes protected claim mutation workflow',
+  ['create_insurance_claim_draft', 'transition_insurance_claim', 'update_insurance_claim_financials']
+    .every((name) => securityContract.includes(`'${name}'`)),
+  'insurance claim creation, transition and financial mutation must remain server-authoritative',
+);
+
+assert(
+  'selected-invoice payment remains authenticated-only',
+  securityContract.includes("public.pay_selected_invoice_items(uuid,uuid[],text,text)") &&
+    securityContract.includes("'selected-invoice payment collection is authenticated-only'"),
+  'financial payment mutation must not be exposed to anonymous clients',
+);
+
+assert(
   'database security contract protects lifecycle RPCs',
   securityContract.includes('service-order lifecycle RPCs are security-definer and authenticated-only') &&
     securityContract.includes('laboratory workflow RPCs are security-definer and authenticated-only'),
