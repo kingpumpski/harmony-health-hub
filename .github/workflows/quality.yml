@@ -103,5 +103,8 @@ jobs:
       - name: Next-generation critical route surface contract tests
         run: npm run test:nextgen-route-surface
 
+      - name: Next-generation encounter admission and financial override tests
+        run: npm run test:nextgen-encounter-admission
+
       - name: Production build
         run: npm run build
