@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(17);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -196,6 +196,62 @@ select ok(
       and qual not in ('true', '(true)')
   ),
   'payment reads are role-scoped rather than broadly exposed'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.set_facility_routing_mode(text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.set_facility_routing_mode(text)', 'EXECUTE')
+  and (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'set_facility_routing_mode'
+      and pg_get_function_identity_arguments(p.oid) = '_mode text'
+  ) ilike '%has_role(auth.uid(),''admin'')%'
+  and (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'set_facility_routing_mode'
+      and pg_get_function_identity_arguments(p.oid) = '_mode text'
+  ) ilike '%Administrator role required%',
+  'facility routing mode is authenticated-only and administrator-gated'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.recover_stale_report_run(uuid,integer)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.recover_stale_report_run(uuid,integer)', 'EXECUTE')
+  and (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'recover_stale_report_run'
+      and pg_get_function_identity_arguments(p.oid) = '_run_id uuid, _stale_after_minutes integer'
+  ) ilike '%has_facility_access(v_user,v_run.facility_id)%',
+  'report recovery is authenticated-only and facility-scoped'
+);
+
+select ok(
+  (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'pay_selected_invoice_items'
+      and pg_get_function_identity_arguments(p.oid) = '_invoice_id uuid, _item_ids uuid[], _method text, _reference text'
+  ) ilike '%idempotent_replay%'
+  and (
+    select pg_get_functiondef(p.oid)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'pay_selected_invoice_items'
+      and pg_get_function_identity_arguments(p.oid) = '_invoice_id uuid, _item_ids uuid[], _method text, _reference text'
+  ) ilike '%lower(trim(reference)) = lower(normalized_reference)%',
+  'selected-invoice payment rejects duplicate references through an idempotent replay boundary'
 );
 
 select * from finish();
