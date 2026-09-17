@@ -3,6 +3,7 @@ export type UserRole =
   | 'practitioner'
   | 'nurse'
   | 'midwife'
+  | 'specialist_nurse'
   | 'lab_technician'
   | 'pharmacist'
   | 'accountant'
