@@ -24,8 +24,8 @@ const required = [
   'An active care plan cannot remain active after admission closure',
   'CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover',
   'Preserve the established seven-argument handover function exactly as the canonical contract',
-  'shift_date,\n    shift_label',
-  '_shift_date, btrim(_shift_name)',
+  'shift_date,\n    outgoing_officer',
+  '_shift_date, auth.uid()',
   'Handover must reference an active admission',
   'patient_id, admission_id, shift_date, outgoing_officer, incoming_officer, shift_label',
   'CREATE OR REPLACE FUNCTION public.acknowledge_nursing_shift_handover',
@@ -46,9 +46,11 @@ for (const token of required) {
 const canonicalSignature = 'create_nursing_shift_handover(\n  _patient_id UUID,\n  _shift_label TEXT,\n  _clinical_summary TEXT,\n  _pending_tasks TEXT DEFAULT NULL,\n  _safety_concerns TEXT DEFAULT NULL,\n  _escalation_required BOOLEAN DEFAULT FALSE,\n  _ward_id UUID DEFAULT NULL';
 if (!canonicalWorkflow.includes(canonicalSignature)) throw new Error('Canonical seven-argument nursing handover signature is missing');
 if (sql.includes('ADD COLUMN IF NOT EXISTS shift_date DATE')) throw new Error('Nursing migration must not redefine an existing canonical shift_date column');
-if (!sql.includes("_shift_date > CURRENT_DATE + 1 OR _shift_date < CURRENT_DATE - 1")) throw new Error('Shift-date window validation missing');
+if (!sql.includes("IF _shift_date > CURRENT_DATE + 1 THEN RAISE EXCEPTION 'Shift date cannot be more than one day in the future'")) throw new Error('Future-date handover validation missing');
+if (sql.includes("_shift_date > CURRENT_DATE + 1 OR _shift_date < CURRENT_DATE - 1")) throw new Error('Nursing handover must not reject legitimate late historical documentation');
 if (!sql.includes("_shift_date IS NULL OR NULLIF(btrim(_shift_name), '') IS NULL")) throw new Error('Shift-date/shift-name validation missing');
-if (!sql.includes('Clinical shift date supplied by the handover workflow')) throw new Error('Shift-date provenance documentation missing');
+if (!sql.includes('persists canonical shift_date')) throw new Error('Shift-date persistence documentation missing');
+if (!sql.includes('permits legitimate late documentation')) throw new Error('Late-documentation policy missing');
 if (!sql.includes("v_admission_status <> 'admitted'")) throw new Error('Admission active-state reconciliation missing');
 if (!sql.includes("v_status <> 'admitted'")) throw new Error('Handover admission active-state reconciliation missing');
 if (!sql.includes("v_plan.status IN ('completed','cancelled')")) throw new Error('Closed-state guard missing');
@@ -67,4 +69,4 @@ for (const [label, pattern] of pageRequired) {
   if (!pattern.test(page)) throw new Error(`Nursing UI continuity contract missing: ${label}`);
 }
 
-console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, preserved legacy handover signature, persisted canonical shift-date semantics, admission-linked UI/RPC workflow, row-locking, care-plan lifecycle, designated acknowledgement, role validation, and direct-write lockdown are present.');
+console.log('Next-gen nursing continuity integrity contract passed: canonical schema reconciliation, preserved legacy handover signature, persisted canonical shift-date semantics, clinically safe late-documentation policy, admission-linked UI/RPC workflow, row-locking, care-plan lifecycle, designated acknowledgement, role validation, and direct-write lockdown are present.');
