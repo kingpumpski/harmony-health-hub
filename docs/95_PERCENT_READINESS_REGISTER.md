@@ -34,6 +34,8 @@ Updated: 2026-09-17
 - The RLS reconciliation pass reduced the previously reported multiple-permissive SELECT findings from 21 to 0 without granting broader access or collapsing semantically distinct policies.
 - Cross-platform local development bootstrap is now documented and supported through PowerShell, CMD and Bash scripts; `verify:local` validates the Git root and dependency prerequisites before development starts.
 - The database security contract now explicitly covers facility routing administration, facility-scoped report recovery and duplicate-reference idempotency for selected-invoice payments. Production verification confirmed routing/report/payment RPCs are authenticated-only where intended, routing is administrator-gated, report recovery checks facility access, and payment replay detection remains present.
+- A dedicated `docs/SECURITY_DEFINER_CLASSIFICATION.md` register now records the caller boundary for known internal trigger/scheduler helpers and arbitrary-user authorization probes, while distinguishing those from intentionally client-callable server-authoritative RPCs.
+- The database security contract was expanded from 17 to 20 assertions to protect trigger-only, scheduler-only and arbitrary-user authorization-helper execution boundaries. The repository operational contract validator now checks that the classification register and those database assertions remain present.
 
 ## Current advisor findings that require continued reconciliation
 
@@ -62,6 +64,7 @@ Updated: 2026-09-17
 - A GitHub Actions `startup_failure` must not be converted into a code-pass or code-fail claim; execution evidence is required before the corresponding readiness gate is marked complete.
 - Facility routing administration and report recovery were retained as authenticated SECURITY DEFINER application boundaries because their internal authorization checks are material to the workflow. The repository database contract now protects those semantics against accidental weakening.
 - Selected-invoice payment retry behavior remains explicitly idempotent by payment reference; the repository database contract now guards that invariant.
+- Internal trigger/scheduler helpers and arbitrary-user authorization probes are classified and contract-protected; no legitimate application RPC was revoked solely to reduce the advisor count.
 
 ## Do-not-break rules
 
