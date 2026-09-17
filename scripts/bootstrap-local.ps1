@@ -9,7 +9,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   throw "Git is not installed or is not on PATH. Install Git for Windows, restart VS Code, and run this script again."
 }
 
-gitRoot = (git rev-parse --show-toplevel).Trim()
+$gitRoot = (git rev-parse --show-toplevel).Trim()
 if ((Resolve-Path $gitRoot).Path -ne (Resolve-Path $repoRoot).Path) {
   throw "This folder is not the Git repository root. Expected: $repoRoot; Git root: $gitRoot"
 }
@@ -21,9 +21,11 @@ if (-not (Test-Path (Join-Path $repoRoot 'package.json'))) {
 Write-Host "Git repository verified."
 Write-Host "Installing exact locked dependencies with npm ci..."
 npm ci
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Checking local prerequisites..."
 npm run verify:local
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Local environment is ready."
 Write-Host "Start development with: npm run dev"
