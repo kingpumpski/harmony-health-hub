@@ -103,6 +103,8 @@ BEGIN
   ) THEN RAISE EXCEPTION 'Not authorized to create nursing handovers'; END IF;
   IF _patient_id IS NULL OR NULLIF(btrim(_clinical_summary), '') IS NULL THEN RAISE EXCEPTION 'Patient and clinical summary are required'; END IF;
   IF _shift_date IS NULL OR NULLIF(btrim(_shift_name), '') IS NULL THEN RAISE EXCEPTION 'Shift date and shift name are required'; END IF;
+  -- Permit legitimate late documentation of historical handovers, but reject dates materially ahead of the operational window.
+  IF _shift_date > CURRENT_DATE + 1 THEN RAISE EXCEPTION 'Shift date cannot be more than one day in the future'; END IF;
   IF _admission_id IS NOT NULL THEN
     SELECT status INTO v_status FROM public.admissions WHERE id = _admission_id AND patient_id = _patient_id FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'Admission does not belong to patient'; END IF;
@@ -158,3 +160,4 @@ REVOKE INSERT, UPDATE, DELETE ON public.nursing_shift_handovers FROM authenticat
 
 COMMENT ON TABLE public.nursing_care_plans IS 'Server-authoritative nursing care plans with locked lifecycle transitions and admission continuity checks.';
 COMMENT ON TABLE public.nursing_shift_handovers IS 'Server-authoritative shift handover records with designated incoming-officer acknowledgement and optional admission linkage.';
+COMMENT ON FUNCTION public.create_nursing_shift_handover(UUID,UUID,DATE,TEXT,TEXT,TEXT,TEXT,BOOLEAN,UUID) IS 'Admission-aware handover workflow; persists canonical shift_date, permits legitimate late documentation, and rejects materially future-dated handovers.';
