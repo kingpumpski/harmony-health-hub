@@ -1,6 +1,28 @@
 -- Governed billing tariff adjustment workflow.
 -- Repository migration only: do not apply to production without explicit approval.
 
+-- Keep this migration safe when an environment has the base billing tables but has
+-- not yet replayed every historical billing-hardening migration.
+ALTER TABLE public.invoice_items
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS paid_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS public.invoice_item_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_item_id UUID NOT NULL REFERENCES public.invoice_items(id) ON DELETE CASCADE,
+  payment_id UUID NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(invoice_item_id, payment_id)
+);
+ALTER TABLE public.invoice_item_payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "invoice item payments staff access" ON public.invoice_item_payments;
+CREATE POLICY "invoice item payments staff access" ON public.invoice_item_payments
+FOR ALL TO authenticated
+USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'))
+WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'));
+
 CREATE TABLE IF NOT EXISTS public.billing_tariff_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   invoice_item_id UUID NOT NULL REFERENCES public.invoice_items(id) ON DELETE RESTRICT,
@@ -25,10 +47,7 @@ ALTER TABLE public.billing_tariff_adjustments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "billing tariff adjustments staff read" ON public.billing_tariff_adjustments;
 CREATE POLICY "billing tariff adjustments staff read"
   ON public.billing_tariff_adjustments FOR SELECT TO authenticated
-  USING (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-  );
+  USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant'));
 
 CREATE OR REPLACE FUNCTION public.get_missing_billing_tariffs(_patient_id UUID DEFAULT NULL)
 RETURNS TABLE(
@@ -110,7 +129,7 @@ BEGIN
   IF item.invoice_status NOT IN ('pending','partially_paid') THEN
     RAISE EXCEPTION 'Tariff can only be adjusted on an open or partially paid invoice';
   END IF;
-  IF COALESCE(item.paid_at IS NOT NULL,false) OR EXISTS (
+  IF item.paid_at IS NOT NULL OR EXISTS (
     SELECT 1 FROM public.invoice_item_payments ip WHERE ip.invoice_item_id=item.id
   ) THEN
     RAISE EXCEPTION 'Paid invoice items cannot have their tariff changed';
@@ -129,9 +148,7 @@ BEGIN
   ) RETURNING id INTO adjustment_id;
 
   UPDATE public.invoice_items
-  SET unit_price=_adjusted_unit_price,
-      amount=new_amount,
-      updated_at=now()
+  SET unit_price=_adjusted_unit_price, amount=new_amount, updated_at=now()
   WHERE id=item.id;
 
   SELECT s.id,s.status INTO order_row
@@ -152,27 +169,10 @@ BEGIN
 
   PERFORM public.record_system_audit(
     'billing_tariff_adjusted','billing','invoice_item',item.id,'warning',
-    jsonb_build_object(
-      'patient_id',item.patient_id,
-      'invoice_id',item.invoice_id,
-      'service_code',item.service_code,
-      'previous_unit_price',old_price,
-      'adjusted_unit_price',_adjusted_unit_price,
-      'quantity',GREATEST(COALESCE(item.quantity,1),1),
-      'reason',btrim(_reason),
-      'adjustment_type',_adjustment_type,
-      'adjustment_id',adjustment_id
-    )
+    jsonb_build_object('patient_id',item.patient_id,'invoice_id',item.invoice_id,'service_code',item.service_code,'previous_unit_price',old_price,'adjusted_unit_price',_adjusted_unit_price,'quantity',GREATEST(COALESCE(item.quantity,1),1),'reason',btrim(_reason),'adjustment_type',_adjustment_type,'adjustment_id',adjustment_id)
   );
 
-  RETURN jsonb_build_object(
-    'invoice_item_id',item.id,
-    'invoice_id',item.invoice_id,
-    'adjustment_id',adjustment_id,
-    'unit_price',_adjusted_unit_price,
-    'amount',new_amount,
-    'service_order_id',order_row.id
-  );
+  RETURN jsonb_build_object('invoice_item_id',item.id,'invoice_id',item.invoice_id,'adjustment_id',adjustment_id,'unit_price',_adjusted_unit_price,'amount',new_amount,'service_order_id',order_row.id);
 END;
 $$;
 
