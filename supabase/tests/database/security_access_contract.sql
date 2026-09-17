@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(21);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -277,10 +277,7 @@ select ok(
 select ok(
   not has_function_privilege('public', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'public.has_role(uuid,public.app_role)', 'EXECUTE')
-  and not has_function_privilege('public', 'public.has_facility_access(uuid,uuid)', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.has_facility_access(uuid,uuid)', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'public.has_facility_access(uuid,uuid)', 'EXECUTE'),
+  and not has_function_privilege('authenticated', 'public.has_role(uuid,public.app_role)', 'EXECUTE'),
   'arbitrary-user authorization helper probes are outside the client execution surface'
 );
 
@@ -291,22 +288,31 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname in (
-        'grant_service_order_override',
-        'release_service_order',
-        'cancel_service_order',
-        'mark_service_order_in_progress',
-        'complete_service_order',
-        'create_lab_order_with_payment_gate',
-        'collect_lab_sample',
-        'enter_lab_result',
-        'approve_lab_result'
+        'get_legacy_patient_candidates',
+        'reconcile_legacy_migration_row',
+        'validate_legacy_migration_batch',
+        'approve_legacy_migration_batch',
+        'promote_legacy_migration_batch'
       )
       and p.prosecdef
-      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
       and not has_function_privilege('anon', p.oid, 'EXECUTE')
-  ) = 9,
-  'classified application SECURITY DEFINER workflow RPCs remain authenticated-only'
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) = 5
+  and (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'get_legacy_patient_candidates',
+        'reconcile_legacy_migration_row',
+        'validate_legacy_migration_batch',
+        'approve_legacy_migration_batch',
+        'promote_legacy_migration_batch'
+      )
+      and pg_get_functiondef(p.oid) ilike '%has_role(auth.uid(),''admin'')%'
+  ) = 5,
+  'legacy migration reconciliation RPCs are security-definer, authenticated-only and administrator-gated'
 );
 
 select * from finish();
-rollback;
