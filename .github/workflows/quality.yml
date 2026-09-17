@@ -94,5 +94,8 @@ jobs:
       - name: Next-generation nursing continuity integrity tests
         run: npm run test:nextgen-nursing-continuity
 
+      - name: Next-generation clinical audit convergence tests
+        run: npm run test:nextgen-clinical-audit-convergence
+
       - name: Production build
         run: npm run build
