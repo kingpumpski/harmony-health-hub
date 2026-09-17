@@ -9,4 +9,22 @@ import PharmacyDashboard from './dashboard/PharmacyDashboard';
 import AccountsDashboard from './dashboard/AccountsDashboard';
 import AdminDashboard from './dashboard/AdminDashboard';
 import CanteenDashboard from './dashboard/CanteenDashboard';
-export default function Dashboard(){const{user}=useAuth();if(!user)return null;let dashboard;switch(String(user.role)){case'admin':dashboard=<AdminDashboard/>;break;case'practitioner':dashboard=<PractitionerDashboard/>;break;case'nurse':case'midwife':case'specialist_nurse':dashboard=<NurseDashboard/>;break;case'lab_technician':dashboard=<LabTechDashboard/>;break;case'pharmacist':dashboard=<PharmacyDashboard/>;break;case'accountant':dashboard=<AccountsDashboard/>;break;case'canteen':dashboard=<CanteenDashboard/>;break;case'front_desk':default:dashboard=<FrontDeskDashboard/>;break}return <><WorkflowSummary/><div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><SpecialistReferralCard/></div>{dashboard}</>}
+import RadiologistDashboard from './dashboard/RadiologistDashboard';
+
+export default function Dashboard(){
+  const {user}=useAuth();
+  if(!user)return null;
+  let dashboard;
+  switch(String(user.role)){
+    case'admin':dashboard=<AdminDashboard/>;break;
+    case'practitioner':dashboard=<PractitionerDashboard/>;break;
+    case'nurse':case'midwife':case'specialist_nurse':dashboard=<NurseDashboard/>;break;
+    case'lab_technician':dashboard=<LabTechDashboard/>;break;
+    case'radiologist':dashboard=<RadiologistDashboard/>;break;
+    case'pharmacist':dashboard=<PharmacyDashboard/>;break;
+    case'accountant':dashboard=<AccountsDashboard/>;break;
+    case'canteen':dashboard=<CanteenDashboard/>;break;
+    case'front_desk':default:dashboard=<FrontDeskDashboard/>;break;
+  }
+  return <><WorkflowSummary/><div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><SpecialistReferralCard/></div>{dashboard}</>;
+}
