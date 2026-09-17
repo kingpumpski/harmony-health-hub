@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -398,7 +399,7 @@ export default function Encounters() {
   useEffect(() => {
     if (selected) void loadDetails(selected.id);
   }, [selected]);
-  const createEncounter = async (event: React.FormEvent) => {
+  const createEncounter = async (event: FormEvent) => {
     event.preventDefault();
     if (!patientId)
       return toast({ title: "Select a patient", variant: "destructive" });
@@ -473,7 +474,7 @@ export default function Encounters() {
       });
     void loadDetails(selected.id);
   };
-  const addPrescription = async (event: React.FormEvent) => {
+  const addPrescription = async (event: FormEvent) => {
     event.preventDefault();
     if (!selected || !med.trim()) return;
     const { error } = await db.rpc("create_encounter_prescription", {
@@ -521,47 +522,13 @@ export default function Encounters() {
           supported by patient safety context.
         </p>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_minmax(240px,320px)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <form
-            onSubmit={createEncounter}
-            className="card-medical p-5 space-y-3"
-          >
-            <h2 className="font-semibold flex items-center gap-2">
-              <Plus className="w-4 h-4" /> New Encounter
-            </h2>
-            <select
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-              className="input-medical w-full"
-              required
-            >
-              <option value="">Select patient…</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name} ({p.patient_code})
-                </option>
-              ))}
-            </select>
-            <textarea
-              value={symptoms}
-              onChange={(e) => setSymptoms(e.target.value)}
-              placeholder="Symptoms"
-              className="input-medical w-full"
-              rows={2}
-            />
-            <textarea
-              value={clerking}
-              onChange={(e) => setClerking(e.target.value)}
-              placeholder="Clerking notes"
-              className="input-medical w-full"
-              rows={2}
-            />
-            <button className="btn-primary w-full">Start encounter</button>
-          </form>
+      <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(280px,360px)]">
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
           <div className="card-medical p-5">
-            <h2 className="font-semibold mb-3">Recent encounters</h2>
-            <div className="space-y-2 max-h-[480px] overflow-auto">
+            <h2 className="font-semibold mb-3 flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" /> Encounter history
+            </h2>
+            <div className="space-y-2 max-h-[720px] overflow-auto">
               {encounters.map((item) => {
                 const p = patients.find((x) => x.id === item.patient_id);
                 return (
@@ -585,16 +552,63 @@ export default function Encounters() {
                   </button>
                 );
               })}
+              {encounters.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No encounter history available.
+                </p>
+              )}
             </div>
           </div>
-        </div>
-        {activePatientId && (
-          <ClinicalSafetyContext
-            patientId={activePatientId}
-            encounterId={selected?.id}
-          />
-        )}
-        <div className="space-y-6">
+        </aside>
+
+        <main className="space-y-6 min-w-0">
+          <form
+            onSubmit={createEncounter}
+            className="card-medical p-6 space-y-4 border-t-4 border-t-primary"
+          >
+            <div>
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Plus className="w-5 h-5 text-primary" /> New encounter entry
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Start the encounter here; the active clinical record remains in
+                the same central workspace.
+              </p>
+            </div>
+            <select
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+              className="input-medical w-full"
+              required
+            >
+              <option value="">Select patient…</option>
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.first_name} {p.last_name} ({p.patient_code})
+                </option>
+              ))}
+            </select>
+            <div className="grid gap-3 md:grid-cols-2">
+              <textarea
+                value={symptoms}
+                onChange={(e) => setSymptoms(e.target.value)}
+                placeholder="Symptoms / presenting complaint"
+                className="input-medical w-full"
+                rows={4}
+              />
+              <textarea
+                value={clerking}
+                onChange={(e) => setClerking(e.target.value)}
+                placeholder="Clerking notes / initial assessment"
+                className="input-medical w-full"
+                rows={4}
+              />
+            </div>
+            <button className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" /> Start encounter
+            </button>
+          </form>
+
           <div className="card-medical p-6">
             {!selected ? (
               <div className="py-16 text-center text-muted-foreground">
@@ -605,7 +619,7 @@ export default function Encounters() {
                 <div className="flex justify-between items-start gap-3">
                   <div>
                     <h2 className="text-lg font-semibold flex items-center gap-2">
-                      <FileText className="w-5 h-5" /> Encounter
+                      <FileText className="w-5 h-5" /> Active encounter
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       Started {new Date(selected.created_at).toLocaleString()}
@@ -732,10 +746,7 @@ export default function Encounters() {
                         className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"
                       >
                         <span>
-                          <b>{rx.medication}</b> ·{" "}
-                          {rx.dosage || "Dose not recorded"} ·{" "}
-                          {rx.frequency || "Frequency not recorded"} ·{" "}
-                          {rx.duration || "Duration not recorded"}
+                          <b>{rx.medication}</b> · {rx.dosage || "Dose not recorded"} · {rx.frequency || "Frequency not recorded"} · {rx.duration || "Duration not recorded"}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {rx.status}
@@ -747,7 +758,25 @@ export default function Encounters() {
               </div>
             )}
           </div>
-        </div>
+        </main>
+
+        {activePatientId ? (
+          <ClinicalSafetyContext
+            patientId={activePatientId}
+            encounterId={selected?.id}
+          />
+        ) : (
+          <aside className="card-medical p-5 border-l-4 border-l-critical/40">
+            <div className="flex items-center gap-2 font-semibold">
+              <ShieldAlert className="w-4 h-4 text-critical" /> Patient safety
+              context
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Select a patient or encounter to load allergies, conditions,
+              recent vitals and relevant clinical history.
+            </p>
+          </aside>
+        )}
       </div>
     </div>
   );
