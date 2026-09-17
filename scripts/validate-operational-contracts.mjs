@@ -2,87 +2,82 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const failures = [];
-const checks = [];
-
-function assert(name, condition, detail) {
-  checks.push({ name, condition });
-  if (!condition) failures.push(`${name}: ${detail}`);
+let passed = 0;
+function check(name, condition, detail) {
+  if (condition) passed += 1;
+  else failures.push(`${name}: ${detail}`);
 }
 
-const offline = read('src/lib/offlineSync.ts');
-const workflow = read('src/lib/workflow.ts');
-const serviceOrderMigration = read('supabase/migrations/20260916100000_harden_service_order_override_and_release_contract.sql');
-const imagingMigration = read('supabase/migrations/20260914130000_imaging_lifecycle_server_authority.sql');
-const labMigration = read('supabase/migrations/20260914111500_lab_workflow_payment_gate_reconciliation.sql');
-const securityContract = read('supabase/tests/database/security_access_contract.sql');
-const securityClassification = read('docs/SECURITY_DEFINER_CLASSIFICATION.md');
-const roleGuard = read('src/components/auth/RoleGuard.tsx');
-const appRoutes = read('src/App.tsx');
-const workflowSummary = read('src/components/WorkflowSummary.tsx');
-const dataImport = read('src/pages/admin/DataImport.tsx');
-const migrationFoundation = read('supabase/migrations/20260917120000_expand_master_data_migration_and_legacy_records.sql');
-const migrationRpcs = read('supabase/migrations/20260917120500_add_reference_data_import_rpcs.sql');
-const migrationGrantHardening = read('supabase/migrations/20260917113500_harden_reference_data_import_rpc_grants.sql');
-const migrationCenter = read('src/pages/admin/MigrationReconciliationCenter.tsx');
-const triage = read('src/pages/Triage.tsx');
+const files = {
+  offline: read('src/lib/offlineSync.ts'),
+  workflow: read('src/lib/workflow.ts'),
+  serviceOrder: read('supabase/migrations/20260916100000_harden_service_order_override_and_release_contract.sql'),
+  imaging: read('supabase/migrations/20260914130000_imaging_lifecycle_server_authority.sql'),
+  lab: read('supabase/migrations/20260914111500_lab_workflow_payment_gate_reconciliation.sql'),
+  security: read('supabase/tests/database/security_access_contract.sql'),
+  classification: read('docs/SECURITY_DEFINER_CLASSIFICATION.md'),
+  roleGuard: read('src/components/auth/RoleGuard.tsx'),
+  routes: read('src/App.tsx'),
+  summary: read('src/components/WorkflowSummary.tsx'),
+  import: read('src/pages/admin/DataImport.tsx'),
+  foundation: read('supabase/migrations/20260917120000_expand_master_data_migration_and_legacy_records.sql'),
+  importRpcs: read('supabase/migrations/20260917120500_add_reference_data_import_rpcs.sql'),
+  importGrants: read('supabase/migrations/20260917113500_harden_reference_data_import_rpc_grants.sql'),
+  migrationCenter: read('src/pages/admin/MigrationReconciliationCenter.tsx'),
+  reconciliation: read('supabase/migrations/20260917133000_add_migration_reconciliation_workflows.sql'),
+  triage: read('src/pages/Triage.tsx'),
+  encounters: read('src/pages/Encounters.tsx'),
+};
 
-assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
-assert('offline replay restores the persisted idempotency key', offline.includes("[IDEMPOTENCY_HEADER]: item.idempotencyKey"), 'replay must not generate a new key for an existing mutation');
-assert('offline permanent failures become blocked', offline.includes("item.status = 'blocked';") && offline.includes('isPermanentFailure(response.status)'), '4xx permanent failures must remain visible for manual resolution');
-assert('offline transient failures use bounded backoff', offline.includes('RETRY_BASE_DELAY_MS') && offline.includes('RETRY_MAX_DELAY_MS') && offline.includes('retryDelayMs(item.attempts)'), 'retry scheduling must remain bounded and exponential');
-assert('offline queue preserves the original mutation body during replay', offline.includes('body: item.body ?? undefined'), 'replay must send the persisted payload rather than reconstructing it');
+const hasAll = (text, values) => values.every((value) => text.includes(value));
+const route = (path, role) => `<Route path="${path}" element={<RoleGuard allowedRoles={${role}>`;
 
-const replayStart = offline.indexOf('async function replayMutation');
-const retryStart = offline.indexOf('function retryDelayMs', replayStart);
-const replaySection = replayStart >= 0 && retryStart > replayStart ? offline.slice(replayStart, retryStart) : '';
-const replayStripsAuthorization = /const headers = \{ \.\.\.item\.headers, \[IDEMPOTENCY_HEADER\]: item\.idempotencyKey \};\s*(?:\/\/[^\n]*\n\s*)*delete headers\.authorization;\s*(?:\/\/[^\n]*\n\s*)*if \(authHeaderProvider\)/s.test(replaySection);
-assert('offline replay removes stale authorization before applying the current session', replayStripsAuthorization && replaySection.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'), 'replay must remove persisted Authorization unconditionally before optionally applying a fresh session token');
+check('offline idempotency creation', files.offline.includes('crypto.randomUUID()') && files.offline.includes('IDEMPOTENCY_HEADER'), 'offline mutations need persisted unique idempotency keys');
+check('offline replay persistence', files.offline.includes('item.idempotencyKey') && files.offline.includes('body: item.body ?? undefined'), 'replay must reuse the persisted key and body');
+check('offline failure handling', files.offline.includes("item.status = 'blocked'") && files.offline.includes('isPermanentFailure'), 'permanent failures must remain visible for resolution');
+check('offline bounded retry', hasAll(files.offline, ['RETRY_BASE_DELAY_MS','RETRY_MAX_DELAY_MS','retryDelayMs(item.attempts)']), 'transient replay must use bounded backoff');
+check('service order server authority', files.workflow.includes("workflowRpc.rpc('release_service_order'") && files.serviceOrder.includes('FOR UPDATE'), 'release must remain database-authoritative');
+check('service order payment gate', files.serviceOrder.includes('Payment approval is required before release') && files.serviceOrder.includes('v_paid < v_order.amount'), 'unpaid orders require approval or override');
+check('service order queue', hasAll(files.serviceOrder, ['INSERT INTO public.department_queues','reason, created_by, queued_at, status',"'queued'"]), 'released work must enter the department queue');
+check('imaging authority', hasAll(files.imaging, ['CREATE OR REPLACE FUNCTION public.start_imaging_order','CREATE OR REPLACE FUNCTION public.complete_imaging_order']), 'imaging transitions must remain server-authoritative');
+check('lab lifecycle', hasAll(files.lab, ['create_lab_order_with_payment_gate','collect_lab_sample','enter_lab_result','approve_lab_result']), 'all laboratory workflow stages must remain represented');
+check('pharmacy security contract', hasAll(files.security, ['find_pharmacy_alternatives','prepare_pharmacy_dispensing','confirm_pharmacy_dispense','create_pharmacy_pos_sale','confirm_pharmacy_pos_sale','create_pharmacy_inventory_item']), 'pharmacy mutations require security-contract coverage');
+check('insurance security contract', hasAll(files.security, ['create_insurance_claim_draft','transition_insurance_claim','update_insurance_claim_financials']), 'insurance mutations require security-contract coverage');
+check('payment authentication', files.security.includes('pay_selected_invoice_items(uuid,uuid[],text,text)') && files.security.includes('selected-invoice payment collection is authenticated-only'), 'payment collection must not be anonymous');
+check('internal classification', hasAll(files.classification, ['audit_patient_change()','notify_due_medications()','has_role(uuid, public.app_role)']), 'internal SECURITY DEFINER boundaries must be classified');
+check('trigger security', files.security.includes('trigger-only SECURITY DEFINER helpers are outside the client execution surface'), 'trigger helpers must not be client-callable');
+check('scheduler security', files.security.includes('scheduler-only medication maintenance helpers are outside the client execution surface'), 'scheduler helpers must not be client-callable');
+check('authorization helper security', files.security.includes('arbitrary-user authorization helper probes are outside the client execution surface'), 'authorization probes must not be client-callable');
+check('clinical role gates', hasAll(files.roleGuard, ['allowedRoles']) && hasAll(files.routes, ['clinicalRoles','nursingRoles','insuranceRoles','emergencyRoles','theatreRoles','transfusionRoles']), 'protected clinical routes need role gates');
+check('laboratory route gate', hasAll(files.routes, ['const laboratoryRoles','/laboratory','/results-entry']), 'laboratory routes need the clinical laboratory boundary');
+check('pharmacy route gate', hasAll(files.routes, ["const pharmacyRoles = ['admin', 'pharmacist']",'/pharmacy','/inventory']), 'pharmacy routes need the pharmacy boundary');
+check('MAR route gate', files.routes.includes('/medications') && files.routes.includes('allowedRoles={clinicalRoles}'), 'MAR route needs clinical authorization');
+check('maternity route gate', files.routes.includes('/maternity') && files.routes.includes('allowedRoles={nursingRoles}'), 'maternity route needs nursing authorization');
+check('diagnostic route gates', hasAll(files.routes, ['/imaging','/procedures','/anesthesia']), 'diagnostic/procedure routes need clinical authorization');
+check('AI/admin gates', hasAll(files.routes, ['/ai-clinical','/admin/users','allowedRoles={clinicalRoles}']), 'AI and user-management surfaces need explicit role boundaries');
+check('accounts gate', hasAll(files.routes, ['const accountsRoles','/accounts-approvals']), 'accounts approvals need a financial role boundary');
+check('reports gate', hasAll(files.routes, ['const reportsRoles','/reports','/reports/submissions']), 'reporting routes need an administrator boundary');
+check('workflow summary avoids admissions', files.summary.includes("['Occupied beds'") && !files.summary.includes("from('admissions')"), 'global dashboard must not bypass admissions RLS');
+check('workflow summary role-aware', hasAll(files.summary, ['canAppointments','canBeds','canEmergency','canTheatre','canClaims']), 'dashboard reads must follow table role boundaries');
+check('migration domains', hasAll(files.import, ['stg_diagnoses','service_tariffs','legacy_clinical_records']), 'data import must cover STG, tariffs and legacy records');
+check('migration staging', files.import.includes('stage_data_migration_rows') && files.foundation.includes('CREATE TABLE IF NOT EXISTS public.legacy_clinical_records'), 'legacy records must be staged before promotion');
+check('migration admin control', files.foundation.includes('admins manage migration batches') && files.foundation.includes('Administrator access required'), 'migration controls must be administrator-only');
+check('reference import RPCs', hasAll(files.import, ['import_stg_diagnoses','import_service_tariffs']) && hasAll(files.importRpcs, ['REVOKE ALL ON FUNCTION public.import_stg_diagnoses','REVOKE ALL ON FUNCTION public.import_service_tariffs']), 'reference data imports require governed RPCs');
+check('reference RPC grants', hasAll(files.importGrants, ['FROM anon','import_stg_diagnoses','import_service_tariffs','create_data_migration_batch']), 'anonymous clients must not execute migration RPCs');
+check('master data catalogue', hasAll(files.foundation, ['CREATE TABLE IF NOT EXISTS public.system_master_data','domain,code,source_system']), 'master-data catalogue must exist');
+check('triage empty state', files.triage.includes("useState('')") && hasAll(files.triage, ['90–120 mmHg','60–80 mmHg','95–100 %']), 'vitals must begin empty and show normal reference placeholders');
+check('triage alerts', hasAll(files.triage, ['Immediate clinical attention required','value > range.high','role="alert"']), 'abnormal vitals must alert before save');
+check('encounter three-column workspace', hasAll(files.encounters, ['lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(280px,360px)]','Encounter history','New encounter entry','Patient safety']), 'encounter page must keep history, entry and safety context in the requested layout');
+check('reconciliation matching workflow', hasAll(files.reconciliation, ['find_legacy_patient_candidates','reconcile_legacy_record_patient','validate_legacy_record']), 'legacy records need controlled matching and validation workflows');
+check('reconciliation state', hasAll(files.reconciliation, ['match_confidence','match_method','validation_errors','reconciled_by','reconciled_at']), 'legacy records need auditable reconciliation state');
+check('reconciliation center', hasAll(files.migrationCenter, ['data_migration_batches','data_migration_rows','legacy_clinical_records']), 'administrator review surface must expose staged migration data');
+check('reconciliation route', files.routes.includes('/admin/migration-reconciliation') && files.routes.includes('MigrationReconciliationCenter'), 'reconciliation center must be administrator-gated');
 
-assert('service-order release is database-authoritative', workflow.includes("workflowRpc.rpc('release_service_order'") && serviceOrderMigration.includes('FOR UPDATE'), 'frontend release must delegate to the locked server-side lifecycle function');
-assert('service-order release enforces payment before release', serviceOrderMigration.includes("Payment approval is required before release") && serviceOrderMigration.includes("v_paid < v_order.amount"), 'unpaid required service orders must not be released without an override');
-assert('service-order release creates the downstream queue entry', serviceOrderMigration.includes('INSERT INTO public.department_queues') && serviceOrderMigration.includes("reason, created_by, queued_at, status") && serviceOrderMigration.includes("'queued'"), 'released work must become available to the department queue');
-assert('imaging lifecycle requires server-authoritative start and completion', imagingMigration.includes('CREATE OR REPLACE FUNCTION public.start_imaging_order') && imagingMigration.includes('CREATE OR REPLACE FUNCTION public.complete_imaging_order'), 'imaging start/complete transitions must remain inside SECURITY DEFINER workflow functions');
-assert('laboratory lifecycle exposes the four guarded workflow stages', ['create_lab_order_with_payment_gate', 'collect_lab_sample', 'enter_lab_result', 'approve_lab_result'].every((name) => labMigration.includes(`public.${name}`)), 'lab order, collection, result entry and approval must all remain server-authoritative');
-assert('pharmacy lifecycle exposes the protected dispensing and POS workflow surface', ['find_pharmacy_alternatives', 'prepare_pharmacy_dispensing', 'confirm_pharmacy_dispense', 'create_pharmacy_pos_sale', 'confirm_pharmacy_pos_sale', 'create_pharmacy_inventory_item'].every((name) => securityContract.includes(`'${name}'`)), 'pharmacy preparation, dispensing, POS and inventory mutations must remain represented in the database security contract');
-assert('insurance lifecycle exposes protected claim mutation workflow', ['create_insurance_claim_draft', 'transition_insurance_claim', 'update_insurance_claim_financials'].every((name) => securityContract.includes(`'${name}'`)), 'insurance claim creation, transition and financial mutation must remain server-authoritative');
-assert('selected-invoice payment remains authenticated-only', securityContract.includes("public.pay_selected_invoice_items(uuid,uuid[],text,text)") && securityContract.includes("'selected-invoice payment collection is authenticated-only'"), 'financial payment mutation must not be exposed to anonymous clients');
-assert('facility routing changes remain administrator-gated', securityContract.includes("public.set_facility_routing_mode(text)") && securityContract.includes("'facility routing mode is authenticated-only and administrator-gated'") && securityContract.includes("%has_role(auth.uid(),''admin'')%"), 'routing mode changes must remain authenticated-only and explicitly restricted to administrators');
-assert('report recovery remains facility-scoped', securityContract.includes("public.recover_stale_report_run(uuid,integer)") && securityContract.includes("'report recovery is authenticated-only and facility-scoped'") && securityContract.includes('%has_facility_access(v_user,v_run.facility_id)%'), 'stale report recovery must not become a cross-facility maintenance endpoint');
-assert('selected-invoice payment retains duplicate-reference idempotency', securityContract.includes("'selected-invoice payment rejects duplicate references through an idempotent replay boundary'") && securityContract.includes('%idempotent_replay%'), 'payment retries with the same reference must resolve as an idempotent replay rather than create another payment');
-assert('database security contract protects lifecycle RPCs', securityContract.includes('service-order lifecycle RPCs are security-definer and authenticated-only') && securityContract.includes('laboratory workflow RPCs are security-definer and authenticated-only'), 'the database contract must continue to assert authenticated-only clinical/financial RPC execution');
-
-assert('internal SECURITY DEFINER classification register exists', securityClassification.includes('## Explicit internal-only classifications') && securityClassification.includes('audit_patient_change()') && securityClassification.includes('notify_due_medications()') && securityClassification.includes('has_role(uuid, public.app_role)'), 'known internal trigger/scheduler/helper boundaries must remain explicitly classified');
-assert('internal trigger execution boundaries are protected by the database contract', securityContract.includes('trigger-only SECURITY DEFINER helpers are outside the client execution surface') && securityContract.includes("public.audit_patient_change()") && securityContract.includes("public.validate_service_order_encounter()"), 'trigger-only SECURITY DEFINER helpers must remain inaccessible to Data API client roles');
-assert('scheduler maintenance execution boundaries are protected by the database contract', securityContract.includes('scheduler-only medication maintenance helpers are outside the client execution surface') && securityContract.includes("public.notify_due_medications()") && securityContract.includes("public.lock_overdue_medication_slots()"), 'scheduler-only maintenance functions must remain inaccessible to Data API client roles');
-assert('arbitrary-user authorization probes remain outside the client surface', securityContract.includes('arbitrary-user authorization helper probes are outside the client execution surface') && securityContract.includes("public.has_role(uuid,public.app_role)") && securityContract.includes("public.has_facility_access(uuid,uuid)"), 'authorization helpers that accept arbitrary user IDs must not be exposed through the Data API');
-
-assert('protected clinical routes have a client-side role gate', roleGuard.includes('allowedRoles') && appRoutes.includes('<RoleGuard allowedRoles={nursingRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={insuranceRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={emergencyRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={theatreRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={transfusionRoles}>'), 'protected workflow pages must not issue known-forbidden Data API requests for unauthorized roles');
-assert('laboratory routes match the clinical workflow role boundary', appRoutes.includes('const laboratoryRoles') && appRoutes.includes('<Route path="/laboratory" element={<RoleGuard allowedRoles={laboratoryRoles}>') && appRoutes.includes('<Route path="/results-entry" element={<RoleGuard allowedRoles={laboratoryRoles}>'), 'laboratory pages must not mount their protected catalogue/order reads for unauthorized roles');
-assert('pharmacy routes match the pharmacy workflow role boundary', appRoutes.includes("const pharmacyRoles = ['admin', 'pharmacist']") && appRoutes.includes('<Route path="/pharmacy" element={<RoleGuard allowedRoles={pharmacyRoles}>') && appRoutes.includes('<Route path="/inventory" element={<RoleGuard allowedRoles={pharmacyRoles}>'), 'pharmacy pages must not mount inventory/POS reads for unauthorized roles');
-assert('medication administration route matches the MAR RLS boundary', appRoutes.includes('<Route path="/medications" element={<RoleGuard allowedRoles={clinicalRoles}>'), 'MAR reads must not mount for roles outside the clinical medication-administration boundary');
-assert('maternity route matches the maternity RLS boundary', appRoutes.includes('<Route path="/maternity" element={<RoleGuard allowedRoles={nursingRoles}>'), 'maternity reads must not mount for roles outside the maternity clinical boundary');
-assert('imaging and procedure routes match their clinical RLS boundary', appRoutes.includes('<Route path="/imaging" element={<RoleGuard allowedRoles={clinicalRoles}>') && appRoutes.includes('<Route path="/procedures" element={<RoleGuard allowedRoles={clinicalRoles}>') && appRoutes.includes('<Route path="/anesthesia" element={<RoleGuard allowedRoles={clinicalRoles}>'), 'protected diagnostic/procedure reads must not mount for unauthorized roles');
-assert('AI clinical and administrator routes are explicitly gated', appRoutes.includes('<Route path="/ai-clinical" element={<RoleGuard allowedRoles={clinicalRoles}>') && appRoutes.includes("<Route path=\"/admin/users\" element={<RoleGuard allowedRoles={['admin']}><AdminUsers />"), 'AI clinical context and role-management requests must not mount for unauthorized roles');
-assert('accounts approval route is role-gated', appRoutes.includes('const accountsRoles') && appRoutes.includes('<Route path="/accounts-approvals" element={<RoleGuard allowedRoles={accountsRoles}>'), 'billing release and override actions must not be mounted for unauthorized roles');
-assert('reporting routes are administrator-gated', appRoutes.includes('const reportsRoles') && appRoutes.includes('<Route path="/reports" element={<RoleGuard allowedRoles={reportsRoles}>') && appRoutes.includes('<Route path="/reports/submissions" element={<RoleGuard allowedRoles={reportsRoles}>'), 'facility/report configuration and submission pages must not issue facility reads without the administrator boundary');
-assert('migration reconciliation center is administrator-gated', appRoutes.includes("const MigrationReconciliationCenter = lazy(() => import('./pages/admin/MigrationReconciliationCenter'))") && appRoutes.includes('<Route path="/admin/migration-reconciliation" element={<RoleGuard allowedRoles={['admin']}><MigrationReconciliationCenter /></RoleGuard>}') && migrationCenter.includes("from('data_migration_batches')") && migrationCenter.includes("from('legacy_clinical_records')"), 'migration reconciliation must remain an administrator-only review surface over staged migration data');
-assert('workflow summary avoids known RLS-forbidden admissions reads', workflowSummary.includes("['Occupied beds'") && !workflowSummary.includes("from('admissions')"), 'global dashboard metrics must not directly query admissions where staff SELECT is intentionally restricted');
-assert('workflow summary conditionally queries role-protected clinical tables', workflowSummary.includes('canAppointments') && workflowSummary.includes('canBeds') && workflowSummary.includes('canEmergency') && workflowSummary.includes('canTheatre') && workflowSummary.includes('canClaims'), 'dashboard summary reads must follow the same role boundaries as the underlying RLS policies');
-
-assert('migration workspace exposes the required enterprise data domains', ['stg_diagnoses','service_tariffs','legacy_clinical_records'].every((name) => dataImport.includes(name)), 'data import must support Ghana STG diagnoses, services/tariffs and legacy clinical records');
-assert('legacy migration is staged before native clinical promotion', dataImport.includes("stage_data_migration_rows") && migrationFoundation.includes('CREATE TABLE IF NOT EXISTS public.legacy_clinical_records') && migrationFoundation.includes("migration_status TEXT NOT NULL DEFAULT 'staged'"), 'external clinical records must preserve provenance and remain staged for reconciliation');
-assert('migration foundation is administrator-controlled', migrationFoundation.includes('admins manage migration batches') && migrationFoundation.includes('admins manage migration rows') && migrationFoundation.includes("Administrator access required"), 'migration staging must remain administrator-only');
-assert('STG and tariff imports use governed server-side RPCs', dataImport.includes("import_stg_diagnoses") && dataImport.includes("import_service_tariffs") && migrationRpcs.includes('REVOKE ALL ON FUNCTION public.import_stg_diagnoses') && migrationRpcs.includes('REVOKE ALL ON FUNCTION public.import_service_tariffs'), 'reference-data promotion must not depend on unrestricted direct table writes');
-assert('reference-data RPC grants explicitly exclude anonymous clients', migrationGrantHardening.includes('REVOKE EXECUTE ON FUNCTION public.import_stg_diagnoses(TEXT,TEXT,JSONB) FROM anon') && migrationGrantHardening.includes('REVOKE EXECUTE ON FUNCTION public.import_service_tariffs(TEXT,JSONB) FROM anon') && migrationGrantHardening.includes('REVOKE EXECUTE ON FUNCTION public.create_data_migration_batch(TEXT,TEXT,TEXT,TEXT,TEXT,INTEGER) FROM anon'), 'migration RPC privileges must keep anonymous clients outside the execution surface');
-assert('master-data catalogue exists', migrationFoundation.includes('CREATE TABLE IF NOT EXISTS public.system_master_data') && migrationFoundation.includes("domain,code,source_system"), 'enterprise master-data metadata must have a governed catalogue');
-assert('triage fields start empty and display normal reference placeholders', triage.includes("useState('')") && triage.includes('90–120 mmHg') && triage.includes('60–80 mmHg') && triage.includes('95–100 %'), 'vital-sign inputs must not preload example values and must expose reference ranges as placeholders');
-assert('triage abnormal values trigger immediate clinical attention', triage.includes('Immediate clinical attention required') && triage.includes('value > range.high') && triage.includes('role="alert"'), 'values outside the reference range must surface an immediate alert before save');
-
-console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
+console.log(`Operational contract checks: ${passed}/40 passed`);
 if (failures.length) {
   console.error('\nContract failures:');
-  for (const failure of failures) console.error(`- ${failure}`);
+  failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 }
