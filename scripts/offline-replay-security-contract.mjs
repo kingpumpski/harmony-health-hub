@@ -18,9 +18,8 @@ const replaySection = replayStart >= 0 && retryStart > replayStart
 
 const failures = required.filter((fragment) => !source.includes(fragment));
 
-if (
-  !/const headers = \{ \.\.\.item\.headers, \[IDEMPOTENCY_HEADER\]: item\.idempotencyKey \};\s*delete headers\.authorization;\s*if \(authHeaderProvider\)/s.test(replaySection)
-) {
+const normalizedReplay = replaySection.replace(/\/\/[^\n]*\n/g, '').replace(/\s+/g, ' ');
+if (!normalizedReplay.includes('const headers = { ...item.headers, [IDEMPOTENCY_HEADER]: item.idempotencyKey }; delete headers.authorization; if (authHeaderProvider)')) {
   failures.push('Authorization header must be removed before the auth-provider conditional');
 }
 
