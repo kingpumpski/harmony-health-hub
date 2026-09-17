@@ -12,9 +12,7 @@ function compressedAssets() {
     writeBundle(_options: unknown, bundle: Record<string, { type: string; source?: string | Uint8Array; code?: string }>) {
       for (const [fileName, output] of Object.entries(bundle)) {
         if (output.type !== "asset" && output.type !== "chunk") continue;
-        const content = output.type === "asset"
-          ? output.source
-          : output.code;
+        const content = output.type === "asset" ? output.source : output.code;
         if (content === undefined || fileName.endsWith(".map")) continue;
         const buffer = Buffer.isBuffer(content)
           ? content
@@ -26,15 +24,15 @@ function compressedAssets() {
   };
 }
 
-// https://vitejs.dev/config/
+// GitHub Pages serves this project from /harmony-health-hub/ rather than /
+// so production asset URLs must use the project-site base path.
 export default defineConfig(({ mode }) => ({
+  base: mode === "production" ? "/harmony-health-hub/" : "/",
   server: {
     host: "::",
     port: 8080,
   },
   build: {
-    // The service worker uses the Vite manifest to precache production
-    // JavaScript/CSS chunks after the first successful online installation.
     manifest: true,
     chunkSizeWarningLimit: 350,
   },
