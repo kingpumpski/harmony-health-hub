@@ -28,7 +28,8 @@ assert('offline queue preserves the original mutation body during replay', offli
 const replayStart = offline.indexOf('async function replayMutation');
 const retryStart = offline.indexOf('function retryDelayMs', replayStart);
 const replaySection = replayStart >= 0 && retryStart > replayStart ? offline.slice(replayStart, retryStart) : '';
-assert('offline replay removes stale authorization before applying the current session', /const headers = \{ \.\.\.item\.headers, \[IDEMPOTENCY_HEADER\]: item\.idempotencyKey \};\s*delete headers\.authorization;\s*if \(authHeaderProvider\)/s.test(replaySection) && replaySection.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'), 'replay must remove persisted Authorization unconditionally before optionally applying a fresh session token');
+const replayStripsAuthorization = /const headers = \{ \.\.\.item\.headers, \[IDEMPOTENCY_HEADER\]: item\.idempotencyKey \};\s*(?:\/\/[^\n]*\n\s*)*delete headers\.authorization;\s*(?:\/\/[^\n]*\n\s*)*if \(authHeaderProvider\)/s.test(replaySection);
+assert('offline replay removes stale authorization before applying the current session', replayStripsAuthorization && replaySection.includes('if (accessToken) headers.authorization = `Bearer ${accessToken}`;'), 'replay must remove persisted Authorization unconditionally before optionally applying a fresh session token');
 
 assert('service-order release is database-authoritative', workflow.includes("workflowRpc.rpc('release_service_order'") && serviceOrderMigration.includes('FOR UPDATE'), 'frontend release must delegate to the locked server-side lifecycle function');
 assert('service-order release enforces payment before release', serviceOrderMigration.includes("Payment approval is required before release") && serviceOrderMigration.includes("v_paid < v_order.amount"), 'unpaid required service orders must not be released without an override');
