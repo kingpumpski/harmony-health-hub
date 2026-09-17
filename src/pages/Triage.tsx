@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { AlertTriangle, HeartPulse, ListChecks, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,7 +41,7 @@ export default function Triage() {
     if (Object.values(values).some((value) => value === null)) return toast({ title: 'Complete vital signs first', description: 'Enter all required vital-sign values before evaluation.', variant: 'destructive' });
     setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic: values.systolic!, diastolic: values.diastolic! }, heartRate: values.heartRate!, temperature: values.temperature!, respiratoryRate: values.respiratoryRate!, oxygenSaturation: values.oxygenSaturation!, weight: numeric(weight) ?? 0, height: numeric(height) ?? 0, notes, isCritical: alerts.length > 0 }) as Priority);
   };
-  const save = async (event: React.FormEvent) => {
+  const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!patientId || !user?.id) return toast({ title: 'Select a patient', variant: 'destructive' });
     if (Object.values(values).some((value) => value === null)) return toast({ title: 'Required vitals missing', description: 'Complete SBP, DBP, heart rate, temperature, respiratory rate and SpO₂.', variant: 'destructive' });
