@@ -100,5 +100,8 @@ jobs:
       - name: Next-generation branding metadata contract tests
         run: npm run test:nextgen-branding
 
+      - name: Next-generation critical route surface contract tests
+        run: npm run test:nextgen-route-surface
+
       - name: Production build
         run: npm run build
