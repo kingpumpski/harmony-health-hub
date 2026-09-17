@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import WorkflowSummary from '@/components/WorkflowSummary';
 import SpecialistReferralCard from '@/components/SpecialistReferralCard';
+import FinancialSettlementCard from '@/components/FinancialSettlementCard';
 import FrontDeskDashboard from './dashboard/FrontDeskDashboard';
 import PractitionerDashboard from './dashboard/PractitionerDashboard';
 import NurseDashboard from './dashboard/NurseDashboard';
@@ -26,5 +27,5 @@ export default function Dashboard(){
     case'canteen':dashboard=<CanteenDashboard/>;break;
     case'front_desk':default:dashboard=<FrontDeskDashboard/>;break;
   }
-  return <><WorkflowSummary/><div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><SpecialistReferralCard/></div>{dashboard}</>;
+  return <><WorkflowSummary/><div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><SpecialistReferralCard/></div><div className="mb-6"><FinancialSettlementCard/></div>{dashboard}</>;
 }
