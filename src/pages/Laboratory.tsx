@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole } from 'lucide-react';
+import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
 interface LabCatalogueItem {
@@ -39,6 +41,8 @@ export default function Laboratory() {
   const [numericValue, setNumericValue] = useState('');
   const [interpretation, setInterpretation] = useState('');
   const [isAbnormal, setIsAbnormal] = useState(false);
+  const previousQueueTotal = useRef(0);
+  const hasLoadedQueue = useRef(false);
 
   const loadAll = async () => {
     const [{ data: pts }, { data: cat }, { data: ord }] = await Promise.all([
@@ -57,7 +61,45 @@ export default function Laboratory() {
     } else setResultsByOrder({});
   };
 
-  useEffect(() => { void loadAll(); }, []);
+  useEffect(() => {
+    void loadAll();
+    const channel = supabase.channel(`laboratory-workflow-${user?.id ?? 'anonymous'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_orders' }, (payload) => {
+        if (payload.eventType === 'INSERT') playWorkflowSound('info');
+        if (payload.eventType === 'UPDATE') {
+          const nextStatus = String((payload.new as { status?: string }).status ?? '');
+          if (nextStatus === 'completed') playWorkflowSound('info');
+          if (nextStatus === 'approved') playWorkflowSound('success');
+        }
+        void loadAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_results' }, (payload) => {
+        if (payload.eventType === 'INSERT' && (payload.new as { is_abnormal?: boolean }).is_abnormal) playWorkflowSound('critical');
+        void loadAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const severity = String((payload.new as { severity?: string }).severity ?? '').toLowerCase();
+          if (severity === 'critical') playWorkflowSound('critical');
+        }
+        void loadAll();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  const counters = useMemo(() => {
+    const awaitingSample = orders.filter((o) => o.status === 'ordered').length;
+    const processing = orders.filter((o) => o.status === 'sample_collected').length;
+    const awaitingApproval = orders.filter((o) => o.status === 'completed').length;
+    const approved = orders.filter((o) => o.status === 'approved').length;
+    const active = awaitingSample + processing + awaitingApproval;
+    if (hasLoadedQueue.current && active > previousQueueTotal.current) playWorkflowSound('info');
+    previousQueueTotal.current = active;
+    hasLoadedQueue.current = true;
+    return { active, awaitingSample, processing, awaitingApproval, approved };
+  }, [orders]);
 
   const selectTest = (id: string) => {
     setCatalogueId(id);
@@ -80,6 +122,7 @@ export default function Laboratory() {
       _priority: priority, _clinical_notes: notes || null, _amount: numericAmount,
     } as never);
     if (error) {
+      playWorkflowSound('error');
       toast({ title: 'Failed to create lab order', description: error.message, variant: 'destructive' });
       return;
     }
@@ -92,6 +135,7 @@ export default function Laboratory() {
       if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
     }
     setPid(''); setCatalogueId(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
+    playWorkflowSound('success');
     toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
     void loadAll();
   };
@@ -100,9 +144,12 @@ export default function Laboratory() {
     const { error } = await supabase.rpc('collect_lab_sample', { _lab_order_id: id } as never);
     if (error) {
       const blocked = /payment|release|approval|released/i.test(error.message);
+      playWorkflowSound('error');
       toast({ title: blocked ? 'Payment approval required' : 'Could not collect sample', description: error.message, variant: 'destructive' });
       return;
     }
+    playWorkflowSound('success');
+    toast({ title: 'Sample collected', description: 'The order is now in laboratory processing.' });
     void loadAll();
   };
 
@@ -118,25 +165,41 @@ export default function Laboratory() {
     } as never);
     if (error) return toast({ title: 'Failed to save result', description: error.message, variant: 'destructive' });
     setResultFor(null); setResultText(''); setNumericValue(''); setInterpretation(''); setIsAbnormal(false);
-    toast({ title: 'Result submitted', description: 'The result is ready for clinical approval.' });
+    playWorkflowSound(isAbnormal ? 'critical' : 'success');
+    toast({ title: 'Result submitted', description: isAbnormal ? 'Abnormal result flagged for clinical attention.' : 'The result is ready for clinical approval.' });
     void loadAll();
   };
 
   const approveResult = async (resultId: string, orderId: string, patientId: string) => {
     const { error } = await supabase.rpc('approve_lab_result', { _lab_result_id: resultId } as never);
-    if (error) return toast({ title: 'Approval failed', description: error.message, variant: 'destructive' });
+    if (error) {
+      playWorkflowSound('error');
+      return toast({ title: 'Approval failed', description: error.message, variant: 'destructive' });
+    }
     const patient = patients.find((p) => p.id === patientId);
     if (patient?.email) {
       try { await supabase.functions.invoke('notify-lab-result', { body: { patientEmail: patient.email, patientName: `${patient.first_name} ${patient.last_name}`, testName: orders.find((o) => o.id === orderId)?.test_name ?? 'Lab Test' } }); }
       catch (e) { console.warn('Email notification failed', e); }
     }
+    playWorkflowSound('success');
     toast({ title: 'Result approved', description: 'Patient notified by email if available.' });
     void loadAll();
   };
 
+  const counterCards = [
+    { label: 'Active patients', value: counters.active, surface: 'bg-primary/5', tone: 'text-primary', urgent: counters.active > 0 },
+    { label: 'Awaiting sample', value: counters.awaitingSample, surface: 'bg-warning/5', tone: 'text-warning', urgent: counters.awaitingSample > 0 },
+    { label: 'Processing', value: counters.processing, surface: 'bg-info/5', tone: 'text-info', urgent: counters.processing > 0 },
+    { label: 'Results to approve', value: counters.awaitingApproval, surface: 'bg-critical/5', tone: 'text-critical', urgent: counters.awaitingApproval > 0 },
+    { label: 'Approved today / recent', value: counters.approved, surface: 'bg-success/5', tone: 'text-success', urgent: false },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><FlaskConical className="w-6 h-6 text-primary" /> Laboratory</h1><p className="text-muted-foreground">Catalogue → order → payment approval → sample → structured result → approval.</p></div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><FlaskConical className="w-6 h-6 text-primary" /> Laboratory</h1><p className="text-muted-foreground">Catalogue → order → payment approval → sample → structured result → approval.</p></div><Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit"><BellRing className="w-4 h-4" /> Notifications</Link></div>
+      <div aria-label="Laboratory workflow counters" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {counterCards.map((card) => <div key={card.label} className={`card-medical ${card.surface} p-4 transition-all hover:-translate-y-1 hover:shadow-elevated ${card.urgent ? 'ring-1 ring-primary/15' : ''}`}><p className="text-xs text-muted-foreground">{card.label}</p><p className={`mt-1 text-3xl font-bold tabular-nums ${card.tone} ${card.urgent ? 'animate-pulse' : ''}`}>{card.value}</p></div>)}
+      </div>
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={createOrder} className="card-medical p-5 space-y-3 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New Lab Order</h2>
@@ -152,8 +215,8 @@ export default function Laboratory() {
         </form>
         <div className="card-medical p-5"><h2 className="font-semibold mb-3">Lab Queue</h2><div className="space-y-3">
           {orders.map((o) => { const p = patients.find((x) => x.id === o.patient_id); const result = resultsByOrder[o.id]; const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id); return (
-            <div key={o.id} className="rounded-xl border border-border p-4"><div className="flex justify-between items-start gap-3"><div><p className="font-medium">{o.test_name}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
-              {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs"><AlertTriangle className="w-3 h-3" /> Abnormal result flagged</div>}
+            <div key={o.id} className={`rounded-xl border border-border p-4 transition-all ${o.status === 'completed' ? 'ring-1 ring-critical/15' : ''}`}><div className="flex justify-between items-start gap-3"><div><p className="font-medium">{o.test_name}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
+              {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" /> Abnormal result flagged — clinical attention required</div>}
               <div className="mt-3 flex flex-wrap gap-2">{o.status === 'ordered' && <button onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}{o.status === 'sample_collected' && <button onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}{o.status === 'completed' && result && <button onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Approve & notify</button>}{o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Approved</span>}</div>
               {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3"><div className="grid gap-2 sm:grid-cols-2"><input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} />{item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}</div><textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" /><input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label><div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div></div>}
               {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2"><p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>{result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}{result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}</div>}
