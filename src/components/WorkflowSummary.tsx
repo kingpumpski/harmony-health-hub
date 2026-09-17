@@ -1,5 +1,71 @@
-import { useEffect,useState } from 'react';
-import { Activity,CalendarDays,CreditCard,Users,BedDouble,Siren,Scissors,ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-interface Counts{pending:number;activeServices:number;appointments:number;activeAdmissions:number;availableBeds:number;emergency:number;theatre:number;claims:number}
-export default function WorkflowSummary(){const[counts,setCounts]=useState<Counts>({pending:0,activeServices:0,appointments:0,activeAdmissions:0,availableBeds:0,emergency:0,theatre:0,claims:0});useEffect(()=>{let mounted=true;const load=async()=>{const start=new Date();start.setHours(0,0,0,0);const end=new Date();end.setHours(23,59,59,999);const[q1,q2,q3,q4,q5,q6,q7,q8]=await Promise.all([supabase.from('service_orders').select('id',{count:'exact',head:true}).eq('status','pending_payment_approval'),supabase.from('service_orders').select('id',{count:'exact',head:true}).in('status',['released','in_progress']),supabase.from('appointments').select('id',{count:'exact',head:true}).gte('scheduled_at',start.toISOString()).lte('scheduled_at',end.toISOString()),supabase.from('admissions').select('id',{count:'exact',head:true}).is('discharged_at',null),supabase.from('ward_beds').select('id',{count:'exact',head:true}).eq('status','available'),supabase.from('emergency_cases').select('id',{count:'exact',head:true}).in('status',['waiting','triage','treatment','observation']),supabase.from('theatre_cases').select('id',{count:'exact',head:true}).gte('scheduled_start',start.toISOString()).lte('scheduled_start',end.toISOString()).in('status',['requested','approved','scheduled','in_progress']),supabase.from('insurance_claims').select('id',{count:'exact',head:true}).in('status',['draft','submitted','acknowledged','under_review','resubmission_required'])]);if(mounted)setCounts({pending:q1.count??0,activeServices:q2.count??0,appointments:q3.count??0,activeAdmissions:q4.count??0,availableBeds:q5.count??0,emergency:q6.count??0,theatre:q7.count??0,claims:q8.count??0})};void load();const ch=supabase.channel('workflow-summary-global').on('postgres_changes',{event:'*',schema:'public',table:'service_orders'},()=>void load()).on('postgres_changes',{event:'*',schema:'public',table:'appointments'},()=>void load()).on('postgres_changes',{event:'*',schema:'public',table:'ward_beds'},()=>void load()).on('postgres_changes',{event:'*',schema:'public',table:'emergency_cases'},()=>void load()).on('postgres_changes',{event:'*',schema:'public',table:'insurance_claims'},()=>void load()).subscribe();return()=>{mounted=false;void supabase.removeChannel(ch)}},[]);const cards=[['Payment approvals',counts.pending,CreditCard,'text-warning'],['Active services',counts.activeServices,Activity,'text-primary'],["Today's appointments",counts.appointments,CalendarDays,'text-success'],['Active admissions',counts.activeAdmissions,Users,'text-critical'],['Available beds',counts.availableBeds,BedDouble,'text-success'],['Emergency queue',counts.emergency,Siren,'text-critical'],['Theatre today',counts.theatre,Scissors,'text-primary'],['Claims attention',counts.claims,ShieldCheck,'text-warning']] as const;return <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">{cards.map(([label,value,Icon,tone])=><div key={label} className="card-medical p-3 min-w-0"><div className="flex items-center justify-between gap-2"><div className="min-w-0"><p className="text-[11px] leading-tight text-muted-foreground truncate">{label}</p><p className="text-xl font-bold mt-1">{value}</p></div><Icon className={`w-4 h-4 shrink-0 ${tone}`}/></div></div>)}</div>}
+import { useAuth } from '@/contexts/AuthContext';
+import type { UserRole } from '@/types';
+
+interface Counts { pending: number; activeServices: number; appointments: number; occupiedBeds: number; availableBeds: number; emergency: number; theatre: number; claims: number }
+
+const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
+const bedRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'];
+const emergencyRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'front_desk'];
+const theatreRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse'];
+const claimsRoles: readonly UserRole[] = ['admin', 'accountant'];
+
+export default function WorkflowSummary() {
+  const { user } = useAuth();
+  const [counts, setCounts] = useState<Counts>({ pending: 0, activeServices: 0, appointments: 0, occupiedBeds: 0, availableBeds: 0, emergency: 0, theatre: 0, claims: 0 });
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const end = new Date(); end.setHours(23, 59, 59, 999);
+      const role = user?.role;
+      const canAppointments = !!role && appointmentRoles.includes(role);
+      const canBeds = !!role && bedRoles.includes(role);
+      const canEmergency = !!role && emergencyRoles.includes(role);
+      const canTheatre = !!role && theatreRoles.includes(role);
+      const canClaims = !!role && claimsRoles.includes(role);
+
+      const [q1, q2, q3, q4, q5, q6, q7, q8] = await Promise.all([
+        supabase.from('service_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending_payment_approval'),
+        supabase.from('service_orders').select('id', { count: 'exact', head: true }).in('status', ['released', 'in_progress']),
+        canAppointments ? supabase.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_at', start.toISOString()).lte('scheduled_at', end.toISOString()) : Promise.resolve({ count: 0, error: null }),
+        canBeds ? supabase.from('ward_beds').select('id', { count: 'exact', head: true }).eq('status', 'occupied') : Promise.resolve({ count: 0, error: null }),
+        canBeds ? supabase.from('ward_beds').select('id', { count: 'exact', head: true }).eq('status', 'available') : Promise.resolve({ count: 0, error: null }),
+        canEmergency ? supabase.from('emergency_cases').select('id', { count: 'exact', head: true }).in('status', ['waiting', 'triage', 'treatment', 'observation']) : Promise.resolve({ count: 0, error: null }),
+        canTheatre ? supabase.from('theatre_cases').select('id', { count: 'exact', head: true }).gte('scheduled_start', start.toISOString()).lte('scheduled_start', end.toISOString()).in('status', ['requested', 'approved', 'scheduled', 'in_progress']) : Promise.resolve({ count: 0, error: null }),
+        canClaims ? supabase.from('insurance_claims').select('id', { count: 'exact', head: true }).in('status', ['draft', 'submitted', 'acknowledged', 'under_review', 'resubmission_required']) : Promise.resolve({ count: 0, error: null }),
+      ]);
+
+      if (!mounted) return;
+      setCounts({ pending: q1.count ?? 0, activeServices: q2.count ?? 0, appointments: q3.count ?? 0, occupiedBeds: q4.count ?? 0, availableBeds: q5.count ?? 0, emergency: q6.count ?? 0, theatre: q7.count ?? 0, claims: q8.count ?? 0 });
+    };
+
+    if (user) void load();
+    const channel = supabase.channel(`workflow-summary-${user?.id ?? 'anonymous'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ward_beds' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_cases' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'theatre_cases' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_claims' }, () => void load())
+      .subscribe();
+
+    return () => { mounted = false; void supabase.removeChannel(channel); };
+  }, [user]);
+
+  const cards = [
+    ['Payment approvals', counts.pending, CreditCard, 'text-warning'],
+    ['Active services', counts.activeServices, Activity, 'text-primary'],
+    ["Today's appointments", counts.appointments, CalendarDays, 'text-success'],
+    ['Occupied beds', counts.occupiedBeds, Users, 'text-critical'],
+    ['Available beds', counts.availableBeds, BedDouble, 'text-success'],
+    ['Emergency queue', counts.emergency, Siren, 'text-critical'],
+    ['Theatre today', counts.theatre, Scissors, 'text-primary'],
+    ['Claims attention', counts.claims, ShieldCheck, 'text-warning'],
+  ] as const;
+
+  return <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">{cards.map(([label, value, Icon, tone]) => <div key={label} className="card-medical p-3 min-w-0"><div className="flex items-center justify-between gap-2"><div className="min-w-0"><p className="text-[11px] leading-tight text-muted-foreground truncate">{label}</p><p className="text-xl font-bold mt-1">{value}</p></div><Icon className={`w-4 h-4 shrink-0 ${tone}`} /></div></div>)}</div>;
+}
