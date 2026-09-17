@@ -1,308 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, RefreshCw, Save, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, RefreshCw, Save, ShieldCheck, Activity, Clock3, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { playWorkflowSound } from '@/lib/workflowFeedback';
 
-type Claim = {
-  id: string;
-  patient_id: string;
-  payer_name: string;
-  member_number: string | null;
-  claim_number: string | null;
-  amount_claimed: number;
-  amount_approved: number | null;
-  amount_paid: number;
-  status: string;
-  rejection_reason: string | null;
-  service_from: string | null;
-  service_to: string | null;
-  created_at: string;
-};
-
-type Patient = {
-  id: string;
-  patient_code: string;
-  first_name: string;
-  last_name: string;
-};
-
-type DraftForm = {
-  patientId: string;
-  payerName: string;
-  memberNumber: string;
-  amountClaimed: string;
-};
-
-type FinancialEdit = {
-  approved: string;
-  paid: string;
-  number: string;
-  rejection: string;
-};
-
-const statuses = [
-  'draft',
-  'submitted',
-  'acknowledged',
-  'under_review',
-  'approved',
-  'partially_approved',
-  'rejected',
-  'paid',
-  'resubmission_required',
-  'voided',
-];
-
-const emptyDraft: DraftForm = {
-  patientId: '',
-  payerName: '',
-  memberNumber: '',
-  amountClaimed: '',
-};
+type Claim = { id: string; patient_id: string; payer_name: string; member_number: string | null; claim_number: string | null; amount_claimed: number; amount_approved: number | null; amount_paid: number; status: string; rejection_reason: string | null; service_from: string | null; service_to: string | null; created_at: string };
+type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
+type DraftForm = { patientId: string; payerName: string; memberNumber: string; amountClaimed: string };
+type FinancialEdit = { approved: string; paid: string; number: string; rejection: string };
+const statuses = ['draft','submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided'];
+const emptyDraft: DraftForm = { patientId: '', payerName: '', memberNumber: '', amountClaimed: '' };
 
 export default function InsuranceClaims() {
   const { toast } = useToast();
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const [showCreate, setShowCreate] = useState(false);
-  const [draft, setDraft] = useState<DraftForm>(emptyDraft);
-  const [edit, setEdit] = useState<Record<string, FinancialEdit>>({});
-
-  const load = useCallback(async () => {
-    const [{ data: patientData, error: patientError }, { data: claimData, error: claimError }] = await Promise.all([
-      supabase
-        .from('patients')
-        .select('id,patient_code,first_name,last_name')
-        .order('created_at', { ascending: false })
-        .limit(500),
-      supabase
-        .from('insurance_claims')
-        .select('id,patient_id,payer_name,member_number,claim_number,amount_claimed,amount_approved,amount_paid,status,rejection_reason,service_from,service_to,created_at')
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ]);
-
-    if (patientError || claimError) {
-      toast({
-        title: 'Unable to load claims',
-        description: (patientError || claimError)?.message,
-        variant: 'destructive',
-      });
-    }
-
-    setPatients((patientData ?? []) as Patient[]);
-    setClaims((claimData ?? []) as Claim[]);
-  }, [toast]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const patient = (id: string) => {
-    const match = patients.find((item) => item.id === id);
-    return match ? `${match.patient_code} — ${match.first_name} ${match.last_name}` : 'Patient';
-  };
-
-  const createDraft = async () => {
-    const amount = Number(draft.amountClaimed);
-    if (!draft.patientId || !draft.payerName.trim()) {
-      toast({ title: 'Patient and payer are required', variant: 'destructive' });
-      return;
-    }
-    if (!Number.isFinite(amount) || amount < 0) {
-      toast({ title: 'Enter a valid non-negative claim amount', variant: 'destructive' });
-      return;
-    }
-
-    setBusy(true);
-    const { error } = await supabase.rpc(
-      'create_insurance_claim_draft',
-      {
-        _patient_id: draft.patientId,
-        _payer_name: draft.payerName.trim(),
-        _member_number: draft.memberNumber.trim() || null,
-        _amount_claimed: amount,
-        _invoice_id: null,
-      } as never,
-    );
-    setBusy(false);
-
-    if (error) {
-      toast({ title: 'Claim draft creation failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-
-    toast({ title: 'Claim draft created' });
-    setDraft(emptyDraft);
-    setShowCreate(false);
-    await load();
-  };
-
-  const begin = (claim: Claim) => {
-    setEdit((current) => ({
-      ...current,
-      [claim.id]: {
-        approved: claim.amount_approved == null ? '' : String(claim.amount_approved),
-        paid: String(claim.amount_paid || 0),
-        number: claim.claim_number || '',
-        rejection: claim.rejection_reason || '',
-      },
-    }));
-  };
-
-  const transition = async (id: string, status: string) => {
-    setBusy(true);
-    const { error } = await supabase.rpc(
-      'transition_insurance_claim',
-      {
-        _claim_id: id,
-        _to_status: status,
-        _notes: status === 'rejected' ? 'Claim rejected during review' : 'Status updated from claims queue',
-      } as never,
-    );
-    setBusy(false);
-
-    if (error) {
-      toast({ title: 'Claim transition failed', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Claim status updated' });
-      await load();
-    }
-  };
-
-  const saveFinancials = async (claim: Claim) => {
-    const value = edit[claim.id] || {
-      approved: '',
-      paid: String(claim.amount_paid || 0),
-      number: claim.claim_number || '',
-      rejection: claim.rejection_reason || '',
-    };
-    const approved = value.approved === '' ? null : Number(value.approved);
-    const paid = value.paid === '' ? null : Number(value.paid);
-
-    if ((approved !== null && (!Number.isFinite(approved) || approved < 0)) || (paid !== null && (!Number.isFinite(paid) || paid < 0))) {
-      toast({ title: 'Financial amounts must be valid and non-negative', variant: 'destructive' });
-      return;
-    }
-
-    setBusy(true);
-    const { error } = await supabase.rpc(
-      'update_insurance_claim_financials',
-      {
-        _claim_id: claim.id,
-        _amount_approved: approved,
-        _amount_paid: paid,
-        _claim_number: value.number.trim() || null,
-        _rejection_reason: value.rejection.trim() || null,
-      } as never,
-    );
-    setBusy(false);
-
-    if (error) {
-      toast({ title: 'Financial update failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-
-    toast({ title: 'Claim financials saved' });
-    setEdit((current) => {
-      const next = { ...current };
-      delete next[claim.id];
-      return next;
-    });
-    await load();
-  };
-
+  const [claims, setClaims] = useState<Claim[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [busy, setBusy] = useState(false); const [filter, setFilter] = useState('all'); const [showCreate, setShowCreate] = useState(false); const [draft, setDraft] = useState<DraftForm>(emptyDraft); const [edit, setEdit] = useState<Record<string, FinancialEdit>>({});
+  const load = useCallback(async () => { const [{ data: patientData, error: patientError }, { data: claimData, error: claimError }] = await Promise.all([supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500), supabase.from('insurance_claims').select('id,patient_id,payer_name,member_number,claim_number,amount_claimed,amount_approved,amount_paid,status,rejection_reason,service_from,service_to,created_at').order('created_at', { ascending: false }).limit(100)]); if (patientError || claimError) toast({ title: 'Unable to load claims', description: (patientError || claimError)?.message, variant: 'destructive' }); setPatients((patientData ?? []) as Patient[]); setClaims((claimData ?? []) as Claim[]); }, [toast]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const channel = supabase.channel('insurance-claims-live').on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_claims' }, (payload) => { const row = payload.new as { status?: string }; playWorkflowSound(row.status === 'rejected' || row.status === 'resubmission_required' ? 'warning' : 'success'); void load(); }).on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_claim_events' }, () => void load()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [load]);
+  const patient = (id: string) => { const match = patients.find((item) => item.id === id); return match ? `${match.patient_code} — ${match.first_name} ${match.last_name}` : 'Patient'; };
+  const counts = useMemo(() => ({ open: claims.filter((c) => !['paid','voided'].includes(c.status)).length, review: claims.filter((c) => ['submitted','acknowledged','under_review'].includes(c.status)).length, approved: claims.filter((c) => ['approved','partially_approved'].includes(c.status)).length, exceptions: claims.filter((c) => ['rejected','resubmission_required'].includes(c.status)).length, paid: claims.filter((c) => c.status === 'paid').length }), [claims]);
+  const createDraft = async () => { const amount = Number(draft.amountClaimed); if (!draft.patientId || !draft.payerName.trim()) return void toast({ title: 'Patient and payer are required', variant: 'destructive' }); if (!Number.isFinite(amount) || amount < 0) return void toast({ title: 'Enter a valid non-negative claim amount', variant: 'destructive' }); setBusy(true); const { error } = await supabase.rpc('create_insurance_claim_draft', { _patient_id: draft.patientId, _payer_name: draft.payerName.trim(), _member_number: draft.memberNumber.trim() || null, _amount_claimed: amount, _invoice_id: null } as never); setBusy(false); if (error) return void toast({ title: 'Claim draft creation failed', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Claim draft created' }); setDraft(emptyDraft); setShowCreate(false); await load(); };
+  const begin = (claim: Claim) => setEdit((current) => ({ ...current, [claim.id]: { approved: claim.amount_approved == null ? '' : String(claim.amount_approved), paid: String(claim.amount_paid || 0), number: claim.claim_number || '', rejection: claim.rejection_reason || '' } }));
+  const transition = async (id: string, status: string) => { setBusy(true); const { error } = await supabase.rpc('transition_insurance_claim', { _claim_id: id, _to_status: status, _notes: status === 'rejected' ? 'Claim rejected during review' : 'Status updated from claims queue' } as never); setBusy(false); if (error) return void toast({ title: 'Claim transition failed', description: error.message, variant: 'destructive' }); playWorkflowSound(status === 'rejected' || status === 'resubmission_required' ? 'warning' : 'success'); toast({ title: 'Claim status updated' }); await load(); };
+  const saveFinancials = async (claim: Claim) => { const value = edit[claim.id] || { approved: '', paid: String(claim.amount_paid || 0), number: claim.claim_number || '', rejection: claim.rejection_reason || '' }; const approved = value.approved === '' ? null : Number(value.approved); const paid = value.paid === '' ? null : Number(value.paid); if ((approved !== null && (!Number.isFinite(approved) || approved < 0)) || (paid !== null && (!Number.isFinite(paid) || paid < 0))) return void toast({ title: 'Financial amounts must be valid and non-negative', variant: 'destructive' }); setBusy(true); const { error } = await supabase.rpc('update_insurance_claim_financials', { _claim_id: claim.id, _amount_approved: approved, _amount_paid: paid, _claim_number: value.number.trim() || null, _rejection_reason: value.rejection.trim() || null } as never); setBusy(false); if (error) return void toast({ title: 'Financial update failed', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Claim financials saved' }); setEdit((current) => { const next = { ...current }; delete next[claim.id]; return next; }); await load(); };
   const visible = filter === 'all' ? claims : claims.filter((claim) => claim.status === filter);
-
-  return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Insurance Claims</h1>
-          <p className="text-sm text-muted-foreground">Financial claim lifecycle, adjudication, rejection and resubmission control.</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowCreate((value) => !value)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">
-            <Plus className="h-4 w-4" />
-            New claim draft
-          </button>
-          <button onClick={() => void load()} className="rounded-md border p-2" aria-label="Refresh" disabled={busy}>
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
-
-      {showCreate && (
-        <section className="rounded-xl border bg-card p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            <div>
-              <h2 className="font-semibold">Create claim draft</h2>
-              <p className="text-xs text-muted-foreground">Creates the draft through the server-authoritative claims workflow.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <select value={draft.patientId} onChange={(event) => setDraft((current) => ({ ...current, patientId: event.target.value }))} className="rounded-md border bg-background p-2">
-              <option value="">Select patient</option>
-              {patients.map((item) => <option key={item.id} value={item.id}>{item.patient_code} — {item.first_name} {item.last_name}</option>)}
-            </select>
-            <input placeholder="Payer / insurer" value={draft.payerName} onChange={(event) => setDraft((current) => ({ ...current, payerName: event.target.value }))} className="rounded-md border bg-background p-2" />
-            <input placeholder="Member number" value={draft.memberNumber} onChange={(event) => setDraft((current) => ({ ...current, memberNumber: event.target.value }))} className="rounded-md border bg-background p-2" />
-            <input type="number" min="0" step="0.01" placeholder="Amount claimed" value={draft.amountClaimed} onChange={(event) => setDraft((current) => ({ ...current, amountClaimed: event.target.value }))} className="rounded-md border bg-background p-2" />
-          </div>
-          <button disabled={busy} onClick={() => void createDraft()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Creating…' : 'Create draft'}</button>
-        </section>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <ShieldCheck className="h-5 w-5" />
-        <select value={filter} onChange={(event) => setFilter(event.target.value)} className="rounded-md border bg-background p-2">
-          <option value="all">All statuses</option>
-          {statuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
-        </select>
-        <span className="text-sm text-muted-foreground">{visible.length} claim{visible.length === 1 ? '' : 's'}</span>
-      </div>
-
-      <div className="grid gap-3">
-        {visible.map((claim) => {
-          const value = edit[claim.id];
-          const locked = claim.status === 'paid' || claim.status === 'voided';
-          return (
-            <article key={claim.id} className="rounded-xl border bg-card p-4">
-              <div className="flex flex-wrap justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">{claim.claim_number || 'Claim number not recorded'}</h2>
-                  <p className="text-sm">{patient(claim.patient_id)} · {claim.payer_name}</p>
-                  <p className="text-xs text-muted-foreground">{claim.status.replaceAll('_', ' ')} · claimed {Number(claim.amount_claimed || 0).toLocaleString()}</p>
-                </div>
-                <select disabled={busy || locked} value="" onChange={(event) => { if (event.target.value) void transition(claim.id, event.target.value); }} className="rounded-md border bg-background px-2 py-1 text-sm">
-                  <option value="">Change status…</option>
-                  {statuses.filter((status) => status !== claim.status).map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
-                </select>
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                <div>Approved: {Number(claim.amount_approved || 0).toLocaleString()}</div>
-                <div>Paid: {Number(claim.amount_paid || 0).toLocaleString()}</div>
-                <div>Member: {claim.member_number || 'Not recorded'}</div>
-                <div>Service: {claim.service_from ? new Date(claim.service_from).toLocaleDateString() : '—'}{claim.service_to ? ` → ${new Date(claim.service_to).toLocaleDateString()}` : ''}</div>
-              </div>
-              {claim.rejection_reason && <p className="mt-2 text-xs text-destructive">Rejection: {claim.rejection_reason}</p>}
-              {!locked && (value ? (
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <input type="number" min="0" step="0.01" placeholder="Approved amount" value={value.approved} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, approved: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" />
-                  <input type="number" min="0" step="0.01" placeholder="Paid amount" value={value.paid} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, paid: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" />
-                  <input placeholder="Claim number" value={value.number} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, number: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" />
-                  <input placeholder="Rejection reason" value={value.rejection} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, rejection: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" />
-                  <button disabled={busy} onClick={() => void saveFinancials(claim)} className="inline-flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground sm:col-span-2 lg:col-span-1"><Save className="h-4 w-4" />Save financials</button>
-                </div>
-              ) : <button onClick={() => begin(claim)} className="mt-4 rounded-md border px-3 py-2 text-sm">Edit financials</button>)}
-            </article>
-          );
-        })}
-        {visible.length === 0 && <p className="text-sm text-muted-foreground">No claims match the selected status.</p>}
-      </div>
-    </div>
-  );
+  const cards = [{ label: 'Open claims', value: counts.open, icon: Activity, tone: 'text-info', surface: 'bg-info/5', status: 'all' }, { label: 'Awaiting payer review', value: counts.review, icon: Clock3, tone: 'text-warning', surface: 'bg-warning/5', status: 'under_review' }, { label: 'Approved / partial', value: counts.approved, icon: CheckCircle2, tone: 'text-success', surface: 'bg-success/5', status: 'approved' }, { label: 'Exceptions', value: counts.exceptions, icon: AlertTriangle, tone: 'text-destructive', surface: 'bg-destructive/5', status: 'rejected' }];
+  return <div className="space-y-6 animate-fade-in"><header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-heading font-bold">Insurance Claims</h1><p className="text-sm text-muted-foreground">Live financial claim lifecycle, adjudication, rejection and resubmission control.</p></div><div className="flex gap-2"><button onClick={() => setShowCreate((value) => !value)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"><Plus className="h-4 w-4" />New claim draft</button><button onClick={() => void load()} className="rounded-md border p-2" aria-label="Refresh" disabled={busy}><RefreshCw className="h-4 w-4" /></button></div></header>
+    <section aria-label="Insurance claim counters" className="grid grid-cols-2 lg:grid-cols-4 gap-3">{cards.map(({ label, value, icon: Icon, tone, surface, status }) => <button key={label} type="button" onClick={() => setFilter(status)} className={`card-medical ${surface} p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated ${value > 0 && status !== 'all' ? 'ring-1 ring-warning/20 animate-pulse' : ''}`}><div className="flex items-start justify-between gap-2"><div><p className="text-xs text-muted-foreground">{label}</p><p className={`text-2xl font-bold ${tone}`}>{value}</p></div><Icon className={`w-5 h-5 ${tone}`} /></div><p className="text-[10px] text-muted-foreground mt-2">Open this worklist →</p></button>)}</section>
+    {showCreate && <section className="rounded-xl border bg-card p-4 space-y-4"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /><div><h2 className="font-semibold">Create claim draft</h2><p className="text-xs text-muted-foreground">Creates the draft through the server-authoritative claims workflow.</p></div></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><select value={draft.patientId} onChange={(event) => setDraft((current) => ({ ...current, patientId: event.target.value }))} className="rounded-md border bg-background p-2"><option value="">Select patient</option>{patients.map((item) => <option key={item.id} value={item.id}>{item.patient_code} — {item.first_name} {item.last_name}</option>)}</select><input placeholder="Payer / insurer" value={draft.payerName} onChange={(event) => setDraft((current) => ({ ...current, payerName: event.target.value }))} className="rounded-md border bg-background p-2" /><input placeholder="Member number" value={draft.memberNumber} onChange={(event) => setDraft((current) => ({ ...current, memberNumber: event.target.value }))} className="rounded-md border bg-background p-2" /><input type="number" min="0" step="0.01" placeholder="Amount claimed" value={draft.amountClaimed} onChange={(event) => setDraft((current) => ({ ...current, amountClaimed: event.target.value }))} className="rounded-md border bg-background p-2" /></div><button disabled={busy} onClick={() => void createDraft()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Creating…' : 'Create draft'}</button></section>}
+    <div className="flex flex-wrap items-center gap-2"><ShieldCheck className="h-5 w-5" /><select value={filter} onChange={(event) => setFilter(event.target.value)} className="rounded-md border bg-background p-2"><option value="all">All statuses</option>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</select><span className="text-sm text-muted-foreground">{visible.length} claim{visible.length === 1 ? '' : 's'} · {counts.paid} paid</span></div>
+    <div className="grid gap-3">{visible.map((claim) => { const value = edit[claim.id]; const locked = claim.status === 'paid' || claim.status === 'voided'; return <article key={claim.id} className="rounded-xl border bg-card p-4"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-semibold">{claim.claim_number || 'Claim number not recorded'}</h2><p className="text-sm">{patient(claim.patient_id)} · {claim.payer_name}</p><p className="text-xs text-muted-foreground">{claim.status.replaceAll('_', ' ')} · claimed {Number(claim.amount_claimed || 0).toLocaleString()}</p></div><select disabled={busy || locked} value="" onChange={(event) => { if (event.target.value) void transition(claim.id, event.target.value); }} className="rounded-md border bg-background px-2 py-1 text-sm"><option value="">Change status…</option>{statuses.filter((status) => status !== claim.status).map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</select></div><div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4"><div>Approved: {Number(claim.amount_approved || 0).toLocaleString()}</div><div>Paid: {Number(claim.amount_paid || 0).toLocaleString()}</div><div>Member: {claim.member_number || 'Not recorded'}</div><div>Service: {claim.service_from ? new Date(claim.service_from).toLocaleDateString() : '—'}{claim.service_to ? ` → ${new Date(claim.service_to).toLocaleDateString()}` : ''}</div></div>{claim.rejection_reason && <p className="mt-2 text-xs text-destructive">Rejection: {claim.rejection_reason}</p>}{!locked && (value ? <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"><input type="number" min="0" step="0.01" placeholder="Approved amount" value={value.approved} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, approved: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" /><input type="number" min="0" step="0.01" placeholder="Paid amount" value={value.paid} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, paid: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" /><input placeholder="Claim number" value={value.number} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...value, number: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" /><input placeholder="Rejection reason" value={value.rejection} onChange={(event) => setEdit((current) => ({ ...current, [claim.id]: { ...current[claim.id]!, rejection: event.target.value } }))} className="rounded-md border bg-background p-2 text-sm" /><button disabled={busy} onClick={() => void saveFinancials(claim)} className="inline-flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground sm:col-span-2 lg:col-span-1"><Save className="h-4 w-4" />Save financials</button></div> : <button onClick={() => begin(claim)} className="mt-4 rounded-md border px-3 py-2 text-sm">Edit financials</button>)}</article>; })}{visible.length === 0 && <p className="text-sm text-muted-foreground">No claims match the selected status.</p>}</div>
+  </div>;
 }
