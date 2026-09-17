@@ -10,6 +10,7 @@ type EncounterRow = {
   status: string;
   created_at: string;
   principal_diagnosis: string | null;
+  admission_id: string | null;
 };
 
 type PatientRow = {
@@ -31,8 +32,9 @@ export default function EncounterAdmissionActions() {
     if (location.pathname !== '/encounters') return;
     const [{ data: encounters, error: encounterError }, { data: patientRows, error: patientError }] = await Promise.all([
       db.from('encounters')
-        .select('id,patient_id,status,created_at,principal_diagnosis')
+        .select('id,patient_id,status,created_at,principal_diagnosis,admission_id')
         .eq('status', 'completed')
+        .is('admission_id', null)
         .order('created_at', { ascending: false })
         .limit(12),
       db.from('patients')
