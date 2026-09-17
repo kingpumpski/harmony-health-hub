@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Papa from 'papaparse';
-import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, RefreshCw, UserCheck, CheckCircle2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'stg_diagnoses' | 'service_tariffs' | 'legacy_clinical_records';
 type Row = Record<string, string | number | boolean | null>;
+type MigrationBatch = { id: string; entity_type: string; source_system: string; source_version: string | null; file_name: string | null; total_rows: number; staged_rows: number; accepted_rows: number; rejected_rows: number; status: string; created_at: string; approved_at: string | null; completed_at: string | null };
+type MigrationRow = { id: string; source_row_number: number; source_key: string | null; raw_data: Record<string, unknown>; row_status: string; patient_id: string | null; match_confidence: number | null; match_method: string | null; validation_errors: string[]; rejection_reason: string | null };
+type PatientCandidate = { patient_id: string; patient_code: string; first_name: string; last_name: string; date_of_birth: string | null; phone: string | null; email: string | null; method: string; confidence: number };
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_ROWS = 10_000;
 const PREVIEW_ROWS = 10;
@@ -45,6 +48,28 @@ export default function DataImport() {
   const [errors, setErrors] = useState<string[]>([]);
   const [sourceSystem, setSourceSystem] = useState('Legacy system');
   const [sourceVersion, setSourceVersion] = useState('');
+  const [batches, setBatches] = useState<MigrationBatch[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+  const [migrationRows, setMigrationRows] = useState<MigrationRow[]>([]);
+  const [candidates, setCandidates] = useState<Record<string, PatientCandidate[]>>({});
+  const [migrationBusy, setMigrationBusy] = useState<string | null>(null);
+
+  const refreshBatches = async () => {
+    if (user?.role !== 'admin') return;
+    const { data, error } = await supabase.from('data_migration_batches').select('id,entity_type,source_system,source_version,file_name,total_rows,staged_rows,accepted_rows,rejected_rows,status,created_at,approved_at,completed_at').eq('entity_type', 'legacy_clinical_records').order('created_at', { ascending: false }).limit(20);
+    if (error) return toast({ title: 'Migration workspace unavailable', description: error.message, variant: 'destructive' });
+    setBatches((data ?? []) as MigrationBatch[]);
+  };
+
+  const loadRows = async (batchId: string) => {
+    setSelectedBatch(batchId);
+    setCandidates({});
+    const { data, error } = await supabase.from('data_migration_rows').select('id,source_row_number,source_key,raw_data,row_status,patient_id,match_confidence,match_method,validation_errors,rejection_reason').eq('batch_id', batchId).order('source_row_number').limit(100);
+    if (error) return toast({ title: 'Could not load migration rows', description: error.message, variant: 'destructive' });
+    setMigrationRows((data ?? []) as MigrationRow[]);
+  };
+
+  useEffect(() => { void refreshBatches(); }, [user?.id, user?.role]);
 
   if (user?.role !== 'admin') return <div className="p-8 text-center"><AlertTriangle className="w-10 h-10 text-warning mx-auto mb-2" /><h2 className="font-semibold text-xl">Admin only</h2><p className="text-muted-foreground">Bulk database and migration imports require administrator access.</p></div>;
 
@@ -101,6 +126,7 @@ export default function DataImport() {
         if (error) throw error;
         inserted = Number(data ?? 0);
         toast({ title: 'Legacy records staged', description: `${inserted} records are ready for patient matching and controlled migration. No native clinical table was modified.` });
+        await refreshBatches();
       } else {
         for (const row of validRows) {
           if (entity === 'patients') await supabase.from('patients').insert({ ...row, created_by: user.id } as never).throwOnError();
@@ -114,6 +140,40 @@ export default function DataImport() {
     } catch (error) { failed.push(error instanceof Error ? error.message : 'Import failed'); }
     setErrors(failed); setBusy(false); setRows([]); setFileName('');
     toast({ title: failed.length ? 'Import completed with issues' : 'Import complete', description: `${inserted}/${rows.length} rows processed${failed.length ? `; ${failed.length} issues recorded` : ''}.`, variant: failed.length && inserted === 0 ? 'destructive' : 'default' });
+  };
+
+  const runMigrationAction = async (action: 'validate' | 'approve' | 'promote', batchId: string) => {
+    setMigrationBusy(`${action}:${batchId}`);
+    try {
+      const rpc = action === 'validate' ? 'validate_legacy_migration_batch' : action === 'approve' ? 'approve_legacy_migration_batch' : 'promote_legacy_migration_batch';
+      const { error } = await supabase.rpc(rpc as never, { _batch_id: batchId } as never);
+      if (error) throw error;
+      toast({ title: action === 'validate' ? 'Batch validated' : action === 'approve' ? 'Batch approved' : 'Batch promoted', description: 'The governed migration state was advanced successfully.' });
+      await refreshBatches();
+      await loadRows(batchId);
+    } catch (error) { toast({ title: `Migration ${action} failed`, description: error instanceof Error ? error.message : 'The migration action could not be completed.', variant: 'destructive' }); }
+    finally { setMigrationBusy(null); }
+  };
+
+  const findCandidates = async (rowId: string) => {
+    setMigrationBusy(`match:${rowId}`);
+    try {
+      const { data, error } = await supabase.rpc('get_legacy_patient_candidates' as never, { _row_id: rowId } as never);
+      if (error) throw error;
+      setCandidates((current) => ({ ...current, [rowId]: (data ?? []) as PatientCandidate[] }));
+    } catch (error) { toast({ title: 'Patient matching failed', description: error instanceof Error ? error.message : 'Unable to retrieve candidates.', variant: 'destructive' }); }
+    finally { setMigrationBusy(null); }
+  };
+
+  const reconcile = async (rowId: string, candidate: PatientCandidate) => {
+    setMigrationBusy(`reconcile:${rowId}`);
+    try {
+      const { error } = await supabase.rpc('reconcile_legacy_migration_row' as never, { _row_id: rowId, _patient_id: candidate.patient_id, _match_confidence: candidate.confidence, _match_method: candidate.method } as never);
+      if (error) throw error;
+      toast({ title: 'Patient reconciled', description: `${candidate.patient_code} selected using ${candidate.method.replaceAll('_', ' ')}.` });
+      await loadRows(selectedBatch!);
+    } catch (error) { toast({ title: 'Reconciliation failed', description: error instanceof Error ? error.message : 'The patient match could not be saved.', variant: 'destructive' }); }
+    finally { setMigrationBusy(null); }
   };
 
   const downloadTemplate = () => {
@@ -130,7 +190,15 @@ export default function DataImport() {
       <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadTemplate} className="btn-ghost inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Download template</button><input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const file = e.target.files?.[0]; if (file) void parse(file); e.currentTarget.value = ''; }} className="input-medical flex-1 min-w-64" /></div>
       {rows.length > 0 && <><p className="text-sm">{fileName} · {rows.length.toLocaleString()} rows</p><div className="overflow-auto border border-border rounded-xl max-h-80"><table className="text-xs w-full"><thead><tr>{Object.keys(rows[0]).map((key) => <th key={key} className="text-left p-2 border-b border-border">{key}</th>)}</tr></thead><tbody>{rows.slice(0, PREVIEW_ROWS).map((row, i) => <tr key={i} className="border-b border-border">{Object.keys(rows[0]).map((key) => <td key={key} className="p-2 max-w-48 truncate">{String(row[key] ?? '')}</td>)}</tr>)}</tbody></table></div><button disabled={busy} onClick={() => void importRows()} className="btn-primary inline-flex items-center gap-2"><Upload className="w-4 h-4" />{busy ? 'Processing…' : `Process ${rows.length.toLocaleString()} rows`}</button></>}
     </div>
-    {entity === 'legacy_clinical_records' && <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm"><strong>Continuity-of-care workflow:</strong> legacy records are staged with source provenance. They should be matched to existing patients and clinically reviewed before promotion into encounters, diagnoses, prescriptions, laboratory results or other native modules.</div>}
+
+    <div className="card-medical p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" /> Legacy reconciliation & approval</h2><p className="text-xs text-muted-foreground">Import → Match → Reconcile → Validate → Approve → Promote to the legacy continuity layer.</p></div><button type="button" onClick={() => void refreshBatches()} className="btn-ghost inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Refresh</button></div>
+      {batches.length === 0 ? <p className="text-sm text-muted-foreground">No legacy migration batches have been staged.</p> : <div className="space-y-2">{batches.map((batch) => <div key={batch.id} className={`border rounded-xl p-3 ${selectedBatch === batch.id ? 'border-primary bg-primary/5' : 'border-border'}`}><div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3"><div className="min-w-0"><p className="font-medium truncate">{batch.file_name || batch.source_system}</p><p className="text-xs text-muted-foreground">{batch.total_rows} rows · staged {batch.staged_rows} · accepted {batch.accepted_rows} · rejected {batch.rejected_rows} · {new Date(batch.created_at).toLocaleString()}</p></div><div className="flex flex-wrap gap-2"><span className="text-xs rounded-full border px-2 py-1">{batch.status}</span><button type="button" onClick={() => void loadRows(batch.id)} className="btn-ghost text-xs">Review rows</button>{batch.status === 'staged' && <button type="button" disabled={migrationBusy === `validate:${batch.id}`} onClick={() => void runMigrationAction('validate', batch.id)} className="btn-secondary text-xs">Validate</button>}{batch.status === 'ready' && <button type="button" disabled={migrationBusy === `approve:${batch.id}`} onClick={() => void runMigrationAction('approve', batch.id)} className="btn-secondary text-xs">Approve</button>}{batch.status === 'importing' && <button type="button" disabled={migrationBusy === `promote:${batch.id}`} onClick={() => void runMigrationAction('promote', batch.id)} className="btn-primary text-xs">Promote</button>}</div></div></div>)}</div>}
+
+      {selectedBatch && <div className="border-t border-border pt-4 space-y-3"><div className="flex items-center gap-2 text-sm font-medium"><UserCheck className="w-4 h-4 text-primary" /> Patient reconciliation</div>{migrationRows.length === 0 ? <p className="text-xs text-muted-foreground">No rows found for this batch.</p> : <div className="space-y-3">{migrationRows.map((row) => <div key={row.id} className="border border-border rounded-xl p-3 space-y-2"><div className="flex flex-col md:flex-row md:items-center justify-between gap-2"><div className="text-xs"><span className="font-medium">Row {row.source_row_number}</span> · {String(row.raw_data.record_type ?? 'record')} · {String(row.raw_data.source_patient_key ?? row.source_key ?? 'no patient key')} · <span className="font-medium">{row.row_status}</span>{row.match_confidence !== null && ` · ${(row.match_confidence * 100).toFixed(1)}%`}</div><button type="button" disabled={migrationBusy === `match:${row.id}`} onClick={() => void findCandidates(row.id)} className="btn-ghost text-xs inline-flex items-center gap-1"><Search className="w-3 h-3" /> Find patient</button></div>{row.validation_errors?.length > 0 && <p className="text-xs text-critical">{row.validation_errors.join(' · ')}</p>}{candidates[row.id]?.map((candidate) => <div key={candidate.patient_id} className="flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-lg bg-muted/40 p-2 text-xs"><div><strong>{candidate.patient_code}</strong> — {candidate.first_name} {candidate.last_name} {candidate.date_of_birth ? `· ${candidate.date_of_birth}` : ''}<span className="ml-2 text-muted-foreground">{candidate.method.replaceAll('_', ' ')} · {(candidate.confidence * 100).toFixed(1)}%</span></div><button type="button" disabled={migrationBusy === `reconcile:${row.id}`} onClick={() => void reconcile(row.id, candidate)} className="btn-secondary text-xs inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Select</button></div>)}</div>)}</div>}</div>}
+    </div>
+
+    {entity === 'legacy_clinical_records' && <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm"><strong>Continuity-of-care workflow:</strong> legacy records are staged with source provenance. They must be matched, chronologically validated and approved before promotion. Promotion writes only to the canonical legacy continuity layer; native encounters, diagnoses, prescriptions and laboratory results are not automatically created.</div>}
     {errors.length > 0 && <div className="card-medical p-5"><h2 className="font-semibold text-critical mb-2">Import validation issues</h2><ul className="text-xs list-disc pl-5 space-y-1">{errors.slice(0, 50).map((error, i) => <li key={i}>{error}</li>)}</ul></div>}
   </div>;
 }
