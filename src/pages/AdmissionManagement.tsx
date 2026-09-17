@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { BedDouble, CheckCircle2, LogOut, RefreshCw, Users, WalletCards } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { playWorkflowSound } from '@/lib/workflowSound';
+import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
 interface Admission { id: string; patient_id: string; admitted_at: string; discharged_at: string | null; ward: string | null; bed: string | null; reason: string | null; status: string; discharge_summary: string | null }
