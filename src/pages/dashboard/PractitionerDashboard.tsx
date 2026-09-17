@@ -1,15 +1,15 @@
 import Appointments from '@/pages/Appointments';
 import ClinicalResults from '@/pages/ClinicalResults';
-import WorkflowQueueLink from '@/components/WorkflowQueueLink';
-import { Calendar, FileText, Stethoscope, ClipboardList, Baby, Brain } from 'lucide-react';
+import { Calendar, Stethoscope, ClipboardList, Baby, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
  * Practitioner role dashboard compatibility surface.
  *
- * Appointment and result state is owned by the live clinical modules. This
- * role surface intentionally composes those workflows rather than maintaining
- * a second set of fabricated patients, vitals or laboratory results.
+ * Appointment, result and queue state is owned by the live clinical modules
+ * and the shared WorkflowSummary rendered by Dashboard. This role surface
+ * intentionally composes those workflows rather than maintaining a second set
+ * of fabricated counters or clinical records.
  */
 export default function PractitionerDashboard() {
   return (
@@ -26,17 +26,10 @@ export default function PractitionerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <WorkflowQueueLink title="Appointments / Reviews" count={0} icon={Calendar} href="/appointments" tone="primary" />
-        <WorkflowQueueLink title="Radiology Results" count={0} icon={FileText} href="/clinical-results" tone="info" />
-        <WorkflowQueueLink title="Department Queue" count={0} icon={ClipboardList} href="/department-queue" tone="warning" />
-        <WorkflowQueueLink title="AI Clinical Hub" count={0} icon={Brain} href="/ai-clinical" tone="critical" />
-      </div>
-
       <section className="card-medical p-5">
         <div className="mb-4">
           <h2 className="font-semibold">Live appointment worklist</h2>
-          <p className="text-xs text-muted-foreground">Server-backed patient queue and encounter handoff. No fabricated clinical records are maintained here.</p>
+          <p className="text-xs text-muted-foreground">Server-backed patient queue and encounter handoff. Shared workflow counters remain the single source of truth.</p>
         </div>
         <Appointments />
       </section>
