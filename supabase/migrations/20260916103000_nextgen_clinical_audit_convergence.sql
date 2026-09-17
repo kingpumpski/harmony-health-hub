@@ -19,7 +19,14 @@ BEGIN
     'imaging_orders',
     'insurance_claims',
     'invoices',
-    'payments'
+    'payments',
+    'admissions',
+    'ward_beds',
+    'nursing_care_plans',
+    'nursing_shift_handovers',
+    'emergency_cases',
+    'theatre_cases',
+    'transfusion_records'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NOT NULL
        AND to_regprocedure('public.audit_clinical_record_change()') IS NOT NULL THEN
@@ -67,3 +74,24 @@ COMMENT ON TABLE public.invoices IS
 
 COMMENT ON TABLE public.payments IS
   'Payment lifecycle is audit-converged; invoice totals remain governed by the canonical payment trigger/workflow.';
+
+COMMENT ON TABLE public.admissions IS
+  'Admission lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.ward_beds IS
+  'Ward-bed occupancy lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.nursing_care_plans IS
+  'Nursing care-plan lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.nursing_shift_handovers IS
+  'Nursing handover lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.emergency_cases IS
+  'Emergency lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.theatre_cases IS
+  'Theatre lifecycle is server-authoritative through locked workflow RPCs and converged clinical audit.';
+
+COMMENT ON TABLE public.transfusion_records IS
+  'Transfusion lifecycle is server-authoritative through controlled clinical workflows and converged clinical audit.';
