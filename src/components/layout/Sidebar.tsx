@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Baby, BedDouble, Calendar, CalendarClock, ChevronLeft, ChevronRight, ClipboardList, Cloud, CreditCard, Database, Droplets, Eye, FileText, FlaskConical, HeartPulse, Image as ImageIcon, LayoutDashboard, LogOut, Pill, Receipt, Scissors, ShieldCheck, Siren, Smile, Stethoscope, Syringe, Upload, UserCog, Users, Utensils, Video } from 'lucide-react';
+import { Activity, BarChart3, Baby, BedDouble, BellRing, Calendar, CalendarClock, ChevronLeft, ChevronRight, ClipboardList, Cloud, CreditCard, Database, Droplets, Eye, FileText, FlaskConical, HeartPulse, Image as ImageIcon, LayoutDashboard, LogOut, Pill, Receipt, Scissors, ShieldCheck, Siren, Smile, Stethoscope, Syringe, Upload, UserCog, Users, Utensils, Video } from 'lucide-react';
 
 interface NavItem { icon: React.ElementType; label: string; href: string }
 interface SidebarProps { collapsed: boolean; onToggle: () => void }
