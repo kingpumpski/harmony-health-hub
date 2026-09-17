@@ -5,14 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck, Stethoscope } from 'lucide-react';
 import { notifyRoles, notify } from '@/lib/notifications';
+import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface Patient { id: string; first_name: string; last_name: string; user_id: string | null }
-interface Appointment {
-  id: string; patient_id: string; scheduled_at: string; reason: string | null;
-  status: string; department: string | null; attending_officer_id?: string | null;
-  treatment_status?: string | null; treatment_notes?: string | null;
-}
-
+interface Appointment { id: string; patient_id: string; scheduled_at: string; reason: string | null; status: string; department: string | null; attending_officer_id?: string | null; treatment_status?: string | null; treatment_notes?: string | null }
 const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse']);
 const editableRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk']);
 const treatmentStatuses = ['scheduled', 'claimed', 'in_progress', 'completed', 'cancelled', 'no_show'];
@@ -24,51 +20,21 @@ export default function Appointments() {
   const [dept, setDept] = useState('General Outpatient'); const [reason, setReason] = useState(''); const [editing, setEditing] = useState<Appointment | null>(null);
   const [saving, setSaving] = useState(false); const [startingEncounter, setStartingEncounter] = useState<string | null>(null);
   const role = String(user?.role ?? ''); const isStaff = role !== 'patient' && Boolean(user); const canClaim = clinicalRoles.has(role); const canEdit = editableRoles.has(role); const currentUserId = user?.id ?? '';
-
-  const load = async () => {
-    const [{ data: pts, error: patientError }, { data: aps, error: appointmentError }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name, user_id').limit(300), supabase.from('appointments').select('*').order('scheduled_at', { ascending: false }).limit(100),
-    ]);
-    if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
-    if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' });
-    setPatients(pts ?? []); setAppts(aps ?? []);
-  };
+  const load = async () => { const [{ data: pts, error: patientError }, { data: aps, error: appointmentError }] = await Promise.all([supabase.from('patients').select('id, first_name, last_name, user_id').limit(300), supabase.from('appointments').select('*').order('scheduled_at', { ascending: false }).limit(100)]); if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' }); if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' }); setPatients(pts ?? []); setAppts(aps ?? []); };
   useEffect(() => { void load(); const ch = supabase.channel('appt-page').on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => void load()).subscribe(); return () => { void supabase.removeChannel(ch); }; }, []);
   const patientName = useMemo(() => new Map(patients.map((p) => [p.id, `${p.first_name} ${p.last_name}`])), [patients]);
-
   const create = async (e: React.FormEvent) => {
     e.preventDefault(); if (!pid) return toast({ title: 'Select a patient', description: 'Choose the patient for this appointment.', variant: 'destructive' });
     const { data, error } = await supabase.rpc('create_appointment_workflow' as never, { _patient_id: pid, _scheduled_at: new Date(when).toISOString(), _department: dept, _reason: reason || null } as never);
     if (error) return toast({ title: 'Failed to schedule appointment', description: error.message, variant: 'destructive' });
-    const created = data as unknown as Appointment;
-    toast({ title: 'Appointment scheduled' }); const p = patients.find((x) => x.id === pid); const name = p ? `${p.first_name} ${p.last_name}` : 'patient';
+    const created = data as unknown as Appointment; playWorkflowSound('success'); toast({ title: 'Appointment scheduled' }); const p = patients.find((x) => x.id === pid); const name = p ? `${p.first_name} ${p.last_name}` : 'patient';
     await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], { title: 'New appointment', message: `${name} scheduled for ${dept} on ${new Date(when).toLocaleString()}`, severity: 'info', category: 'appointment', link: '/appointments', relatedPatientId: pid, relatedEntityId: created?.id });
     if (p?.user_id && created?.id) await notify({ recipientUserId: p.user_id, title: 'Your appointment is booked', message: `${dept} on ${new Date(when).toLocaleString()}`, severity: 'success', category: 'appointment', link: '/patient-portal', relatedPatientId: pid, relatedEntityId: created.id });
     setReason(''); setPid(''); await load();
   };
-
-  const claim = async (appointmentId: string) => {
-    if (!canClaim) return; const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointmentId } as never);
-    if (error) return toast({ title: 'Could not claim appointment', description: error.message, variant: 'destructive' });
-    toast({ title: 'Appointment assigned to you', description: 'You can now start treatment and update the care status.' }); await load();
-  };
-
-  const startEncounter = async (appointment: Appointment) => {
-    if (!canClaim) return; setStartingEncounter(appointment.id);
-    const { data, error } = await supabase.rpc('start_appointment_encounter' as never, { _appointment_id: appointment.id, _symptoms: null, _clerking_notes: null } as never);
-    setStartingEncounter(null);
-    if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' });
-    toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' }); await load();
-    const encounterId = typeof data === 'string' ? data : String(data ?? '');
-    navigate(`/encounters?patient=${encodeURIComponent(appointment.patient_id)}${encounterId ? `&encounter=${encodeURIComponent(encounterId)}` : ''}`);
-  };
-
-  const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (!editing || !canEdit) return; setSaving(true); const form = new FormData(event.currentTarget);
-    const { error } = await supabase.rpc('update_appointment_workflow' as never, { _appointment_id: editing.id, _scheduled_at: new Date(String(form.get('scheduled_at'))).toISOString(), _department: String(form.get('department') ?? ''), _reason: String(form.get('reason') ?? ''), _treatment_status: String(form.get('treatment_status') ?? 'scheduled'), _treatment_notes: String(form.get('treatment_notes') ?? '') } as never);
-    setSaving(false); if (error) return toast({ title: 'Could not save appointment', description: error.message, variant: 'destructive' }); setEditing(null); toast({ title: 'Appointment updated' }); await load();
-  };
-
+  const claim = async (appointmentId: string) => { if (!canClaim) return; const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointmentId } as never); if (error) return toast({ title: 'Could not claim appointment', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Appointment assigned to you', description: 'You can now start treatment and update the care status.' }); await load(); };
+  const startEncounter = async (appointment: Appointment) => { if (!canClaim) return; setStartingEncounter(appointment.id); const { data, error } = await supabase.rpc('start_appointment_encounter' as never, { _appointment_id: appointment.id, _symptoms: null, _clerking_notes: null } as never); setStartingEncounter(null); if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' }); await load(); const encounterId = typeof data === 'string' ? data : String(data ?? ''); navigate(`/encounters?patient=${encodeURIComponent(appointment.patient_id)}${encounterId ? `&encounter=${encodeURIComponent(encounterId)}` : ''}`); };
+  const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!editing || !canEdit) return; setSaving(true); const form = new FormData(event.currentTarget); const { error } = await supabase.rpc('update_appointment_workflow' as never, { _appointment_id: editing.id, _scheduled_at: new Date(String(form.get('scheduled_at'))).toISOString(), _department: String(form.get('department') ?? ''), _reason: String(form.get('reason') ?? ''), _treatment_status: String(form.get('treatment_status') ?? 'scheduled'), _treatment_notes: String(form.get('treatment_notes') ?? '') } as never); setSaving(false); if (error) return toast({ title: 'Could not save appointment', description: error.message, variant: 'destructive' }); setEditing(null); playWorkflowSound('success'); toast({ title: 'Appointment updated' }); await load(); };
   return <div className="space-y-6 animate-fade-in">
     <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Calendar className="w-6 h-6 text-primary" /> Appointments</h1><p className="text-muted-foreground">Schedule visits, assign attending officers and progress the patient through treatment.</p></div>
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
