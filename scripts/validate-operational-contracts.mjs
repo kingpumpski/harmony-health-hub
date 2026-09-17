@@ -21,6 +21,10 @@ const securityClassification = read('docs/SECURITY_DEFINER_CLASSIFICATION.md');
 const roleGuard = read('src/components/auth/RoleGuard.tsx');
 const appRoutes = read('src/App.tsx');
 const workflowSummary = read('src/components/WorkflowSummary.tsx');
+const dataImport = read('src/pages/admin/DataImport.tsx');
+const migrationFoundation = read('supabase/migrations/20260917120000_expand_master_data_migration_and_legacy_records.sql');
+const migrationRpcs = read('supabase/migrations/20260917120500_add_reference_data_import_rpcs.sql');
+const triage = read('src/pages/Triage.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
 assert('offline replay restores the persisted idempotency key', offline.includes("[IDEMPOTENCY_HEADER]: item.idempotencyKey"), 'replay must not generate a new key for an existing mutation');
@@ -64,8 +68,15 @@ assert('reporting routes are administrator-gated', appRoutes.includes('const rep
 assert('workflow summary avoids known RLS-forbidden admissions reads', workflowSummary.includes("['Occupied beds'") && !workflowSummary.includes("from('admissions')"), 'global dashboard metrics must not directly query admissions where staff SELECT is intentionally restricted');
 assert('workflow summary conditionally queries role-protected clinical tables', workflowSummary.includes('canAppointments') && workflowSummary.includes('canBeds') && workflowSummary.includes('canEmergency') && workflowSummary.includes('canTheatre') && workflowSummary.includes('canClaims'), 'dashboard summary reads must follow the same role boundaries as the underlying RLS policies');
 
-console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
+assert('migration workspace exposes the required enterprise data domains', ['stg_diagnoses','service_tariffs','legacy_clinical_records'].every((name) => dataImport.includes(name)), 'data import must support Ghana STG diagnoses, services/tariffs and legacy clinical records');
+assert('legacy migration is staged before native clinical promotion', dataImport.includes("stage_data_migration_rows") && migrationFoundation.includes('CREATE TABLE IF NOT EXISTS public.legacy_clinical_records') && migrationFoundation.includes("migration_status TEXT NOT NULL DEFAULT 'staged'"), 'external clinical records must preserve provenance and remain staged for reconciliation');
+assert('migration foundation is administrator-controlled', migrationFoundation.includes('admins manage migration batches') && migrationFoundation.includes('admins manage migration rows') && migrationFoundation.includes("Administrator access required"), 'migration staging must remain administrator-only');
+assert('STG and tariff imports use governed server-side RPCs', dataImport.includes("import_stg_diagnoses") && dataImport.includes("import_service_tariffs") && migrationRpcs.includes('REVOKE ALL ON FUNCTION public.import_stg_diagnoses') && migrationRpcs.includes('REVOKE ALL ON FUNCTION public.import_service_tariffs'), 'reference-data promotion must not depend on unrestricted direct table writes');
+assert('master-data catalogue exists', migrationFoundation.includes('CREATE TABLE IF NOT EXISTS public.system_master_data') && migrationFoundation.includes("domain,code,source_system"), 'enterprise master-data metadata must have a governed catalogue');
+assert('triage fields start empty and display normal reference placeholders', triage.includes("useState('')") && triage.includes('90–120 mmHg') && triage.includes('60–80 mmHg') && triage.includes('95–100 %'), 'vital-sign inputs must not preload example values and must expose reference ranges as placeholders');
+assert('triage abnormal values trigger immediate clinical attention', triage.includes('Immediate clinical attention required') && triage.includes('value > range.high') && triage.includes('role="alert"'), 'values outside the reference range must surface an immediate alert before save');
 
+console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
 if (failures.length) {
   console.error('\nContract failures:');
   for (const failure of failures) console.error(`- ${failure}`);
