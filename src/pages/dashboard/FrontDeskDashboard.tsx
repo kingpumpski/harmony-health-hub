@@ -1,7 +1,6 @@
-import { Calendar, UserPlus, Search, CreditCard, Siren, Users } from 'lucide-react';
+import { Calendar, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Appointments from '@/pages/Appointments';
-import WorkflowQueueLink from '@/components/WorkflowQueueLink';
 
 export default function FrontDeskDashboard() {
   const navigate = useNavigate();
@@ -28,18 +27,11 @@ export default function FrontDeskDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <WorkflowQueueLink title="Patient Search" count={0} icon={Search} href="/patients" tone="primary" />
-        <WorkflowQueueLink title="Appointment Queue" count={0} icon={Calendar} href="/appointments" tone="info" />
-        <WorkflowQueueLink title="Payment / Release" count={0} icon={CreditCard} href="/accounts-approvals" tone="warning" />
-        <WorkflowQueueLink title="Emergency Board" count={0} icon={Siren} href="/emergency-board" tone="critical" />
-      </div>
-
       <section className="card-medical p-5">
         <div className="mb-4">
           <h2 className="font-semibold">Live appointment worklist</h2>
           <p className="text-xs text-muted-foreground">
-            The same server-backed appointment workflow used by clinicians. No sample patients, fabricated counts or duplicate appointment state is maintained here.
+            The same server-backed appointment workflow used by clinicians. Queue counters and cross-department handoffs are supplied by the shared live workflow summary above this role surface.
           </p>
         </div>
         <Appointments />
