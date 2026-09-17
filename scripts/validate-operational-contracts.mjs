@@ -18,6 +18,9 @@ const imagingMigration = read('supabase/migrations/20260914130000_imaging_lifecy
 const labMigration = read('supabase/migrations/20260914111500_lab_workflow_payment_gate_reconciliation.sql');
 const securityContract = read('supabase/tests/database/security_access_contract.sql');
 const securityClassification = read('docs/SECURITY_DEFINER_CLASSIFICATION.md');
+const roleGuard = read('src/components/auth/RoleGuard.tsx');
+const appRoutes = read('src/App.tsx');
+const workflowSummary = read('src/components/WorkflowSummary.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
 assert('offline replay restores the persisted idempotency key', offline.includes("[IDEMPOTENCY_HEADER]: item.idempotencyKey"), 'replay must not generate a new key for an existing mutation');
@@ -48,6 +51,10 @@ assert('internal SECURITY DEFINER classification register exists', securityClass
 assert('internal trigger execution boundaries are protected by the database contract', securityContract.includes('trigger-only SECURITY DEFINER helpers are outside the client execution surface') && securityContract.includes("public.audit_patient_change()") && securityContract.includes("public.validate_service_order_encounter()"), 'trigger-only SECURITY DEFINER helpers must remain inaccessible to Data API client roles');
 assert('scheduler maintenance execution boundaries are protected by the database contract', securityContract.includes('scheduler-only medication maintenance helpers are outside the client execution surface') && securityContract.includes("public.notify_due_medications()") && securityContract.includes("public.lock_overdue_medication_slots()"), 'scheduler-only maintenance functions must remain inaccessible to Data API client roles');
 assert('arbitrary-user authorization probes remain outside the client surface', securityContract.includes('arbitrary-user authorization helper probes are outside the client execution surface') && securityContract.includes("public.has_role(uuid,public.app_role)") && securityContract.includes("public.has_facility_access(uuid,uuid)"), 'authorization helpers that accept arbitrary user IDs must not be exposed through the Data API');
+
+assert('protected clinical routes have a client-side role gate', roleGuard.includes('allowedRoles') && appRoutes.includes('<RoleGuard allowedRoles={nursingRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={insuranceRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={emergencyRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={theatreRoles}>') && appRoutes.includes('<RoleGuard allowedRoles={transfusionRoles}>'), 'protected workflow pages must not issue known-forbidden Data API requests for unauthorized roles');
+assert('workflow summary avoids known RLS-forbidden admissions reads', workflowSummary.includes("['Occupied beds'") && !workflowSummary.includes("from('admissions')"), 'global dashboard metrics must not directly query admissions where staff SELECT is intentionally restricted');
+assert('workflow summary conditionally queries role-protected clinical tables', workflowSummary.includes('canAppointments') && workflowSummary.includes('canBeds') && workflowSummary.includes('canEmergency') && workflowSummary.includes('canTheatre') && workflowSummary.includes('canClaims'), 'dashboard summary reads must follow the same role boundaries as the underlying RLS policies');
 
 console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
 
