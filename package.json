@@ -29,6 +29,7 @@
     "test:nextgen-nursing-continuity": "node scripts/test-nextgen-nursing-continuity.mjs",
     "test:nextgen-clinical-audit-convergence": "node scripts/test-nextgen-clinical-audit-convergence.mjs",
     "test:nextgen-branding": "node scripts/test-nextgen-branding-contract.mjs",
+    "test:nextgen-route-surface": "node scripts/test-nextgen-route-surface.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
