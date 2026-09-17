@@ -1,6 +1,6 @@
 # 95% Readiness Register
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 ## Canonical state
 
@@ -28,21 +28,28 @@ Updated: 2026-09-16
 - Post-change performance advisors no longer report the `auth_rls_initplan` warning.
 - Authorization helper execute surface was hardened: arbitrary-user helper probes (`has_role`, `is_clinical_staff`, `has_facility_access`, `can_edit_patient_record`) are no longer callable by Data API client roles; current-user helper functions remain available to authenticated clients.
 - Trigger-only patient-code generation was removed from the client-callable execute surface.
-- Deterministic repository contract checks now cover offline idempotency/retry/blocked-state invariants plus service-order, imaging and laboratory server-authority contracts. The checks run as part of the main Quality workflow before the production build.
+- Deterministic repository contract checks cover offline idempotency/retry/blocked-state invariants plus service-order, imaging, laboratory, pharmacy and insurance server-authority contracts. The checks run as part of the main Quality workflow before the production build.
 - Offline replay now unconditionally removes any persisted `Authorization` header before replay and only applies a fresh bearer token supplied by the active auth provider. A missing fresh token therefore cannot fall back to the historical queued credential.
-- Internal audit logging helper `record_system_audit(text,text,text,uuid,text,jsonb)` is no longer executable by `authenticated` or `anon`; the production boundary was verified and the corresponding migration is now committed to `main` as `20260916114500_harden_record_system_audit_execute_boundary`.
+- Internal audit logging helper `record_system_audit(text,text,text,uuid,text,jsonb)` is no longer executable by `authenticated` or `anon`; the production boundary was verified and the corresponding migration is committed to `main` as `20260916114500_harden_record_system_audit_execute_boundary`.
+- The RLS reconciliation pass reduced the previously reported multiple-permissive SELECT findings from 21 to 0 without granting broader access or collapsing semantically distinct policies.
+- Cross-platform local development bootstrap is now documented and supported through PowerShell, CMD and Bash scripts; `verify:local` validates the Git root and dependency prerequisites before development starts.
 
 ## Current advisor findings that require continued reconciliation
 
 ### Performance
 
-- **21 multiple-permissive-policy findings remain.** The affected SELECT surfaces have intentionally different access predicates in several cases (for example staff/admin read versus patient self-read, or admin write versus broader read). They are therefore not being collapsed mechanically. Policies whose `ALL` predicate also covers SELECT require an explicit ALL-to-INSERT/UPDATE/DELETE rewrite before SELECT consolidation can be semantics-preserving.
+- **0 multiple-permissive SELECT findings** remain after the RLS reconciliation pass. The affected policy surfaces were rewritten only where the resulting INSERT/UPDATE/DELETE/SELECT semantics were explicitly preserved.
 - **195 unused-index findings remain.** These are informational in the current low-volume dataset and are not being dropped blindly. The foreign-key index reconciliation is already complete; future removals require workload evidence and duplicate/coverage analysis.
 
 ### Security
 
 - The current Supabase security advisor reports **84 authenticated-executable SECURITY DEFINER findings** after the audit-helper execute-boundary hardening. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate.
 - Supabase Auth leaked-password protection remains disabled. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
+
+### CI / deployment verification
+
+- The latest GitHub `Quality` workflow run for `3118b4614908d67d6dc7aa73301f607130b30624` ended in **`startup_failure` before any job executed**. This is an infrastructure/runner-startup failure, not evidence that TypeScript, lint, contracts or build failed. The quality gates therefore remain unverified until a subsequent run executes them successfully.
+- Vercel deployment remains blocked by the previously observed deployment build-rate limit. A successful repository commit or GitHub workflow must not be treated as proof of deployed-browser verification.
 
 ## Reconciliation decisions recorded in this pass
 
@@ -51,6 +58,7 @@ Updated: 2026-09-16
 - Do not remove unused indexes solely because the development dataset has not exercised them.
 - Do not convert an `ALL` policy into a different set of policies unless the resulting INSERT/UPDATE/DELETE/SELECT `USING` and `WITH CHECK` semantics are explicitly equivalent.
 - The source-level stale-credential replay vulnerability is now hardened: persisted `Authorization` is stripped unconditionally before replay, and only a fresh session token may be attached. A browser-runtime regression test is still required to evidence the behavior in an actual browser; this remains an explicit pre-deployment security gate.
+- A GitHub Actions `startup_failure` must not be converted into a code-pass or code-fail claim; execution evidence is required before the corresponding readiness gate is marked complete.
 
 ## Do-not-break rules
 
