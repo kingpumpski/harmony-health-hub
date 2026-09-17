@@ -12,6 +12,7 @@
     "test:contracts": "node scripts/validate-operational-contracts.mjs",
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test": "npm run test:contracts && npm run test:offline-replay",
+    "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
