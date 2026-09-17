@@ -125,6 +125,29 @@ assert(
 );
 
 assert(
+  'facility routing changes remain administrator-gated',
+  securityContract.includes("public.set_facility_routing_mode(text)") &&
+    securityContract.includes("'facility routing mode is authenticated-only and administrator-gated'") &&
+    securityContract.includes("%has_role(auth.uid(),''admin'')%"),
+  'routing mode changes must remain authenticated-only and explicitly restricted to administrators',
+);
+
+assert(
+  'report recovery remains facility-scoped',
+  securityContract.includes("public.recover_stale_report_run(uuid,integer)") &&
+    securityContract.includes("'report recovery is authenticated-only and facility-scoped'") &&
+    securityContract.includes('%has_facility_access(v_user,v_run.facility_id)%'),
+  'stale report recovery must not become a cross-facility maintenance endpoint',
+);
+
+assert(
+  'selected-invoice payment retains duplicate-reference idempotency',
+  securityContract.includes("'selected-invoice payment rejects duplicate references through an idempotent replay boundary'") &&
+    securityContract.includes('%idempotent_replay%'),
+  'payment retries with the same reference must resolve as an idempotent replay rather than create another payment',
+);
+
+assert(
   'database security contract protects lifecycle RPCs',
   securityContract.includes('service-order lifecycle RPCs are security-definer and authenticated-only') &&
     securityContract.includes('laboratory workflow RPCs are security-definer and authenticated-only'),
