@@ -40,7 +40,9 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
   if (patientResult.error) throw new Error(`patients: ${patientResult.error.message}`);
   if (!patientResult.data) throw new Error('Patient record not found');
 
-  const [appointments, vitals, triage, encounters, labOrders, prescriptions, imagingOrders, procedureNotes, anestheticAssessments, admissions] = await Promise.all([
+  // Admissions do not expose a general staff SELECT surface. Leave that section
+  // empty rather than issuing an intentionally forbidden Data API request.
+  const [appointments, vitals, triage, encounters, labOrders, prescriptions, imagingOrders, procedureNotes, anestheticAssessments] = await Promise.all([
     query('appointments', patientId, 'scheduled_at'),
     query('vital_signs', patientId, 'recorded_at'),
     query('triage_assessments', patientId, 'created_at'),
@@ -50,7 +52,6 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
     query('imaging_orders', patientId, 'created_at'),
     query('procedure_notes', patientId, 'created_at'),
     query('anesthetic_assessments', patientId, 'created_at'),
-    query('admissions', patientId, 'admitted_at'),
   ]);
 
   const latestTriage = (triage[0] as any) ?? null;
@@ -88,6 +89,6 @@ export async function buildAIClinicalContext(patientId: string): Promise<AIClini
     imagingOrders,
     procedureNotes,
     anestheticAssessments,
-    admissions,
+    admissions: [],
   };
 }
