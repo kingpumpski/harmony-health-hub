@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(22);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),
@@ -306,6 +306,26 @@ select ok(
       and not has_function_privilege('anon', p.oid, 'EXECUTE')
   ) = 9,
   'classified application SECURITY DEFINER workflow RPCs remain authenticated-only'
+);
+
+select ok(
+  (select count(*) from pg_class where oid in ('public.data_migration_batches'::regclass,'public.data_migration_rows'::regclass,'public.legacy_clinical_records'::regclass,'public.system_master_data'::regclass) and relrowsecurity) = 4,
+  'migration and master-data tables all have RLS enabled'
+);
+
+select ok(
+  (
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('create_data_migration_batch','stage_data_migration_rows','import_stg_diagnoses','import_service_tariffs')
+      and p.prosecdef
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      and not has_function_privilege('anon', p.oid, 'EXECUTE')
+      and pg_get_functiondef(p.oid) ilike '%has_role(auth.uid(),''admin'')%'
+  ) = 4,
+  'migration write RPCs are security-definer, authenticated-only and administrator-gated'
 );
 
 select * from finish();
