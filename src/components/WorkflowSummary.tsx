@@ -7,11 +7,11 @@ import type { UserRole } from '@/types';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface Counts {
-  newAppointments: number; reviews: number; departmentWaiting: number; paymentApprovals: number;
+  newAppointments: number; reviews: number; radiologyReports: number; departmentWaiting: number; paymentApprovals: number;
   pharmacy: number; laboratory: number; imaging: number; nursing: number; maternity: number; admissions: number;
   emergency: number; theatre: number; claims: number; criticalAlerts: number; occupiedBeds: number; availableBeds: number;
 }
-const initialCounts: Counts = { newAppointments: 0, reviews: 0, departmentWaiting: 0, paymentApprovals: 0, pharmacy: 0, laboratory: 0, imaging: 0, nursing: 0, maternity: 0, admissions: 0, emergency: 0, theatre: 0, claims: 0, criticalAlerts: 0, occupiedBeds: 0, availableBeds: 0 };
+const initialCounts: Counts = { newAppointments: 0, reviews: 0, radiologyReports: 0, departmentWaiting: 0, paymentApprovals: 0, pharmacy: 0, laboratory: 0, imaging: 0, nursing: 0, maternity: 0, admissions: 0, emergency: 0, theatre: 0, claims: 0, criticalAlerts: 0, occupiedBeds: 0, availableBeds: 0 };
 const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'];
 const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
 const bedRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'];
@@ -49,9 +49,10 @@ export default function WorkflowSummary() {
       if (currentDepartment.toLowerCase().includes('matern')) departmentAliases.push('maternity');
       if (currentDepartment.toLowerCase().includes('account')) departmentAliases.push('accounts');
 
-      const [appointments, reviews, queues, bedsOccupied, bedsAvailable, emergency, theatre, claims, critical] = await Promise.all([
+      const [appointments, reviews, radiologyReports, queues, bedsOccupied, bedsAvailable, emergency, theatre, claims, critical] = await Promise.all([
         canAppointments ? supabase.from('appointments').select('id,patient_id,practitioner_id').gte('scheduled_at', start.toISOString()).lte('scheduled_at', end.toISOString()).eq('status', 'scheduled') : Promise.resolve({ data: [], error: null }),
         canAppointments ? supabase.from('appointments').select('id').gte('scheduled_at', start.toISOString()).lte('scheduled_at', end.toISOString()).in('status', ['checked_in', 'review']) : Promise.resolve({ data: [], error: null }),
+        role === 'practitioner' ? supabase.from('notifications').select('id').eq('recipient_user_id', user.id).eq('is_read', false).eq('title', 'Radiology report ready') : Promise.resolve({ data: [], error: null }),
         supabase.from('department_queues').select('patient_id,department,status').in('status', ['queued', 'claimed']),
         canBeds ? supabase.from('ward_beds').select('id').eq('status', 'occupied') : Promise.resolve({ data: [], error: null }),
         canBeds ? supabase.from('ward_beds').select('id').eq('status', 'available') : Promise.resolve({ data: [], error: null }),
@@ -71,7 +72,7 @@ export default function WorkflowSummary() {
       previousQueueTotal.current = nextQueueTotal;
       hasLoadedQueue.current = true;
       setDepartment(currentDepartment);
-      setCounts({ newAppointments: visibleAppointments, reviews: reviews.data?.length ?? 0, departmentWaiting: currentDepartment ? countPatients(departmentAliases) : 0, paymentApprovals: countPatients(['accounts']), pharmacy: countPatients(['pharmacy']), laboratory: countPatients(['laboratory', 'lab']), imaging: countPatients(['imaging', 'radiology']), nursing: countPatients(['nursing']), maternity: countPatients(['maternity']), admissions: countPatients(['admission', 'admissions']), emergency: emergency.data?.length ?? 0, theatre: theatre.data?.length ?? 0, claims: claims.data?.length ?? 0, criticalAlerts: critical.data?.length ?? 0, occupiedBeds: bedsOccupied.data?.length ?? 0, availableBeds: bedsAvailable.data?.length ?? 0 });
+      setCounts({ newAppointments: visibleAppointments, reviews: reviews.data?.length ?? 0, radiologyReports: radiologyReports.data?.length ?? 0, departmentWaiting: currentDepartment ? countPatients(departmentAliases) : 0, paymentApprovals: countPatients(['accounts']), pharmacy: countPatients(['pharmacy']), laboratory: countPatients(['laboratory', 'lab']), imaging: countPatients(['imaging', 'radiology']), nursing: countPatients(['nursing']), maternity: countPatients(['maternity']), admissions: countPatients(['admission', 'admissions']), emergency: emergency.data?.length ?? 0, theatre: theatre.data?.length ?? 0, claims: claims.data?.length ?? 0, criticalAlerts: critical.data?.length ?? 0, occupiedBeds: bedsOccupied.data?.length ?? 0, availableBeds: bedsAvailable.data?.length ?? 0 });
     };
 
     void load();
@@ -79,7 +80,12 @@ export default function WorkflowSummary() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'department_queues' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => void load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => { if (payload.eventType === 'INSERT' && (payload.new as { severity?: string }).severity === 'critical') playWorkflowSound('critical'); void load(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        const notification = payload.new as { severity?: string; recipient_user_id?: string | null; title?: string };
+        if (payload.eventType === 'INSERT' && notification.severity === 'critical') playWorkflowSound('critical');
+        if (payload.eventType === 'INSERT' && notification.recipient_user_id === user.id && notification.title === 'Radiology report ready') playWorkflowSound('success');
+        void load();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'triage_assessments' }, (payload) => { if (payload.eventType === 'INSERT' && String((payload.new as { priority?: string }).priority).toLowerCase() === 'critical') playWorkflowSound('critical'); void load(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ward_beds' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_cases' }, () => void load())
@@ -99,7 +105,7 @@ export default function WorkflowSummary() {
       ] : []),
       ...(clinicalRoles.includes(role) && counts.criticalAlerts > 0 ? [{ label: 'Critical alerts', value: counts.criticalAlerts, href: '/notifications', icon: AlertTriangle, tone: 'text-critical', surface: 'bg-critical/5', urgent: true }] : []),
     ];
-    if (role === 'practitioner') return [...common, { label: 'Patients waiting for you', value: counts.departmentWaiting, href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5', urgent: counts.departmentWaiting > 0 }, { label: 'Laboratory waiting', value: counts.laboratory, href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5', urgent: counts.laboratory > 0 }, { label: 'Radiology waiting', value: counts.imaging, href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5', urgent: counts.imaging > 0 }, { label: 'Pharmacy waiting', value: counts.pharmacy, href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5', urgent: counts.pharmacy > 0 }];
+    if (role === 'practitioner') return [...common, { label: 'Patients waiting for you', value: counts.departmentWaiting, href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5', urgent: counts.departmentWaiting > 0 }, { label: 'Laboratory waiting', value: counts.laboratory, href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5', urgent: counts.laboratory > 0 }, { label: 'Radiology reports to review', value: counts.radiologyReports, href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5', urgent: counts.radiologyReports > 0 }, { label: 'Radiology waiting', value: counts.imaging, href: '/radiology', icon: ScanLine, tone: 'text-info', surface: 'bg-info/5', urgent: counts.imaging > 0 }, { label: 'Pharmacy waiting', value: counts.pharmacy, href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5', urgent: counts.pharmacy > 0 }];
     if (role === 'lab_technician') return [...common, { label: 'Laboratory waiting', value: counts.laboratory, href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5', urgent: counts.laboratory > 0 }];
     if (role === 'pharmacist') return [...common, { label: 'Pharmacy waiting', value: counts.pharmacy, href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5', urgent: counts.pharmacy > 0 }, { label: 'Patients waiting', value: counts.departmentWaiting, href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5', urgent: counts.departmentWaiting > 0 }];
     if (role === 'accountant') return [{ label: 'Payment approvals', value: counts.paymentApprovals, href: '/accounts-approvals', icon: CreditCard, tone: 'text-warning', surface: 'bg-warning/5', urgent: counts.paymentApprovals > 0 }, { label: 'Claims attention', value: counts.claims, href: '/insurance-claims', icon: ShieldCheck, tone: 'text-primary', surface: 'bg-primary/5', urgent: counts.claims > 0 }];
