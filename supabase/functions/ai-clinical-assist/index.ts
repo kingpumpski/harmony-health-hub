@@ -7,7 +7,7 @@ const corsHeaders = {
 const MODEL = 'google/gemini-2.5-flash';
 
 interface Body {
-  mode: 'report' | 'recommend' | 'synthesize_protocol' | 'portal' | 'clinical_context';
+  mode: 'report' | 'recommend' | 'synthesize_protocol' | 'portal' | 'clinical_context' | 'nurse_dashboard';
   patientId?: string;
   encounterId?: string;
   diagnosis?: string;
@@ -79,6 +79,20 @@ Deno.serve(async (req) => {
         heightM: latestTriage?.height_m != null ? Number(latestTriage.height_m) : null,
       };
       return new Response(JSON.stringify({ generatedAt: new Date().toISOString(), patient, latestBmi, appointments: appointments ?? [], vitals: vitals ?? [], triage: triage ?? [], encounters: encounters ?? [], labOrders: labOrders ?? [], labResults: labResults ?? [], prescriptions: prescriptions ?? [], imagingOrders: imagingOrders ?? [], procedureNotes: procedureNotes ?? [], anestheticAssessments: anestheticAssessments ?? [], admissions: admissions ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (body.mode === 'nurse_dashboard') {
+      const allowedRoles = ['admin','nurse','specialist_nurse','midwife','practitioner'];
+      if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
+      const [{ data: patients }, { data: admissions }, { data: medications }, { data: handovers }, { data: triage }, { data: queue }] = await Promise.all([
+        supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
+        supabase.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(250),
+        supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
+        supabase.from('nursing_shift_handovers').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
+        supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
+      ]);
+      return new Response(JSON.stringify({ patients: patients ?? [], admissions: admissions ?? [], medications: medications ?? [], handovers: handovers ?? [], triage: triage ?? [], queue: queue ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
