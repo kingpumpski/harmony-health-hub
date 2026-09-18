@@ -37,15 +37,24 @@ export default function ClinicalOperations() {
   const workspaceModule = tab === 'capacity' ? 'ward' : tab === 'nursing' ? 'nursing_care' : tab;
 
   const load = useCallback(async () => {
-    const [patientResult, workspaceResult] = await Promise.all([
-      searchPatientDirectory('', 300),
-      getOperationalWorkspace(workspaceModule, 50),
-    ]);
+    const workspaceResult = await getOperationalWorkspace(workspaceModule, 50);
     const payload = (workspaceResult.data ?? {}) as any;
     const rowData = tab === 'capacity' ? payload.wards ?? [] : tab === 'nursing' ? payload.care_plans ?? [] : tab === 'theatre' ? payload.cases ?? [] : tab === 'transfusion' ? payload.records ?? [] : tab === 'insurance' ? payload.claims ?? [] : payload.cases ?? [];
-    if (patientResult.error || workspaceResult.error) toast({ title: 'Unable to load records', description: (patientResult.error || workspaceResult.error)?.message, variant: 'destructive' });
-    setPatients((patientResult.data ?? []) as Patient[]);
-    setRows(rowData as Row[]);
+
+    if (workspaceResult.error) {
+      toast({ title: 'Unable to load records', description: workspaceResult.error.message, variant: 'destructive' });
+    } else {
+      setRows(rowData as Row[]);
+    }
+
+    if (tab !== 'capacity') {
+      const patientResult = await searchPatientDirectory('', 300);
+      if (patientResult.error) {
+        toast({ title: 'Unable to load patient directory', description: patientResult.error.message, variant: 'destructive' });
+      } else {
+        setPatients((patientResult.data ?? []) as Patient[]);
+      }
+    }
   }, [tab, workspaceModule]);
 
   useEffect(() => { void load(); }, [load]);
