@@ -10,7 +10,7 @@ export type UserRole =
   | 'accountant'
   | 'front_desk'
   | 'canteen'
-  | 'patient';
+  | 'patient'\n  | 'it_admin';
 
 export interface User {
   id: string;
