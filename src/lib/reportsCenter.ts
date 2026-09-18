@@ -126,6 +126,8 @@ export async function generateRun(facilityId: string, period: string, configs: F
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
+  const moduleGate = await reportsDb.rpc('hms_assert_module_enabled', { _facility_id: facilityId, _module_id: 'report-centre' });
+  if (moduleGate.error) throw new Error(moduleGate.error.message);
   const now = new Date().toISOString();
   const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
   if (activeRunError) throw new Error(activeRunError.message);
@@ -170,6 +172,8 @@ export async function getRunItems(runId: string): Promise<ReportRunItem[]> { con
 
 export async function listSubmissions(facilityId: string, period: string): Promise<ReportSubmission[]> {
   const { start, end } = monthBounds(period); const periodStart = start.slice(0, 10); const periodEnd = end.slice(0, 10);
+  const moduleGate = await reportsDb.rpc('hms_assert_module_enabled', { _facility_id: facilityId, _module_id: 'report-centre' });
+  if (moduleGate.error) throw new Error(moduleGate.error.message);
   const sync = await reportsDb.rpc('sync_overdue_report_submissions', { _facility_id: facilityId, _period_start: periodStart, _period_end: periodEnd }); if (sync.error) throw new Error(sync.error.message);
   const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date'); if (error) throw new Error(error.message); return (data ?? []) as ReportSubmission[];
 }
