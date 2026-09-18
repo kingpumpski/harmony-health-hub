@@ -3,7 +3,7 @@ import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 
 const allowedRoles = new Set([
   'admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
-  'pharmacist','accountant','front_desk','canteen','patient',
+  'pharmacist','accountant','front_desk','canteen','radiologist','patient',
 ]);
 
 Deno.serve(async (req) => {
