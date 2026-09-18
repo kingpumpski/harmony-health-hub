@@ -29,7 +29,7 @@ BEGIN
 
   SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
   IF v_enc.id IS NULL THEN RAISE EXCEPTION 'Encounter not found'; END IF;
-  IF v_enc.status <> 'completed' THEN RAISE EXCEPTION 'Submit the encounter before admission'; END IF;
+  IF v_enc.status = 'cancelled' THEN RAISE EXCEPTION 'Cancelled encounters cannot be admitted'; END IF;
   IF v_enc.admission_id IS NOT NULL THEN
     RETURN jsonb_build_object('admission_id',v_enc.admission_id,'override',FALSE,'existing',TRUE);
   END IF;
