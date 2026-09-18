@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { CalendarClock, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 type Row = { id: string; patient_id: string; procedure_name: string; theatre_name: string | null; scheduled_start: string | null; urgency: string; status: string; anesthetist_id: string | null };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
