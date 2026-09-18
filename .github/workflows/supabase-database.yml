@@ -26,5 +26,7 @@ jobs:
         run: test -n "$SUPABASE_ACCESS_TOKEN"
       - name: Link project using Supabase management authentication
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Apply production compatibility hotfix
+        run: supabase db query --linked "$(cat supabase/production-hotfix.sql)"
       - name: Apply pending migrations
         run: supabase db push --linked --yes
