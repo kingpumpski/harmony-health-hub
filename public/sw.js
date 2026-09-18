@@ -1,5 +1,5 @@
 const BASE_PATH = '/harmony-health-hub';
-const CACHE_NAME = 'harmony-health-hub-shell-v10';
+const CACHE_NAME = 'harmony-health-hub-shell-v11';
 const SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
@@ -82,10 +82,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.startsWith(`${BASE_PATH}/assets/`)) {
-    event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request).then((response) => {
+    event.respondWith(fetch(request, { cache: 'no-store' }).then((response) => {
       if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())).catch(() => undefined);
       return response;
-    })));
+    }).catch(() => caches.match(request).then((cached) => cached ?? Response.error())));
     return;
   }
 
