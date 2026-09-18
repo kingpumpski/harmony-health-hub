@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Patient, VitalSigns } from '@/types';
 import { isNetworkError } from '@/lib/offlineSync';
 import { queueOfflinePatientRegistration } from '@/lib/offlinePatientRegistration';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 /* ============================================================
    Real Supabase-backed helpers (replaces previous mocks)
@@ -76,21 +77,34 @@ export async function registerPatient(payload: any) {
 }
 
 export async function searchPatients(query: string) {
-  const q = query.trim();
-  let req = supabase.from('patients').select('id, patient_code, first_name, last_name, phone, ghana_card_number, status, insurance_provider, email, membership_type, membership_expires_at').order('created_at', { ascending: false }).limit(50);
-  if (q) req = req.or(`patient_code.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,ghana_card_number.ilike.%${q}%,email.ilike.%${q}%`);
-  const { data, error } = await req;
+  const { data, error } = await searchPatientDirectory(query, 50);
   if (error) { console.error('[searchPatients]', error); return []; }
-  const normalizedQuery = q.toLocaleLowerCase();
+  const q = query.trim().toLocaleLowerCase();
   const ranked = (data ?? []).map((p) => {
-    const fields = [p.patient_code, p.first_name, p.last_name, p.phone, p.ghana_card_number, p.email].filter(Boolean).map((value) => String(value).toLocaleLowerCase());
+    const fields = [p.patient_code, p.first_name, p.last_name, p.phone, p.ghana_card_number, p.insurance_number].filter(Boolean).map((value) => String(value).toLocaleLowerCase());
     const score = fields.reduce((best, field) => {
-      if (field === normalizedQuery) return Math.max(best, 100);
-      if (field.startsWith(normalizedQuery)) return Math.max(best, 75);
-      if (field.includes(normalizedQuery)) return Math.max(best, 50);
+      if (!q) return Math.max(best, 1);
+      if (field === q) return Math.max(best, 100);
+      if (field.startsWith(q)) return Math.max(best, 75);
+      if (field.includes(q)) return Math.max(best, 50);
       return best;
     }, 0);
-    return { score, patient: { id:p.id, patientId:p.patient_code, firstName:p.first_name, lastName:p.last_name, fullName:`${p.first_name} ${p.last_name}`, phone:p.phone, ghanaCardNumber:p.ghana_card_number, status:p.status, insuranceProvider:p.insurance_provider, membershipType:p.membership_type, membershipExpiresAt:p.membership_expires_at } };
+    return {
+      score,
+      patient: {
+        id: p.id,
+        patientId: p.patient_code,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        fullName: `${p.first_name} ${p.last_name}`,
+        phone: p.phone,
+        ghanaCardNumber: p.ghana_card_number,
+        status: p.status,
+        insuranceProvider: p.insurance_provider,
+        membershipType: undefined,
+        membershipExpiresAt: undefined,
+      },
+    };
   });
   return ranked.sort((a, b) => b.score - a.score).map(({ patient }) => patient);
 }
