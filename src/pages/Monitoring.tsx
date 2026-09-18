@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +21,7 @@ export default function Monitoring() {
     setLoading(false);
   };
 
-  useEffect(() => { void supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300).then(({ data, error }) => { if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]); }); }, []);
+  useEffect(() => { void searchPatientDirectory('', 300).then(({ data, error }) => ({ data, error })).then(({ data, error }) => { if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]); }); }, []);
   useEffect(() => { void load(); }, [patientId]);
 
   const names = new Map(patients.map((p) => [p.id, `${p.first_name} ${p.last_name}`]));
