@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +19,7 @@ export default function Dental() {
 
   const load = async () => {
     const [{ data: pts }, { data: recs }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name, patient_code').limit(200),
+      searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
       supabase.from('dental_records').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
     setPatients(pts ?? []);
