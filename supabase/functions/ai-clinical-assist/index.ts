@@ -7,7 +7,7 @@ const corsHeaders = {
 const MODEL = 'google/gemini-2.5-flash';
 
 interface Body {
-  mode: 'report' | 'recommend' | 'synthesize_protocol';
+  mode: 'report' | 'recommend' | 'synthesize_protocol' | 'portal' | 'clinical_context';
   patientId?: string;
   encounterId?: string;
   diagnosis?: string;
@@ -18,13 +18,71 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const body: Body = await req.json();
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\\s+/i, '');
+    if (!token) throw new Error('Authentication required');
+
+    const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+    const { data: authData, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !authData.user) throw new Error('Authentication required');
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const callerId = authData.user.id;
+    const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', callerId).maybeSingle();
+    const callerRole = String(callerProfile?.role ?? '');
 
     let systemPrompt = '';
     let userPrompt = '';
+
+    if (body.mode === 'portal') {
+      const { data: patient } = await supabase.from('patients').select('*').eq('user_id', callerId).maybeSingle();
+      if (!patient) throw new Error('Patient portal profile not found');
+      const [{ data: appointments }, { data: videoSessions }, { data: invoices }, { data: reports }] = await Promise.all([
+        supabase.from('appointments').select('id,patient_id,scheduled_at,reason,status,department,treatment_status').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
+        supabase.from('video_sessions').select('id,patient_id,scheduled_at,status,payment_received,room_name').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
+        supabase.from('invoices').select('id,patient_id,invoice_number,total_amount,status,created_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
+        supabase.from('ai_report_requests').select('id,patient_id,requested_by,report_type,status,content,error,created_at,completed_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
+      ]);
+      return new Response(JSON.stringify({ patient, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (body.mode === 'clinical_context') {
+      const allowedRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
+      if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
+      if (!body.patientId) throw new Error('A patient is required');
+      const pid = body.patientId;
+      const { data: patient } = await supabase.from('patients').select('*').eq('id', pid).maybeSingle();
+      if (!patient) throw new Error('Patient record not found');
+      const [{ data: appointments }, { data: vitals }, { data: triage }, { data: encounters }, { data: labOrders }, { data: prescriptions }, { data: imagingOrders }, { data: procedureNotes }, { data: anestheticAssessments }, { data: admissions }] = await Promise.all([
+        supabase.from('appointments').select('*').eq('patient_id', pid).order('scheduled_at', { ascending: false }).limit(25),
+        supabase.from('vital_signs').select('*').eq('patient_id', pid).order('recorded_at', { ascending: false }).limit(25),
+        supabase.from('triage_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('encounters').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('lab_orders').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('prescriptions').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('imaging_orders').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('procedure_notes').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('anesthetic_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.from('admissions').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+      ]);
+      const labIds = (labOrders ?? []).map((row: any) => row.id).filter(Boolean);
+      const { data: labResults } = labIds.length
+        ? await supabase.from('lab_results').select('*').in('lab_order_id', labIds).order('created_at', { ascending: false }).limit(100)
+        : { data: [] as any[] };
+      const latestTriage = (triage ?? [])[0] as any;
+      const bmi = latestTriage?.bmi != null ? Number(latestTriage.bmi) : null;
+      const latestBmi = {
+        value: bmi,
+        category: bmi == null ? 'unavailable' : bmi < 18.5 ? 'underweight' : bmi < 25 ? 'healthy range' : bmi < 30 ? 'overweight' : 'obesity range',
+        recordedAt: latestTriage?.created_at ?? null,
+        weightKg: latestTriage?.weight_kg != null ? Number(latestTriage.weight_kg) : null,
+        heightM: latestTriage?.height_m != null ? Number(latestTriage.height_m) : null,
+      };
+      return new Response(JSON.stringify({ generatedAt: new Date().toISOString(), patient, latestBmi, appointments: appointments ?? [], vitals: vitals ?? [], triage: triage ?? [], encounters: encounters ?? [], labOrders: labOrders ?? [], labResults: labResults ?? [], prescriptions: prescriptions ?? [], imagingOrders: imagingOrders ?? [], procedureNotes: procedureNotes ?? [], anestheticAssessments: anestheticAssessments ?? [], admissions: admissions ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
 
     if (body.mode === 'report') {
       const { data: patient } = await supabase.from('patients').select('*').eq('id', body.patientId).maybeSingle();
