@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 
 const allowedRoles = new Set([
-  'admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
+  'admin','it_admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
   'pharmacist','accountant','front_desk','canteen','radiologist','patient',
 ]);
 
