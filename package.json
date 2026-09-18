@@ -32,7 +32,8 @@
     "test:nextgen-route-surface": "node scripts/test-nextgen-route-surface.mjs",
     "test:nextgen-encounter-admission": "node scripts/test-nextgen-encounter-admission.mjs",
     "preview": "vite preview",
-    "test:nextgen-broader-hms": "node scripts/test-nextgen-broader-hms.mjs"
+    "test:nextgen-broader-hms": "node scripts/test-nextgen-broader-hms.mjs",
+    "test:nextgen-governance": "node scripts/test-nextgen-governance-boundaries.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
