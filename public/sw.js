@@ -85,12 +85,24 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(request, { cache: 'no-store' }).then((response) => {
       if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())).catch(() => undefined);
       return response;
-    }).catch(() => caches.match(request).then((cached) => cached ?? Response.error())));
+    }).catch(async () => {
+      const cached = await caches.match(request);
+      return cached ?? new Response('', { status: 503, statusText: 'Offline' });
+    }));
     return;
   }
 
   event.respondWith(fetch(request).then((response) => {
     if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())).catch(() => undefined);
     return response;
-  }).catch(() => caches.match(request).then((cached) => cached ?? (request.mode === 'navigate' ? caches.match(`${BASE_PATH}/index.html`) : Response.error()))));
+  }).catch(async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    if (request.mode === 'navigate') {
+      const shell = await caches.match(`${BASE_PATH}/index.html`);
+      if (shell) return shell;
+      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>Harmony Health Hub is temporarily offline. Reconnect and refresh.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
+    return new Response('', { status: 503, statusText: 'Offline' });
+  }));
 });
