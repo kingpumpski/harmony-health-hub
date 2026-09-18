@@ -3,22 +3,43 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Activity, BarChart3, Baby, BedDouble, BellRing, Calendar, CalendarClock, ChevronLeft, ChevronRight, ClipboardList, Cloud, CreditCard, Database, Droplets, Eye, FileText, FlaskConical, HeartPulse, Image as ImageIcon, LayoutDashboard, LogOut, Pill, Receipt, Scissors, ShieldCheck, Siren, Smile, Stethoscope, Syringe, Upload, UserCog, Users, Utensils, Video } from 'lucide-react';
 
-interface NavItem { icon: React.ElementType; label: string; href: string }
+type Permission = 'dashboard' | 'patients' | 'registration' | 'appointments' | 'triage' | 'encounters' | 'clinical_operations' | 'ward' | 'handover' | 'emergency' | 'theatre' | 'transfusion' | 'claims' | 'reports' | 'report_submissions' | 'accounts_approvals' | 'tariff_adjustments' | 'department_queue' | 'laboratory' | 'radiology' | 'radiology_results' | 'pharmacy' | 'medication_administration' | 'billing' | 'maternity' | 'telemedicine' | 'fertility' | 'dental' | 'procedures' | 'anesthesia' | 'ophthalmology' | 'ai_clinical' | 'users' | 'system_library' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders' | 'notifications' | 'outside_lab' | 'financial_reports' | 'inventory' | 'stock_alerts' | 'patient_portal' | 'orders' | 'dietary_plans';
+interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
 interface SidebarProps { collapsed: boolean; onToggle: () => void }
-const clinical: NavItem = { icon: Stethoscope, label: 'Clinical Operations', href: '/clinical-operations' };
-const ward: NavItem = { icon: BedDouble, label: 'Ward & Bed Board', href: '/ward-bed-board' };
-const handover: NavItem = { icon: ClipboardList, label: 'Nursing Handover', href: '/nursing-handover' };
-const mar: NavItem = { icon: Syringe, label: 'Medication Administration', href: '/medications' };
-const claims: NavItem = { icon: ShieldCheck, label: 'Insurance Claims', href: '/insurance-claims' };
-const emergency: NavItem = { icon: Siren, label: 'Emergency Board', href: '/emergency-board' };
-const theatre: NavItem = { icon: CalendarClock, label: 'Theatre Board', href: '/theatre-board' };
-const transfusion: NavItem = { icon: Droplets, label: 'Transfusion Board', href: '/transfusion-board' };
-const reports: NavItem = { icon: BarChart3, label: 'Reports Center', href: '/reports' };
-const reportSubmissions: NavItem = { icon: ClipboardList, label: 'Submission Dashboard', href: '/reports/submissions' };
-const tariffAdjustments: NavItem = { icon: Receipt, label: 'Tariff Adjustments', href: '/billing/tariffs' };
-const radiology: NavItem = { icon: ImageIcon, label: 'Radiology / Imaging', href: '/radiology' };
-const clinicalResults: NavItem = { icon: FileText, label: 'Radiology Results', href: '/clinical-results' };
-const roleNavItems: Record<string, NavItem[]> = {
+const clinical: NavItem = { icon: Stethoscope, label: 'Clinical Operations', href: '/clinical-operations', permission: 'clinical_operations' };
+const ward: NavItem = { icon: BedDouble, label: 'Ward & Bed Board', href: '/ward-bed-board', permission: 'ward' };
+const handover: NavItem = { icon: ClipboardList, label: 'Nursing Handover', href: '/nursing-handover', permission: 'handover' };
+const mar: NavItem = { icon: Syringe, label: 'Medication Administration', href: '/medications', permission: 'medication_administration' };
+const claims: NavItem = { icon: ShieldCheck, label: 'Insurance Claims', href: '/insurance-claims', permission: 'claims' };
+const emergency: NavItem = { icon: Siren, label: 'Emergency Board', href: '/emergency-board', permission: 'emergency' };
+const theatre: NavItem = { icon: CalendarClock, label: 'Theatre Board', href: '/theatre-board', permission: 'theatre' };
+const transfusion: NavItem = { icon: Droplets, label: 'Transfusion Board', href: '/transfusion-board', permission: 'transfusion' };
+const reports: NavItem = { icon: BarChart3, label: 'Reports Center', href: '/reports', permission: 'reports' };
+const reportSubmissions: NavItem = { icon: ClipboardList, label: 'Submission Dashboard', href: '/reports/submissions', permission: 'report_submissions' };
+const tariffAdjustments: NavItem = { icon: Receipt, label: 'Tariff Adjustments', href: '/billing/tariffs', permission: 'tariff_adjustments' };
+const radiology: NavItem = { icon: ImageIcon, label: 'Radiology / Imaging', href: '/radiology', permission: 'radiology' };
+const clinicalResults: NavItem = { icon: FileText, label: 'Radiology Results', href: '/clinical-results', permission: 'radiology_results' };
+
+const permissionByHref: Record<string, Permission> = {
+  '/dashboard':'dashboard','/patients':'patients','/registration':'registration','/appointments':'appointments','/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/ward-bed-board':'ward','/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion','/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals','/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/radiology':'radiology','/clinical-results':'radiology_results','/pharmacy':'pharmacy','/medications':'medication_administration','/billing':'billing','/maternity':'maternity','/telemedicine':'telemedicine','/fertility':'fertility','/dental':'dental','/procedures':'procedures','/anesthesia':'anesthesia','/ophthalmology':'ophthalmology','/ai-clinical':'ai_clinical','/admin/users':'users','/admin/system':'system_library','/admin/offline-sync':'offline_sync','/admin/data-import':'data_import','/inpatients':'inpatients','/menu':'meal_orders','/notifications':'notifications','/outside-lab':'outside_lab','/financial-reports':'financial_reports','/inventory':'inventory','/stock-alerts':'stock_alerts','/patient-portal':'patient_portal','/orders':'orders','/dietary-plans':'dietary_plans'
+};
+const rolePermissions: Record<string, Permission[]> = {
+  admin: Object.values(permissionByHref),
+  practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','emergency','theatre','transfusion','department_queue','radiology','radiology_results','dental','procedures','anesthesia','laboratory','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
+  nurse: ['dashboard','patients','triage','encounters','clinical_operations','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
+  specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
+  midwife: ['dashboard','maternity','fertility','inpatients','clinical_operations','handover','emergency','theatre','transfusion','triage','medication_administration'],
+  radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
+  front_desk: ['dashboard','patients','registration','appointments','triage','clinical_operations','billing'],
+  accountant: ['dashboard','billing','tariff_adjustments','claims','accounts_approvals','clinical_operations','financial_reports'],
+  lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],
+  pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts'],
+  canteen: ['dashboard','meal_orders','orders','dietary_plans'],
+  patient: ['dashboard','patient_portal','appointments','telemedicine','billing']
+};
+const withPermission = (items: Omit<NavItem,'permission'>[]): NavItem[] => items.map(item => ({...item, permission: permissionByHref[item.href] ?? 'dashboard'}));
+
+const roleNavItems: Record<string, Omit<NavItem,'permission'>[]> = {
   admin: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: ClipboardList, label: 'Registration', href: '/registration' }, { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, clinical, ward, handover, emergency, theatre, transfusion, claims, reports, reportSubmissions, { icon: CreditCard, label: 'Accounts Approvals', href: '/accounts-approvals' }, tariffAdjustments, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' }, radiology, clinicalResults, { icon: Pill, label: 'Pharmacy', href: '/pharmacy' }, mar, { icon: CreditCard, label: 'Billing', href: '/billing' }, { icon: Baby, label: 'Maternity', href: '/maternity' }, { icon: Video, label: 'Telemedicine', href: '/telemedicine' }, { icon: ShieldCheck, label: 'AI Clinical Hub', href: '/ai-clinical' }, { icon: UserCog, label: 'Manage Users', href: '/admin/users' }, { icon: Database, label: 'System Library', href: '/admin/system' }, { icon: Cloud, label: 'Offline Synchronization', href: '/admin/offline-sync' }, { icon: Upload, label: 'Data Import', href: '/admin/data-import' }],
   practitioner: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, clinical, emergency, theatre, transfusion, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, radiology, clinicalResults, { icon: Smile, label: 'Dental', href: '/dental' }, { icon: Scissors, label: 'Procedure Notes', href: '/procedures' }, { icon: Activity, label: 'Anesthesia', href: '/anesthesia' }, { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' }, { icon: Pill, label: 'Prescriptions', href: '/pharmacy' }, mar, { icon: Video, label: 'Telemedicine', href: '/telemedicine' }, { icon: Baby, label: 'Fertility', href: '/fertility' }, { icon: Eye, label: 'Ophthalmology', href: '/ophthalmology' }, { icon: ShieldCheck, label: 'AI Clinical Hub', href: '/ai-clinical' }],
   nurse: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: HeartPulse, label: 'Vitals & Triage', href: '/vitals' }, { icon: Stethoscope, label: 'Encounters', href: '/encounters' }, clinical, ward, handover, emergency, theatre, transfusion, { icon: BedDouble, label: 'Inpatients', href: '/inpatients' }, mar, { icon: Utensils, label: 'Meal Orders', href: '/menu' }],
@@ -26,7 +47,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   midwife: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Baby, label: 'Maternity', href: '/maternity' }, { icon: Baby, label: 'Fertility', href: '/fertility' }, { icon: BedDouble, label: 'Admissions', href: '/admissions' }, clinical, handover, emergency, theatre, transfusion, { icon: HeartPulse, label: 'Vitals', href: '/vitals' }, mar],
   radiologist: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, radiology, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: BellRing, label: 'Notifications', href: '/notifications' }, { icon: ShieldCheck, label: 'AI Clinical Hub', href: '/ai-clinical' }],
   front_desk: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Users, label: 'Patients', href: '/patients' }, { icon: ClipboardList, label: 'Registration', href: '/registration' }, { icon: Calendar, label: 'Appointments', href: '/appointments' }, { icon: HeartPulse, label: 'Triage', href: '/vitals' }, clinical, { icon: CreditCard, label: 'Billing', href: '/billing' }],
-  accountant: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: CreditCard, label: 'Billing', href: '/billing' }, tariffAdjustments, claims, { icon: ShieldCheck, label: 'Accounts Approvals', href: '/accounts-approvals' }, { icon: Receipt, label: 'Invoices', href: '/billing' }, clinical, { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' }],
+  accountant: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: CreditCard, label: 'Billing', href: '/billing' }, tariffAdjustments, claims, { icon: ShieldCheck, label: 'Accounts Approvals', href: '/accounts-approvals' }, clinical, { icon: ClipboardList, label: 'Financial Reports', href: '/financial-reports' }],
   lab_technician: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: FlaskConical, label: 'Laboratory', href: '/laboratory' }, { icon: Upload, label: 'Outside Lab Uploads', href: '/outside-lab' }, { icon: ClipboardList, label: 'Reports', href: '/reports' }],
   pharmacist: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: ClipboardList, label: 'Department Queue', href: '/department-queue' }, { icon: Pill, label: 'Pharmacy / Dispensing', href: '/pharmacy' }, mar, { icon: ClipboardList, label: 'Inventory', href: '/inventory' }, { icon: FileText, label: 'Stock Alerts', href: '/stock-alerts' }],
   canteen: [{ icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }, { icon: Utensils, label: 'Menu', href: '/menu' }, { icon: ClipboardList, label: 'Orders', href: '/orders' }, { icon: Users, label: 'Dietary Plans', href: '/dietary-plans' }],
@@ -37,7 +58,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   if (!user) return null;
-  const navItems = roleNavItems[user.role] || roleNavItems.patient;
+  const permissions = new Set(rolePermissions[user.role] || rolePermissions.patient);
+  const navItems = withPermission(roleNavItems[user.role] || roleNavItems.patient).filter(item => permissions.has(item.permission));
   return <aside className={cn('fixed left-0 top-0 z-40 flex h-screen flex-col sidebar-gradient transition-[width] duration-300 max-md:w-20', collapsed ? 'w-20' : 'w-64')}>
     <div className="flex items-center justify-between border-b border-sidebar-border p-4">
       {!collapsed ? <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary"><HeartPulse className="h-6 w-6 text-sidebar-primary-foreground" /></div><div className="min-w-0 max-md:hidden"><h1 className="font-heading text-lg font-bold text-sidebar-foreground">Harmony Health Hub</h1><p className="truncate text-xs text-sidebar-foreground/60">Healthcare Management System</p></div></div> : <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary"><HeartPulse className="h-6 w-6 text-sidebar-primary-foreground" /></div>}
