@@ -1,4 +1,9 @@
 -- Runtime governance boundary for the broader HMS architecture.
+-- Required enterprise modules are enabled by default; optional facility modules remain opt-in.
+UPDATE public.hms_module_catalog
+   SET default_enabled = CASE WHEN optional THEN false ELSE true END,
+       updated_at = now()
+ WHERE module_id IN ('physiotherapy','dietary-restaurant','teaching-research','asset-biomedical','procurement','data-import','report-centre','user-role-management');
 -- This migration does not create a second RBAC system. It bridges the broader
 -- role catalogue to the existing user_roles authority and makes facility
 -- module enablement enforceable at server-side workflow boundaries.
