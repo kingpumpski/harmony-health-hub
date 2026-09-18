@@ -28,26 +28,25 @@ export default function Imaging() {
 
   const load = async (announce = false) => {
     setLoading(true);
-    const [{ data: p }, { data: o }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name').limit(300),
-      supabase.from('imaging_orders').select('*, patients(first_name,last_name)').order('created_at', { ascending: false }).limit(100),
-    ]);
-    const nextOrders = (o ?? []) as ImagingOrder[];
+    const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
+    if (error) {
+      setLoading(false);
+      toast({ title: 'Imaging workspace unavailable', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
+    const nextOrders = workspace.orders ?? [];
     if (announce && previousIds.size > 0 && nextOrders.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
     setPreviousIds(new Set(nextOrders.map((order) => order.id)));
-    setPatients((p ?? []) as Patient[]);
+    setPatients(workspace.patients ?? []);
     setOrders(nextOrders);
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, []);
   useEffect(() => {
-    const channel = supabase.channel('imaging-workflow-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    void load();
+    const refreshTimer = window.setInterval(() => void load(true), 30000);
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   const counters = useMemo(() => ({
