@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useMemo, useState } from 'react';
 import { BrainCircuit, Cpu, ShieldCheck, Sparkles, ClipboardList } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +32,7 @@ export default function AIClinicalHub() {
 
   const load = async () => {
     const [{ data: pts }, { data: rows }] = await Promise.all([
-      supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300),
+      searchPatientDirectory('', 300),
       supabase.from('ai_clinical_sessions' as never).select('id, specialist, status, review_status, created_at, model_provider, model_name').order('created_at', { ascending: false }).limit(30),
     ]);
     setPatients((pts ?? []) as Patient[]);
