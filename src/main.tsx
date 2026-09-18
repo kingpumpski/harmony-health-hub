@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { FormFieldIdentityNormalizer } from "./components/system/FormFieldIdentityNormalizer";
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
@@ -13,4 +14,4 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(\n  <>\n    <FormFieldIdentityNormalizer />\n    <App />\n  </>\n);
