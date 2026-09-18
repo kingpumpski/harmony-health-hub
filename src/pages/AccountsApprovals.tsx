@@ -65,7 +65,7 @@ export default function AccountsApprovals() {
   };
   const openBilling = (patientId: string | null) => { window.location.assign(patientId ? `/billing?patient=${encodeURIComponent(patientId)}` : '/billing'); };
 
-  const acknowledgeDischarge = async (id: string) => { const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id).eq('recipient_role', 'accountant'); if (error) { playWorkflowSound('critical'); toast({ title: 'Could not acknowledge handoff', description: error.message, variant: 'destructive' }); return; } playWorkflowSound('success'); await load(); };
+  const acknowledgeDischarge = async (id: string) => { const { error } = await supabase.rpc('mark_notification_read', { _notification_id: id }); if (error) { playWorkflowSound('critical'); toast({ title: 'Could not acknowledge handoff', description: error.message, variant: 'destructive' }); return; } playWorkflowSound('success'); await load(); };
 
   const counterCards = [
     { label: 'Awaiting approval', value: counts.pending, icon: Clock3, tone: 'text-warning', surface: 'bg-warning/5', status: 'pending_payment_approval' as ServiceOrderStatus },
