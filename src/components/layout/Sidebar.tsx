@@ -15,7 +15,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(Calendar,'Appointments','/appointments','appointments'), domain(Stethoscope,'Clinical Operations','/clinical-operations','clinical_operations'),
     domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(Pill,'Pharmacy','/pharmacy','pharmacy'),
     domain(FlaskConical,'Laboratory','/laboratory','laboratory'), domain(BarChart3,'Reports Center','/reports','reports'),
-    domain(CreditCard,'Finance','/billing','billing'), domain(Settings,'Administration','/admin/users','users'),
+    domain(CreditCard,'Finance','/finance','finance'), domain(Settings,'Administration','/administration','administration'),
   ],
   practitioner: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
@@ -39,7 +39,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   front_desk: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
-    domain(Calendar,'Appointments','/appointments','appointments'), domain(CreditCard,'Finance','/billing','billing'),
+    domain(Calendar,'Appointments','/appointments','appointments'), domain(CreditCard,'Finance','/finance','finance'),
   ],
   pharmacist: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Pill,'Pharmacy','/pharmacy','pharmacy'),
@@ -49,7 +49,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(BarChart3,'Reports Center','/reports','reports'),
   ],
   accountant: [
-    domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(CreditCard,'Finance','/billing','billing'),
+    domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(CreditCard,'Finance','/finance','finance'),
     domain(BarChart3,'Reports Center','/reports','reports'),
   ],
   radiologist: [
