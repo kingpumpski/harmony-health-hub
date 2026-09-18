@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useEffect, useState } from 'react';
 import Papa from 'papaparse';
 import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, RefreshCw, UserCheck, CheckCircle2, Search } from 'lucide-react';
@@ -56,7 +57,7 @@ export default function DataImport() {
 
   const refreshBatches = async () => {
     if (user?.role !== 'admin') return;
-    const { data: workspace, error } = await supabase.rpc('get_operational_workspace', { _module: 'data_migration', _limit: 20 }); const data = (workspace as any)?.batches ?? [];
+    const { data: workspace, error } = await getOperationalWorkspace('data_migration', 20); const data = (workspace as any)?.batches ?? [];
     if (error) return toast({ title: 'Migration workspace unavailable', description: error.message, variant: 'destructive' });
     setBatches((data ?? []) as MigrationBatch[]);
   };
