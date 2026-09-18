@@ -83,13 +83,11 @@ Deno.serve(async (req) => {
       return json({ error: `Role assignment failed: ${roleInsert.error.message}` }, 500);
     }
 
-    await adminClient.from('audit_logs').insert({
-      user_id: caller.id,
-      action: 'admin_create_user',
-      entity_type: 'user',
-      entity_id: newUser.id,
-      details: { email, role, onboarding, created_user_id: newUser.id },
-    }).then(() => undefined);
+    await adminClient.rpc('record_system_audit', {
+      _action: 'admin_create_user', _module: 'administration', _entity_type: 'user',
+      _entity_id: newUser.id, _severity: 'info',
+      _metadata: { email, role, onboarding, created_user_id: newUser.id },
+    });
 
     return json({
       ok: true,
