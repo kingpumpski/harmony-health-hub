@@ -38,6 +38,9 @@ jobs:
       - name: Build production site
         run: npm run build
 
+      - name: Prepare clean SPA route entrypoints
+        run: node scripts/prepare-github-pages-spa.mjs
+
       - name: Preserve SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
 
