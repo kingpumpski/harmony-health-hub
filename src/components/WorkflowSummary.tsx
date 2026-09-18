@@ -6,7 +6,7 @@ import type { UserRole } from '@/types';
 
 type Card = { label: string; href: string; icon: typeof Activity; tone: string; surface: string };
 const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
-const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'];
+const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist'];
 
 export default function WorkflowSummary() {
   const { user } = useAuth();
