@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck, Stethoscope, ClipboardCheck, Clock3, Activity } from 'lucide-react';
-import { notifyRoles, notify } from '@/lib/notifications';
+import { notifyRoles } from '@/lib/notifications';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 
-interface Patient { id: string; first_name: string; last_name: string; user_id: string | null }
+interface Patient { id: string; first_name: string; last_name: string; user_id?: string | null }
 interface Appointment { id: string; patient_id: string; scheduled_at: string; reason: string | null; status: string; department: string | null; attending_officer_id?: string | null; treatment_status?: string | null; treatment_notes?: string | null }
 const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse']);
 const editableRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk']);
@@ -56,7 +56,7 @@ export default function Appointments() {
     if (error) return toast({ title: 'Failed to schedule appointment', description: error.message, variant: 'destructive' });
     const created = data as unknown as Appointment; playWorkflowSound('success'); toast({ title: 'Appointment scheduled' }); const p = patients.find((x) => x.id === pid); const name = p ? `${p.first_name} ${p.last_name}` : 'patient';
     await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], { title: 'New appointment', message: `${name} scheduled for ${dept} on ${new Date(when).toLocaleString()}`, severity: 'info', category: 'appointment', link: '/appointments', relatedPatientId: pid, relatedEntityId: created?.id });
-    if (p?.user_id && created?.id) await notify({ recipientUserId: p.user_id, title: 'Your appointment is booked', message: `${dept} on ${new Date(when).toLocaleString()}`, severity: 'success', category: 'appointment', link: '/patient-portal', relatedPatientId: pid, relatedEntityId: created.id });
+    // Patient-facing notification is handled by the server-side appointment workflow; this page does not read protected patient identity fields.
     setReason(''); setPid(''); await load();
   };
 
