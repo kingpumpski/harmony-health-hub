@@ -51,7 +51,7 @@ export default function WorkflowSummary() {
       { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' },
       { label: 'Radiology', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
       { label: 'Accounts', href: '/accounts-approvals', icon: CreditCard, tone: 'text-warning', surface: 'bg-warning/5' },
-      { label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' },
+      ...(canBeds(role) ? [{ label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
       ...(canEmergency(role) ? [{ label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }] : []),
       ...(canTheatre(role) ? [{ label: 'Theatre', href: '/theatre-board', icon: Scissors, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
       ...(canClaims(role) ? [{ label: 'Claims', href: '/insurance-claims', icon: ShieldCheck, tone: 'text-warning', surface: 'bg-warning/5' }] : []),
