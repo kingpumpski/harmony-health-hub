@@ -36,7 +36,7 @@ export default function AIClinicalHub() {
       supabase.rpc('get_operational_workspace', { _module: 'ai_clinical', _limit: 30 }),
     ]);
     setPatients((pts ?? []) as Patient[]);
-    setSessions((rows ?? []) as unknown as Session[]);
+    setSessions((((rows as any)?.sessions) ?? []) as Session[]);
   };
 
   useEffect(() => { void load(); }, []);
