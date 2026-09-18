@@ -1,0 +1,1 @@
+-- Secure portal workspace placeholder; populated in the next reconciliation pass.
