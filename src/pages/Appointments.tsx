@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +27,7 @@ export default function Appointments() {
   const load = async () => {
     const [{ data: pts, error: patientError }, { data: aps, error: appointmentError }] = await Promise.all([
       searchPatientDirectory('', 300),
-      (async () => { const { data, error } = await supabase.rpc('get_operational_workspace', { _module: 'appointments', _limit: 200 }); return { data: (data as any)?.appointments ?? [], error }; })(),
+      (async () => { const { data, error } = await getOperationalWorkspace('appointments', 200); return { data: (data as any)?.appointments ?? [], error }; })(),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
     if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' });
