@@ -26,22 +26,17 @@ export default function NurseDashboard() {
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    const [{ data: p, error: pe }, { data: a, error: ae }, { data: m, error: me }, { data: h, error: he }, { data: t, error: te }, { data: q, error: qe }] = await Promise.all([
-      supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
-      supabase.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(250),
-      supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
-      supabase.from('nursing_shift_handovers').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
-      supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
-    ]);
-    const firstError = pe || ae || me || he || te || qe;
-    if (firstError) toast.error(`Nursing dashboard refresh: ${firstError.message}`);
-    setPatients((p ?? []) as Patient[]);
-    setAdmissions((a ?? []) as DashboardRow[]);
-    setMedications((m ?? []) as DashboardRow[]);
-    setHandovers((h ?? []) as DashboardRow[]);
-    setTriage((t ?? []) as DashboardRow[]);
-    setQueue((q ?? []) as DashboardRow[]);
+    const { data, error } = await supabase.functions.invoke('ai-clinical-assist', { body: { mode: 'nurse_dashboard' } });
+    if (error || data?.error) {
+      toast.error('Nursing dashboard refresh: ' + (data?.error ?? error?.message ?? 'Workspace unavailable'));
+    } else {
+      setPatients((data?.patients ?? []) as Patient[]);
+      setAdmissions((data?.admissions ?? []) as DashboardRow[]);
+      setMedications((data?.medications ?? []) as DashboardRow[]);
+      setHandovers((data?.handovers ?? []) as DashboardRow[]);
+      setTriage((data?.triage ?? []) as DashboardRow[]);
+      setQueue((data?.queue ?? []) as DashboardRow[]);
+    }
     setLoading(false);
   }, []);
 
