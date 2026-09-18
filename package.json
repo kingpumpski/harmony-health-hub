@@ -31,7 +31,8 @@
     "test:nextgen-branding": "node scripts/test-nextgen-branding-contract.mjs",
     "test:nextgen-route-surface": "node scripts/test-nextgen-route-surface.mjs",
     "test:nextgen-encounter-admission": "node scripts/test-nextgen-encounter-admission.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:nextgen-broader-hms": "node scripts/test-nextgen-broader-hms.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
