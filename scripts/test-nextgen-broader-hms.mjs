@@ -13,6 +13,14 @@ const manifest=read('src/lib/nextGenModuleManifest.ts');
 for(const id of ['physiotherapy','dietary-restaurant','teaching-research','asset-biomedical','procurement','data-import','report-centre','user-role-management']) assert(manifest.includes(`id: '${id}'`),`missing broader module contract: ${id}`);
 
 const migration=read('supabase/migrations/20260918170000_broader_hms_enterprise_foundation.sql');
+const importWorkflow=read('supabase/migrations/20260918180000_hms_import_governed_lifecycle.sql');
+const importTemplate=read('supabase/migrations/20260918190000_hms_import_patient_template.sql');
+const importUi=read('src/pages/admin/DataImport.tsx');
+for (const token of ['create_hms_import_batch','validate_hms_import_batch','approve_hms_import_batch','commit_hms_import_batch','rollback_hms_import_batch']) assert(importWorkflow.includes(token),`missing governed import workflow: ${token}`);
+assert(importWorkflow.includes('Only approved batches may be committed') && importWorkflow.includes('Atomic'), 'import approval/atomic boundary missing');
+assert(importTemplate.includes('TMPL-PAT-PATIENT-v1'), 'patient import template missing');
+assert(importUi.includes("create_hms_import_batch") && importUi.includes("commit_hms_import_batch"), 'Data Import UI is not using governed import workflow');
+assert(!importUi.includes("supabase.from('patients').insert"), 'Data Import UI must not write directly to patients');
 for(const token of [
  'hms_facility_modules','set_hms_facility_module','hms_role_catalog','hms_role_module_permissions',
  'hms_import_templates','hms_import_template_versions','hms_import_batches','hms_import_staging','hms_import_quarantine','hms_import_audit',
