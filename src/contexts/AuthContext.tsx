@@ -23,38 +23,41 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const knownPermissions = new Set(Object.values(permissionByHref) as Permission[]);
+
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
-    supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', supabaseUser.id)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
+    supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }).limit(1).maybeSingle(),
   ]);
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
   if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
+
   const resolvedRole = (roleRow?.role as UserRole) ?? 'patient';
-  let permissions = getDefaultPermissions(resolvedRole);
+  const defaults = getDefaultPermissions(resolvedRole);
+  let permissions = defaults;
+
   try {
     const { data: permissionRows, error: permissionError } = await supabase.rpc('get_my_permissions' as never);
     if (permissionError) {
       console.warn('Database permission profile unavailable; using role defaults.', permissionError.message);
-    } else if (Array.isArray(permissionRows) && permissionRows.length > 0) {
-      permissions = permissionRows
+    } else if (Array.isArray(permissionRows)) {
+      const resolved = permissionRows
         .map((row: unknown) => typeof row === 'string' ? row : (row as { permission_key?: unknown })?.permission_key)
-        .filter((value): value is Permission => typeof value === 'string' && (Object.values(permissionByHref) as string[]).includes(value));
+        .filter((value): value is Permission => typeof value === 'string' && knownPermissions.has(value as Permission));
+      // An empty catalog/mapping must never blank the navigation. Defaults are the compatibility floor.
+      if (resolved.length > 0) permissions = resolved;
     }
   } catch (error) {
     console.warn('Database permission profile unavailable; using role defaults.', error);
   }
+
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? '',
@@ -71,6 +74,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    if (!session?.user) return;
+    try {
+      setUser(await loadAppUser(session.user));
+    } catch (error) {
+      console.error('Unable to refresh application user permissions.', error);
+    }
+  }, [session?.user]);
 
   useEffect(() => {
     let mounted = true;
@@ -89,12 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => { void applySession(newSession); });
-    void supabase.auth.getSession()
-      .then(({ data: { session: existing } }) => applySession(existing))
-      .catch((error) => {
-        console.error('Unable to restore authentication session.', error);
-        if (mounted) { setSession(null); setUser(null); setLoading(false); }
-      });
+    void supabase.auth.getSession().then(({ data: { session: existing } }) => applySession(existing)).catch(error => {
+      console.error('Unable to restore authentication session.', error);
+      if (mounted) { setSession(null); setUser(null); setLoading(false); }
+    });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
@@ -112,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => { await supabase.auth.signOut(); setUser(null); setSession(null); }, []);
   const switchRole = useCallback((_role: UserRole) => { /* Legacy compatibility function. Real roles come from the database. */ }, []);
 
-  return <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, switchRole }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, login, signUp, logout, refreshUser, switchRole }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() { const ctx = useContext(AuthContext); if (!ctx) throw new Error('useAuth must be used within AuthProvider'); return ctx; }
