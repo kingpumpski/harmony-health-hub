@@ -12,11 +12,13 @@ export default function TheatreBoard() {
   const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [officers, setOfficers] = useState<Officer[]>([]); const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' });
   const load = useCallback(async () => {
-    const [p, r, o] = await Promise.all([
-      supabase.from('patients').select('id,patient_code,first_name,last_name').limit(500),
-      supabase.from('theatre_cases').select('id,patient_id,procedure_name,theatre_name,scheduled_start,urgency,status,anesthetist_id').order('scheduled_start', { ascending: true }).limit(150),
-      supabase.from('profiles').select('id,full_name,specialization').limit(500),
+    const [workspace, p] = await Promise.all([
+      supabase.rpc('get_operational_workspace', { _module: 'theatre', _limit: 150 }),
+      searchPatientDirectory('', 500),
     ]);
+    const workspaceData = (workspace.data ?? {}) as any;
+    const r = { data: workspaceData.cases ?? [], error: workspace.error };
+    const o = { data: workspaceData.profiles ?? [], error: workspace.error };
     if (p.error || r.error || o.error) toast({ title: 'Unable to load theatre board', description: (p.error || r.error || o.error)?.message, variant: 'destructive' });
     setPatients((p.data ?? []) as Patient[]); setRows((r.data ?? []) as Row[]); setOfficers((o.data ?? []) as Officer[]);
   }, []);
