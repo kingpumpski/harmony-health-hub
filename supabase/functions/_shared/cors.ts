@@ -41,3 +41,5 @@ export function handlePreflight(req: Request): Response | null {
   if (req.method !== 'OPTIONS') return null;
   return new Response('ok', { headers: buildCorsHeaders(req) });
 }
+
+// GitHub Pages origin is explicitly permitted for production browser clients.
