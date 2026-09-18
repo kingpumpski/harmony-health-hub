@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useState, type ElementType } from 'react';
 import { Activity, BedDouble, ClipboardList, Droplets, RefreshCw, ShieldCheck, Siren, Stethoscope } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
