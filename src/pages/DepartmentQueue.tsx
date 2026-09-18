@@ -70,7 +70,7 @@ export default function DepartmentQueue() {
   };
   const complete = async (orderId: string) => {
     setBusyId(orderId);
-    try { await completeServiceOrder(orderId); playWorkflowSound('success'); toast({ title: 'Order completed', description: 'The patient has been removed from the active queue.' }); await load(); }
+    try { await completeServiceOrder(orderId); playWorkflowSound('success'); toast({ title: 'Order completed', description: 'The order could not be completed.' }); await load(); }
     catch (error) { toast({ title: 'Could not complete order', description: error instanceof Error ? error.message : 'The order could not be completed.', variant: 'destructive' }); }
     finally { setBusyId(null); }
   };
@@ -85,7 +85,7 @@ export default function DepartmentQueue() {
       {department && <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')} className={`${counterClass} bg-warning/5 ${counts.active > 0 ? 'animate-pulse' : ''}`}><p className="text-xs text-muted-foreground">Active patients</p><p className="text-3xl font-bold tabular-nums">{counts.active}</p><p className="mt-1 text-xs text-muted-foreground">Show all active work</p></button>
         <button type="button" aria-pressed={filter === 'queued'} onClick={() => setFilter('queued')} className={`${counterClass} bg-primary/5`}><p className="text-xs text-muted-foreground">Queued</p><p className="text-3xl font-bold tabular-nums">{counts.queued}</p><p className="mt-1 text-xs text-muted-foreground">Waiting to start</p></button>
-        <button type="button" aria-pressed={filter === 'claimed'} onClick={() => setFilter('claimed')} className={`${counterClass} bg-info/5`}><p className="text-xs text-muted-foreground"></p><p className="text-3xl font-bold tabular-nums">{counts.inProgress}</p><p className="mt-1 text-xs text-muted-foreground">Currently being attended</p></button>
+        <button type="button" aria-pressed={filter === 'claimed'} onClick={() => setFilter('claimed')} className={`${counterClass} bg-info/5`}><p className="text-xs text-muted-foreground">In progress</p><p className="text-3xl font-bold tabular-nums">{counts.inProgress}</p><p className="mt-1 text-xs text-muted-foreground">Currently being attended</p></button>
       </div>}
       {!department && <div className="card-medical p-5 text-sm text-muted-foreground">Ask an administrator to assign your clinical department before using the service queue.</div>}
       {department && visibleRows.length === 0 && <div className="card-medical p-8 text-center text-sm text-muted-foreground">{filter === 'all' ? 'No released service orders are waiting for your department.' : `No ${filter === 'queued' ? 'queued' : 'in-progress'} service orders are currently waiting.`}</div>}
