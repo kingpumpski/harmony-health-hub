@@ -1,7 +1,7 @@
 import type { UserRole } from '@/types';
 
 export type Permission =
-  | 'dashboard' | 'patients' | 'registration' | 'appointments' | 'triage' | 'encounters'
+  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'registration' | 'appointments' | 'triage' | 'encounters'
   | 'clinical_operations' | 'inpatient' | 'ward' | 'handover' | 'emergency' | 'theatre' | 'transfusion'
   | 'claims' | 'reports' | 'report_submissions' | 'accounts_approvals' | 'tariff_adjustments'
   | 'department_queue' | 'laboratory' | 'laboratory_results' | 'radiology' | 'radiology_results' | 'pharmacy'
@@ -12,7 +12,7 @@ export type Permission =
   | 'patient_portal' | 'orders' | 'dietary_plans';
 
 export const permissionByHref: Record<string, Permission> = {
-  '/dashboard':'dashboard','/patients':'patients','/registration':'registration','/appointments':'appointments',
+  '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/registration':'registration','/appointments':'appointments',
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
   '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
@@ -34,7 +34,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','handover','emergency','theatre','transfusion','triage','medication_administration'],
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
   front_desk: ['dashboard','patients','registration','appointments','triage','billing'],
-  accountant: ['dashboard','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports'],
+  accountant: ['dashboard','finance','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports'],
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
