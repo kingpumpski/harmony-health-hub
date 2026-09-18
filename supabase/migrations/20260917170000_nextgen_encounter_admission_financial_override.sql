@@ -2,7 +2,7 @@
 -- Reuses canonical encounters, admissions, service_orders, billing_overrides and department_queues.
 -- Emergency treatment-before-deposit is facility-controlled and auditable.
 
-ALTER TABLE public.facility_settings
+ALTER TABLE public.facility_configuration
   ADD COLUMN IF NOT EXISTS allow_treatment_before_deposit BOOLEAN NOT NULL DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS admission_financial_override_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS require_accounts_release_after_deposit BOOLEAN NOT NULL DEFAULT TRUE,
@@ -70,8 +70,9 @@ BEGIN
     AND COALESCE(allow_clinical_emergency_override,FALSE)
     AND COALESCE(_emergency_override,TRUE)
   INTO v_override
-  FROM public.facility_settings
-  WHERE id='default';
+  FROM public.facility_configuration
+  ORDER BY created_at
+  LIMIT 1;
   v_override := COALESCE(v_override,FALSE);
 
   IF EXISTS (
