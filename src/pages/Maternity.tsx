@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, Baby, Plus, RefreshCw } from 'lucide-react';
@@ -12,7 +13,7 @@ export default function Maternity(){
  const [gravida,setGravida]=useState(''),[para,setPara]=useState(''),[lmp,setLmp]=useState(''),[edd,setEdd]=useState(''),[notes,setNotes]=useState(''),[message,setMessage]=useState(''),[loading,setLoading]=useState(false);
  const [obs,setObs]=useState({blood_pressure:'',pulse:'',temperature:'',fetal_heart_rate:'',contractions_per_10_min:'',cervical_dilation_cm:'',effacement_percent:'',station:'',membrane_status:'',notes:''});
  const loadObservations=async(id:string)=>{const {data,error}=await supabase.from('maternity_observations').select('*').eq('episode_id',id).order('observed_at',{ascending:false}).limit(20);if(error)setMessage(error.message);else setObservations((data??[]) as Observation[])};
- const load=async()=>{setLoading(true);const [{data:ps,error:pe},{data:es,error:ee}]=await Promise.all([supabase.from('patients').select('id,first_name,last_name,patient_code').order('first_name').limit(1000),supabase.from('maternity_episodes').select('*').order('created_at',{ascending:false}).limit(200)]);if(pe||ee){setMessage(pe?.message??ee?.message??'Unable to load maternity records.');setLoading(false);return}setPatients((ps??[]) as Patient[]);setEpisodes((es??[]) as Episode[]);const selected=episodeId||((es??[])[0] as Episode|undefined)?.id||'';if(selected){setEpisodeId(selected);await loadObservations(selected)}setLoading(false)};
+ const load=async()=>{setLoading(true);const [{data:ps,error:pe},{data:es,error:ee}]=await Promise.all([searchPatientDirectory('', 1000),supabase.from('maternity_episodes').select('*').order('created_at',{ascending:false}).limit(200)]);if(pe||ee){setMessage(pe?.message??ee?.message??'Unable to load maternity records.');setLoading(false);return}setPatients((ps??[]) as Patient[]);setEpisodes((es??[]) as Episode[]);const selected=episodeId||((es??[])[0] as Episode|undefined)?.id||'';if(selected){setEpisodeId(selected);await loadObservations(selected)}setLoading(false)};
  useEffect(()=>{void load()},[]);
  const selected=useMemo(()=>episodes.find(e=>e.id===episodeId),[episodes,episodeId]);
  const pname=(id:string)=>{const p=patients.find(x=>x.id===id);return p?`${p.first_name} ${p.last_name} (${p.patient_code})`:id};
