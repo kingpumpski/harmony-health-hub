@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -20,7 +21,7 @@ export default function Telemedicine() {
 
   const loadAll = async () => {
     const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name').limit(200),
+      searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
       supabase.from('video_sessions').select('*').order('scheduled_at', { ascending: false }).limit(50),
     ]);
     if (patientError || sessionError) {
