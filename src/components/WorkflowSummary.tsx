@@ -42,7 +42,7 @@ export default function WorkflowSummary() {
     if (role === 'nurse' || role === 'midwife' || role === 'specialist_nurse') return [...common,
       { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
       { label: 'Nursing queue', href: '/department-queue', icon: Activity, tone: 'text-info', surface: 'bg-info/5' },
-      ...(canBeds(role) ? [{ label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
+      ...(canBeds(role) ? [{ label: 'Occupied beds', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
       ...(role === 'midwife' ? [{ label: 'Maternity', href: '/maternity', icon: Baby, tone: 'text-success', surface: 'bg-success/5' }] : []),
     ];
     if (role === 'front_desk') return [...common, { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' }, { label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }];
