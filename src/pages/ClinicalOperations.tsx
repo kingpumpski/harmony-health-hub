@@ -1,5 +1,6 @@
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useState, type ElementType } from 'react';
+import { Link } from 'react-router-dom';
 import { Activity, BedDouble, ClipboardList, Droplets, RefreshCw, ShieldCheck, Siren, Stethoscope } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,6 +121,7 @@ export default function ClinicalOperations() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-heading font-bold">Clinical Operations</h1><p className="text-sm text-muted-foreground">Enterprise workflows for capacity, nursing, emergency, theatre, transfusion and insurance.</p></div><button onClick={() => void load()} className="rounded-md border p-2" aria-label="Refresh" disabled={busy}><RefreshCw className="w-4 h-4" /></button></div>
+      <div className="card-medical p-4"><div className="mb-3 text-sm font-semibold">Clinical workflow access</div><div className="flex flex-wrap gap-2"><Link to="/vitals" className="btn-secondary">Triage</Link><Link to="/encounters" className="btn-secondary">Encounters</Link><Link to="/theatre-board" className="btn-secondary">Theatre</Link><Link to="/transfusion-board" className="btn-secondary">Transfusion</Link></div></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">{tabs.map(([id, labelText, Icon]) => <button key={id} onClick={() => { setTab(id); setForm({}); setPatientId(''); }} className={`min-w-0 rounded-lg border p-3 text-left text-sm ${tab === id ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}><Icon className="mb-2 h-5 w-5" /><span className="block truncate">{labelText}</span></button>)}</div>
       <div className="space-y-4 rounded-xl border bg-card p-5">
         {tab !== 'capacity' && <select value={patientId} onChange={(event) => setPatientId(event.target.value)} className="w-full rounded-md border bg-background p-2"><option value="">Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.patient_code} — {patient.first_name} {patient.last_name}</option>)}</select>}
