@@ -15,7 +15,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(Calendar,'Appointments','/appointments','appointments'), domain(Stethoscope,'Clinical Operations','/clinical-operations','clinical_operations'),
     domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(Pill,'Pharmacy','/pharmacy','pharmacy'),
     domain(FlaskConical,'Laboratory','/laboratory','laboratory'), domain(BarChart3,'Reports Center','/reports','reports'),
-    domain(CreditCard,'Finance','/finance','finance'), domain(Settings,'Administration','/administration','administration'),
+    domain(CreditCard,'Finance','/finance','finance'), domain(Settings,'Administration','/administration','administration'), domain(ShieldCheck,'IT Support','/it-support','it_support'),
   ],
   practitioner: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
@@ -56,7 +56,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
     domain(Users,'Patients','/patients','patients'),
   ],
-  canteen: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard')],
+  it_admin: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(ShieldCheck,'IT Support','/it-support','it_support')],\n  canteen: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard')],
   patient: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FileText,'My Portal','/patient-portal','patient_portal'), domain(Calendar,'My Appointments','/appointments','appointments')],
 };
 
