@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
@@ -21,7 +21,6 @@ export default function WorkflowSummary() {
     const common: Card[] = [
       ...(canAppointments(role) ? [
         { label: "Today's appointments", href: '/appointments', icon: CalendarDays, tone: 'text-primary', surface: 'bg-primary/5' },
-        { label: "Today's clinical reviews", href: '/appointments', icon: ClipboardCheck, tone: 'text-success', surface: 'bg-success/5' },
       ] : []),
       ...(clinicalRoles.includes(role) ? [{ label: 'Critical alerts', href: '/notifications', icon: AlertTriangle, tone: 'text-critical', surface: 'bg-critical/5' }] : []),
     ];
@@ -41,7 +40,6 @@ export default function WorkflowSummary() {
     ];
     if (role === 'nurse' || role === 'midwife' || role === 'specialist_nurse') return [...common,
       { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
-      { label: 'Nursing queue', href: '/department-queue', icon: Activity, tone: 'text-info', surface: 'bg-info/5' },
       ...(canBeds(role) ? [{ label: 'Occupied beds', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
       ...(role === 'midwife' ? [{ label: 'Maternity', href: '/maternity', icon: Baby, tone: 'text-success', surface: 'bg-success/5' }] : []),
     ];
