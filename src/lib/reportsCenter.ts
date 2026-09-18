@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { reportsDb } from '@/lib/reportsDb';
 import * as XLSX from 'xlsx';
@@ -59,7 +60,7 @@ async function extractSnapshot(report: ReportDefinition, period: string): Promis
 }
 
 export async function listFacilities(): Promise<HealthcareFacility[]> {
-  const { data, error } = await supabase.rpc('get_operational_workspace', { _module: 'facilities', _limit: 500 });
+  const { data, error } = await getOperationalWorkspace('facilities', 500);
   if (error) throw new Error(error.message);
   return (((data as any)?.facilities) ?? []) as HealthcareFacility[];
 }
