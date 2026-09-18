@@ -70,7 +70,7 @@ export default function DepartmentQueue() {
   };
   const complete = async (orderId: string) => {
     setBusyId(orderId);
-    try { await completeServiceOrder(orderId); playWorkflowSound('success'); toast({ title: 'Order completed', description: 'The order could not be completed.' }); await load(); }
+    try { await completeServiceOrder(orderId); playWorkflowSound('success'); toast({ title: 'Order completed', description: 'The patient has been removed from the active queue.' }); await load(); }
     catch (error) { toast({ title: 'Could not complete order', description: error instanceof Error ? error.message : 'The order could not be completed.', variant: 'destructive' }); }
     finally { setBusyId(null); }
   };
