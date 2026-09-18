@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,7 +47,7 @@ export default function Laboratory() {
 
   const loadAll = async () => {
     const [{ data: pts }, { data: cat }, { data: ord }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name, patient_code, email').limit(200),
+      searchPatientDirectory('', 200),
       supabase.from('lab_test_catalogue').select('*').eq('active', true).order('test_name'),
       supabase.from('lab_orders').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
