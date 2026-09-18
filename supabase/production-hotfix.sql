@@ -1,3 +1,4 @@
+SELECT 1;
 -- Idempotent production RPC compatibility hotfix.
 CREATE OR REPLACE FUNCTION public.create_admission_workflow(_patient_id UUID, _ward TEXT, _bed TEXT DEFAULT NULL, _reason TEXT DEFAULT NULL)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
