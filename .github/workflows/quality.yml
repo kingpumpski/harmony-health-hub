@@ -96,6 +96,8 @@ jobs:
 
       - name: Next-generation clinical audit convergence tests
         run: npm run test:nextgen-clinical-audit-convergence
+      - name: Next-generation encounter admission and financial override tests
+        run: npm run test:nextgen-encounter-admission
 
       - name: Next-generation branding metadata contract tests
         run: npm run test:nextgen-branding
