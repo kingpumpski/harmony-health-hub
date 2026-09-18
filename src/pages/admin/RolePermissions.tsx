@@ -57,7 +57,7 @@ export default function RolePermissions() {
 
   const toggle = (key: string) => setSelected(previous => {
     const next = new Set(previous);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
 
