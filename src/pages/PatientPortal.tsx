@@ -15,63 +15,53 @@ export default function PatientPortal() {
   const [reports, setReports] = useState<any[]>([]);
   const [requesting, setRequesting] = useState(false);
 
-  const loadReports = async (patientId: string) => {
-    const { data } = await supabase
-      .from('ai_report_requests')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-    setReports(data ?? []);
+  const loadReports = async () => {
+    const { data, error } = await supabase.functions.invoke('ai-clinical-assist', { body: { mode: 'portal' } });
+    if (error || data?.error) {
+      toast({ title: 'Unable to load portal data', description: data?.error ?? error?.message ?? 'Portal workspace unavailable.', variant: 'destructive' });
+      return null;
+    }
+    setPatient(data.patient ?? null);
+    setAppts(data.appointments ?? []);
+    setSessions(data.video_sessions ?? []);
+    setInvoices(data.invoices ?? []);
+    setReports(data.reports ?? []);
+    return data;
   };
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      const { data: p } = await supabase.from('patients').select('*').eq('user_id', user.id).maybeSingle();
-      setPatient(p);
-      if (p) {
-        const [{ data: a }, { data: vs }, { data: inv }] = await Promise.all([
-          supabase.from('appointments').select('*').eq('patient_id', p.id).order('scheduled_at', { ascending: false }).limit(10),
-          supabase.from('video_sessions').select('*').eq('patient_id', p.id).order('scheduled_at', { ascending: false }).limit(10),
-          supabase.from('invoices').select('*').eq('patient_id', p.id).order('created_at', { ascending: false }).limit(10),
-        ]);
-        setAppts(a ?? []); setSessions(vs ?? []); setInvoices(inv ?? []);
-        loadReports(p.id);
-      }
-    })();
+    void loadReports();
   }, [user?.id]);
 
   const requestAIReport = async () => {
     if (!patient) return;
     setRequesting(true);
     try {
-      // 1. Create the request row
-      const { data: req, error: insErr } = await supabase
+      const requestId = crypto.randomUUID();
+      const { error: insErr } = await supabase
         .from('ai_report_requests')
-        .insert({ patient_id: patient.id, requested_by: user?.id, report_type: 'medical_summary', status: 'processing' })
-        .select()
-        .single();
+        .insert({ id: requestId, patient_id: patient.id, requested_by: user?.id, report_type: 'medical_summary', status: 'processing' });
       if (insErr) throw insErr;
 
-      // 2. Generate via existing edge function
       const { data, error } = await supabase.functions.invoke('ai-clinical-assist', {
         body: { mode: 'report', patientId: patient.id },
       });
       if (error || data?.error) throw new Error(data?.error ?? error?.message ?? 'AI failed');
 
-      // 3. Save result
-      await supabase.from('ai_report_requests').update({
+      const { error: updateError } = await supabase.from('ai_report_requests').update({
         status: 'completed', content: data.content, completed_at: new Date().toISOString(),
-      }).eq('id', req.id);
+      }).eq('id', requestId);
+      if (updateError) throw updateError;
 
       playSuccessSound();
       toast({ title: '✓ Report ready', description: 'Your AI medical report is available below.' });
-      loadReports(patient.id);
+      await loadReports();
     } catch (e: any) {
       toast({ title: 'Report failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setRequesting(false);
     }
-    setRequesting(false);
   };
 
   const speakReport = (text: string) => {
