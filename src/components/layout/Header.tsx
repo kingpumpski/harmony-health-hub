@@ -33,6 +33,7 @@ const roleLabels: Record<UserRole, string> = {
   front_desk: "Front Desk Officer",
   canteen: "Canteen Staff",
   patient: "Patient",
+  it_admin: "IT Admin",
 };
 interface NotifRow {
   id: string;
