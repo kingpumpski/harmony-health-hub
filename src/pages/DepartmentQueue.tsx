@@ -51,7 +51,6 @@ export default function DepartmentQueue() {
         if (payload.eventType === 'UPDATE' && (payload.new as { status?: string }).status === 'completed') playWorkflowSound('success');
         void load();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, user?.id]);
