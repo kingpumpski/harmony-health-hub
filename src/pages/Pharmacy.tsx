@@ -35,34 +35,34 @@ export default function Pharmacy() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: patientRows }, { data: inventoryRows }, { data: prescriptionRows }, { data: planRows }, { data: posRows }] = await Promise.all([
-      supabase.from('patients').select('id,first_name,last_name,patient_code').order('first_name').limit(1000),
-      supabase.from('pharmacy_inventory').select('*').order('drug_name'),
-      supabase.from('prescriptions').select('id,patient_id,medication,dosage,frequency,duration,computed_quantity,status,patients(id,first_name,last_name,patient_code)').in('status', ['pending', 'paid']).order('created_at', { ascending: false }).limit(200),
-      supabase.from('pharmacy_dispensing_plans').select('*,patients(id,first_name,last_name,patient_code)').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(200),
-      supabase.from('pharmacy_pos_sales').select('id,medication,quantity,total_amount,status,service_order_id').neq('status', 'dispensed').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(100),
-    ]);
-    setPatients((patientRows ?? []) as Patient[]); setInventory((inventoryRows ?? []) as InventoryItem[]); setPrescriptions((prescriptionRows ?? []) as Prescription[]);
-    const rawPlans = (planRows ?? []) as Plan[]; const orderIds = rawPlans.map((plan) => plan.service_order_id).filter(Boolean) as string[];
-    const { data: orders } = orderIds.length ? await supabase.from('service_orders').select('id,status').in('id', orderIds) : { data: [] };
-    const statusMap = Object.fromEntries((orders ?? []).map((order) => [order.id, order.status])); setPlans(rawPlans.map((plan) => ({ ...plan, service_order_status: plan.service_order_id ? statusMap[plan.service_order_id] ?? null : null })));
-    const rawSales = (posRows ?? []) as PosSale[]; const saleIds = rawSales.map((sale) => sale.service_order_id).filter(Boolean) as string[];
-    const { data: saleOrders } = saleIds.length ? await supabase.from('service_orders').select('id,status').in('id', saleIds) : { data: [] };
-    const saleStatus = Object.fromEntries((saleOrders ?? []).map((order) => [order.id, order.status])); setPosSales(rawSales.map((sale) => ({ ...sale, status: sale.service_order_id ? saleStatus[sale.service_order_id] ?? sale.status : sale.status })));
+    const { data, error } = await db.rpc('get_pharmacy_workspace', { _limit: 300 });
+    if (error) {
+      setLoading(false);
+      toast.error(error.message);
+      return;
+    }
+    const workspace = (data ?? {}) as {
+      patients?: Patient[];
+      inventory?: InventoryItem[];
+      prescriptions?: Prescription[];
+      plans?: Plan[];
+      pos_sales?: PosSale[];
+    };
+    setPatients(workspace.patients ?? []);
+    setInventory(workspace.inventory ?? []);
+    setPrescriptions(workspace.prescriptions ?? []);
+    setPlans(workspace.plans ?? []);
+    setPosSales((workspace.pos_sales ?? []).map((sale) => ({
+      ...sale,
+      status: sale.status,
+    })));
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
-    const channel = supabase.channel('pharmacy-workflow')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'prescriptions' }, (payload) => { if (payload.eventType === 'INSERT') playWorkflowSound('info'); void load(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_dispensing_plans' }, (payload) => { if (payload.eventType === 'INSERT') playWorkflowSound('info'); if (payload.eventType === 'UPDATE' && String((payload.new as { status?: string }).status ?? '') === 'dispensed') playWorkflowSound('success'); void load(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_pos_sales' }, (payload) => { if (payload.eventType === 'INSERT') playWorkflowSound('info'); if (payload.eventType === 'UPDATE' && String((payload.new as { status?: string }).status ?? '') === 'dispensed') playWorkflowSound('success'); void load(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => { if (payload.eventType === 'INSERT' && String((payload.new as { severity?: string }).severity ?? '').toLowerCase() === 'critical') playWorkflowSound('critical'); void load(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_inventory' }, () => void load())
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    const refreshTimer = window.setInterval(() => void load(), 30000);
+    return () => window.clearInterval(refreshTimer);
   }, [load]);
 
   const visiblePrescriptions = useMemo(() => prescriptions.filter((item) => !patientId || item.patient_id === patientId), [patientId, prescriptions]);
