@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Activity, Bell, Cloud, Database, FileText, Settings, Shield, Upload, UserCog } from 'lucide-react';
-import FinancialSettlementCard from '@/components/FinancialSettlementCard';
 
 /**
  * Administration role surface.
@@ -46,8 +45,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </section>
-
-      <FinancialSettlementCard />
 
       <section className="card-medical p-5">
         <div className="mb-4">
