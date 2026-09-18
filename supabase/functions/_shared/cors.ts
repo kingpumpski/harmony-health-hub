@@ -7,7 +7,8 @@ const FALLBACK_PATTERNS: RegExp[] = [
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
   /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
-  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,\n  /^https:\/\/kingpumpski\.github\.io$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,
+  /^https:\/\/kingpumpski\.github\.io$/i,
 ];
 
 function configuredOrigins(): string[] {
