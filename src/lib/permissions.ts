@@ -16,7 +16,7 @@ export const permissionByHref: Record<string, Permission> = {
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
   '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
-  '/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/clinical-results':'laboratory_results',
+  '/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/lab-results':'laboratory',
   '/radiology':'radiology','/clinical-results':'radiology_results','/pharmacy':'pharmacy','/medications':'medication_administration',
   '/billing':'billing','/maternity':'maternity','/telemedicine':'telemedicine','/fertility':'fertility','/dental':'dental',
   '/procedures':'procedures','/anesthesia':'anesthesia','/ophthalmology':'ophthalmology','/ai-clinical':'ai_clinical',
