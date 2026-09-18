@@ -28,21 +28,35 @@ export default function DataImport() {
   };
   const validate = (row: Row, index: number) => { for (const field of schemas[entity].required) if (!row[field]) return `Row ${index + 2}: missing ${field}`; if (entity === 'patients' && row.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(row.email))) return `Row ${index + 2}: invalid email`; return null; };
   const importRows = async () => {
-    if (!rows.length || !user?.id) return; setBusy(true); const failed: string[] = []; let inserted = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]; const validation = validate(row, i); if (validation) { failed.push(validation); continue; }
-      try {
-        if (entity === 'patients') await supabase.from('patients').insert({ ...row, created_by: user.id } as never).throwOnError();
-        if (entity === 'pharmacy_inventory') await supabase.from('pharmacy_inventory').insert({ drug_name: String(row.drug_name), generic_name: row.generic_name, strength: row.strength, form: row.form, stock_quantity: Number(row.stock_quantity ?? 0), reorder_level: Number(row.reorder_level ?? 20), unit_price: Number(row.unit_price ?? 0), supplier: row.supplier, expiry_date: row.expiry_date } as never).throwOnError();
-        if (entity === 'icd_codes') await supabase.from('icd_codes').insert({ code: String(row.code), description: String(row.description), version: row.version ?? 'ICD-10', category: row.category } as never).throwOnError();
-        inserted++;
-      } catch (error) { failed.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Insert failed'}`); }
+    if (!rows.length || !user?.id) return;
+    setBusy(true); setErrors([]);
+    try {
+      const payload = rows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value])));
+      const { data: batchId, error: createError } = await supabase.rpc('create_hms_import_batch' as never, {
+        _template_code: 'TMPL-PAT-PATIENT-v1', _source_filename: fileName || null, _rows: payload,
+      } as never);
+      if (createError) throw createError;
+      const id = String(batchId);
+      const { data: validation, error: validationError } = await supabase.rpc('validate_hms_import_batch' as never, { _batch_id: id } as never);
+      if (validationError) throw validationError;
+      const result = validation as { valid?: number; rejected?: number; quarantine?: number } | null;
+      if (!result || Number(result.rejected ?? 0) > 0 || Number(result.quarantine ?? 0) > 0) {
+        throw new Error('Validation did not produce a fully passable batch. Review the import quarantine before approval.');
+      }
+      const { error: approveError } = await supabase.rpc('approve_hms_import_batch' as never, { _batch_id: id } as never);
+      if (approveError) throw approveError;
+      const { data: commitResult, error: commitError } = await supabase.rpc('commit_hms_import_batch' as never, { _batch_id: id } as never);
+      if (commitError) throw commitError;
+      const inserted = Number((commitResult as { inserted?: number } | null)?.inserted ?? rows.length);
+      setRows([]); setFileName('');
+      toast({ title: 'Import committed', description: `${inserted}/${rows.length} rows committed atomically.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Governed import failed.';
+      setErrors([message]);
+      toast({ title: 'Import blocked', description: message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
     }
-    const sourceFormat = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx';
-    const jobStatus = failed.length === rows.length ? 'failed' : failed.length > 0 ? 'completed_with_errors' : 'completed';
-    const { error: auditError } = await supabase.from('bulk_import_jobs').insert({ entity_type: entity, source_format: sourceFormat, file_name: fileName || null, total_rows: rows.length, successful_rows: inserted, failed_rows: failed.length, errors: failed.map(reason => ({ reason })), status: jobStatus, created_by: user.id, completed_at: new Date().toISOString() } as never);
-    if (auditError) toast({ title: 'Import audit warning', description: auditError.message });
-    setErrors(failed); setBusy(false); setRows([]); setFileName(''); toast({ title: 'Import complete', description: `${inserted}/${rows.length} rows inserted${failed.length ? `; ${failed.length} failed` : ''}.`, variant: failed.length === rows.length ? 'destructive' : 'default' });
   };
   return <div className="space-y-6 animate-fade-in">
     <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Database className="w-6 h-6 text-primary" /> XLSX / CSV Data Import</h1><p className="text-muted-foreground">Controlled bulk import for approved administrative data sets.</p></div>
