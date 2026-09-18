@@ -33,7 +33,7 @@ export default function AIClinicalHub() {
   const load = async () => {
     const [{ data: pts }, { data: rows }] = await Promise.all([
       searchPatientDirectory('', 300),
-      supabase.from('ai_clinical_sessions' as never).select('id, specialist, status, review_status, created_at, model_provider, model_name').order('created_at', { ascending: false }).limit(30),
+      supabase.rpc('get_operational_workspace', { _module: 'ai_clinical', _limit: 30 }),
     ]);
     setPatients((pts ?? []) as Patient[]);
     setSessions((rows ?? []) as unknown as Session[]);
