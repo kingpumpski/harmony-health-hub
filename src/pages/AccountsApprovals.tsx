@@ -8,7 +8,8 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface AccountsOrder { id: string; patient_id: string; service_name: string; department: string; amount: number | string; status: ServiceOrderStatus; invoice_id: string | null; patients?: { first_name: string | null; last_name: string | null; patient_code: string | null; insurance_provider: string | null; insurance_number: string | null } | null; }
 interface WorkflowCounts { pending: number; released: number; inProgress: number; completed: number; discharged: number; }
-interface NotificationRowLike { id: string; message: string; title: string; category: string | null; is_read: boolean; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }\ninterface DischargeNotice { id: string; message: string; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }
+interface NotificationRowLike { id: string; message: string; title: string; category: string | null; is_read: boolean; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }
+interface DischargeNotice { id: string; message: string; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }
 interface Reconciliation { notificationId: string; gross: number; paid: number; outstanding: number; insuranceClaimed: number; insurancePaid: number; status: string; patientId: string; }
 const initialCounts: WorkflowCounts = { pending: 0, released: 0, inProgress: 0, completed: 0, discharged: 0 };
 const money = (value: number) => `GHS ${Number(value || 0).toFixed(2)}`;
