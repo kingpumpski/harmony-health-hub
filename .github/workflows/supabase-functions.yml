@@ -27,5 +27,14 @@ jobs:
       - name: Validate deployment credentials
         run: test -n "$SUPABASE_ACCESS_TOKEN"
 
-      - name: Deploy AI clinical assist function
-        run: supabase functions deploy ai-clinical-assist --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Deploy all edge functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in supabase/functions/*; do
+            if [ -d "$dir" ] && [ -f "$dir/index.ts" ]; then
+              name="$(basename "$dir")"
+              echo "Deploying $name"
+              supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_REF"
+            fi
+          done
