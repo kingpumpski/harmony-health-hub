@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Droplets, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,7 @@ export default function TransfusionBoard() {
   const [form, setForm] = useState({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false });
   const load = useCallback(async () => {
     const [workspace, p] = await Promise.all([
-      supabase.rpc('get_operational_workspace', { _module: 'transfusion', _limit: 150 }),
+      getOperationalWorkspace('transfusion', 150),
       searchPatientDirectory('', 500),
     ]);
     const r = { data: (workspace.data as any)?.records ?? [], error: workspace.error };
