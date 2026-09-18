@@ -63,35 +63,10 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
-  const unread = notifications.filter((n) => !n.is_read).length;
-  const hasCritical = notifications.some(
-    (n) => !n.is_read && n.severity === "critical",
-  );
+  const unread = 0;
+  const hasCritical = false;
   const greeting =
     `Welcome ${roleLabels[user?.role ?? "patient"]} ${user?.lastName || user?.firstName || ""}`.trim();
-  const loadNotifications = async () => {
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    setNotifications(data ?? []);
-  };
-  useEffect(() => {
-    if (!user) return;
-    void loadNotifications();
-    const ch = supabase
-      .channel("header-notif")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => void loadNotifications(),
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(ch);
-    };
-  }, [user?.id]);
   useEffect(() => {
     if (!hasCritical) return;
     const beep = new Audio(
@@ -124,10 +99,6 @@ export default function Header() {
     };
   }, [searchTerm]);
   if (!user) return null;
-  const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    void loadNotifications();
-  };
   return (
     <header className="sticky top-0 z-30 min-h-16 bg-card border-b border-border px-4 sm:px-6 py-2 flex items-center justify-between gap-4">
       <div className="flex-1 min-w-0 max-w-xl">
@@ -225,7 +196,7 @@ export default function Header() {
                         !n.is_read && "bg-primary/5",
                       )}
                       onClick={() => {
-                        if (!n.is_read) void markRead(n.id);
+                        
                         if (n.link) {
                           setShowNotifications(false);
                           navigate(n.link);
