@@ -33,10 +33,11 @@ export default function Notifications() {
   const db = supabase as any;
 
   const load = useCallback(async () => {
-    let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200);
-    if (filter === 'unread') q = q.eq('is_read', false);
-    const { data, error } = await q;
-    if (!error) setItems((data ?? []) as NotificationRow[]);
+    const { data, error } = await db.rpc('get_workflow_notifications', { _limit: 200 });
+    if (!error) {
+      const rows = (data ?? []) as NotificationRow[];
+      setItems(filter === 'unread' ? rows.filter((row) => !row.is_read) : rows);
+    }
   }, [filter]);
 
   useEffect(() => {
