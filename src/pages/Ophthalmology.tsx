@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { Eye, FileUp, ShieldCheck, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +16,7 @@ export default function Ophthalmology() {
 
   const load = async () => {
     const [{ data: pts, error: pError }, { data: rows, error: eError }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name, patient_code').limit(200),
+      searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
       supabase.from('ophthalmology_exams').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
     if (pError || eError) return toast({ title: 'Unable to load ophthalmology workspace', description: pError?.message ?? eError?.message, variant: 'destructive' });
