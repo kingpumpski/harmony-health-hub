@@ -23,7 +23,7 @@ export default function TheatreBoard() {
   useEffect(() => { void load(); }, [load]);
   const createCase = async (event: FormEvent) => {
     event.preventDefault(); if (!form.patientId || !form.procedureName.trim() || !form.scheduledStart) { toast({ title: 'Patient, procedure and scheduled start are required', variant: 'destructive' }); return; }
-    setBusy(true); const { error } = await (supabase as any).rpc('create_theatre_case', { _patient_id: form.patientId, _procedure_name: form.procedureName.trim(), _scheduled_start: new Date(form.scheduledStart).toISOString(), _theatre_name: form.theatreName.trim() || null, _urgency: form.urgency, _surgeon_id: null }); setBusy(false);
+    setBusy(true); const { error } = await (supabase as any).rpc('create_theatre_case', { _patient_id: form.patientId, _procedure_name: form.procedureName.trim(), _scheduled_start: new Date(form.scheduledStart).toISOString(), _theatre_name: form.theatreName.trim() || null, _urgency: form.urgency, _surgeon_id: null, _anesthetist_id: null, _encounter_id: null }); setBusy(false);
     if (error) { toast({ title: 'Theatre case creation failed', description: error.message, variant: 'destructive' }); return; }
     setForm({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' }); toast({ title: 'Theatre case registered' }); void load();
   };
