@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +15,7 @@ export default function CanteenMeals() {
 
   const load = async () => {
     const [{ data: p }, { data: o }, { data: mp }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name').limit(200),
+      searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
       supabase.from('meal_orders').select('*, patients(first_name,last_name)').order('scheduled_for').limit(50),
       supabase.from('meal_plans').select('*, patients(first_name,last_name)').eq('active', true).limit(50),
     ]);
