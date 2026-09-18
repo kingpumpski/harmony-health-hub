@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Search, UserRound } from 'lucide-react';
@@ -14,7 +15,7 @@ export default function MedicalRecords() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('patients').select('id, patient_code, first_name, last_name, phone, status').order('created_at', { ascending: false }).limit(300);
+      const { data, error } = await searchPatientDirectory('', 300);
       if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]);
       setLoading(false);
     };
