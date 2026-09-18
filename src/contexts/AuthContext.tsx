@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { UserRole } from '@/types';
+import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface AppUser {
   id: string;
@@ -11,6 +12,7 @@ interface AppUser {
   role: UserRole;
   department?: string;
   specialization?: string;
+  permissions: Permission[];
 }
 
 interface AuthContextType {
@@ -39,14 +41,29 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   ]);
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
   if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
+  const resolvedRole = (roleRow?.role as UserRole) ?? 'patient';
+  let permissions = getDefaultPermissions(resolvedRole);
+  try {
+    const { data: permissionRows, error: permissionError } = await supabase.rpc('get_my_permissions' as never);
+    if (permissionError) {
+      console.warn('Database permission profile unavailable; using role defaults.', permissionError.message);
+    } else if (Array.isArray(permissionRows) && permissionRows.length > 0) {
+      permissions = permissionRows
+        .map((row: unknown) => typeof row === 'string' ? row : (row as { permission_key?: unknown })?.permission_key)
+        .filter((value): value is Permission => typeof value === 'string' && permissions.includes(value as Permission) || Object.values(getDefaultPermissions(resolvedRole)).includes(value as Permission));
+    }
+  } catch (error) {
+    console.warn('Database permission profile unavailable; using role defaults.', error);
+  }
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? '',
     firstName: profile?.first_name ?? '',
     lastName: profile?.last_name ?? '',
-    role: (roleRow?.role as UserRole) ?? 'patient',
+    role: resolvedRole,
     department: profile?.department ?? undefined,
     specialization: profile?.specialization ?? undefined,
+    permissions,
   };
 }
 
@@ -66,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) setUser(appUser);
       } catch (error) {
         console.error('Auth profile bootstrap failed; continuing with session.', error);
-        if (mounted) setUser({ id: nextSession.user.id, email: nextSession.user.email ?? '', firstName: '', lastName: '', role: 'patient' });
+        if (mounted) setUser({ id: nextSession.user.id, email: nextSession.user.email ?? '', firstName: '', lastName: '', role: 'patient', permissions: getDefaultPermissions('patient') });
       } finally {
         if (mounted) setLoading(false);
       }
