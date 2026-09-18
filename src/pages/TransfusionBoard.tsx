@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Droplets, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 type Row = { id: string; patient_id: string; blood_product: string; unit_identifier: string; blood_group: string | null; status: string; reaction_observed: boolean; reaction_notes: string | null };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -11,10 +12,11 @@ export default function TransfusionBoard() {
   const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false });
   const load = useCallback(async () => {
-    const [p, r] = await Promise.all([
-      supabase.from('patients').select('id,patient_code,first_name,last_name').limit(500),
-      supabase.from('transfusion_records').select('id,patient_id,blood_product,unit_identifier,blood_group,status,reaction_observed,reaction_notes').order('created_at', { ascending: false }).limit(150),
+    const [workspace, p] = await Promise.all([
+      supabase.rpc('get_operational_workspace', { _module: 'transfusion', _limit: 150 }),
+      searchPatientDirectory('', 500),
     ]);
+    const r = { data: (workspace.data as any)?.records ?? [], error: workspace.error };
     if (p.error || r.error) toast({ title: 'Unable to load transfusions', description: (p.error || r.error)?.message, variant: 'destructive' });
     setPatients((p.data ?? []) as Patient[]); setRows((r.data ?? []) as Row[]);
   }, []);
