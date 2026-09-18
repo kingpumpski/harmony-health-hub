@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast';
 const availableRoles = [
   { value: 'admin', label: 'Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
-  { value: 'pharmacist', label: 'Pharmacist' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
+  { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
 ] as const;
 type RoleValue = string;
