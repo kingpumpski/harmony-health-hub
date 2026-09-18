@@ -58,7 +58,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   if (!user) return null;
-  const permissions = new Set(rolePermissions[user.role] || rolePermissions.patient);
+  const permissions = new Set(user.permissions?.length ? user.permissions : (rolePermissions[user.role] || rolePermissions.patient));
   const navItems = withPermission(roleNavItems[user.role] || roleNavItems.patient).filter(item => permissions.has(item.permission));
   return <aside className={cn('fixed left-0 top-0 z-40 flex h-screen flex-col sidebar-gradient transition-[width] duration-300 max-md:w-20', collapsed ? 'w-20' : 'w-64')}>
     <div className="flex items-center justify-between border-b border-sidebar-border p-4">
