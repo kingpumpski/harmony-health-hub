@@ -26,12 +26,12 @@ const roleNavItems: Record<string, NavItem[]> = {
   nurse: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
     domain(Stethoscope,'Clinical Operations','/clinical-operations','clinical_operations'), domain(BedDouble,'Inpatient','/inpatient','inpatient'),
-    domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
+    domain(FlaskConical,'Laboratory Results','/lab-results','laboratory'),
   ],
   specialist_nurse: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
     domain(Calendar,'Appointments','/appointments','appointments'), domain(Stethoscope,'Clinical Operations','/clinical-operations','clinical_operations'),
-    domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
+    domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(FlaskConical,'Laboratory Results','/lab-results','laboratory'),
   ],
   midwife: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
@@ -53,7 +53,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(BarChart3,'Reports Center','/reports','reports'),
   ],
   radiologist: [
-    domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
+    domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FlaskConical,'Laboratory Results','/lab-results','laboratory'),
     domain(Users,'Patients','/patients','patients'),
   ],
   it_admin: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(ShieldCheck,'IT Support','/it-support','it_support')],
