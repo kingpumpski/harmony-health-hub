@@ -56,7 +56,7 @@ export default function DataImport() {
 
   const refreshBatches = async () => {
     if (user?.role !== 'admin') return;
-    const { data, error } = await supabase.from('data_migration_batches').select('id,entity_type,source_system,source_version,file_name,total_rows,staged_rows,accepted_rows,rejected_rows,status,created_at,approved_at,completed_at').eq('entity_type', 'legacy_clinical_records').order('created_at', { ascending: false }).limit(20);
+    const { data: workspace, error } = await supabase.rpc('get_operational_workspace', { _module: 'data_migration', _limit: 20 }); const data = (workspace as any)?.batches ?? [];
     if (error) return toast({ title: 'Migration workspace unavailable', description: error.message, variant: 'destructive' });
     setBatches((data ?? []) as MigrationBatch[]);
   };
