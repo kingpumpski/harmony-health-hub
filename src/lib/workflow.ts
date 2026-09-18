@@ -34,7 +34,7 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
   const { data, error } = await workflowRpc.rpc('create_service_order', {
     _patient_id: input.patientId, _encounter_id: input.encounterId ?? null, _department: input.department,
     _service_name: input.serviceName, _amount: input.amount ?? 0, _related_entity_id: input.relatedEntityId ?? null,
-    _notes: input.notes ?? null, _requested_by: input.requestedBy ?? null, _invoice_id: input.invoiceId ?? null,
+    _notes: input.notes ?? null, _invoice_id: input.invoiceId ?? null,
     _invoice_item_id: input.invoiceItemId ?? null, _order_type: input.orderType ?? 'service', _service_code: input.serviceCode ?? null,
   });
   if (error) throw new Error(error.message);
