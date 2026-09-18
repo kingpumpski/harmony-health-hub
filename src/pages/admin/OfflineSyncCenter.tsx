@@ -135,7 +135,7 @@ export default function OfflineSyncCenter() {
   const failed = useMemo(() => history.filter((item) => item.event === 'failed'), [history]);
   const blocked = useMemo(() => pending.filter((item) => item.status === 'blocked'), [pending]);
 
-  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (user?.role !== 'admin' && user?.role !== 'it_admin') return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="space-y-6 animate-fade-in">
