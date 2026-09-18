@@ -46,48 +46,30 @@ export default function Laboratory() {
   const hasLoadedQueue = useRef(false);
 
   const loadAll = async () => {
-    const [{ data: pts }, { data: cat }, { data: ord }] = await Promise.all([
-      searchPatientDirectory('', 200),
-      supabase.from('lab_test_catalogue').select('*').eq('active', true).order('test_name'),
-      supabase.from('lab_orders').select('*').order('created_at', { ascending: false }).limit(50),
-    ]);
-    setPatients(pts ?? []);
-    setCatalogue((cat ?? []) as LabCatalogueItem[]);
-    setOrders((ord ?? []) as LabOrder[]);
-    if (ord?.length) {
-      const { data: res } = await supabase.from('lab_results').select('*').in('lab_order_id', ord.map((o) => o.id));
-      const map: Record<string, LabResult> = {};
-      (res ?? []).forEach((r) => (map[r.lab_order_id] = r as LabResult));
-      setResultsByOrder(map);
-    } else setResultsByOrder({});
+    const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
+    if (error) {
+      toast({ title: 'Laboratory workspace unavailable', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const workspace = (data ?? {}) as {
+      patients?: Patient[];
+      catalogue?: LabCatalogueItem[];
+      orders?: LabOrder[];
+      results?: LabResult[];
+    };
+    setPatients(workspace.patients ?? []);
+    setCatalogue(workspace.catalogue ?? []);
+    const nextOrders = workspace.orders ?? [];
+    setOrders(nextOrders);
+    const map: Record<string, LabResult> = {};
+    (workspace.results ?? []).forEach((r) => (map[r.lab_order_id] = r));
+    setResultsByOrder(map);
   };
 
   useEffect(() => {
     void loadAll();
-    const channel = supabase.channel(`laboratory-workflow-${user?.id ?? 'anonymous'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_orders' }, (payload) => {
-        if (payload.eventType === 'INSERT') playWorkflowSound('info');
-        if (payload.eventType === 'UPDATE') {
-          const nextStatus = String((payload.new as { status?: string }).status ?? '');
-          if (nextStatus === 'completed') playWorkflowSound('info');
-          if (nextStatus === 'approved') playWorkflowSound('success');
-        }
-        void loadAll();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_results' }, (payload) => {
-        if (payload.eventType === 'INSERT' && (payload.new as { is_abnormal?: boolean }).is_abnormal) playWorkflowSound('critical');
-        void loadAll();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void loadAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const severity = String((payload.new as { severity?: string }).severity ?? '').toLowerCase();
-          if (severity === 'critical') playWorkflowSound('critical');
-        }
-        void loadAll();
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    const refreshTimer = window.setInterval(() => void loadAll(), 30000);
+    return () => window.clearInterval(refreshTimer);
   }, [user?.id]);
 
   const counters = useMemo(() => {
