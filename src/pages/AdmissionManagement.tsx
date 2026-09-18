@@ -3,6 +3,7 @@ import { BedDouble, CheckCircle2, LogOut, RefreshCw, Users, WalletCards } from '
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
 interface Admission { id: string; patient_id: string; admitted_at: string; discharged_at: string | null; ward: string | null; bed: string | null; reason: string | null; status: string; discharge_summary: string | null }
@@ -19,7 +20,7 @@ export default function AdmissionManagement() {
 
   const load = useCallback(async () => {
     const [{ data: p, error: pe }, { data: a, error: ae }] = await Promise.all([
-      db.from('patients').select('id, first_name, last_name, patient_code').limit(300),
+      searchPatientDirectory('', 300),
       db.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(200),
     ]);
     if (pe || ae) { toast.error((pe ?? ae)?.message ?? 'Unable to load admissions'); return; }
