@@ -509,6 +509,29 @@ export default function Encounters() {
     setSelected(data as Encounter);
     void loadAll();
   };
+  const admitEncounter = async () => {
+    if (!selected || selected.status !== "completed") return;
+    const { data, error } = await db.rpc("admit_encounter_workflow", {
+      _encounter_id: selected.id,
+      _reason: "Clinical admission from completed encounter",
+      _ward: null,
+      _emergency_override: true,
+    });
+    if (error)
+      return toast({
+        title: "Admission failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    const override = Boolean(data?.override);
+    toast({
+      title: "Patient admitted",
+      description: override
+        ? "Emergency treatment override is active. Accounts must complete subsequent deposit and service-release clearance."
+        : "Admission recorded. Continue with the normal Accounts payment and service-release workflow.",
+    });
+    void loadAll();
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -611,12 +634,19 @@ export default function Encounters() {
                       Started {new Date(selected.created_at).toLocaleString()}
                     </p>
                   </div>
-                  {selected.status !== "completed" && (
+                  {selected.status !== "completed" ? (
                     <button
                       onClick={completeEncounter}
                       className="btn-primary inline-flex items-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" /> Complete
+                    </button>
+                  ) : (
+                    <button
+                      onClick={admitEncounter}
+                      className="btn-primary inline-flex items-center gap-2"
+                    >
+                      <HeartPulse className="w-4 h-4" /> Admit
                     </button>
                   )}
                 </div>
