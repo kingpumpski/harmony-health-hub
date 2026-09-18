@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useMemo, useState } from 'react';
 import { BrainCircuit, Cpu, ShieldCheck, Sparkles, ClipboardList } from 'lucide-react';
@@ -33,7 +34,7 @@ export default function AIClinicalHub() {
   const load = async () => {
     const [{ data: pts }, { data: rows }] = await Promise.all([
       searchPatientDirectory('', 300),
-      supabase.rpc('get_operational_workspace', { _module: 'ai_clinical', _limit: 30 }),
+      getOperationalWorkspace('ai_clinical', 30),
     ]);
     setPatients((pts ?? []) as Patient[]);
     setSessions((((rows as any)?.sessions) ?? []) as Session[]);
