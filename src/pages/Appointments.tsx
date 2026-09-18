@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck, Stethoscope, ClipboardCheck, Clock3, Activity } from 'lucide-react';
 import { notifyRoles, notify } from '@/lib/notifications';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 interface Patient { id: string; first_name: string; last_name: string; user_id: string | null }
 interface Appointment { id: string; patient_id: string; scheduled_at: string; reason: string | null; status: string; department: string | null; attending_officer_id?: string | null; treatment_status?: string | null; treatment_notes?: string | null }
@@ -24,7 +25,7 @@ export default function Appointments() {
 
   const load = async () => {
     const [{ data: pts, error: patientError }, { data: aps, error: appointmentError }] = await Promise.all([
-      supabase.from('patients').select('id, first_name, last_name, user_id').limit(300),
+      searchPatientDirectory('', 300),
       supabase.from('appointments').select('*').order('scheduled_at', { ascending: true }).limit(200),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
