@@ -6,6 +6,11 @@ import type { UserRole } from '@/types';
 
 type Card = { label: string; href: string; icon: typeof Activity; tone: string; surface: string };
 const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
+const canAppointments = (role: UserRole) => appointmentRoles.includes(role);
+const canBeds = (role: UserRole) => ['admin', 'nurse', 'midwife', 'specialist_nurse', 'practitioner'].includes(role);
+const canEmergency = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'].includes(role);
+const canTheatre = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'specialist_nurse'].includes(role);
+const canClaims = (role: UserRole) => ['admin', 'accountant'].includes(role);
 const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist'];
 
 export default function WorkflowSummary() {
@@ -14,7 +19,7 @@ export default function WorkflowSummary() {
     if (!user) return [];
     const role = user.role;
     const common: Card[] = [
-      ...(appointmentRoles.includes(role) ? [
+      ...(canAppointments(role) ? [
         { label: "Today's appointments", href: '/appointments', icon: CalendarDays, tone: 'text-primary', surface: 'bg-primary/5' },
         { label: "Today's clinical reviews", href: '/appointments', icon: ClipboardCheck, tone: 'text-success', surface: 'bg-success/5' },
       ] : []),
@@ -37,7 +42,7 @@ export default function WorkflowSummary() {
     if (role === 'nurse' || role === 'midwife' || role === 'specialist_nurse') return [...common,
       { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
       { label: 'Nursing queue', href: '/department-queue', icon: Activity, tone: 'text-info', surface: 'bg-info/5' },
-      { label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' },
+      ...(canBeds(role) ? [{ label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
       ...(role === 'midwife' ? [{ label: 'Maternity', href: '/maternity', icon: Baby, tone: 'text-success', surface: 'bg-success/5' }] : []),
     ];
     if (role === 'front_desk') return [...common, { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' }, { label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }];
@@ -47,9 +52,9 @@ export default function WorkflowSummary() {
       { label: 'Radiology', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
       { label: 'Accounts', href: '/accounts-approvals', icon: CreditCard, tone: 'text-warning', surface: 'bg-warning/5' },
       { label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' },
-      { label: 'Theatre', href: '/theatre-board', icon: Scissors, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Claims', href: '/insurance-claims', icon: ShieldCheck, tone: 'text-warning', surface: 'bg-warning/5' },
+      ...(canEmergency(role) ? [{ label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }] : []),
+      ...(canTheatre(role) ? [{ label: 'Theatre', href: '/theatre-board', icon: Scissors, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
+      ...(canClaims(role) ? [{ label: 'Claims', href: '/insurance-claims', icon: ShieldCheck, tone: 'text-warning', surface: 'bg-warning/5' }] : []),
     ];
   }, [user]);
 
