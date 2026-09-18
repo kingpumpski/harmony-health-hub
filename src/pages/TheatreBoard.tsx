@@ -1,3 +1,4 @@
+import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { CalendarClock, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +15,7 @@ export default function TheatreBoard() {
   const [form, setForm] = useState({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' });
   const load = useCallback(async () => {
     const [workspace, p] = await Promise.all([
-      supabase.rpc('get_operational_workspace', { _module: 'theatre', _limit: 150 }),
+      getOperationalWorkspace('theatre', 150),
       searchPatientDirectory('', 500),
     ]);
     const workspaceData = (workspace.data ?? {}) as any;
