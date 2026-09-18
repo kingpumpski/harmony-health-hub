@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, CircleDollarSign, RefreshCw, ShieldCheck }
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { toast } from 'sonner';
 
 type MissingTariff = {
@@ -38,9 +39,9 @@ export default function BillingTariffAdjustments() {
   const load = useCallback(async () => {
     if (!isAuthorized) return;
     setLoading(true);
-    const [{ data: rows, error }, { data: patientRows }] = await Promise.all([
+    const [{ data: rows, error }, patientDirectory] = await Promise.all([
       db.rpc('get_missing_billing_tariffs', { _patient_id: patientId || null }),
-      supabase.from('patients').select('id,first_name,last_name,patient_code').order('first_name').limit(1000),
+      searchPatientDirectory('', 1000),
     ]);
     setLoading(false);
     if (error) {
@@ -49,7 +50,7 @@ export default function BillingTariffAdjustments() {
       return;
     }
     setItems((rows ?? []) as MissingTariff[]);
-    setPatients((patientRows ?? []) as Patient[]);
+    setPatients((patientDirectory.data ?? []) as Patient[]);
   }, [isAuthorized, patientId]);
 
   useEffect(() => { void load(); }, [load]);
