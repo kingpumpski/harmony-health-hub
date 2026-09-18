@@ -29,7 +29,7 @@ export const permissionByHref: Record<string, Permission> = {
 export const rolePermissions: Record<UserRole, Permission[]> = {
   admin: Object.values(permissionByHref),
   practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology','radiology_results','laboratory_results','dental','procedures','anesthesia','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
-  nurse: ['dashboard','patients','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
+  nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
   specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
   midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','handover','emergency','theatre','transfusion','triage','medication_administration'],
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
