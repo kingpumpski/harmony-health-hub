@@ -38,7 +38,8 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
-  patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],\n  it_admin: ['dashboard','it_support','notifications','offline_sync'],
+  patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],
+  it_admin: ['dashboard','it_support','notifications','offline_sync'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {
