@@ -14,4 +14,9 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(\n  <>\n    <FormFieldIdentityNormalizer />\n    <App />\n  </>\n);
+createRoot(document.getElementById("root")!).render(
+  <>
+    <FormFieldIdentityNormalizer />
+    <App />
+  </>
+);
