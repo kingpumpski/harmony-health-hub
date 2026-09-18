@@ -10,6 +10,7 @@ import {
   Plus,
   ShieldAlert,
   Stethoscope,
+  BedDouble,
   Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -341,6 +342,7 @@ export default function Encounters() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [selected, setSelected] = useState<Encounter | null>(null);
+  const [admitting, setAdmitting] = useState(false);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
@@ -495,6 +497,35 @@ export default function Encounters() {
     setDuration("");
     void loadDetails(selected.id);
   };
+  const admitEncounter = async () => {
+    if (!selected || admitting) return;
+    const reason = window.prompt("Admission reason", selected.principal_diagnosis || "Clinical admission");
+    if (reason === null) return;
+    const ward = window.prompt("Ward (optional)", "") ?? "";
+    setAdmitting(true);
+    const { data, error } = await db.rpc("admit_encounter_workflow", {
+      _encounter_id: selected.id,
+      _reason: reason.trim() || "Clinical admission",
+      _ward: ward.trim() || null,
+      _emergency_override: true,
+    });
+    setAdmitting(false);
+    if (error)
+      return toast({
+        title: "Admission failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    toast({
+      title: data?.override ? "Emergency admission activated" : "Patient admitted",
+      description: data?.override
+        ? "Eligible pending services were released for emergency treatment before deposit."
+        : "The admission has been recorded.",
+    });
+    void loadAll();
+    void loadDetails(selected.id);
+  };
+
   const completeEncounter = async () => {
     if (!selected) return;
     const { data, error } = await db.rpc("complete_encounter_workflow", {
@@ -611,14 +642,24 @@ export default function Encounters() {
                       Started {new Date(selected.created_at).toLocaleString()}
                     </p>
                   </div>
-                  {selected.status !== "completed" && (
+                  <div className="flex flex-wrap justify-end gap-2">
                     <button
-                      onClick={completeEncounter}
+                      type="button"
+                      onClick={admitEncounter}
+                      disabled={admitting}
                       className="btn-primary inline-flex items-center gap-2"
                     >
-                      <CheckCircle2 className="w-4 h-4" /> Complete
+                      <BedDouble className="w-4 h-4" /> {admitting ? "Admitting…" : "Admit"}
                     </button>
-                  )}
+                    {selected.status !== "completed" && (
+                      <button
+                        onClick={completeEncounter}
+                        className="btn-primary inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Complete
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <section>
                   <h3 className="font-semibold mb-2">Symptoms</h3>
