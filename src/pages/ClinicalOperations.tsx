@@ -38,7 +38,7 @@ export default function ClinicalOperations() {
   const load = useCallback(async () => {
     const [patientResult, workspaceResult] = await Promise.all([
       searchPatientDirectory('', 300),
-      supabase.rpc('get_operational_workspace', { _module: workspaceModule, _limit: 50 }),
+      getOperationalWorkspace(workspaceModule, 50),
     ]);
     const payload = (workspaceResult.data ?? {}) as any;
     const rowData = tab === 'capacity' ? payload.wards ?? [] : tab === 'nursing' ? payload.care_plans ?? [] : tab === 'theatre' ? payload.cases ?? [] : tab === 'transfusion' ? payload.records ?? [] : tab === 'insurance' ? payload.claims ?? [] : payload.cases ?? [];
