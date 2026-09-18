@@ -1,7 +1,7 @@
 import type { UserRole } from '@/types';
 
 export type Permission =
-  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'registration' | 'appointments' | 'triage' | 'encounters'
+  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'it_support' | 'registration' | 'appointments' | 'triage' | 'encounters'
   | 'clinical_operations' | 'inpatient' | 'ward' | 'handover' | 'emergency' | 'theatre' | 'transfusion'
   | 'claims' | 'reports' | 'report_submissions' | 'accounts_approvals' | 'tariff_adjustments'
   | 'department_queue' | 'laboratory' | 'laboratory_results' | 'radiology' | 'radiology_results' | 'pharmacy'
@@ -12,7 +12,7 @@ export type Permission =
   | 'patient_portal' | 'orders' | 'dietary_plans';
 
 export const permissionByHref: Record<string, Permission> = {
-  '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/registration':'registration','/appointments':'appointments',
+  '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
   '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
@@ -38,7 +38,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
-  patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],
+  patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],\n  it_admin: ['dashboard','it_support','notifications','offline_sync'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {
