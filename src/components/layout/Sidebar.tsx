@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { BarChart3, Calendar, ChevronLeft, ChevronRight, ClipboardList, CreditCard, FlaskConical, HeartPulse, LayoutDashboard, LogOut, Pill, ShieldCheck, Stethoscope, Users, BedDouble, Settings, FileText } from 'lucide-react';
-import { permissionByHref, getDefaultPermissions, type Permission } from '@/lib/permissions';
+import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
 interface SidebarProps { collapsed: boolean; onToggle: () => void }
