@@ -1,8 +1,8 @@
 {
-  "schemaVersion": "1.0.0",
-  "platform": "harmony-nextgen-hims",
-  "defaultState": "disabled-until-validated",
-  "modules": [
+  "schemaVersion":"1.1.0",
+  "platform":"harmony-nextgen-hims",
+  "defaultState":"disabled-until-validated",
+  "modules":[
     {"id":"empi","domain":"patient","tier":1,"safety":"high","offline":"limited"},
     {"id":"registration","domain":"patient","tier":1,"safety":"high","offline":"stageable"},
     {"id":"consent","domain":"governance","tier":1,"safety":"high","offline":"restricted"},
@@ -30,9 +30,16 @@
     {"id":"billing","domain":"revenue","tier":2,"safety":"high","offline":"restricted"},
     {"id":"claims","domain":"revenue","tier":3,"safety":"high","offline":"stageable"},
     {"id":"inventory","domain":"operations","tier":3,"safety":"high","offline":"limited"},
+    {"id":"procurement","domain":"operations","tier":3,"safety":"high","offline":"restricted"},
+    {"id":"asset-biomedical","domain":"operations","tier":3,"safety":"high","offline":"restricted"},
     {"id":"workforce","domain":"operations","tier":3,"safety":"medium","offline":"stageable"},
+    {"id":"physiotherapy","domain":"clinical","tier":3,"safety":"high","offline":"limited"},
+    {"id":"dietary-restaurant","domain":"ancillary","tier":3,"safety":"medium","offline":"stageable"},
     {"id":"reports","domain":"analytics","tier":2,"safety":"high","offline":"read-only"},
+    {"id":"report-centre","domain":"analytics","tier":2,"safety":"high","offline":"read-only"},
     {"id":"public-health","domain":"population","tier":4,"safety":"high","offline":"stageable"},
+    {"id":"data-import","domain":"migration","tier":2,"safety":"high","offline":"restricted"},
+    {"id":"teaching-research","domain":"education","tier":4,"safety":"high","offline":"restricted"},
     {"id":"patient-engagement","domain":"engagement","tier":2,"safety":"high","offline":"stageable"},
     {"id":"messaging","domain":"engagement","tier":2,"safety":"high","offline":"limited"},
     {"id":"notifications","domain":"platform","tier":1,"safety":"high","offline":"queueable"},
@@ -40,9 +47,10 @@
     {"id":"terminology","domain":"platform","tier":1,"safety":"high","offline":"read-only"},
     {"id":"audit","domain":"platform","tier":1,"safety":"critical","offline":"append-only"},
     {"id":"configuration","domain":"platform","tier":1,"safety":"critical","offline":"restricted"},
+    {"id":"user-role-management","domain":"governance","tier":1,"safety":"critical","offline":"restricted"},
     {"id":"ai-clinical-hub","domain":"intelligence","tier":4,"safety":"critical","offline":"restricted"},
     {"id":"ai-governance","domain":"governance","tier":4,"safety":"critical","offline":"restricted"},
     {"id":"accessibility","domain":"experience","tier":1,"safety":"high","offline":"local"}
   ],
-  "promotionRule": "module must pass contract, security, clinical-safety, accessibility, integration, performance and deployment verification before enabled in production"
+  "promotionRule":"module must pass contract, security, clinical-safety, accessibility, integration, performance and deployment verification before enabled in production"
 }
