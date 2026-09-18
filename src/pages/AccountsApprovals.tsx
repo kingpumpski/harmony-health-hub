@@ -8,7 +8,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 
 interface AccountsOrder { id: string; patient_id: string; service_name: string; department: string; amount: number | string; status: ServiceOrderStatus; invoice_id: string | null; patients?: { first_name: string | null; last_name: string | null; patient_code: string | null; insurance_provider: string | null; insurance_number: string | null } | null; }
 interface WorkflowCounts { pending: number; released: number; inProgress: number; completed: number; discharged: number; }
-interface DischargeNotice { id: string; message: string; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }
+interface NotificationRowLike { id: string; message: string; title: string; category: string | null; is_read: boolean; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }\ninterface DischargeNotice { id: string; message: string; created_at: string; related_patient_id: string | null; related_entity_id: string | null; }
 interface Reconciliation { notificationId: string; gross: number; paid: number; outstanding: number; insuranceClaimed: number; insurancePaid: number; status: string; patientId: string; }
 const initialCounts: WorkflowCounts = { pending: 0, released: 0, inProgress: 0, completed: 0, discharged: 0 };
 const money = (value: number) => `GHS ${Number(value || 0).toFixed(2)}`;
@@ -28,12 +28,13 @@ export default function AccountsApprovals() {
     const [filtered, summary, notices] = await Promise.all([
       supabase.from('service_orders').select('id,patient_id,service_name,department,amount,status,invoice_id,patients(first_name,last_name,patient_code,insurance_provider,insurance_number)').eq('status', filter).order('created_at', { ascending: false }).limit(100),
       supabase.from('service_orders').select('status').in('status', ['pending_payment_approval', 'released', 'in_progress', 'completed']),
-      supabase.from('notifications').select('id,message,created_at,related_patient_id,related_entity_id').eq('recipient_role', 'accountant').eq('category', 'payment').eq('title', 'Discharged patient ready for billing reconciliation').eq('is_read', false).order('created_at', { ascending: false }).limit(50),
+      (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
     if (filtered.error) { toast({ title: 'Could not load approvals', description: filtered.error.message, variant: 'destructive' }); return; }
     const rows = (summary.data ?? []) as Array<{ status: ServiceOrderStatus }>;
-    setCounts({ pending: rows.filter((r) => r.status === 'pending_payment_approval').length, released: rows.filter((r) => r.status === 'released').length, inProgress: rows.filter((r) => r.status === 'in_progress').length, completed: rows.filter((r) => r.status === 'completed').length, discharged: notices.data?.length ?? 0 });
-    setDischargeNotices((notices.data ?? []) as DischargeNotice[]);
+    const workflowNotices = ((notices.data ?? []) as NotificationRowLike[]).filter((n) => !n.is_read && n.category === 'payment' && n.title === 'Discharged patient ready for billing reconciliation');
+    setCounts({ pending: rows.filter((r) => r.status === 'pending_payment_approval').length, released: rows.filter((r) => r.status === 'released').length, inProgress: rows.filter((r) => r.status === 'in_progress').length, completed: rows.filter((r) => r.status === 'completed').length, discharged: workflowNotices.length });
+    setDischargeNotices(workflowNotices.map((n) => ({ id: n.id, message: n.message, created_at: n.created_at, related_patient_id: n.related_patient_id, related_entity_id: n.related_entity_id })));
     setOrders((filtered.data ?? []) as AccountsOrder[]);
   }, [filter]);
 
