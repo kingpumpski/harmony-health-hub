@@ -20,7 +20,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   practitioner: [
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(Users,'Patients','/patients','patients'),
     domain(Calendar,'Appointments','/appointments','appointments'), domain(Stethoscope,'Clinical Operations','/clinical-operations','clinical_operations'),
-    domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
+    domain(BedDouble,'Inpatient','/inpatient','inpatient'), domain(FlaskConical,'Laboratory Results','/lab-results','laboratory'),
     domain(BarChart3,'Reports Center','/reports','reports'),
   ],
   nurse: [
