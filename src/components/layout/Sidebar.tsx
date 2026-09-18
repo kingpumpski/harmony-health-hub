@@ -56,7 +56,8 @@ const roleNavItems: Record<string, NavItem[]> = {
     domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FlaskConical,'Laboratory Results','/clinical-results','radiology_results'),
     domain(Users,'Patients','/patients','patients'),
   ],
-  it_admin: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(ShieldCheck,'IT Support','/it-support','it_support')],\n  canteen: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard')],
+  it_admin: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(ShieldCheck,'IT Support','/it-support','it_support')],
+  canteen: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard')],
   patient: [domain(LayoutDashboard,'Dashboard','/dashboard','dashboard'), domain(FileText,'My Portal','/patient-portal','patient_portal'), domain(Calendar,'My Appointments','/appointments','appointments')],
 };
 
