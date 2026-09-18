@@ -1,5 +1,4 @@
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
-import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, RefreshCw } from 'lucide-react';
