@@ -5,7 +5,7 @@ import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus } from 'lucide-
 import { toast } from '@/hooks/use-toast';
 
 const availableRoles = [
-  { value: 'admin', label: 'Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
+  { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
   { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
