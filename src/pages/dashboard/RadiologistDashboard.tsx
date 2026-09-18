@@ -17,12 +17,12 @@ export default function RadiologistDashboard() {
     setLoading(true);
     const [{ data: imaging }, { data: notifications }] = await Promise.all([
       supabase.from('imaging_orders').select('id,patient_id,study_name,modality,priority,status,created_at,patients(first_name,last_name)').order('created_at', { ascending: false }).limit(100),
-      supabase.from('notifications').select('id').eq('is_read', false).eq('severity', 'critical'),
+      (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
     const next = (imaging ?? []) as ImagingOrder[];
     if (announce && previousIds.size > 0 && next.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
     setPreviousIds(new Set(next.map((order) => order.id)));
-    setOrders(next); setUnreadAlerts(notifications?.length ?? 0); setLoading(false);
+    setOrders(next); setUnreadAlerts((notifications ?? []).filter((n: { is_read?: boolean; severity?: string }) => !n.is_read && String(n.severity ?? '').toLowerCase() === 'critical').length); setLoading(false);
   };
   useEffect(() => { void load(); }, []);
   useEffect(() => {
