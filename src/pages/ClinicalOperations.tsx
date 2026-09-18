@@ -3,6 +3,7 @@ import { Activity, BedDouble, ClipboardList, Droplets, RefreshCw, ShieldCheck, S
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 type Tab = 'capacity' | 'nursing' | 'emergency' | 'theatre' | 'transfusion' | 'insurance';
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -31,17 +32,19 @@ export default function ClinicalOperations() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const table = tab === 'capacity' ? 'ward_units' : tab === 'nursing' ? 'nursing_care_plans' : tab === 'emergency' ? 'emergency_cases' : tab === 'theatre' ? 'theatre_cases' : tab === 'transfusion' ? 'transfusion_records' : 'insurance_claims';
+  const workspaceModule = tab === 'capacity' ? 'ward' : tab === 'nursing' ? 'nursing_care' : tab;
 
   const load = useCallback(async () => {
-    const [{ data: patientData, error: patientError }, { data: rowData, error: rowError }] = await Promise.all([
-      supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(300),
-      supabase.from(table as never).select('*').order('created_at', { ascending: false }).limit(50),
+    const [patientResult, workspaceResult] = await Promise.all([
+      searchPatientDirectory('', 300),
+      supabase.rpc('get_operational_workspace', { _module: workspaceModule, _limit: 50 }),
     ]);
-    if (patientError || rowError) toast({ title: 'Unable to load records', description: (patientError || rowError)?.message, variant: 'destructive' });
-    setPatients((patientData ?? []) as Patient[]);
-    setRows((rowData ?? []) as Row[]);
-  }, [table]);
+    const payload = (workspaceResult.data ?? {}) as any;
+    const rowData = tab === 'capacity' ? payload.wards ?? [] : tab === 'nursing' ? payload.care_plans ?? [] : tab === 'theatre' ? payload.cases ?? [] : tab === 'transfusion' ? payload.records ?? [] : tab === 'insurance' ? payload.claims ?? [] : payload.cases ?? [];
+    if (patientResult.error || workspaceResult.error) toast({ title: 'Unable to load records', description: (patientResult.error || workspaceResult.error)?.message, variant: 'destructive' });
+    setPatients((patientResult.data ?? []) as Patient[]);
+    setRows(rowData as Row[]);
+  }, [tab, workspaceModule]);
 
   useEffect(() => { void load(); }, [load]);
 
