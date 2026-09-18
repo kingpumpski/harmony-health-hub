@@ -22,9 +22,7 @@ export default function DepartmentQueue() {
 
   const load = useCallback(async () => {
     if (!user?.id) return;
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('department').eq('id', user.id).maybeSingle();
-    if (profileError) { toast({ title: 'Could not load department', description: profileError.message, variant: 'destructive' }); return; }
-    const currentDepartment = profile?.department?.trim() ?? '';
+    const currentDepartment = user.department?.trim() ?? '';
     setDepartment(currentDepartment);
     if (!currentDepartment) { setRows([]); return; }
     const { data: rawQueue, error: queueError } = await supabase.from('department_queues').select('id,department,status,created_at,service_order_id').eq('department', currentDepartment).in('status', ['queued', 'claimed']).order('created_at', { ascending: true });
