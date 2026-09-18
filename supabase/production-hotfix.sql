@@ -388,8 +388,7 @@ REVOKE ALL ON FUNCTION public.replace_role_permissions(public.app_role,TEXT[]) F
 GRANT EXECUTE ON FUNCTION public.replace_role_permissions(public.app_role,TEXT[]) TO authenticated;
 
 
--- IT Admin support role compatibility hotfix.
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'it_admin';
+-- IT Admin support role compatibility hotfix. The enum value is applied by the database workflow before this script.
 INSERT INTO public.permissions(permission_key, description, is_active)
 VALUES ('it_support','IT support domain: system diagnostics, audit visibility and offline synchronization support',TRUE)
 ON CONFLICT(permission_key) DO UPDATE SET description=EXCLUDED.description, is_active=TRUE;
