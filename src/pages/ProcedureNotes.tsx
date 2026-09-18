@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +27,7 @@ export default function ProcedureNotes() {
   const [findings, setFindings] = useState(''); const [complications, setComplications] = useState(''); const [postOp, setPostOp] = useState('');
   const [chargeAmount, setChargeAmount] = useState(0);
 
-  useEffect(() => { void supabase.from('patients').select('id, first_name, last_name').limit(200).then(({ data }) => setPatients((data ?? []) as Patient[])); void load(); }, []);
+  useEffect(() => { void searchPatientDirectory('', 200).then(({ data }) => setPatients((data ?? []) as Patient[])); void load(); }, []);
   const load = () => supabase.from('procedure_notes').select('id, patient_id, procedure_name, status, created_at').order('created_at', { ascending: false }).limit(50).then(({ data }) => setNotes((data ?? []) as Note[]));
   const applyTemplate = (name: string) => { setProc(name); const t = PROCEDURE_TEMPLATES[name]; if (t) { setIndication(t.indication); setTechnique(t.technique); setPostOp(t.postOp); } };
   const resetForm = () => { setPid(''); setIndication(''); setTechnique(''); setFindings(''); setComplications(''); setPostOp(''); setProc('Custom'); setChargeAmount(0); };
