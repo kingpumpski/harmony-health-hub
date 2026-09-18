@@ -1,10 +1,9 @@
-name: Supabase database migrations
+name: Supabase database compatibility
 
 on:
   push:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
       - 'supabase/production-hotfix.sql'
       - '.github/workflows/supabase-database.yml'
   workflow_dispatch:
@@ -13,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  migrate:
+  compatibility:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -25,9 +24,10 @@ jobs:
           version: latest
       - name: Validate deployment credentials
         run: test -n "$SUPABASE_ACCESS_TOKEN"
-      - name: Link project using Supabase management authentication
+      - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - name: Apply production compatibility hotfix
+      - name: Apply production compatibility RPCs
         run: supabase db query --linked "$(cat supabase/production-hotfix.sql)"
-      - name: Apply pending migrations
-        run: supabase db push --linked --yes
+      - name: Report migration history drift without mutating history
+        run: |
+          echo "::warning::Remote migration history contains versions absent from the repository. Automatic db push is intentionally disabled until the migration baseline is reconciled."
