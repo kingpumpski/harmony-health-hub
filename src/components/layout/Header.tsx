@@ -26,6 +26,7 @@ const roleLabels: Record<UserRole, string> = {
   nurse: "Nurse",
   midwife: "Midwife",
   specialist_nurse: "Specialist Nurse",
+  radiologist: "Radiologist",
   lab_technician: "Lab Technician",
   pharmacist: "Pharmacist",
   accountant: "Accounts Officer",
