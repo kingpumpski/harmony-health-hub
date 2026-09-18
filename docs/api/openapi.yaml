@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Harmony Health Hub Canonical HMS API Contract
+  version: 1.0.0
+  description: >
+    Contract for the existing Supabase REST/RPC and Edge Function boundary.
+    This document does not introduce a second backend service.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /patients: { get: {summary: List/search patients, responses: {'200': {description: OK}}} }
+  /appointments: { get: {summary: List appointments, responses: {'200': {description: OK}}} }
+  /encounters: { get: {summary: List encounters, responses: {'200': {description: OK}}} }
+  /import/templates: { get: {summary: List governed import templates, responses: {'200': {description: OK}}} }
+  /import/batches: { post: {summary: Create an import batch, responses: {'201': {description: Created}}}, get: {summary: List import batches, responses: {'200': {description: OK}}} }
+  /import/batches/{id}/validate:
+    post: {summary: Validate staged import data, parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}],responses: {'200': {description: Validation result}}}
+  /import/batches/{id}/approve:
+    post: {summary: Approve a validated import batch, parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}],responses: {'200': {description: Approved}}}
+  /import/batches/{id}/commit:
+    post: {summary: Atomically commit an approved batch, parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}],responses: {'200': {description: Committed}}}
+  /import/batches/{id}/rollback:
+    post: {summary: Roll back a committed batch within the configured window, parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}],responses: {'200': {description: Rolled back}}}
+  /reports/templates: { get: {summary: List Report Centre templates, responses: {'200': {description: OK}}} }
+  /reports/runs: { post: {summary: Queue a report run, responses: {'202': {description: Accepted}}}, get: {summary: List report runs, responses: {'200': {description: OK}}} }
+  /reports/submissions: { get: {summary: List statutory/authority submissions, responses: {'200': {description: OK}}} }
+  /facilities/{facilityId}/modules:
+    get: {summary: Read facility module state, parameters: [{name: facilityId,in: path,required: true,schema: {type: string,format: uuid}}],responses: {'200': {description: OK}}}
+  /facilities/{facilityId}/modules/{moduleId}:
+    put: {summary: Enable or disable a facility module, parameters: [{name: facilityId,in: path,required: true,schema: {type: string,format: uuid}},{name: moduleId,in: path,required: true,schema: {type: string}}],responses: {'200': {description: Updated}}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        status: {type: string}
+        error: {type: object}
+        meta: {type: object}
+    ImportBatch:
+      type: object
+      required: [id,status,template_version]
+      properties:
+        id: {type: string,format: uuid}
+        status: {type: string}
+        template_version: {type: integer}
+    ReportRun:
+      type: object
+      required: [id,status]
+      properties:
+        id: {type: string,format: uuid}
+        status: {type: string}
