@@ -1,3 +1,4 @@
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -10,7 +11,7 @@ export default function AIReportGenerator() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.from('patients').select('id, first_name, last_name').limit(200).then(({ data }) => setPatients(data ?? []));
+    searchPatientDirectory('', 200).then(({ data }) => setPatients(data ?? []));
   }, []);
 
   const generate = async () => {
