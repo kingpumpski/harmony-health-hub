@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { UserRole } from '@/types';
-import { getDefaultPermissions, type Permission } from '@/lib/permissions';
+import { getDefaultPermissions, permissionByHref, type Permission } from '@/lib/permissions';
 
 interface AppUser {
   id: string;
@@ -50,7 +50,7 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
     } else if (Array.isArray(permissionRows) && permissionRows.length > 0) {
       permissions = permissionRows
         .map((row: unknown) => typeof row === 'string' ? row : (row as { permission_key?: unknown })?.permission_key)
-        .filter((value): value is Permission => typeof value === 'string' && permissions.includes(value as Permission) || Object.values(getDefaultPermissions(resolvedRole)).includes(value as Permission));
+        .filter((value): value is Permission => typeof value === 'string' && (Object.values(permissionByHref) as string[]).includes(value));
     }
   } catch (error) {
     console.warn('Database permission profile unavailable; using role defaults.', error);
