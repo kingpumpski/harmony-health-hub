@@ -37,7 +37,7 @@ export default function RolePermissions() {
     }
     setCatalog((permissions ?? []) as PermissionRow[]);
     const mapped = new Set((mappings ?? []).map(row => row.permission_key));
-    setSelected(mapped.size ? mapped : new Set(getDefaultPermissions(selectedRole)));
+    setSelected(selectedRole === 'admin' ? new Set((permissions ?? []).map(row => row.permission_key)) : (mapped.size ? mapped : new Set(getDefaultPermissions(selectedRole))));
     setLoading(false);
   };
 
@@ -60,7 +60,7 @@ export default function RolePermissions() {
     return next;
   });
 
-  const resetDefaults = () => setSelected(new Set(getDefaultPermissions(selectedRole)));
+  const resetDefaults = () => setSelected(selectedRole === 'admin' ? new Set(catalog.map(item => item.permission_key)) : new Set(getDefaultPermissions(selectedRole)));
 
   const save = async () => {
     if (user?.role !== 'admin') return;
@@ -94,14 +94,14 @@ export default function RolePermissions() {
     </div>
     <div className="card-medical p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-lg font-semibold">Application permissions</h2><p className="text-sm text-muted-foreground">{selected.size} enabled</p></div>
+        <div><h2 className="text-lg font-semibold">Application permissions</h2>{selectedRole === 'admin' && <span className="text-xs text-success">Administrator is always granted every active permission.</span>}<p className="text-sm text-muted-foreground">{selected.size} enabled</p></div>
         <div className="flex gap-2"><button type="button" onClick={resetDefaults} className="btn-secondary"><RefreshCw className="h-4 w-4" />Restore defaults</button><button type="button" onClick={() => void save()} disabled={saving || loading} className="btn-primary"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save permissions'}</button></div>
       </div>
       {loading ? <p className="py-8 text-sm text-muted-foreground">Loading permission catalog…</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {grouped.map(([group, items]) => <section key={group} className="rounded-2xl border border-border p-4">
           <h3 className="mb-3 text-sm font-semibold capitalize">{group.replace(/_/g, ' ')}</h3>
           <div className="space-y-2">{items.map(item => <label key={item.permission_key} className="flex cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-muted/50">
-            <input type="checkbox" checked={selected.has(item.permission_key)} onChange={() => toggle(item.permission_key)} className="mt-1 h-4 w-4" />
+            <input type="checkbox" checked={selected.has(item.permission_key)} onChange={() => toggle(item.permission_key)} disabled={selectedRole === 'admin'} className="mt-1 h-4 w-4" />
             <span><span className="block text-sm font-medium">{item.permission_key.replace(/_/g, ' ')}</span><span className="block text-xs text-muted-foreground">{item.description}</span></span>
           </label>)}</div>
         </section>)}
