@@ -59,9 +59,9 @@ async function extractSnapshot(report: ReportDefinition, period: string): Promis
 }
 
 export async function listFacilities(): Promise<HealthcareFacility[]> {
-  const { data, error } = await reportsDb.from('healthcare_facilities').select('id,name,facility_code,facility_type,district,region,dhims2_uid,is_active').eq('is_active', true).order('name');
+  const { data, error } = await supabase.rpc('get_operational_workspace', { _module: 'facilities', _limit: 500 });
   if (error) throw new Error(error.message);
-  return (data ?? []) as HealthcareFacility[];
+  return (((data as any)?.facilities) ?? []) as HealthcareFacility[];
 }
 
 export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_active'>): Promise<HealthcareFacility> {
