@@ -31,7 +31,7 @@ export default function ClinicalResults() {
     setLoading(true);
     const [{ data: imaging }, { data: notes }] = await Promise.all([
       supabase.from('imaging_orders').select('id,patient_id,study_name,modality,priority,report,impression,encounter_id,created_at,updated_at,patients(first_name,last_name)').eq('requested_by', user.id).eq('status', 'completed').order('updated_at', { ascending: false }).limit(100),
-      supabase.from('notifications').select('id,related_entity_id,is_read').eq('is_read', false).order('created_at', { ascending: false }).limit(200),
+      (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
     setResults((imaging ?? []) as ResultRow[]);
     setNotifications((notes ?? []) as ResultNotification[]);
