@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const migration = fs.readFileSync('supabase/migrations/20260919070000_hms_role_permission_workflow_boundaries.sql', 'utf8');
+const finalBoundary = fs.readFileSync('supabase/migrations/20260919221000_final_hms_authorization_boundary.sql', 'utf8');
 
 for (const token of [
   'CREATE SCHEMA IF NOT EXISTS private',
@@ -30,13 +31,26 @@ for (const token of [
   assert.ok(migration.includes(token), `Missing HMS permission boundary token: ${token}`);
 }
 
+for (const token of [
+  'CREATE OR REPLACE FUNCTION private.hms_authorize',
+  'public.has_facility_access(_user_id, _facility_id)',
+  'CREATE OR REPLACE FUNCTION public.hms_user_has_module_permission',
+  'CREATE OR REPLACE FUNCTION public.set_hms_user_role',
+  'Administrators cannot demote themselves',
+  'The final administrator cannot be demoted',
+  'REVOKE INSERT,UPDATE,DELETE ON TABLE public.user_roles FROM authenticated',
+  'REVOKE INSERT,UPDATE,DELETE ON TABLE public.user_roles FROM anon',
+]) {
+  assert.ok(finalBoundary.includes(token), `Missing final authorization boundary token: ${token}`);
+}
+
 assert.match(
   migration,
-  /CREATE OR REPLACE FUNCTION private\.hms_authorize\([\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path=''/
+  /CREATE OR REPLACE FUNCTION private\\.hms_authorize\\([\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET search_path=''/
 );
 assert.match(
   migration,
-  /CREATE OR REPLACE FUNCTION public\.hms_assert_permission\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path=''/
+  /CREATE OR REPLACE FUNCTION public\\.hms_assert_permission\\([\\s\\S]*?SECURITY INVOKER[\\s\\S]*?SET search_path=''/
 );
 assert.ok(!migration.includes('rollback_hms_import_batch(uuid,text)'), 'Rollback overload with caller-supplied reason must not be introduced');
 assert.ok(
@@ -46,6 +60,14 @@ assert.ok(
 assert.ok(
   migration.includes('GRANT EXECUTE ON FUNCTION public.hms_assert_permission(uuid,text,text) TO authenticated'),
   'Authenticated workflow callers must be able to invoke the permission assertion'
+);
+assert.match(
+  finalBoundary,
+  /CREATE OR REPLACE FUNCTION private\\.hms_authorize\\([\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET search_path=''/
+);
+assert.match(
+  finalBoundary,
+  /REVOKE ALL ON FUNCTION public\\.set_hms_user_role\\(uuid,text\\) FROM PUBLIC,anon/
 );
 
 console.log('Next-gen HMS role/permission boundary contract checks passed.');
