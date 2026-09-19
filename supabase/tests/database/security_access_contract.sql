@@ -55,3 +55,18 @@ select ok(
    not ilike '%public.has_role(uid,''front_desk'')%',
   'patient continuity RPC excludes non-clinical accountant/front-desk access'
 );
+
+
+select ok(
+  (select pg_get_functiondef(p.oid)
+   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname='get_patient_hub_snapshot'
+     and pg_get_function_identity_arguments(p.oid)='_patient_id uuid')
+   ilike '%WHEN is_clinical THEN to_jsonb(p)%'
+   and (select pg_get_functiondef(p.oid)
+        from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+        where n.nspname='public' and p.proname='get_patient_hub_snapshot'
+          and pg_get_function_identity_arguments(p.oid)='_patient_id uuid')
+   ilike '%ELSE jsonb_build_object%',
+  'patient hub snapshot minimizes patient payload for non-clinical roles'
+);
