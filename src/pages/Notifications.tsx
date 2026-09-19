@@ -42,12 +42,16 @@ export default function Notifications() {
 
   useEffect(() => {
     void load();
+    // IT Admin notifications are intentionally scoped to support-only data by the RPC.
+    // Do not subscribe the support role to the entire notifications table because
+    // realtime payloads are delivered before the RPC-level filtering occurs.
+    if (user.role === 'it_admin') return;
     const channel = supabase
       .channel('notif-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [load]);
+  }, [load, user.role]);
 
   const markRead = async (id: string) => {
     const { error } = await db.rpc('mark_notification_read', { _notification_id: id });

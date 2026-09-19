@@ -2445,6 +2445,17 @@ export type Database = {
         Returns: boolean
       }
       is_clinical_staff: { Args: { _user_id: string }; Returns: boolean }
+      get_it_support_system_logs: {
+        Args: { _limit?: number; _module?: string | null; _severity?: string | null }
+        Returns: {
+          id: string
+          action: string
+          module: string
+          entity_type: string | null
+          severity: string
+          created_at: string
+        }[]
+      }
     }
     Enums: {
       app_role:
@@ -2459,6 +2470,7 @@ export type Database = {
         | "canteen"
         | "patient"
         | "specialist_nurse"
+        | "it_admin"
     }
     CompositeTypes: {
       [_ in never]: never

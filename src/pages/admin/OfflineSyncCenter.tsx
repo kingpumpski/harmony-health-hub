@@ -51,6 +51,7 @@ function retryLabel(item: OfflineMutation): string {
 
 export default function OfflineSyncCenter() {
   const { user } = useAuth();
+  const isItAdmin = user?.role === 'it_admin';
   const [online, setOnline] = useState(() => navigator.onLine);
   const [pending, setPending] = useState<OfflineMutation[]>([]);
   const [history, setHistory] = useState<OfflineSyncHistory[]>([]);
@@ -65,7 +66,7 @@ export default function OfflineSyncCenter() {
       const [queue, events, records] = await Promise.all([
         getOfflineMutations(),
         getOfflineSyncHistory(250),
-        getOfflineReadModels(undefined, 100),
+        isItAdmin ? Promise.resolve([] as OfflineReadModel[]) : getOfflineReadModels(undefined, 100),
       ]);
       setPending(queue);
       setHistory(events);
@@ -73,9 +74,13 @@ export default function OfflineSyncCenter() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isItAdmin]);
 
   const synchronize = useCallback(async () => {
+    if (isItAdmin) {
+      toast.error('IT Admin access is read-only for offline synchronization.');
+      return;
+    }
     if (!navigator.onLine) {
       toast.error('Synchronization requires an active network connection.');
       return;
@@ -91,9 +96,13 @@ export default function OfflineSyncCenter() {
     } finally {
       setSyncing(false);
     }
-  }, [load]);
+  }, [isItAdmin, load]);
 
   const retry = useCallback(async (id: string) => {
+    if (isItAdmin) {
+      toast.error('IT Admin access cannot release or replay queued clinical mutations.');
+      return;
+    }
     setRetryingId(id);
     try {
       const changed = await retryOfflineMutation(id);
@@ -113,7 +122,7 @@ export default function OfflineSyncCenter() {
     } finally {
       setRetryingId(null);
     }
-  }, [load]);
+  }, [isItAdmin, load]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -135,7 +144,7 @@ export default function OfflineSyncCenter() {
   const failed = useMemo(() => history.filter((item) => item.event === 'failed'), [history]);
   const blocked = useMemo(() => pending.filter((item) => item.status === 'blocked'), [pending]);
 
-  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (user?.role !== 'admin' && user?.role !== 'it_admin') return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -144,9 +153,9 @@ export default function OfflineSyncCenter() {
           <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><History className="w-6 h-6 text-primary" />Offline Synchronization Center</h1>
           <p className="text-muted-foreground">Reconcile this device's queued changes and review synchronization outcomes. This is local browser state, not a substitute for server audit history.</p>
         </div>
-        <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={() => void synchronize()} disabled={!online || syncing}>
+        {!isItAdmin && <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={() => void synchronize()} disabled={!online || syncing}>
           <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />{syncing ? 'Synchronizing…' : 'Synchronize now'}
-        </button>
+        </button>}
       </header>
 
       <div className="grid gap-4 md:grid-cols-5">
@@ -160,10 +169,10 @@ export default function OfflineSyncCenter() {
       {!online && <div className="rounded-2xl border border-amber-300/50 bg-amber-50/50 p-4 text-sm flex gap-3"><WifiOff className="w-5 h-5 shrink-0 text-amber-600" /><span>Connectivity is unavailable. Queued work remains on this device and will not be discarded.</span></div>}
       {blocked.length > 0 && <div className="rounded-2xl border border-red-300/50 bg-red-50/50 p-4 text-sm flex gap-3"><AlertTriangle className="w-5 h-5 shrink-0 text-red-600" /><span>{blocked.length} queued change{blocked.length === 1 ? '' : 's'} reached a non-transient server response and are blocked from automatic retry. Review the error below and use <strong>Retry</strong> only after the underlying issue is understood.</span></div>}
 
-      <section className="card-medical rounded-3xl overflow-hidden">
+      {!isItAdmin && <section className="card-medical rounded-3xl overflow-hidden">
         <div className="p-5 border-b border-border"><h2 className="font-semibold">Offline continuity records</h2><p className="text-xs text-muted-foreground mt-1">Patient registration, triage, selected vital signs and appointment records remain visible while disconnected. Status changes to server-confirmed only after successful synchronization.</p></div>
         {loading ? <div className="p-8 text-center text-muted-foreground">Loading continuity records…</div> : continuity.length === 0 ? <div className="p-8 text-center text-muted-foreground">No offline continuity records on this device.</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">Created</th><th className="p-3">Type</th><th className="p-3">Record</th><th className="p-3">Status</th></tr></thead><tbody>{continuity.map((item) => <tr key={item.id} className="border-b border-border"><td className="p-3 whitespace-nowrap">{new Date(item.createdAt).toLocaleString()}</td><td className="p-3 capitalize">{item.kind}</td><td className="p-3 font-medium">{continuityLabel(item)}</td><td className="p-3"><span className={item.status === 'server-confirmed' ? 'badge-success' : 'badge-warning'}>{item.status === 'server-confirmed' ? 'Server confirmed' : 'Queued locally'}</span></td></tr>)}</tbody></table></div>}
-      </section>
+      </section>}
 
       <section className="card-medical rounded-3xl overflow-hidden">
         <div className="p-5 border-b border-border"><h2 className="font-semibold">Pending synchronization queue</h2><p className="text-xs text-muted-foreground mt-1">Payload contents are intentionally not displayed here to reduce unnecessary exposure of clinical data. Transient failures use backoff; permanent/conflict responses are blocked until manually released.</p></div>

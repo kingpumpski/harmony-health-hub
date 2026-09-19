@@ -4,6 +4,7 @@
 -- Keep this migration safe when an environment has the base billing tables but has
 -- not yet replayed every historical billing-hardening migration.
 ALTER TABLE public.invoice_items
+  ADD COLUMN IF NOT EXISTS service_code TEXT,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS paid_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -72,12 +73,13 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT ii.id, ii.invoice_id, i.patient_id, ii.description, ii.department, ii.service_code,
+  SELECT ii.id, ii.invoice_id, i.patient_id, ii.description, ii.department,
+         COALESCE(ii.service_code, so.service_code),
          ii.quantity, ii.unit_price, ii.amount, so.id, so.status, ii.created_at
   FROM public.invoice_items ii
   JOIN public.invoices i ON i.id=ii.invoice_id
   LEFT JOIN LATERAL (
-    SELECT s.id,s.status FROM public.service_orders s
+    SELECT s.id,s.status,s.service_code FROM public.service_orders s
     WHERE s.invoice_item_id=ii.id AND s.status<>'cancelled'
     ORDER BY s.created_at DESC LIMIT 1
   ) so ON true

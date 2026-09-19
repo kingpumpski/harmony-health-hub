@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 
 const allowedRoles = new Set([
-  'admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
+  'admin','it_admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
   'pharmacist','accountant','front_desk','canteen','radiologist','patient',
 ]);
 
@@ -36,6 +36,22 @@ Deno.serve(async (req) => {
     if (!callerRole) return json({ error: 'Administrator access required' }, 403);
 
     const body = await req.json();
+
+    if (body?.action === 'update_role') {
+      const userId = String(body?.userId ?? '').trim();
+      const nextRole = String(body?.role ?? '').trim();
+      if (!userId || !allowedRoles.has(nextRole)) return json({ error: 'A valid userId and supported role are required' }, 400);
+      if (userId === caller.id && nextRole !== 'admin') return json({ error: 'Administrators cannot remove their own admin role' }, 400);
+
+      const { data, error } = await adminClient.rpc('admin_update_user_role', {
+        _target_user_id: userId,
+        _next_role: nextRole,
+      });
+      if (error) return json({ error: 'Role update failed: ' + error.message }, 500);
+
+      return json(data ?? { ok: true, user: { id: userId, role: nextRole } });
+    }
+
     const email = String(body?.email ?? '').trim().toLowerCase();
     const firstName = String(body?.firstName ?? '').trim();
     const lastName = String(body?.lastName ?? '').trim();
