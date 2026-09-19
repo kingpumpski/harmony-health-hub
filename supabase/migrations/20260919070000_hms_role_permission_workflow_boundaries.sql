@@ -260,7 +260,7 @@ AS $$
 DECLARE v_template hms_import_templates%ROWTYPE; v_batch uuid; v_row jsonb; v_no int:=0; v_facility uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT f.id INTO v_facility FROM public.facilities f ORDER BY f.created_at LIMIT 1;
+  SELECT f.id INTO v_facility FROM public.healthcare_facilities f ORDER BY f.created_at LIMIT 1;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'No facility is configured for HMS import'; END IF;
   PERFORM public.hms_assert_permission(v_facility,'data-import','write');
   SELECT * INTO v_template FROM public.hms_import_templates WHERE code=_template_code AND status='active' FOR SHARE;
@@ -282,7 +282,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE b hms_import_batches%ROWTYPE; s record; err_count int:=0; quarantine_count int:=0; valid_count int:=0; p jsonb; v_facility uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT f.id INTO v_facility FROM public.facilities f ORDER BY f.created_at LIMIT 1;
+  SELECT f.id INTO v_facility FROM public.healthcare_facilities f ORDER BY f.created_at LIMIT 1;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'No facility is configured for HMS import'; END IF;
   PERFORM public.hms_assert_permission(v_facility,'data-import','write');
   SELECT * INTO b FROM public.hms_import_batches WHERE id=_batch_id FOR UPDATE;
@@ -315,7 +315,7 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE b hms_import_batches%ROWTYPE; v_facility uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT f.id INTO v_facility FROM public.facilities f ORDER BY f.created_at LIMIT 1;
+  SELECT f.id INTO v_facility FROM public.healthcare_facilities f ORDER BY f.created_at LIMIT 1;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'No facility is configured for HMS import'; END IF;
   PERFORM public.hms_assert_permission(v_facility,'data-import','approve');
   SELECT * INTO b FROM public.hms_import_batches WHERE id=_batch_id FOR UPDATE;
@@ -331,7 +331,7 @@ AS $$
 DECLARE b hms_import_batches%ROWTYPE; s record; v_count int:=0; v_facility uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT f.id INTO v_facility FROM public.facilities f ORDER BY f.created_at LIMIT 1;
+  SELECT f.id INTO v_facility FROM public.healthcare_facilities f ORDER BY f.created_at LIMIT 1;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'No facility is configured for HMS import'; END IF;
   PERFORM public.hms_assert_permission(v_facility,'data-import','approve');
   SELECT * INTO b FROM public.hms_import_batches WHERE id=_batch_id FOR UPDATE;
@@ -351,7 +351,7 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE b hms_import_batches%ROWTYPE; v_facility uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT f.id INTO v_facility FROM public.facilities f ORDER BY f.created_at LIMIT 1;
+  SELECT f.id INTO v_facility FROM public.healthcare_facilities f ORDER BY f.created_at LIMIT 1;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'No facility is configured for HMS import'; END IF;
   PERFORM public.hms_assert_permission(v_facility,'data-import','approve');
   IF coalesce(trim(_reason),'')='' THEN RAISE EXCEPTION 'Rollback reason is required'; END IF;
