@@ -32,6 +32,7 @@ interface Encounter {
   principal_diagnosis: string | null;
   treatment_plan: string | null;
   status: string;
+  admission_id: string | null;
   created_at: string;
 }
 interface Diagnosis {
@@ -365,7 +366,7 @@ export default function Encounters() {
       supabase
         .from("encounters")
         .select(
-          "id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, created_at",
+          "id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, admission_id, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(50),
@@ -643,14 +644,21 @@ export default function Encounters() {
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={admitEncounter}
-                      disabled={admitting}
-                      className="btn-primary inline-flex items-center gap-2"
-                    >
-                      <BedDouble className="w-4 h-4" /> {admitting ? "Admitting…" : "Admit"}
-                    </button>
+                    {selected.status === "completed" && !selected.admission_id && (
+                      <button
+                        type="button"
+                        onClick={admitEncounter}
+                        disabled={admitting}
+                        className="btn-primary inline-flex items-center gap-2"
+                      >
+                        <BedDouble className="w-4 h-4" /> {admitting ? "Admitting…" : "Admit"}
+                      </button>
+                    )}
+                    {selected.admission_id && (
+                      <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary">
+                        <BedDouble className="w-4 h-4" /> Admission active
+                      </span>
+                    )}
                     {selected.status !== "completed" && (
                       <button
                         onClick={completeEncounter}
