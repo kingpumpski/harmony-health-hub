@@ -116,6 +116,7 @@ AS $$
         ON mc.module_code=p.module_code
       WHERE ur.user_id=_user_id
         AND mc.module_id=_module_id
+        AND p.scope_code IN ('facility','global')
         AND public.hms_module_is_enabled(_facility_id,_module_id)
         AND (
           (lower(_action)='read' AND p.can_read)
