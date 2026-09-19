@@ -67,7 +67,13 @@ BEGIN
   END IF;
 
   UPDATE public.service_orders
-  SET status='released', approved_at=now(), approved_by=auth.uid(), updated_at=now()
+  SET status='released',
+      approved_at=now(),
+      approved_by=auth.uid(),
+      released_at=now(),
+      released_by=auth.uid(),
+      release_reason=CASE WHEN v_override THEN 'Emergency financial override: ' || COALESCE(NULLIF(_reason,''),'Approved financial override') ELSE _reason END,
+      updated_at=now()
   WHERE id=v_order.id AND status='pending_payment_approval'
   RETURNING * INTO v_order;
 
