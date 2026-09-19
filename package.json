@@ -33,7 +33,8 @@
     "test:nextgen-encounter-admission": "node scripts/test-nextgen-encounter-admission.mjs",
     "preview": "vite preview",
     "test:nextgen-broader-hms": "node scripts/test-nextgen-broader-hms.mjs",
-    "test:nextgen-governance": "node scripts/test-nextgen-governance-boundaries.mjs"
+    "test:nextgen-governance": "node scripts/test-nextgen-governance-boundaries.mjs",
+    "test:nextgen-role-permissions": "node scripts/test-nextgen-role-permission-boundaries.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
