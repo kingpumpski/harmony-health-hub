@@ -70,3 +70,10 @@ select ok(
    ilike '%ELSE jsonb_build_object%',
   'patient hub snapshot minimizes patient payload for non-clinical roles'
 );
+
+select ok(
+  (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_emergency_workspace' and pg_get_function_identity_arguments(p.oid)='_limit integer')
+  ilike '%public.has_role(auth.uid(),''front_desk'')%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_emergency_workspace' and pg_get_function_identity_arguments(p.oid)='_limit integer')
+  ilike '%disposition%','emergency workspace retains explicit role boundary and disposition field'
+);
