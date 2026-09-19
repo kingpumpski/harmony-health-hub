@@ -32,7 +32,21 @@ BEGIN
   is_front_desk := public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'front_desk');
 
   SELECT jsonb_build_object(
-    'patient', to_jsonb(p),
+    'patient', CASE
+      WHEN is_clinical THEN to_jsonb(p)
+      ELSE jsonb_build_object(
+        'id', p.id,
+        'patient_code', p.patient_code,
+        'first_name', p.first_name,
+        'last_name', p.last_name,
+        'date_of_birth', p.date_of_birth,
+        'sex', p.sex,
+        'phone', p.phone,
+        'email', p.email,
+        'address', p.address,
+        'status', p.status
+      )
+    END,
     'appointments', CASE WHEN is_clinical OR is_front_desk THEN COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.scheduled_at DESC) FROM public.appointments a WHERE a.patient_id = _patient_id), '[]'::jsonb) ELSE '[]'::jsonb END,
     'vitals', CASE WHEN is_clinical THEN COALESCE((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.recorded_at DESC) FROM public.vital_signs v WHERE v.patient_id = _patient_id), '[]'::jsonb) ELSE '[]'::jsonb END,
     'encounters', CASE WHEN is_clinical THEN COALESCE((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.created_at DESC) FROM public.encounters e WHERE e.patient_id = _patient_id), '[]'::jsonb) ELSE '[]'::jsonb END,
