@@ -40,7 +40,7 @@ export default function MainLayout() {
           <Outlet />
         </main>
       </div>
-      <CriticalAlertOverlay />
+      {user.role !== 'it_admin' && <CriticalAlertOverlay />}
     </div>
   );
 }
