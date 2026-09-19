@@ -34,7 +34,8 @@
     "preview": "vite preview",
     "test:nextgen-broader-hms": "node scripts/test-nextgen-broader-hms.mjs",
     "test:nextgen-governance": "node scripts/test-nextgen-governance-boundaries.mjs",
-    "test:nextgen-role-permissions": "node scripts/test-nextgen-role-permission-boundaries.mjs"
+    "test:nextgen-role-permissions": "node scripts/test-nextgen-role-permission-boundaries.mjs",
+    "test:nextgen-dietary-boundary": "node scripts/test-nextgen-dietary-boundary.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
