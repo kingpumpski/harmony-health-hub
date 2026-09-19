@@ -77,3 +77,12 @@ select ok(
   and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_emergency_workspace' and pg_get_function_identity_arguments(p.oid)='_limit integer')
   ilike '%disposition%','emergency workspace retains explicit role boundary and disposition field'
 );
+
+select ok(
+  (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='admit_encounter_workflow' and pg_get_function_identity_arguments(p.oid)='_encounter_id uuid, _reason text, _ward text, _emergency_override boolean')
+  ilike '%FROM public.facility_configuration%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='admit_encounter_workflow' and pg_get_function_identity_arguments(p.oid)='_encounter_id uuid, _reason text, _ward text, _emergency_override boolean')
+  not ilike '%FROM public.facility_settings%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='admit_encounter_workflow' and pg_get_function_identity_arguments(p.oid)='_encounter_id uuid, _reason text, _ward text, _emergency_override boolean')
+  ilike '%allow_clinical_emergency_override%','admission override uses canonical facility configuration and emergency flag'
+);
