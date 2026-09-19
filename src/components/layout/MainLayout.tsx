@@ -36,7 +36,7 @@ export default function MainLayout() {
       <div className={`min-w-0 pl-20 transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
         <Header />
         <main className="min-w-0 p-4 sm:p-6 animate-fade-in">
-          <EncounterWorkflowOverlay />
+          {user.role !== 'it_admin' && <EncounterWorkflowOverlay />}
           <Outlet />
         </main>
       </div>
