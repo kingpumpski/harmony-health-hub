@@ -107,3 +107,10 @@ A row is not complete merely because its route exists. Completion requires a con
 ## Known external blocker policy
 
 A Vercel build-rate-limit failure or GitHub Actions infrastructure/startup failure is recorded as an infrastructure blocker. It must not be converted into a false green result by removing checks, weakening assertions, or relying on an older commit. Likewise, absence of the correct connected Supabase project blocks migration replay evidence but does not justify applying migrations to an unrelated project.
+
+### 2026-09-19 — Dietary/meal authorization convergence
+- Closed the remaining legacy dietary write boundary in `meal_plans` and `meal_orders`.
+- Replaced role-only staff RLS predicates with a compatibility bridge requiring an active facility membership plus the canonical `dietary-restaurant` HMS module permission.
+- Preserved the existing clinical/canteen role requirement and did not introduce a second RBAC authority.
+- Added `test:nextgen-dietary-boundary` and wired it into Quality.
+- Live Supabase replay/RLS execution remains pending because the correct Harmony Supabase project is not connected in this environment.
