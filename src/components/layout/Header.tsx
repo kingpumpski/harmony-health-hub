@@ -78,6 +78,7 @@ export default function Header() {
     beep.play().catch(() => {});
   }, [hasCritical]);
   useEffect(() => {
+    if (user?.role === "it_admin") { setSearchResults([]); setIsSearching(false); return; }
     const query = searchTerm.trim();
     if (!query) {
       setSearchResults([]);
@@ -99,7 +100,7 @@ export default function Header() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [searchTerm]);
+  }, [searchTerm, user?.role]);
   if (!user) return null;
   return (
     <header className="sticky top-0 z-30 min-h-16 bg-card border-b border-border px-4 sm:px-6 py-2 flex items-center justify-between gap-4">
@@ -112,13 +113,13 @@ export default function Header() {
           className="relative"
         >
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
+          {user.role !== "it_admin" && <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search patients by name, code, phone..."
             className="input-medical pl-10 w-full"
-          />
-          {searchTerm.trim() && (isSearching || searchResults.length > 0) && (
+          />}
+          {user.role !== "it_admin" && searchTerm.trim() && (isSearching || searchResults.length > 0) && (
             <div className="absolute left-0 right-0 z-40 mt-2 rounded-2xl border bg-card p-3 shadow-elevated">
               <div className="space-y-2 max-h-72 overflow-auto">
                 {searchResults.slice(0, 8).map((r) => (
