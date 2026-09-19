@@ -51,15 +51,8 @@ export async function createServiceOrder(input: CreateServiceOrderInput) {
 export async function releaseServiceOrder(orderId: string, _approvedBy?: string, reason = 'Payment received') {
   const { data: rawData, error } = await workflowRpc.rpc('release_service_order', { _service_order_id: orderId, _reason: reason });
   if (error) throw new Error(error.message);
-  const data = rawData as ServiceOrderRpcRow;
-  const { data: overrideRow, error: overrideLookupError } = await supabase
-    .from('billing_overrides')
-    .select('id')
-    .eq('service_order_id', data.id)
-    .limit(1)
-    .maybeSingle();
-  if (overrideLookupError) throw overrideLookupError;
-  const releasedUnderOverride = Boolean(overrideRow);
+  const data = rawData as ServiceOrderRpcRow & { release_reason?: string | null };
+  const releasedUnderOverride = data.release_reason?.startsWith('Emergency financial override:') ?? false;
   const roleByDept: Record<ServiceDepartment, string[]> = {
     laboratory: ['lab_technician'], imaging: ['lab_technician', 'practitioner'], pharmacy: ['pharmacist'],
     procedure: ['practitioner', 'nurse'], consultation: ['practitioner'], other: ['practitioner'],
