@@ -36,6 +36,27 @@ Deno.serve(async (req) => {
     if (!callerRole) return json({ error: 'Administrator access required' }, 403);
 
     const body = await req.json();
+
+    if (body?.action === 'update_role') {
+      const userId = String(body?.userId ?? '').trim();
+      const nextRole = String(body?.role ?? '').trim();
+      if (!userId || !allowedRoles.has(nextRole)) return json({ error: 'A valid userId and supported role are required' }, 400);
+      if (userId === caller.id && nextRole !== 'admin') return json({ error: 'Administrators cannot remove their own admin role' }, 400);
+
+      const roleDelete = await adminClient.from('user_roles').delete().eq('user_id', userId);
+      if (roleDelete.error) return json({ error: 'Role removal failed: ' + roleDelete.error.message }, 500);
+      const roleInsert = await adminClient.from('user_roles').insert({ user_id: userId, role: nextRole });
+      if (roleInsert.error) return json({ error: 'Role assignment failed: ' + roleInsert.error.message }, 500);
+
+      await adminClient.rpc('record_system_audit', {
+        _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',
+        _entity_id: userId, _severity: 'info',
+        _metadata: { assigned_role: nextRole, target_user_id: userId, actor_user_id: caller.id },
+      });
+
+      return json({ ok: true, user: { id: userId, role: nextRole } });
+    }
+
     const email = String(body?.email ?? '').trim().toLowerCase();
     const firstName = String(body?.firstName ?? '').trim();
     const lastName = String(body?.lastName ?? '').trim();
