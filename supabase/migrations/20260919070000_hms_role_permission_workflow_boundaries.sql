@@ -376,3 +376,52 @@ GRANT EXECUTE ON FUNCTION public.rollback_hms_import_batch(uuid) TO authenticate
 
 REVOKE ALL ON TABLE public.hms_import_templates,public.hms_import_template_versions,public.hms_import_batches,public.hms_import_staging,public.hms_import_errors,public.hms_import_quarantine,public.hms_import_mappings,public.hms_import_audit FROM authenticated;
 GRANT SELECT ON public.hms_import_templates,public.hms_import_template_versions,public.hms_import_batches,public.hms_import_staging,public.hms_import_errors,public.hms_import_quarantine,public.hms_import_mappings,public.hms_import_audit TO authenticated;
+
+
+-- Reconcile the pre-existing bridge helpers onto the same canonical evaluator.
+-- Existing callers may continue using hms_user_can/hms_assert_user_can, but there
+-- is now one authorization decision path and one facility-module gate.
+CREATE OR REPLACE FUNCTION public.hms_user_can(
+  _facility_id uuid,
+  _module_id text,
+  _action text,
+  _user_id uuid DEFAULT auth.uid()
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path=''
+AS $$
+  SELECT
+    auth.uid() IS NOT NULL
+    AND _user_id=auth.uid()
+    AND (
+      public.has_role(auth.uid(),'admin'::public.app_role)
+      OR private.hms_authorize(auth.uid(),_facility_id,_module_id,lower(_action))
+    );
+$$;
+
+CREATE OR REPLACE FUNCTION public.hms_assert_user_can(
+  _facility_id uuid,
+  _module_id text,
+  _action text,
+  _user_id uuid DEFAULT auth.uid()
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path=''
+AS $$
+BEGIN
+  IF NOT public.hms_user_can(_facility_id,_module_id,_action,_user_id) THEN
+    RAISE EXCEPTION 'HMS authorization denied for module % action %',_module_id,_action
+      USING ERRCODE='42501';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.hms_user_can(uuid,text,text,uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.hms_assert_user_can(uuid,text,text,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.hms_user_can(uuid,text,text,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.hms_assert_user_can(uuid,text,text,uuid) TO authenticated;
