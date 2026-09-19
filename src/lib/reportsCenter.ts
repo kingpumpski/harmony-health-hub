@@ -126,7 +126,7 @@ export async function generateRun(facilityId: string, period: string, configs: F
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
-  const moduleGate = await reportsDb.rpc('hms_assert_module_access', { _facility_id: facilityId, _module_id: 'report-centre', _action: 'read' });
+  const moduleGate = await reportsDb.rpc('hms_assert_module_enabled', { _facility_id: facilityId, _module_id: 'report-centre' });
   if (moduleGate.error) throw new Error(moduleGate.error.message);
   const now = new Date().toISOString();
   const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
