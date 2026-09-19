@@ -134,6 +134,7 @@ export default function BulkUpload() {
             code: row.code, description: row.description, version: row.version || 'ICD-10', category: row.category || null,
           });
           if (error) throw error;
+        }
         inserted++;
       } catch (err: any) {
         errors.push({ row: i + 2, reason: err?.message ?? String(err) });
