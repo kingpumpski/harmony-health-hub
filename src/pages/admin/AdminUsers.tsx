@@ -27,8 +27,7 @@ export default function AdminUsers() {
   };
   useEffect(() => { if (canManage) void loadDirectory(); }, [canManage]);
   const assignRole = async (userId: string, role: RoleValue) => {
-    const { error: delErr } = await supabase.from('user_roles').delete().eq('user_id', userId); if (delErr) return toast({ title: 'Failed', description: delErr.message, variant: 'destructive' });
-    const { error } = await supabase.from('user_roles').insert({ user_id: userId, role } as never); if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    const { error } = await supabase.rpc('set_hms_user_role', { _target_user_id: userId, _role: role }); if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Role updated', description: `Set to ${role}` }); void loadDirectory();
   };
   const promoteByEmail = async (e: React.FormEvent) => {
