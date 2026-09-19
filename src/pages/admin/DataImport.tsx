@@ -129,15 +129,13 @@ export default function DataImport() {
         toast({ title: 'Legacy records staged', description: `${inserted} records are ready for patient matching and controlled migration. No native clinical table was modified.` });
         await refreshBatches();
       } else {
-        for (const row of validRows) {
-          if (entity === 'patients') await supabase.from('patients').insert({ ...row, created_by: user.id } as never).throwOnError();
-          if (entity === 'pharmacy_inventory') await supabase.from('pharmacy_inventory').insert({ drug_name: String(row.drug_name), generic_name: row.generic_name, strength: row.strength, form: row.form, stock_quantity: Number(row.stock_quantity ?? 0), reorder_level: Number(row.reorder_level ?? 20), unit_price: Number(row.unit_price ?? 0), supplier: row.supplier, expiry_date: row.expiry_date } as never).throwOnError();
-          if (entity === 'icd_codes') await supabase.from('icd_codes').insert({ code: String(row.code), description: String(row.description), version: row.version ?? 'ICD-10', category: row.category } as never).throwOnError();
-          inserted++;
-        }
+        const { data, error } = await supabase.functions.invoke('admin-bulk-import', {
+          body: { action: 'import_rows', entity, filename: fileName, rows: validRows },
+        });
+        if (error || data?.error) throw new Error(data?.error ?? error?.message ?? 'Server import rejected');
+        inserted = Number(data?.inserted_rows ?? 0);
+        failed.push(...((data?.errors ?? []) as { row: number; reason: string }[]).map((item) => 'Row ' + item.row + ': ' + item.reason));
       }
-      const sourceFormat = fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx';
-      await supabase.from('bulk_import_jobs').insert({ entity_type: entity === 'legacy_clinical_records' ? 'patients' : entity, source_format: sourceFormat, file_name: fileName || null, total_rows: rows.length, successful_rows: inserted, failed_rows: failed.length, errors: failed.map((reason) => ({ reason })), status: failed.length === rows.length ? 'failed' : failed.length ? 'completed_with_errors' : 'completed', created_by: user.id, completed_at: new Date().toISOString() } as never);
     } catch (error) { failed.push(error instanceof Error ? error.message : 'Import failed'); }
     setErrors(failed); setBusy(false); setRows([]); setFileName('');
     toast({ title: failed.length ? 'Import completed with issues' : 'Import complete', description: `${inserted}/${rows.length} rows processed${failed.length ? `; ${failed.length} issues recorded` : ''}.`, variant: failed.length && inserted === 0 ? 'destructive' : 'default' });
