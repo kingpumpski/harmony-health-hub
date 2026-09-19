@@ -52,12 +52,23 @@ export async function releaseServiceOrder(orderId: string, _approvedBy?: string,
   const { data: rawData, error } = await workflowRpc.rpc('release_service_order', { _service_order_id: orderId, _reason: reason });
   if (error) throw new Error(error.message);
   const data = rawData as ServiceOrderRpcRow;
+  const { data: overrideRow, error: overrideLookupError } = await supabase
+    .from('billing_overrides')
+    .select('id')
+    .eq('service_order_id', data.id)
+    .limit(1)
+    .maybeSingle();
+  if (overrideLookupError) throw overrideLookupError;
+  const releasedUnderOverride = Boolean(overrideRow);
   const roleByDept: Record<ServiceDepartment, string[]> = {
     laboratory: ['lab_technician'], imaging: ['lab_technician', 'practitioner'], pharmacy: ['pharmacist'],
     procedure: ['practitioner', 'nurse'], consultation: ['practitioner'], other: ['practitioner'],
   };
   await notifyRoles(roleByDept[data.department as ServiceDepartment] ?? ['practitioner'], {
-    title: 'Service approved by accounts', message: `${data.service_name} has been paid for and released. You can proceed.`,
+    title: releasedUnderOverride ? 'Service released under financial override' : 'Service approved by accounts',
+    message: releasedUnderOverride
+      ? `${data.service_name} was released under an approved financial override. Payment has not been recorded by this release.`
+      : `${data.service_name} has been paid for and released. You can proceed.`,
     severity: 'success', category: 'payment', relatedPatientId: data.patient_id, relatedEntityId: data.id,
   });
   return data;
