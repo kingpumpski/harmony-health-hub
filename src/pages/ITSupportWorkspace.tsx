@@ -3,7 +3,7 @@ import { FileSearch, History, Bell, ShieldCheck } from 'lucide-react';
 
 const tools = [
   { label: 'System Logs', href: '/admin/logs', icon: FileSearch, description: 'Review operational audit events and troubleshoot failures in real time.' },
-  { label: 'Offline Synchronization', href: '/admin/offline-sync', icon: History, description: 'Inspect queued device changes and release failed synchronization attempts.' },
+  { label: 'Offline Synchronization', href: '/admin/offline-sync', icon: History, description: 'Inspect synchronization state and troubleshoot device synchronization without replaying clinical mutations.' },
   { label: 'Notifications', href: '/notifications', icon: Bell, description: 'Monitor application notifications and operational alerts.' },
 ];
 
