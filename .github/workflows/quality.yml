@@ -101,6 +101,8 @@ jobs:
       - run: npm run test:nextgen-broader-hms
       - name: Next-generation HMS governance boundary tests
         run: npm run test:nextgen-governance
+      - name: Next-generation HMS role permission boundary tests
+        run: npm run test:nextgen-role-permissions
 
       - name: Next-generation branding metadata contract tests
         run: npm run test:nextgen-branding
