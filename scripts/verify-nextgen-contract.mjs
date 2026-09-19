@@ -37,6 +37,7 @@ for (const [script, command] of Object.entries({
   'test:nextgen-nursing-continuity':'node scripts/test-nextgen-nursing-continuity.mjs',
   'test:nextgen-broader-hms':'node scripts/test-nextgen-broader-hms.mjs',
   'test:nextgen-governance':'node scripts/test-nextgen-governance-boundaries.mjs',
+  'test:nextgen-governance':'node scripts/test-nextgen-governance-boundaries.mjs',
 })) if (packageJson.scripts?.[script] !== command) throw new Error(`Executable next-gen test script is not wired into package scripts: ${script}`);
 const requiredMigrations = [
   ['20260915150000_nextgen_platform_foundation.sql', ['platform_deployment_profiles','platform_device_registry','platform_integration_endpoints','platform_event_schemas','platform_ai_model_registry','platform_ai_model_evaluations','user_accessibility_preferences','patient_communication_preferences']],
