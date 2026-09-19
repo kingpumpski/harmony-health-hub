@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { Upload, Database, FileSpreadsheet, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import { playSuccessSound } from '@/lib/sounds';
 
-type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'staff';
+type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes';
 
 interface SchemaSpec {
   label: string;
@@ -29,7 +29,7 @@ const SCHEMAS: Record<Entity, SchemaSpec> = {
     required: ['drug_name'],
     optional: ['generic_name', 'strength', 'form', 'stock_quantity', 'reorder_level', 'unit_price', 'supplier', 'expiry_date'],
     sample: 'drug_name,generic_name,strength,form,stock_quantity,reorder_level,unit_price,supplier,expiry_date\nParacetamol,Acetaminophen,500mg,tablet,500,50,0.50,MedSupply Ghana,2027-12-31',
-    describe: 'Add new drugs and stock levels.',
+    describe: 'Add new drugs and stock levels. User accounts and roles are managed separately.',
   },
   icd_codes: {
     label: 'ICD-10 codes',
@@ -37,13 +37,6 @@ const SCHEMAS: Record<Entity, SchemaSpec> = {
     optional: ['version', 'category'],
     sample: 'code,description,version,category\nA00,Cholera,ICD-10,Infectious\nE11,Type 2 diabetes mellitus,ICD-10,Endocrine',
     describe: 'Reference codes for diagnoses.',
-  },
-  staff: {
-    label: 'Staff / users with roles',
-    required: ['email', 'role'],
-    optional: ['first_name', 'last_name', 'department', 'specialization', 'phone'],
-    sample: 'email,role,first_name,last_name,department,specialization\nnurse1@clinic.gh,nurse,Mary,Asante,General,\ndoc1@clinic.gh,practitioner,Kofi,Mensah,Cardiology,Cardiologist',
-    describe: 'Pre-creates profile rows + role assignments. Users sign up with the same email to claim the account.',
   },
 };
 
@@ -101,10 +94,6 @@ export default function BulkUpload() {
       if (!row[r] || String(row[r]).trim() === '') return `Row ${idx + 2}: missing required "${r}"`;
     }
     if (entity === 'patients' && row.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email)) return `Row ${idx + 2}: invalid email`;
-    if (entity === 'staff') {
-      const allowed = ['admin','practitioner','nurse','midwife','lab_technician','pharmacist','accountant','front_desk','canteen','patient'];
-      if (!allowed.includes(String(row.role).toLowerCase())) return `Row ${idx + 2}: role "${row.role}" not allowed`;
-    }
     return null;
   };
 
@@ -145,26 +134,6 @@ export default function BulkUpload() {
             code: row.code, description: row.description, version: row.version || 'ICD-10', category: row.category || null,
           });
           if (error) throw error;
-        } else if (entity === 'staff') {
-          // Pre-create profile + role; user must complete signup with same email to link auth.
-          // We can't insert into auth here, so we stage a "pending profile" row via metadata.
-          // Insert into profiles with a generated id keyed by email so an admin can later link.
-          const stagedId = crypto.randomUUID();
-          const { error: pErr } = await supabase.from('profiles').upsert({
-            id: stagedId,
-            email: row.email,
-            first_name: row.first_name || '',
-            last_name: row.last_name || '',
-            department: row.department || null,
-            specialization: row.specialization || null,
-            phone: row.phone || null,
-          });
-          if (pErr) throw pErr;
-          const { error: rErr } = await supabase.from('user_roles').insert({
-            user_id: stagedId, role: String(row.role).toLowerCase() as any,
-          });
-          if (rErr) throw rErr;
-        }
         inserted++;
       } catch (err: any) {
         errors.push({ row: i + 2, reason: err?.message ?? String(err) });
@@ -197,7 +166,7 @@ export default function BulkUpload() {
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
           <Database className="w-6 h-6 text-primary" /> Bulk Database Upload
         </h1>
-        <p className="text-muted-foreground">Admin/IT: load real data into the system from CSV files.</p>
+        <p className="text-muted-foreground">Admin/IT: load approved operational data from CSV files. User accounts are provisioned through Admin User Management.</p>
       </div>
 
       <div className="card-medical p-5 space-y-4">
