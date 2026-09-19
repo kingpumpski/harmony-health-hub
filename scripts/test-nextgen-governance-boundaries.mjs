@@ -33,4 +33,4 @@ assert.equal((reports.match(/rpc\\('hms_assert_module_enabled'/g) ?? []).length,
 assert.match(adminUsers, /rpc\\('set_hms_user_role'/);
 assert.doesNotMatch(adminUsers, /from\('user_roles'\)\\.(delete|insert)/);
 for (const token of ['set_hms_user_role','The final administrator cannot be demoted','public.app_role','REVOKE ALL ON FUNCTION public.set_hms_user_role']) assert.ok(roleAssignment.includes(token), `Missing role-governance control: ${token}`);
-console.log('next-gen governance boundary checks passed');
+assert.match(reports, /hms_assert_module_access/);\nconsole.log('next-gen governance boundary checks passed');
