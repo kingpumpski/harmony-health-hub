@@ -39,8 +39,10 @@ export default function AdminUsers() {
     void loadDirectory();
   };
   const assignRole = async (userId: string, role: RoleValue) => {
-    const { error: delErr } = await supabase.from('user_roles').delete().eq('user_id', userId); if (delErr) return toast({ title: 'Failed', description: delErr.message, variant: 'destructive' });
-    const { error } = await supabase.from('user_roles').insert({ user_id: userId, role } as never); if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: { action: 'update_role', userId, role },
+    });
+    if (error || data?.error) return toast({ title: 'Failed', description: data?.error ?? error?.message ?? 'Unable to update role', variant: 'destructive' });
     toast({ title: 'Role updated', description: 'Set to ' + role }); void loadDirectory();
   };
   const promoteByEmail = async (e: React.FormEvent) => {
