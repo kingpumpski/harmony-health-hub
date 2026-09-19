@@ -86,3 +86,10 @@ select ok(
   and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='admit_encounter_workflow' and pg_get_function_identity_arguments(p.oid)='_encounter_id uuid, _reason text, _ward text, _emergency_override boolean')
   ilike '%allow_clinical_emergency_override%','admission override uses canonical facility configuration and emergency flag'
 );
+
+select ok(
+  (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='create_insurance_claim_draft' and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _payer_name text, _member_number text, _amount_claimed numeric, _invoice_id uuid')
+  ilike '%Invoice does not belong to patient%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='create_insurance_claim_draft' and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _payer_name text, _member_number text, _amount_claimed numeric, _invoice_id uuid')
+  ilike '%invoice_id=_invoice_id AND payer_name=trim(_payer_name)%','insurance claim draft must bind supplied invoice to patient and prevent active duplicate claims'
+);
