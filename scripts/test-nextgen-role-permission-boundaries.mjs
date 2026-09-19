@@ -16,6 +16,7 @@ for (const token of [
   'public.set_hms_role_module_permission',
   'hms_module_is_enabled',
   "scope_code IN ('none','facility','department','user','global')",
+  "p.scope_code IN ('facility','global')",
   "role_code='super_admin'",
   "scope_code='global'",
   "PERFORM public.hms_assert_permission(v_facility,'data-import','write')",
