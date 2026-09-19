@@ -32,3 +32,26 @@ select ok(has_function_privilege('authenticated','public.replace_role_permission
 
 select * from finish();
 rollback;
+
+
+select ok(
+  (select pg_get_functiondef(p.oid)
+   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public'
+     and p.proname='get_patient_care_continuity'
+     and pg_get_function_identity_arguments(p.oid)='_patient_id uuid')
+   ilike '%public.has_role(uid,''admin'')%'
+   and (select pg_get_functiondef(p.oid)
+        from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+        where n.nspname='public'
+          and p.proname='get_patient_care_continuity'
+          and pg_get_function_identity_arguments(p.oid)='_patient_id uuid')
+   not ilike '%public.has_role(uid,''accountant'')%'
+   and (select pg_get_functiondef(p.oid)
+        from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+        where n.nspname='public'
+          and p.proname='get_patient_care_continuity'
+          and pg_get_function_identity_arguments(p.oid)='_patient_id uuid')
+   not ilike '%public.has_role(uid,''front_desk'')%',
+  'patient continuity RPC excludes non-clinical accountant/front-desk access'
+);
