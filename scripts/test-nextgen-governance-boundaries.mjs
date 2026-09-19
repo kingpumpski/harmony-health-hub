@@ -9,7 +9,7 @@ const roleAssignment = fs.readFileSync('supabase/migrations/20260918230000_hms_g
 for (const token of [
   'hms_current_role_code',
   'hms_module_is_enabled',
-  'hms_assert_module_enabled',
+  'hms_assert_module_access',
   'set_hms_facility_module',
   'UPDATE public.hms_module_catalog',
   'CASE WHEN optional THEN false ELSE true END',
@@ -18,7 +18,7 @@ for (const token of [
   'hms_assert_user_can',
 ]) assert.ok(migration.includes(token), `Missing governance token: ${token}`);
 
-assert.match(migration, /REVOKE ALL ON FUNCTION public\\.hms_assert_module_enabled\\(uuid,text\\) FROM PUBLIC/);
+assert.match(migration, /REVOKE ALL ON FUNCTION public\\.hms_assert_module_access\\(uuid,text\\) FROM PUBLIC/);
 assert.match(migration, /GRANT EXECUTE ON FUNCTION public\\.hms_assert_module_enabled\\(uuid,text\\) TO authenticated/);
 assert.match(migration, /auth\\.uid\\(\\) IS NULL/);
 assert.match(reports, /rpc\\('hms_assert_module_enabled'/);
