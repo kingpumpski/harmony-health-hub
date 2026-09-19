@@ -128,6 +128,8 @@ export async function generateRun(facilityId: string, period: string, configs: F
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
   const moduleGate = await reportsDb.rpc('hms_assert_module_enabled', { _facility_id: facilityId, _module_id: 'report-centre' });
   if (moduleGate.error) throw new Error(moduleGate.error.message);
+  const permissionGate = await reportsDb.rpc('hms_assert_module_access', { _facility_id: facilityId, _module_id: 'report-centre', _action: 'read' });
+  if (permissionGate.error) throw new Error(permissionGate.error.message);
   const now = new Date().toISOString();
   const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
   if (activeRunError) throw new Error(activeRunError.message);
