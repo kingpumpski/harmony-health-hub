@@ -21,13 +21,13 @@ BEGIN
     SELECT a.id,a.patient_id,a.scheduled_at,a.reason,a.status,a.department,a.treatment_status
     FROM public.appointments a WHERE a.patient_id=_patient_id ORDER BY a.scheduled_at DESC LIMIT 25) x),'[]'::jsonb),
   'vitals',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
-    SELECT v.id,v.patient_id,v.recorded_at,v.temperature,v.heart_rate,v.respiratory_rate,v.blood_pressure_systolic,v.blood_pressure_diastolic,v.oxygen_saturation,v.weight_kg,v.height_m
+    SELECT v.id,v.patient_id,v.recorded_at,v.systolic,v.diastolic,v.pulse_rate,v.temperature,v.respiratory_rate,v.oxygen_saturation,v.weight_kg,v.height_cm,v.bmi,v.priority,v.notes
     FROM public.vital_signs v WHERE v.patient_id=_patient_id ORDER BY v.recorded_at DESC LIMIT 25) x),'[]'::jsonb),
   'triage',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
-    SELECT t.id,t.patient_id,t.created_at,t.bmi,t.weight_kg,t.height_m,t.triage_level,t.chief_complaint,t.notes
+    SELECT t.id,t.patient_id,t.created_at,t.bmi,t.weight_kg,t.height_m,t.priority,t.presenting_complaint,t.clinical_notes
     FROM public.triage_assessments t WHERE t.patient_id=_patient_id ORDER BY t.created_at DESC LIMIT 25) x),'[]'::jsonb),
   'encounters',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
-    SELECT e.id,e.patient_id,e.created_at,e.status,e.encounter_type,e.department,e.chief_complaint,e.diagnosis,e.notes
+    SELECT e.id,e.patient_id,e.created_at,e.status,e.encounter_type,e.chief_complaint,e.principal_diagnosis,e.clerking_notes,e.treatment_plan,e.assessment,e.plan
     FROM public.encounters e WHERE e.patient_id=_patient_id ORDER BY e.created_at DESC LIMIT 25) x),'[]'::jsonb),
   'labOrders',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
     SELECT l.id,l.patient_id,l.encounter_id,l.test_name,l.test_category,l.priority,l.clinical_notes,l.status,l.sample_collected_at,l.created_at
