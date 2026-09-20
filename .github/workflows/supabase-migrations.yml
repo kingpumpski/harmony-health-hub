@@ -96,3 +96,7 @@ jobs:
       - name: Verify canonical insurance claim transition contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/insurance_claim_transition_canonical_contract.sql
+
+      - name: Verify admin resource scope contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/admin_resource_scope_hardening_contract.sql
