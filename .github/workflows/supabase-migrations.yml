@@ -84,3 +84,7 @@ jobs:
       - name: Verify admission workspace read security contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/admission_workspace_read_security_contract.sql
+
+      - name: Verify patient admission history read security contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/patient_admission_history_read_security_contract.sql
