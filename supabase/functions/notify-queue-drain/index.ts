@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
   );
 
   const { data: due, error: pullErr } = await supabase.rpc('claim_notification_queue', { _limit: BATCH });
+  if (pullErr) return new Response(JSON.stringify({ error: 'Notification queue claim failed' }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   let delivered = 0, failed = 0;
 
