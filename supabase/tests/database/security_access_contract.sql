@@ -93,3 +93,8 @@ select ok(
   and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='create_insurance_claim_draft' and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _payer_name text, _member_number text, _amount_claimed numeric, _invoice_id uuid')
   ilike '%invoice_id=_invoice_id AND payer_name=trim(_payer_name)%','insurance claim draft must bind supplied invoice to patient and prevent active duplicate claims'
 );
+
+select ok(
+  (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='release_service_order' and pg_get_function_identity_arguments(p.oid)='_service_order_id uuid, _reason text')
+  ilike '%invoice_item_payments%' AND (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='release_service_order' and pg_get_function_identity_arguments(p.oid)='_service_order_id uuid, _reason text') ilike '%invoice_item_id%','service-order release must use item-level payment allocation when an invoice item link exists'
+);
