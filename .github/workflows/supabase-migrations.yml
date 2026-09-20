@@ -104,3 +104,7 @@ jobs:
       - name: Verify AI workspace least-privilege contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/ai_workspace_least_privilege_contract.sql
+
+      - name: Verify AI protocol lifecycle contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ai_protocol_lifecycle_contract.sql
