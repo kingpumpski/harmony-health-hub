@@ -80,3 +80,7 @@ jobs:
       - name: Verify operational workspace module reconciliation contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/operational_workspace_module_reconciliation_contract.sql
+
+      - name: Verify admission workspace read security contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/admission_workspace_read_security_contract.sql
