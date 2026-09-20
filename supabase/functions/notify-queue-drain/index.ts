@@ -10,6 +10,9 @@ Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
   const cors = buildCorsHeaders(req);
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!expected || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== expected) return new Response(JSON.stringify({ error: 'Worker authentication required' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -60,7 +63,7 @@ Deno.serve(async (req) => {
         attempts,
         delivered_at: new Date().toISOString(),
         last_error: null,
-      }).eq('id', row.id);
+      }).eq('id', row.id).eq('status', 'pending');
       delivered++;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -74,7 +77,7 @@ Deno.serve(async (req) => {
         attempts,
         last_error: msg.slice(0, 500),
         next_attempt_at: next,
-      }).eq('id', row.id);
+      }).eq('id', row.id).eq('status', 'pending');
       failed++;
     }
   }
