@@ -32,7 +32,7 @@ export default function PatientHub() {
       ['prescriptions', db.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
       ['invoices', db.from('invoices').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
       ['documents', db.from('patient_documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['admissions', db.from('admissions').select('*').eq('patient_id', patientId).order('admitted_at', { ascending: false }).limit(50)],
+      ['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })],
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
