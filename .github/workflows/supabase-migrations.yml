@@ -64,3 +64,7 @@ jobs:
       - name: Verify staff directory and notification contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/staff_directory_notification_contract.sql
+
+      - name: Verify maternity workspace contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/maternity_workspace_contract.sql
