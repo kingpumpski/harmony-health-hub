@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
   // Pull due items
   const { data: due, error: pullErr } = await supabase
-    .from('notification_queue')
+     .from('notification_queue')
     .select('*')
     .in('status', ['pending'])
     .lte('next_attempt_at', nowIso)
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
         related_patient_id: p.related_patient_id ?? null,
         related_entity_id: p.related_entity_id ?? null,
         metadata: p.metadata ?? {},
+        source_queue_id: row.id,
       };
       const { error } = await supabase.from('notifications').insert(insertRow);
       if (error) throw error;
