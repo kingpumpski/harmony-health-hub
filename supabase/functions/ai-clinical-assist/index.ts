@@ -33,6 +33,8 @@ Deno.serve(async (req) => {
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
     const requireClinicalRole = () => { if (!aiClinicalRoles.includes(callerRole)) throw new Error('Not authorised'); };
+    const requirePatientContextRole = () => { if (!['admin','practitioner','nurse','midwife','specialist_nurse'].includes(callerRole)) throw new Error('Not authorised for full clinical context'); };
+    const requireProtocolRole = () => { if (!['admin','practitioner'].includes(callerRole)) throw new Error('Not authorised for protocol synthesis'); };
     const requirePatientId = () => { if (!body.patientId) throw new Error('A patient is required'); };
 
     let systemPrompt = '';
@@ -51,12 +53,13 @@ Deno.serve(async (req) => {
     }
 
     if (body.mode === 'clinical_context') {
-      requireClinicalRole();
+      requirePatientContextRole();
       requirePatientId();
       const pid = body.patientId;
-      const { data: patient } = await supabase.from('patients').select('*').eq('id', pid).maybeSingle();
+      const { data: patient, error: patientError } = await supabase.from('patients').select('*').eq('id', pid).maybeSingle();
+      if (patientError) throw patientError;
       if (!patient) throw new Error('Patient record not found');
-      const [{ data: appointments }, { data: vitals }, { data: triage }, { data: encounters }, { data: labOrders }, { data: prescriptions }, { data: imagingOrders }, { data: procedureNotes }, { data: anestheticAssessments }, { data: admissionHistory, error: admissionError }] = await Promise.all([
+      const [{ data: appointments, error: appointmentsError }, { data: vitals, error: vitalsError }, { data: triage, error: triageError }, { data: encounters, error: encountersError }, { data: labOrders, error: labOrdersError }, { data: prescriptions, error: prescriptionsError }, { data: imagingOrders, error: imagingOrdersError }, { data: procedureNotes, error: procedureNotesError }, { data: anestheticAssessments, error: anestheticAssessmentsError }, { data: admissionHistory, error: admissionError }] = await Promise.all([
         supabase.from('appointments').select('*').eq('patient_id', pid).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('vital_signs').select('*').eq('patient_id', pid).order('recorded_at', { ascending: false }).limit(25),
         supabase.from('triage_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
@@ -68,12 +71,14 @@ Deno.serve(async (req) => {
         supabase.from('anesthetic_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
         supabase.rpc('get_patient_admission_history', { _patient_id: pid }),
       ]);
-      if (admissionError) throw admissionError;
+      const readErrors = [appointmentsError, vitalsError, triageError, encountersError, labOrdersError, prescriptionsError, imagingOrdersError, procedureNotesError, anestheticAssessmentsError, admissionError].filter(Boolean);
+      if (readErrors.length) throw readErrors[0];
       const admissions = admissionHistory ?? [];
       const labIds = (labOrders ?? []).map((row: any) => row.id).filter(Boolean);
-      const { data: labResults } = labIds.length
+      const { data: labResults, error: labResultsError } = labIds.length
         ? await supabase.from('lab_results').select('*').in('lab_order_id', labIds).order('created_at', { ascending: false }).limit(100)
-        : { data: [] as any[] };
+        : { data: [] as any[], error: null };
+      if (labResultsError) throw labResultsError;
       const latestTriage = (triage ?? [])[0] as any;
       const bmi = latestTriage?.bmi != null ? Number(latestTriage.bmi) : null;
       const latestBmi = {
@@ -87,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     if (body.mode === 'nurse_dashboard') {
-      const allowedRoles = ['admin','nurse','specialist_nurse','midwife','practitioner'];
+      const allowedRoles = ['admin','nurse','specialist_nurse','midwife'];
       if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
       const [{ data: patients }, { data: admissionWorkspace, error: admissionError }, { data: medications }, { data: handovers }, { data: triage }, { data: queue }] = await Promise.all([
         supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
@@ -106,7 +111,7 @@ Deno.serve(async (req) => {
     if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
 
     if (body.mode === 'report') {
-      requireClinicalRole();
+      requirePatientContextRole();
       requirePatientId();
       const { data: patient } = await supabase.from('patients').select('*').eq('id', body.patientId).maybeSingle();
       if (!patient) throw new Error('Patient record not found');
@@ -123,7 +128,7 @@ Deno.serve(async (req) => {
       systemPrompt = 'You are a clinical decision-support AI. Given a diagnosis and similar past cases, suggest 3 treatment options with rationale. Stay concise and practical. Use markdown.';
       userPrompt = `Diagnosis: ${body.diagnosis}\nContext: ${body.context ?? ''}\n\nPast similar cases (for reference):\n${JSON.stringify(similar)}`;
     } else if (body.mode === 'synthesize_protocol') {
-      requireClinicalRole();
+      requireProtocolRole();
       if (!body.diagnosis?.trim()) throw new Error('A diagnosis is required');
       const { data: cases } = await supabase.from('ai_case_memory').select('*').eq('diagnosis', body.diagnosis).limit(50);
       if (!cases || cases.length < 3) {
