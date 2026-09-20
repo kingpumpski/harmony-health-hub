@@ -76,3 +76,7 @@ jobs:
       - name: Verify operational workspace least-privilege contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/operational_workspace_least_privilege_contract.sql
+
+      - name: Verify operational workspace module reconciliation contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/operational_workspace_module_reconciliation_contract.sql
