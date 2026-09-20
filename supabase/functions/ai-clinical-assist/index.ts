@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       const pid = body.patientId;
       const { data: patient } = await supabase.from('patients').select('*').eq('id', pid).maybeSingle();
       if (!patient) throw new Error('Patient record not found');
-      const [{ data: appointments }, { data: vitals }, { data: triage }, { data: encounters }, { data: labOrders }, { data: prescriptions }, { data: imagingOrders }, { data: procedureNotes }, { data: anestheticAssessments }, { data: admissions }] = await Promise.all([
+      const [{ data: appointments }, { data: vitals }, { data: triage }, { data: encounters }, { data: labOrders }, { data: prescriptions }, { data: imagingOrders }, { data: procedureNotes }, { data: anestheticAssessments }, { data: admissionHistory, error: admissionError }] = await Promise.all([
         supabase.from('appointments').select('*').eq('patient_id', pid).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('vital_signs').select('*').eq('patient_id', pid).order('recorded_at', { ascending: false }).limit(25),
         supabase.from('triage_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
@@ -63,8 +63,10 @@ Deno.serve(async (req) => {
         supabase.from('imaging_orders').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
         supabase.from('procedure_notes').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
         supabase.from('anesthetic_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('admissions').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
+        supabase.rpc('get_patient_admission_history', { _patient_id: pid }),
       ]);
+      if (admissionError) throw admissionError;
+      const admissions = admissionHistory ?? [];
       const labIds = (labOrders ?? []).map((row: any) => row.id).filter(Boolean);
       const { data: labResults } = labIds.length
         ? await supabase.from('lab_results').select('*').in('lab_order_id', labIds).order('created_at', { ascending: false }).limit(100)
@@ -84,15 +86,17 @@ Deno.serve(async (req) => {
     if (body.mode === 'nurse_dashboard') {
       const allowedRoles = ['admin','nurse','specialist_nurse','midwife','practitioner'];
       if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
-      const [{ data: patients }, { data: admissions }, { data: medications }, { data: handovers }, { data: triage }, { data: queue }] = await Promise.all([
+      const [{ data: patients }, { data: admissionWorkspace, error: admissionError }, { data: medications }, { data: handovers }, { data: triage }, { data: queue }] = await Promise.all([
         supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
-        supabase.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(250),
+        supabase.rpc('get_admission_workspace', { _limit: 250 }),
         supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
         supabase.from('nursing_shift_handovers').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
         supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
       ]);
-      return new Response(JSON.stringify({ patients: patients ?? [], admissions: admissions ?? [], medications: medications ?? [], handovers: handovers ?? [], triage: triage ?? [], queue: queue ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (admissionError) throw admissionError;
+      const admissions = admissionWorkspace?.admissions ?? [];
+      return new Response(JSON.stringify({ patients: patients ?? [], admissions, medications: medications ?? [], handovers: handovers ?? [], triage: triage ?? [], queue: queue ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
