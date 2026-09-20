@@ -60,3 +60,7 @@ jobs:
       - name: Verify security access contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/security_access_contract.sql
+
+      - name: Verify staff directory and notification contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/staff_directory_notification_contract.sql
