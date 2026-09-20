@@ -32,12 +32,7 @@ Deno.serve(async (req) => {
         return json({ error: 'Administrators cannot remove their own admin role' }, 400);
       }
 
-      const { data, error } = await service.rpc('admin_update_user_role', {
-        _target_user_id: userId,
-        _next_role: nextRole,
-      });
-      if (error) return json({ error: 'Role update failed: ' + error.message }, 500);
-      return json(data ?? { ok: true, user: { id: userId, role: nextRole } });
+      const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);\n      if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);\n\n      const roleDelete = await service.from('user_roles').delete().eq('user_id', userId);\n      if (roleDelete.error) return json({ error: 'Role update failed: ' + roleDelete.error.message }, 500);\n      const roleInsert = await service.from('user_roles').insert({ user_id: userId, role: nextRole });\n      if (roleInsert.error) return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);\n\n      await service.rpc('record_system_audit', {\n        _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',\n        _entity_id: userId, _severity: 'info',\n        _metadata: { target_user_id: userId, role: nextRole, changed_by: caller.id },\n      });\n      return json({ ok: true, user: { id: userId, role: nextRole } });
     }
 
     const onboarding = body?.onboarding === 'password' ? 'password' : 'invite';
