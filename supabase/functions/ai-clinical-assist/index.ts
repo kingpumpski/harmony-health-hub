@@ -60,39 +60,10 @@ Deno.serve(async (req) => {
       requirePatientContextRole();
       requirePatientId();
       const pid = body.patientId;
-      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex,phone,email').eq('id', pid).maybeSingle();
-      if (patientError) throw patientError;
-      if (!patient) throw new Error('Patient record not found');
-      const [{ data: appointments, error: appointmentsError }, { data: vitals, error: vitalsError }, { data: triage, error: triageError }, { data: encounters, error: encountersError }, { data: labOrders, error: labOrdersError }, { data: prescriptions, error: prescriptionsError }, { data: imagingOrders, error: imagingOrdersError }, { data: procedureNotes, error: procedureNotesError }, { data: anestheticAssessments, error: anestheticAssessmentsError }, { data: admissionHistory, error: admissionError }] = await Promise.all([
-        supabase.from('appointments').select('*').eq('patient_id', pid).order('scheduled_at', { ascending: false }).limit(25),
-        supabase.from('vital_signs').select('*').eq('patient_id', pid).order('recorded_at', { ascending: false }).limit(25),
-        supabase.from('triage_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('encounters').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('lab_orders').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('prescriptions').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('imaging_orders').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('procedure_notes').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.from('anesthetic_assessments').select('*').eq('patient_id', pid).order('created_at', { ascending: false }).limit(25),
-        supabase.rpc('get_patient_admission_history', { _patient_id: pid }),
-      ]);
-      const readErrors = [appointmentsError, vitalsError, triageError, encountersError, labOrdersError, prescriptionsError, imagingOrdersError, procedureNotesError, anestheticAssessmentsError, admissionError].filter(Boolean);
-      if (readErrors.length) throw readErrors[0];
-      const admissions = admissionHistory ?? [];
-      const labIds = (labOrders ?? []).map((row: any) => row.id).filter(Boolean);
-      const { data: labResults, error: labResultsError } = labIds.length
-        ? await supabase.from('lab_results').select('*').in('lab_order_id', labIds).order('created_at', { ascending: false }).limit(100)
-        : { data: [] as any[], error: null };
-      if (labResultsError) throw labResultsError;
-      const latestTriage = (triage ?? [])[0] as any;
-      const bmi = latestTriage?.bmi != null ? Number(latestTriage.bmi) : null;
-      const latestBmi = {
-        value: bmi,
-        category: bmi == null ? 'unavailable' : bmi < 18.5 ? 'underweight' : bmi < 25 ? 'healthy range' : bmi < 30 ? 'overweight' : 'obesity range',
-        recordedAt: latestTriage?.created_at ?? null,
-        weightKg: latestTriage?.weight_kg != null ? Number(latestTriage.weight_kg) : null,
-        heightM: latestTriage?.height_m != null ? Number(latestTriage.height_m) : null,
-      };
-      return new Response(JSON.stringify({ generatedAt: new Date().toISOString(), patient, latestBmi, appointments: appointments ?? [], vitals: vitals ?? [], triage: triage ?? [], encounters: encounters ?? [], labOrders: labOrders ?? [], labResults: labResults ?? [], prescriptions: prescriptions ?? [], imagingOrders: imagingOrders ?? [], procedureNotes: procedureNotes ?? [], anestheticAssessments: anestheticAssessments ?? [], admissions: admissions ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: pid });
+      if (contextError) throw contextError;
+      if (!scopedContext) throw new Error('Clinical context unavailable');
+      return new Response(JSON.stringify({ generatedAt: new Date().toISOString(), ...scopedContext }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (body.mode === 'nurse_dashboard') {
