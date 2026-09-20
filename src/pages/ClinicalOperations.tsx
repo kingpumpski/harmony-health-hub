@@ -100,7 +100,7 @@ export default function ClinicalOperations() {
       if (tab === 'emergency') error = (await supabase.rpc('transition_emergency_case', { _case_id: id, _status: status, _disposition: status === 'discharged' ? 'Discharged from emergency' : status === 'referred' ? 'Referred for further care' : status === 'left_without_being_seen' ? 'Left without being seen' : null } as never)).error;
       else if (tab === 'theatre') error = (await supabase.rpc('transition_theatre_case', { _case_id: id, _status: status, _cancellation_reason: status === 'cancelled' || status === 'postponed' ? 'Status changed from clinical operations' : null } as never)).error;
       else if (tab === 'transfusion') error = (await supabase.rpc('record_transfusion_event', { _record_id: id, _status: status, _reaction_observed: false, _reaction_notes: null } as never)).error;
-      else if (tab === 'insurance') error = (await supabase.rpc('transition_insurance_claim', { _claim_id: id, _to_status: status, _notes: status === 'rejected' ? 'Rejected in claims workflow' : 'Status transition from claims queue' } as never)).error;
+      else if (tab === 'insurance') error = (await supabase.rpc('transition_insurance_claim_canonical', { _claim_id: id, _status: status, _amount_approved: null, _amount_paid: null, _rejection_reason: status === 'rejected' ? 'Rejected in claims workflow' : null, _notes: status === 'rejected' ? 'Rejected in claims workflow' : 'Status transition from claims queue' } as never)).error;
       if (error) throw error;
       toast({ title: 'Status updated' }); await load();
     } catch (error) { toast({ title: 'Transition failed', description: error instanceof Error ? error.message : 'Workflow transition failed.', variant: 'destructive' }); }
