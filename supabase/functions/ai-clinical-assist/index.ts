@@ -28,7 +28,8 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const callerId = authData.user.id;
-    const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', callerId).maybeSingle();
+    const { data: callerProfile, error: callerProfileError } = await supabase.from('profiles').select('role').eq('id', callerId).maybeSingle();
+    if (callerProfileError || !callerProfile) throw new Error('Authorisation profile not found');
     const callerRole = String(callerProfile?.role ?? '');
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
@@ -41,14 +42,17 @@ Deno.serve(async (req) => {
     let userPrompt = '';
 
     if (body.mode === 'portal') {
-      const { data: patient } = await supabase.from('patients').select('*').eq('user_id', callerId).maybeSingle();
+      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex,phone,email').eq('user_id', callerId).maybeSingle();
+      if (patientError) throw patientError;
       if (!patient) throw new Error('Patient portal profile not found');
-      const [{ data: appointments }, { data: videoSessions }, { data: invoices }, { data: reports }] = await Promise.all([
+      const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
         supabase.from('appointments').select('id,patient_id,scheduled_at,reason,status,department,treatment_status').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('video_sessions').select('id,patient_id,scheduled_at,status,payment_received,room_name').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('invoices').select('id,patient_id,invoice_number,total_amount,status,created_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
         supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
       ]);
+      const portalErrors = [appointmentsError, videoError, invoicesError, reportsError].filter(Boolean);
+      if (portalErrors.length) throw portalErrors[0];
       return new Response(JSON.stringify({ patient, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -56,7 +60,7 @@ Deno.serve(async (req) => {
       requirePatientContextRole();
       requirePatientId();
       const pid = body.patientId;
-      const { data: patient, error: patientError } = await supabase.from('patients').select('*').eq('id', pid).maybeSingle();
+      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex,phone,email').eq('id', pid).maybeSingle();
       if (patientError) throw patientError;
       if (!patient) throw new Error('Patient record not found');
       const [{ data: appointments, error: appointmentsError }, { data: vitals, error: vitalsError }, { data: triage, error: triageError }, { data: encounters, error: encountersError }, { data: labOrders, error: labOrdersError }, { data: prescriptions, error: prescriptionsError }, { data: imagingOrders, error: imagingOrdersError }, { data: procedureNotes, error: procedureNotesError }, { data: anestheticAssessments, error: anestheticAssessmentsError }, { data: admissionHistory, error: admissionError }] = await Promise.all([
@@ -102,7 +106,8 @@ Deno.serve(async (req) => {
         supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
         supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
       ]);
-      if (admissionError) throw admissionError;
+      const dashboardErrors = [patientsError, admissionError, medicationsError, handoversError, triageError, queueError].filter(Boolean);
+      if (dashboardErrors.length) throw dashboardErrors[0];
       const admissions = admissionWorkspace?.admissions ?? [];
       return new Response(JSON.stringify({ patients: patients ?? [], admissions, medications: medications ?? [], handovers: handovers ?? [], triage: triage ?? [], queue: queue ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
