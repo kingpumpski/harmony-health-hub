@@ -111,3 +111,7 @@ jobs:
 
       - name: Verify AI edge surface contract
         run: node supabase/tests/database/ai_edge_surface_contract.mjs
+
+      - name: Verify AI clinical context contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ai_clinical_context_contract.sql
