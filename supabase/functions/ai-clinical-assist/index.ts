@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
         supabase.from('appointments').select('id,patient_id,scheduled_at,reason,status,department,treatment_status').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('video_sessions').select('id,patient_id,scheduled_at,status,payment_received,room_name').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
         supabase.from('invoices').select('id,patient_id,invoice_number,total_amount,status,created_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
-        supabase.from('ai_report_requests').select('id,patient_id,requested_by,report_type,status,content,error,created_at,completed_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
+        supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
       ]);
       return new Response(JSON.stringify({ patient, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -124,13 +124,15 @@ Deno.serve(async (req) => {
     } else if (body.mode === 'recommend') {
       requireClinicalRole();
       if (!body.diagnosis?.trim()) throw new Error('A diagnosis is required');
-      const { data: similar } = await supabase.from('ai_case_memory').select('*').eq('diagnosis', body.diagnosis).limit(20);
+      const { data: similar, error: similarError } = await supabase.rpc('get_ai_case_memory_for_diagnosis', { _diagnosis: body.diagnosis, _limit: 20 });
+      if (similarError) throw similarError;
       systemPrompt = 'You are a clinical decision-support AI. Given a diagnosis and similar past cases, suggest 3 treatment options with rationale. Stay concise and practical. Use markdown.';
       userPrompt = `Diagnosis: ${body.diagnosis}\nContext: ${body.context ?? ''}\n\nPast similar cases (for reference):\n${JSON.stringify(similar)}`;
     } else if (body.mode === 'synthesize_protocol') {
       requireProtocolRole();
       if (!body.diagnosis?.trim()) throw new Error('A diagnosis is required');
-      const { data: cases } = await supabase.from('ai_case_memory').select('*').eq('diagnosis', body.diagnosis).limit(50);
+      const { data: cases, error: casesError } = await supabase.rpc('get_ai_case_memory_for_diagnosis', { _diagnosis: body.diagnosis, _limit: 50 });
+      if (casesError) throw casesError;
       if (!cases || cases.length < 3) {
         return new Response(JSON.stringify({ error: 'Not enough historical cases to synthesize a protocol (need at least 3).' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
