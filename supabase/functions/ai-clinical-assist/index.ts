@@ -22,11 +22,11 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\\s+/i, '');
     if (!token) throw new Error('Authentication required');
 
-    const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!);
+    const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: authData, error: authError } = await authClient.auth.getUser(token);
     if (authError || !authData.user) throw new Error('Authentication required');
 
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const callerId = authData.user.id;
     const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', callerId).maybeSingle();
     const callerRole = String(callerProfile?.role ?? '');
