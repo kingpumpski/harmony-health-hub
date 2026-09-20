@@ -113,11 +113,16 @@ Deno.serve(async (req) => {
     if (body.mode === 'report') {
       requirePatientContextRole();
       requirePatientId();
-      const { data: patient } = await supabase.from('patients').select('*').eq('id', body.patientId).maybeSingle();
+      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex').eq('id', body.patientId).maybeSingle();
+      if (patientError) throw patientError;
       if (!patient) throw new Error('Patient record not found');
-      const { data: encounters } = await supabase.from('encounters').select('*, diagnoses(*), prescriptions(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5);
-      const { data: vitals } = await supabase.from('vital_signs').select('*').eq('patient_id', body.patientId).order('recorded_at', { ascending: false }).limit(3);
-      const { data: labs } = await supabase.from('lab_orders').select('*, lab_results(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5);
+      const [{ data: encounters, error: encountersError }, { data: vitals, error: vitalsError }, { data: labs, error: labsError }] = await Promise.all([
+        supabase.from('encounters').select('id,patient_id,encounter_type,status,chief_complaint,notes,created_at,diagnoses(*),prescriptions(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('vital_signs').select('id,patient_id,blood_pressure_systolic,blood_pressure_diastolic,pulse,temperature,respiratory_rate,oxygen_saturation,weight_kg,height_cm,recorded_at').eq('patient_id', body.patientId).order('recorded_at', { ascending: false }).limit(3),
+        supabase.from('lab_orders').select('id,patient_id,test_name,status,priority,created_at,lab_results(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
+      ]);
+      const reportErrors = [encountersError, vitalsError, labsError].filter(Boolean);
+      if (reportErrors.length) throw reportErrors[0];
 
       systemPrompt = 'You are a senior clinical AI generating a printable medical summary report. Use clear sections: Patient overview, Vitals, Recent encounters, Diagnoses, Lab findings, Treatment plan, Recommendations. Use markdown.';
       userPrompt = `Generate a comprehensive medical report.\n\nPATIENT:\n${JSON.stringify(patient)}\n\nVITALS:\n${JSON.stringify(vitals)}\n\nENCOUNTERS:\n${JSON.stringify(encounters)}\n\nLABS:\n${JSON.stringify(labs)}`;
@@ -156,9 +161,13 @@ Deno.serve(async (req) => {
     const content = data.choices?.[0]?.message?.content ?? '';
 
     if (body.mode === 'synthesize_protocol' && content) {
-      await supabase.from('ai_protocols').insert({
-        diagnosis: body.diagnosis, protocol_text: content, case_count: 0, status: 'pending_review',
+      const { error: draftError } = await supabase.rpc('create_ai_protocol_draft', {
+        _diagnosis: body.diagnosis,
+        _protocol_text: content,
+        _case_count: cases?.length ?? 0,
+        _icd_code: null,
       });
+      if (draftError) throw draftError;
     }
 
     return new Response(JSON.stringify({ content }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
