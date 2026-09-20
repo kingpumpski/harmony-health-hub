@@ -19,21 +19,16 @@ export default function AdmissionManagement() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const [{ data: p, error: pe }, { data: a, error: ae }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: workspace, error: ae }] = await Promise.all([
       searchPatientDirectory('', 300),
-      db.from('admissions').select('*').order('admitted_at', { ascending: false }).limit(200),
+      db.rpc('get_admission_workspace', { _limit: 200 }),
     ]);
     if (pe || ae) { toast.error((pe ?? ae)?.message ?? 'Unable to load admissions'); return; }
-    setPatients(p ?? []); setRows(a ?? []);
+    setPatients(p ?? []);
+    setRows((workspace?.admissions ?? []) as Admission[]);
   }, []);
-  useEffect(() => { void load(); }, [load]);
 
-  useEffect(() => {
-    const channel = supabase.channel('admission-management-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admissions' }, () => { void load(); })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const counters = useMemo(() => ({
     active: rows.filter((row) => row.status === 'admitted' && !row.discharged_at).length,
@@ -73,7 +68,7 @@ export default function AdmissionManagement() {
     </section>
     <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
       <form onSubmit={admit} className="card-medical p-5 space-y-3 h-fit"><h2 className="font-semibold">New admission</h2><select required value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select><input required value={ward} onChange={(e) => setWard(e.target.value)} className="input-medical w-full" placeholder="Ward" /><input value={bed} onChange={(e) => setBed(e.target.value)} className="input-medical w-full" placeholder="Bed" /><textarea required value={reason} onChange={(e) => setReason(e.target.value)} className="input-medical w-full" rows={3} placeholder="Admission reason / clinical indication" /><button disabled={saving} className="btn-primary w-full">{saving ? 'Admitting…' : 'Admit patient'}</button></form>
-      <div className="card-medical p-5"><div className="flex items-center justify-between gap-3 mb-3"><div><h2 className="font-semibold">Admission history</h2><p className="text-xs text-muted-foreground">Live updates from the inpatient workflow.</p></div><span className="text-xs rounded-full bg-success/10 text-success px-2 py-1">Live</span></div><div className="space-y-3">{rows.map((row) => <article key={row.id} className="rounded-xl border border-border p-4"><div className="flex flex-wrap justify-between gap-2"><div><p className="font-medium">{patientName(row.patient_id)}</p><p className="text-xs text-muted-foreground">{row.ward ?? '—'} · Bed {row.bed ?? '—'} · {new Date(row.admitted_at).toLocaleString()}</p></div><span className="text-xs rounded-full bg-muted px-2 py-1 capitalize">{row.status}</span></div>{row.reason && <p className="mt-2 text-sm">{row.reason}</p>}{row.status === 'admitted' && <button onClick={() => void discharge(row.id)} className="btn-ghost text-xs mt-3 inline-flex items-center gap-1"><LogOut className="w-3 h-3" /> Discharge</button>}{row.discharged_at && <p className="mt-2 text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Discharged: {new Date(row.discharged_at).toLocaleString()}</p>}{row.discharge_summary && <p className="mt-1 text-xs text-muted-foreground">{row.discharge_summary}</p>}</article>)}{rows.length === 0 && <p className="text-sm text-muted-foreground">No admissions recorded.</p>}</div></div>
+      <div className="card-medical p-5"><div className="flex items-center justify-between gap-3 mb-3"><div><h2 className="font-semibold">Admission history</h2><p className="text-xs text-muted-foreground">Refreshes from the secured inpatient workspace.</p></div><span className="text-xs rounded-full bg-muted px-2 py-1">Secured</span></div><div className="space-y-3">{rows.map((row) => <article key={row.id} className="rounded-xl border border-border p-4"><div className="flex flex-wrap justify-between gap-2"><div><p className="font-medium">{patientName(row.patient_id)}</p><p className="text-xs text-muted-foreground">{row.ward ?? '—'} · Bed {row.bed ?? '—'} · {new Date(row.admitted_at).toLocaleString()}</p></div><span className="text-xs rounded-full bg-muted px-2 py-1 capitalize">{row.status}</span></div>{row.reason && <p className="mt-2 text-sm">{row.reason}</p>}{row.status === 'admitted' && <button onClick={() => void discharge(row.id)} className="btn-ghost text-xs mt-3 inline-flex items-center gap-1"><LogOut className="w-3 h-3" /> Discharge</button>}{row.discharged_at && <p className="mt-2 text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Discharged: {new Date(row.discharged_at).toLocaleString()}</p>}{row.discharge_summary && <p className="mt-1 text-xs text-muted-foreground">{row.discharge_summary}</p>}</article>)}{rows.length === 0 && <p className="text-sm text-muted-foreground">No admissions recorded.</p>}</div></div>
     </div>
   </div>;
 }
