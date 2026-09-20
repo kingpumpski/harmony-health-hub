@@ -17,10 +17,7 @@ AS $$
 DECLARE
   v_limit integer := LEAST(GREATEST(COALESCE(_limit, 25), 1), 100);
 BEGIN
-  IF NOT has_role(auth.uid(), 'admin'::app_role) AND auth.uid() IS NOT NULL THEN
-    RAISE EXCEPTION 'unauthorized';
-  END IF;
-  IF auth.uid() IS NOT NULL THEN
+  IF current_user <> 'service_role' THEN
     RAISE EXCEPTION 'worker-only function';
   END IF;
 
