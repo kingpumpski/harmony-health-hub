@@ -108,3 +108,6 @@ jobs:
       - name: Verify AI protocol lifecycle contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/ai_protocol_lifecycle_contract.sql
+
+      - name: Verify AI edge surface contract
+        run: node supabase/tests/database/ai_edge_surface_contract.mjs
