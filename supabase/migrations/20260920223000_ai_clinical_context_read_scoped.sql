@@ -46,7 +46,9 @@ BEGIN
     FROM public.procedure_notes n WHERE n.patient_id=_patient_id ORDER BY n.created_at DESC LIMIT 50) x),'[]'::jsonb),
   'anestheticAssessments',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
     SELECT a.id,a.patient_id,a.encounter_id,a.asa_class,a.airway_assessment,a.cardiovascular,a.respiratory,a.allergies,a.fasting_status,a.conclusions,a.cleared_for_procedure,a.status,a.created_at,a.updated_at
-    FROM public.anesthetic_assessments a WHERE a.patient_id=_patient_id ORDER BY a.created_at DESC LIMIT 25,\n  'admissions',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (SELECT * FROM public.get_patient_admission_history(_patient_id)) x),'[]'::jsonb)) x),'[]'::jsonb)
+    FROM public.anesthetic_assessments a WHERE a.patient_id=_patient_id ORDER BY a.created_at DESC LIMIT 25) x),'[]'::jsonb),
+  'admissions',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
+    SELECT * FROM public.get_patient_admission_history(_patient_id) LIMIT 50) x),'[]'::jsonb)
  ) INTO v_result;
  RETURN v_result;
 END; $$;
