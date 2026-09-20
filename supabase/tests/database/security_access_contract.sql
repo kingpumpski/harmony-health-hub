@@ -98,3 +98,8 @@ select ok(
   (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='release_service_order' and pg_get_function_identity_arguments(p.oid)='_service_order_id uuid, _reason text')
   ilike '%invoice_item_payments%' AND (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='release_service_order' and pg_get_function_identity_arguments(p.oid)='_service_order_id uuid, _reason text') ilike '%invoice_item_id%','service-order release must use item-level payment allocation when an invoice item link exists'
 );
+
+select ok(
+  (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='update_insurance_claim_financials' and pg_get_function_identity_arguments(p.oid)='_claim_id uuid, _amount_approved numeric, _amount_paid numeric, _claim_number text, _rejection_reason text') ilike '%Approved amount cannot exceed claimed amount%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='update_insurance_claim_financials' and pg_get_function_identity_arguments(p.oid)='_claim_id uuid, _amount_approved numeric, _amount_paid numeric, _claim_number text, _rejection_reason text') ilike '%Paid amount cannot exceed approved amount%','insurance claim financial edits must not approve or pay beyond claim limits'
+);
