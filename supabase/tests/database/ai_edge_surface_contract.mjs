@@ -9,6 +9,8 @@ const checks=[
   ['profile lookup error checked', p.includes('callerProfileError')],
   ['portal read errors checked', p.includes('portalErrors')],
   ['dashboard read errors checked', p.includes('dashboardErrors')],
+  ['scoped clinical context RPC', p.includes("rpc('get_ai_clinical_context'")],
+  ['no broad clinical context selects', !p.includes("from('lab_orders').select('*')") && !p.includes("from('prescriptions').select('*')") && !p.includes("from('imaging_orders').select('*')")],
 ];
 for (const [name,ok] of checks) { if(!ok) throw new Error('AI edge contract failed: '+name); }
 console.log('AI edge surface contract passed');
