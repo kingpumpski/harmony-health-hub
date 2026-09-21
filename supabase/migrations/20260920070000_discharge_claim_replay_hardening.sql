@@ -15,6 +15,8 @@ DECLARE
   v_payer TEXT;
   v_claim_id UUID;
   v_existing UUID;
+  v_admitted_at TIMESTAMPTZ;
+  v_discharged_at TIMESTAMPTZ;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN
     RAISE EXCEPTION 'Accounts role required';
