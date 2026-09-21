@@ -26,17 +26,13 @@ export default function PatientHub() {
     if (!patientId) return; const db = supabase as any;
     const specs = [
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
-      ['vitals', db.from('vital_signs').select('*').eq('patient_id', patientId).order('recorded_at', { ascending: false }).limit(100)],
-      ['encounters', db.from('encounters').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['labs', db.from('lab_orders').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['prescriptions', db.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
+      ['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })],
       ['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })],
-      ['documents', db.from('patient_documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
       ...(clinicalRoles.has(user?.role ?? '') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
-    settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else next[key] = response.data ?? []; } else failed.push(key); });
+    settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; next.vitals = snapshot.vitals ?? []; next.encounters = snapshot.encounters ?? []; next.labs = snapshot.labs ?? []; next.prescriptions = snapshot.prescriptions ?? []; next.documents = snapshot.documents ?? []; } else next[key] = response.data ?? []; } else failed.push(key); });
     setRows(next); if (failed.length) toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`);
   }, [patientId]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
