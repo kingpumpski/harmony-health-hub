@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const callerId = authData.user.id;
-    const { data: callerProfile, error: callerProfileError } = await supabase.from('profiles').select('role').eq('id', callerId).maybeSingle();
-    if (callerProfileError || !callerProfile) throw new Error('Authorisation profile not found');
-    const callerRole = String(callerProfile?.role ?? '');
+    const { data: callerRoles, error: callerRolesError } = await supabase.from('user_roles').select('role').eq('user_id', callerId);
+    if (callerRolesError || !callerRoles?.length) throw new Error('Authorisation role not found');
+    const callerRole = String(callerRoles[0]?.role ?? '');
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
     const requireClinicalRole = () => { if (!aiClinicalRoles.includes(callerRole)) throw new Error('Not authorised'); };
@@ -96,19 +96,12 @@ Deno.serve(async (req) => {
     if (body.mode === 'report') {
       requirePatientContextRole();
       requirePatientId();
-      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex').eq('id', body.patientId).maybeSingle();
-      if (patientError) throw patientError;
-      if (!patient) throw new Error('Patient record not found');
-      const [{ data: encounters, error: encountersError }, { data: vitals, error: vitalsError }, { data: labs, error: labsError }] = await Promise.all([
-        supabase.from('encounters').select('id,patient_id,encounter_type,status,chief_complaint,notes,created_at,diagnoses(*),prescriptions(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('vital_signs').select('id,patient_id,systolic,diastolic,pulse_rate,temperature,respiratory_rate,oxygen_saturation,weight_kg,height_cm,recorded_at').eq('patient_id', body.patientId).order('recorded_at', { ascending: false }).limit(3),
-        supabase.from('lab_orders').select('id,patient_id,test_name,status,priority,created_at,lab_results(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
-      ]);
-      const reportErrors = [encountersError, vitalsError, labsError].filter(Boolean);
-      if (reportErrors.length) throw reportErrors[0];
+      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId });
+      if (contextError) throw contextError;
+      if (!scopedContext) throw new Error('Clinical context unavailable');
 
       systemPrompt = 'You are a senior clinical AI generating a printable medical summary report. Use clear sections: Patient overview, Vitals, Recent encounters, Diagnoses, Lab findings, Treatment plan, Recommendations. Use markdown.';
-      userPrompt = `Generate a comprehensive medical report.\n\nPATIENT:\n${JSON.stringify(patient)}\n\nVITALS:\n${JSON.stringify(vitals)}\n\nENCOUNTERS:\n${JSON.stringify(encounters)}\n\nLABS:\n${JSON.stringify(labs)}`;
+      userPrompt = `Generate a comprehensive medical report from the following authorized clinical context. Do not invent findings and clearly distinguish documented findings from recommendations.\\n\\nCLINICAL CONTEXT:\\n${JSON.stringify(scopedContext)}`;
     } else if (body.mode === 'recommend') {
       requireClinicalRole();
       if (!body.diagnosis?.trim()) throw new Error('A diagnosis is required');
