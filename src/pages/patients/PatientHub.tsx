@@ -25,17 +25,14 @@ export default function PatientHub() {
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any;
     const specs = [
-      ['appointments', db.from('appointments').select('*').eq('patient_id', patientId).order('scheduled_at', { ascending: false }).limit(100)],
+      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
       ['vitals', db.from('vital_signs').select('*').eq('patient_id', patientId).order('recorded_at', { ascending: false }).limit(100)],
       ['encounters', db.from('encounters').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
       ['labs', db.from('lab_orders').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
       ['prescriptions', db.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['invoices', db.from('invoices').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
+      ['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })],
       ['documents', db.from('patient_documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId }).then((response: any) => ({
-        data: response.data ?? [],
-        error: response.error,
-      }))],
+      ...(clinicalRoles.has(user?.role ?? '') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
