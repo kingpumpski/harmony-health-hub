@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   try {
     const body: Body = await req.json();
     const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace(/^Bearer\\s+/i, '');
+    const token = authHeader.replace(/^Bearer\s+/i, '');
     if (!token) throw new Error('Authentication required');
 
     const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
@@ -59,8 +59,7 @@ Deno.serve(async (req) => {
     if (body.mode === 'clinical_context') {
       requirePatientContextRole();
       requirePatientId();
-      const pid = body.patientId;
-      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: pid });
+      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId });
       if (contextError) throw contextError;
       if (!scopedContext) throw new Error('Clinical context unavailable');
       return new Response(JSON.stringify({ generatedAt: new Date().toISOString(), ...scopedContext }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -79,10 +78,10 @@ Deno.serve(async (req) => {
       ] = await Promise.all([
         supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
         supabase.rpc('get_admission_workspace', { _limit: 250 }),
-        supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
-        supabase.from('nursing_shift_handovers').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('triage_assessments').select('*').order('created_at', { ascending: false }).limit(150),
-        supabase.from('department_queues').select('*').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
+        supabase.from('medication_administrations').select('id,patient_id,prescription_id,medication_name,dose,route,scheduled_at,administered_at,status,reason,administered_by,witnessed_by,notes,due_window_minutes,locked_at,lock_reason,reopened_at,reopen_reason,created_at,updated_at').order('scheduled_at', { ascending: true }).limit(250),
+        supabase.from('nursing_shift_handovers').select('id,patient_id,admission_id,outgoing_officer,incoming_officer,shift_date,shift_name,clinical_summary,outstanding_tasks,risks_and_alerts,escalation_required,acknowledged_at,created_at,pending_tasks,safety_concerns,shift_label').order('created_at', { ascending: false }).limit(100),
+        supabase.from('triage_assessments').select('id,patient_id,recorded_by,systolic,diastolic,heart_rate,temperature,respiratory_rate,oxygen_saturation,weight_kg,height_m,pain_score,consciousness,presenting_complaint,clinical_notes,priority,is_critical,created_at,updated_at,bmi').order('created_at', { ascending: false }).limit(150),
+        supabase.from('department_queues').select('id,patient_id,department,status,priority,reason,related_encounter_id,related_invoice_id,payment_required,payment_satisfied,assigned_to,created_at,updated_at,completed_at,service_order_id,queued_at,claimed_by,claimed_at').eq('department', 'nursing').in('status', ['queued', 'claimed']).order('created_at', { ascending: true }).limit(150),
       ]);
       const dashboardErrors = [patientsError, admissionError, medicationsError, handoversError, triageError, queueError].filter(Boolean);
       if (dashboardErrors.length) throw dashboardErrors[0];
@@ -114,9 +113,7 @@ Deno.serve(async (req) => {
       if (!body.diagnosis?.trim()) throw new Error('A diagnosis is required');
       const { data: cases, error: casesError } = await supabase.rpc('get_ai_case_memory_for_diagnosis', { _diagnosis: body.diagnosis, _limit: 50 });
       if (casesError) throw casesError;
-      if (!cases || cases.length < 3) {
-        return new Response(JSON.stringify({ error: 'Not enough historical cases to synthesize a protocol (need at least 3).' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      if (!cases || cases.length < 3) return new Response(JSON.stringify({ error: 'Not enough historical cases to synthesize a protocol (need at least 3).' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       systemPrompt = 'You synthesize an evidence-informed in-house treatment protocol from past cases. Output a single concise protocol document.';
       userPrompt = `Diagnosis: ${body.diagnosis}\nCases (n=${cases.length}):\n${JSON.stringify(cases)}\n\nProduce a protocol with: Indication, Initial assessment, First-line therapy, Monitoring, Escalation.`;
     } else {
