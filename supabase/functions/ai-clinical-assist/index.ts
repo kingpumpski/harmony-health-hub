@@ -69,7 +69,14 @@ Deno.serve(async (req) => {
     if (body.mode === 'nurse_dashboard') {
       const allowedRoles = ['admin','nurse','specialist_nurse','midwife'];
       if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
-      const [{ data: patients }, { data: admissionWorkspace, error: admissionError }, { data: medications }, { data: handovers }, { data: triage }, { data: queue }] = await Promise.all([
+      const [
+        { data: patients, error: patientsError },
+        { data: admissionWorkspace, error: admissionError },
+        { data: medications, error: medicationsError },
+        { data: handovers, error: handoversError },
+        { data: triage, error: triageError },
+        { data: queue, error: queueError },
+      ] = await Promise.all([
         supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
         supabase.rpc('get_admission_workspace', { _limit: 250 }),
         supabase.from('medication_administrations').select('*').order('scheduled_at', { ascending: true }).limit(250),
@@ -94,7 +101,7 @@ Deno.serve(async (req) => {
       if (!patient) throw new Error('Patient record not found');
       const [{ data: encounters, error: encountersError }, { data: vitals, error: vitalsError }, { data: labs, error: labsError }] = await Promise.all([
         supabase.from('encounters').select('id,patient_id,encounter_type,status,chief_complaint,notes,created_at,diagnoses(*),prescriptions(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('vital_signs').select('id,patient_id,blood_pressure_systolic,blood_pressure_diastolic,pulse,temperature,respiratory_rate,oxygen_saturation,weight_kg,height_cm,recorded_at').eq('patient_id', body.patientId).order('recorded_at', { ascending: false }).limit(3),
+        supabase.from('vital_signs').select('id,patient_id,systolic,diastolic,pulse_rate,temperature,respiratory_rate,oxygen_saturation,weight_kg,height_cm,recorded_at').eq('patient_id', body.patientId).order('recorded_at', { ascending: false }).limit(3),
         supabase.from('lab_orders').select('id,patient_id,test_name,status,priority,created_at,lab_results(*)').eq('patient_id', body.patientId).order('created_at', { ascending: false }).limit(5),
       ]);
       const reportErrors = [encountersError, vitalsError, labsError].filter(Boolean);
