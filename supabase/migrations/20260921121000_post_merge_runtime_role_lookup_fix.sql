@@ -42,7 +42,7 @@ BEGIN
   SELECT jsonb_build_object('batches',COALESCE(jsonb_agg(to_jsonb(x)),'[]'::jsonb)) INTO result FROM (SELECT id,entity_type,source_system,source_version,file_name,total_rows,staged_rows,accepted_rows,rejected_rows,status,created_at,approved_at,completed_at FROM data_migration_batches WHERE entity_type='legacy_clinical_records' ORDER BY created_at DESC LIMIT v_limit)x;
  ELSIF _module='facilities' THEN
   IF v_role NOT IN ('admin','front_desk','accountant') THEN RAISE EXCEPTION 'Not authorised'; END IF;
-  SELECT jsonb_build_object('facilities',COALESCE(jsonb_agg(to_jsonb(x)),'[]'::jsonb)) INTO result FROM (SELECT id,name,facility_code,facility_type,facility_type,district,region,dhims2_uid,is_active FROM healthcare_facilities WHERE is_active ORDER BY name LIMIT v_limit)x;
+  SELECT jsonb_build_object('facilities',COALESCE(jsonb_agg(to_jsonb(x)),'[]'::jsonb)) INTO result FROM (SELECT id,name,facility_code,facility_type,district,region,dhims2_uid,is_active FROM healthcare_facilities WHERE is_active ORDER BY name LIMIT v_limit)x;
  ELSE RAISE EXCEPTION 'Unsupported workspace module'; END IF;
  RETURN result;
 END $$;
