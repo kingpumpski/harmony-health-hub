@@ -1,0 +1,1 @@
+select ok(to_regprocedure('public.admin_update_user_role(uuid,public.app_role)') is null,'legacy admin role RPC is retired');

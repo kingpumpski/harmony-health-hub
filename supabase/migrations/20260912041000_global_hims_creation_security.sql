@@ -36,13 +36,25 @@ CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(
   _invoice_id UUID DEFAULT NULL
 ) RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE uid UUID := auth.uid(); v_id UUID;
+DECLARE uid UUID := auth.uid(); v_id UUID; v_invoice_patient UUID; v_existing UUID;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'practitioner')) THEN
     RAISE EXCEPTION 'Claims role required';
   END IF;
   IF _patient_id IS NULL OR NULLIF(trim(_payer_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and payer are required'; END IF;
   IF COALESCE(_amount_claimed,0) < 0 THEN RAISE EXCEPTION 'Claim amount cannot be negative'; END IF;
+
+  IF _invoice_id IS NOT NULL THEN
+    SELECT patient_id INTO v_invoice_patient FROM public.invoices WHERE id=_invoice_id FOR SHARE;
+    IF v_invoice_patient IS NULL THEN RAISE EXCEPTION 'Invoice not found'; END IF;
+    IF v_invoice_patient <> _patient_id THEN RAISE EXCEPTION 'Invoice does not belong to patient'; END IF;
+    SELECT id INTO v_existing
+    FROM public.insurance_claims
+    WHERE invoice_id=_invoice_id AND payer_name=trim(_payer_name) AND status <> 'voided'
+    ORDER BY created_at DESC LIMIT 1;
+    IF v_existing IS NOT NULL THEN RETURN v_existing; END IF;
+  END IF;
+
   INSERT INTO public.insurance_claims(patient_id,invoice_id,payer_name,member_number,amount_claimed,status,created_by)
   VALUES (_patient_id,_invoice_id,trim(_payer_name),NULLIF(trim(_member_number),''),COALESCE(_amount_claimed,0),'draft',uid) RETURNING id INTO v_id;
   INSERT INTO public.insurance_claim_events(claim_id,event_type,to_status,notes,actor_id)

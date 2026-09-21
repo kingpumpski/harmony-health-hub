@@ -60,3 +60,61 @@ jobs:
       - name: Verify security access contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/security_access_contract.sql
+
+      - name: Verify SECURITY DEFINER authorization contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/security_definer_auth_contract.sql
+
+      - name: Verify staff directory and notification contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/staff_directory_notification_contract.sql
+
+      - name: Verify maternity workspace contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/maternity_workspace_contract.sql
+
+      - name: Verify clinical workspace read contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/clinical_workspace_read_contract.sql
+
+      - name: Verify operational workspace least-privilege contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/operational_workspace_least_privilege_contract.sql
+
+      - name: Verify operational workspace module reconciliation contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/operational_workspace_module_reconciliation_contract.sql
+
+      - name: Verify admission workspace read security contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/admission_workspace_read_security_contract.sql
+
+      - name: Verify patient admission history read security contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/patient_admission_history_read_security_contract.sql
+
+      - name: Verify canonical insurance claim transition contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/insurance_claim_transition_canonical_contract.sql
+
+      - name: Verify admin resource scope contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/admin_resource_scope_hardening_contract.sql
+
+      - name: Verify AI workspace least-privilege contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ai_workspace_least_privilege_contract.sql
+
+      - name: Verify AI protocol lifecycle contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ai_protocol_lifecycle_contract.sql
+
+      - name: Verify AI edge surface contract
+        run: node supabase/tests/database/ai_edge_surface_contract.mjs
+
+      - name: Verify AI clinical context contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ai_clinical_context_contract.sql
+
+      - name: Verify AI clinical context Edge surface
+        run: node supabase/tests/database/ai_edge_clinical_context_surface_contract.mjs

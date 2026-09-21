@@ -10,28 +10,17 @@ Deno.serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
   const cors = buildCorsHeaders(req);
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!expected || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== expected) return new Response(JSON.stringify({ error: 'Worker authentication required' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const nowIso = new Date().toISOString();
-
-  // Pull due items
-  const { data: due, error: pullErr } = await supabase
-    .from('notification_queue')
-    .select('*')
-    .in('status', ['pending'])
-    .lte('next_attempt_at', nowIso)
-    .order('next_attempt_at', { ascending: true })
-    .limit(BATCH);
-
-  if (pullErr) {
-    return new Response(JSON.stringify({ error: pullErr.message }), {
-      status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
+  const { data: due, error: pullErr } = await supabase.rpc('claim_notification_queue', { _limit: BATCH });
+  if (pullErr) return new Response(JSON.stringify({ error: 'Notification queue claim failed' }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   let delivered = 0, failed = 0;
 
@@ -51,16 +40,17 @@ Deno.serve(async (req) => {
         related_patient_id: p.related_patient_id ?? null,
         related_entity_id: p.related_entity_id ?? null,
         metadata: p.metadata ?? {},
+        source_queue_id: row.id,
       };
       const { error } = await supabase.from('notifications').insert(insertRow);
-      if (error) throw error;
+      if (error && error.code !== '23505') throw error;
 
       await supabase.from('notification_queue').update({
         status: 'delivered',
         attempts,
         delivered_at: new Date().toISOString(),
         last_error: null,
-      }).eq('id', row.id);
+      }).eq('id', row.id).eq('status', 'processing');
       delivered++;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -74,7 +64,7 @@ Deno.serve(async (req) => {
         attempts,
         last_error: msg.slice(0, 500),
         next_attempt_at: next,
-      }).eq('id', row.id);
+      }).eq('id', row.id).eq('status', 'processing');
       failed++;
     }
   }

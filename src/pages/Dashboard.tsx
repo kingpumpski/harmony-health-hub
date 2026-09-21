@@ -11,10 +11,12 @@ import AccountsDashboard from './dashboard/AccountsDashboard';
 import AdminDashboard from './dashboard/AdminDashboard';
 import CanteenDashboard from './dashboard/CanteenDashboard';
 import RadiologistDashboard from './dashboard/RadiologistDashboard';
+import ITSupportWorkspace from './ITSupportWorkspace';
 
 export default function Dashboard(){
   const {user}=useAuth();
   if(!user)return null;
+  if(user.role === 'it_admin') return <ITSupportWorkspace/>;
   let dashboard;
   switch(String(user.role)){
     case'admin':dashboard=<AdminDashboard/>;break;

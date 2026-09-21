@@ -5,7 +5,7 @@ import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus } from 'lucide-
 import { toast } from '@/hooks/use-toast';
 
 const availableRoles = [
-  { value: 'admin', label: 'Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
+  { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
   { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
@@ -39,8 +39,10 @@ export default function AdminUsers() {
     void loadDirectory();
   };
   const assignRole = async (userId: string, role: RoleValue) => {
-    const { error: delErr } = await supabase.from('user_roles').delete().eq('user_id', userId); if (delErr) return toast({ title: 'Failed', description: delErr.message, variant: 'destructive' });
-    const { error } = await supabase.from('user_roles').insert({ user_id: userId, role } as never); if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: { action: 'update_role', userId, role },
+    });
+    if (error || data?.error) return toast({ title: 'Failed', description: data?.error ?? error?.message ?? 'Unable to update role', variant: 'destructive' });
     toast({ title: 'Role updated', description: 'Set to ' + role }); void loadDirectory();
   };
   const promoteByEmail = async (e: React.FormEvent) => {

@@ -7,6 +7,7 @@ import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 import type { UserRole } from '@/types';
 
 const roles: { value: UserRole; label: string }[] = [
+  { value: 'it_admin', label: 'IT Admin' },
   { value: 'admin', label: 'Administrator' }, { value: 'practitioner', label: 'Practitioner' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'radiologist', label: 'Radiologist' },
   { value: 'lab_technician', label: 'Lab Technician' }, { value: 'pharmacist', label: 'Pharmacist' }, { value: 'accountant', label: 'Accountant' },
@@ -56,7 +57,7 @@ export default function RolePermissions() {
 
   const toggle = (key: string) => setSelected(previous => {
     const next = new Set(previous);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
 

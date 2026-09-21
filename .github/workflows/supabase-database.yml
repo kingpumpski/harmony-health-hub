@@ -26,7 +26,9 @@ jobs:
         run: test -n "$SUPABASE_ACCESS_TOKEN"
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - name: Apply production compatibility RPCs
+      - name: Apply production enum compatibility first
+        run: supabase db query --linked "ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'it_admin';"
+      - name: Apply production compatibility SQL
         run: supabase db query --linked "$(cat supabase/production-hotfix.sql)"
       - name: Report migration history drift without mutating history
         run: |

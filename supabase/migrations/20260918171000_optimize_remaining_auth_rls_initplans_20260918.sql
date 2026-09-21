@@ -1,0 +1,30 @@
+-- Performance-only RLS optimization: evaluate auth.uid() once per statement.
+DROP POLICY IF EXISTS "clinical read legacy records" ON public.legacy_clinical_records;
+CREATE POLICY "clinical read legacy records" ON public.legacy_clinical_records FOR SELECT TO authenticated
+USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR public.has_role((SELECT auth.uid()),'practitioner'::public.app_role) OR public.has_role((SELECT auth.uid()),'nurse'::public.app_role) OR public.has_role((SELECT auth.uid()),'midwife'::public.app_role) OR public.has_role((SELECT auth.uid()),'specialist_nurse'::public.app_role));
+DROP POLICY IF EXISTS "admins manage legacy records" ON public.legacy_clinical_records;
+CREATE POLICY "admins manage legacy records" ON public.legacy_clinical_records FOR ALL TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "admins manage master data" ON public.system_master_data;
+CREATE POLICY "admins manage master data" ON public.system_master_data FOR ALL TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "document versions staff read" ON public.document_versions;
+CREATE POLICY "document versions staff read" ON public.document_versions FOR SELECT TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR changed_by=(SELECT auth.uid()) OR public.is_clinical_staff((SELECT auth.uid())));
+DROP POLICY IF EXISTS "invoice item payments staff access" ON public.invoice_item_payments;
+CREATE POLICY "invoice item payments staff access" ON public.invoice_item_payments FOR ALL TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR public.has_role((SELECT auth.uid()),'accountant'::public.app_role) OR public.has_role((SELECT auth.uid()),'front_desk'::public.app_role)) WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR public.has_role((SELECT auth.uid()),'accountant'::public.app_role) OR public.has_role((SELECT auth.uid()),'front_desk'::public.app_role));
+DROP POLICY IF EXISTS "billing tariff adjustments staff read" ON public.billing_tariff_adjustments;
+CREATE POLICY "billing tariff adjustments staff read" ON public.billing_tariff_adjustments FOR SELECT TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR public.has_role((SELECT auth.uid()),'accountant'::public.app_role));
+DROP POLICY IF EXISTS "permissions_authenticated_read" ON public.permissions;
+CREATE POLICY "permissions_authenticated_read" ON public.permissions FOR SELECT TO authenticated USING (is_active OR public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "permissions_admin_insert" ON public.permissions;
+CREATE POLICY "permissions_admin_insert" ON public.permissions FOR INSERT TO authenticated WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "permissions_admin_update" ON public.permissions;
+CREATE POLICY "permissions_admin_update" ON public.permissions FOR UPDATE TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "permissions_admin_delete" ON public.permissions;
+CREATE POLICY "permissions_admin_delete" ON public.permissions FOR DELETE TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "role_permissions_read_own" ON public.role_permissions;
+CREATE POLICY "role_permissions_read_own" ON public.role_permissions FOR SELECT TO authenticated USING (role IN (SELECT ur.role FROM public.user_roles ur WHERE ur.user_id=(SELECT auth.uid())) OR public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "role_permissions_admin_insert" ON public.role_permissions;
+CREATE POLICY "role_permissions_admin_insert" ON public.role_permissions FOR INSERT TO authenticated WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "role_permissions_admin_update" ON public.role_permissions;
+CREATE POLICY "role_permissions_admin_update" ON public.role_permissions FOR UPDATE TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((SELECT auth.uid()),'admin'::public.app_role));
+DROP POLICY IF EXISTS "role_permissions_admin_delete" ON public.role_permissions;
+CREATE POLICY "role_permissions_admin_delete" ON public.role_permissions FOR DELETE TO authenticated USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role));

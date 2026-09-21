@@ -38,8 +38,8 @@ BEGIN
       AND COALESCE(admission_financial_override_enabled,FALSE)
       AND COALESCE(allow_clinical_emergency_override,FALSE)
     INTO v_override
-  FROM public.facility_settings
-  ORDER BY created_at
+  FROM public.facility_configuration
+  WHERE id='default'
   LIMIT 1;
   v_override := COALESCE(v_override,FALSE) AND COALESCE(_emergency_override,TRUE);
 

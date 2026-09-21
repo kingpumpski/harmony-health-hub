@@ -12,14 +12,23 @@ BEGIN
   RETURN jsonb_build_object('admission_id',v_id,'status','admitted');
 END; $$;
 
+ALTER TABLE public.invoice_items ADD COLUMN IF NOT EXISTS service_code TEXT;
+
+UPDATE public.invoice_items ii
+SET service_code = COALESCE(ii.service_code, so.service_code)
+FROM public.service_orders so
+WHERE so.invoice_item_id = ii.id
+  AND ii.service_code IS NULL
+  AND so.service_code IS NOT NULL;
+
 CREATE OR REPLACE FUNCTION public.get_missing_billing_tariffs(_patient_id UUID DEFAULT NULL)
 RETURNS TABLE(invoice_item_id UUID,invoice_id UUID,patient_id UUID,description TEXT,department TEXT,service_code TEXT,quantity INTEGER,unit_price NUMERIC,amount NUMERIC,service_order_id UUID,service_order_status TEXT,created_at TIMESTAMPTZ)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
-  RETURN QUERY SELECT ii.id,ii.invoice_id,i.patient_id,ii.description,ii.department,ii.service_code,ii.quantity,ii.unit_price,ii.amount,so.id,so.status,ii.created_at
+  RETURN QUERY SELECT ii.id,ii.invoice_id,i.patient_id,ii.description,ii.department,COALESCE(ii.service_code,so.service_code),ii.quantity,ii.unit_price,ii.amount,so.id,so.status,ii.created_at
   FROM public.invoice_items ii JOIN public.invoices i ON i.id=ii.invoice_id
-  LEFT JOIN LATERAL (SELECT s.id,s.status FROM public.service_orders s WHERE s.invoice_item_id=ii.id AND s.status<>'cancelled' ORDER BY s.created_at DESC LIMIT 1) so ON true
+  LEFT JOIN LATERAL (SELECT s.id,s.status,s.service_code FROM public.service_orders s WHERE s.invoice_item_id=ii.id AND s.status<>'cancelled' ORDER BY s.created_at DESC LIMIT 1) so ON true
   WHERE ii.amount<=0 AND ii.unit_price<=0 AND i.status IN ('pending','partially_paid') AND (_patient_id IS NULL OR i.patient_id=_patient_id) ORDER BY ii.created_at DESC;
 END; $$;
 
@@ -386,3 +395,16 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.replace_role_permissions(public.app_role,TEXT[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.replace_role_permissions(public.app_role,TEXT[]) TO authenticated;
+
+
+-- IT Admin support role compatibility hotfix. The enum value is applied by the database workflow before this script.
+INSERT INTO public.permissions(permission_key, description, is_active)
+VALUES ('it_support','IT support domain: system diagnostics, audit visibility and offline synchronization support',TRUE)
+ON CONFLICT(permission_key) DO UPDATE SET description=EXCLUDED.description, is_active=TRUE;
+INSERT INTO public.role_permissions(role, permission_key)
+VALUES ('it_admin','dashboard'),('it_admin','it_support'),('it_admin','notifications'),('it_admin','offline_sync')
+ON CONFLICT DO NOTHING;
+DROP POLICY IF EXISTS "system audit admin read" ON public.system_audit_log;
+CREATE POLICY "system audit admin and it support read"
+ON public.system_audit_log FOR SELECT TO authenticated
+USING (public.has_role((SELECT auth.uid()),'admin'::public.app_role) OR public.has_role((SELECT auth.uid()),'it_admin'::public.app_role));
