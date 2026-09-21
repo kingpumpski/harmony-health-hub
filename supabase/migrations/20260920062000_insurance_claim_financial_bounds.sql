@@ -1,11 +1,11 @@
--- Harden insurance claim financial edits against over-approval and over-payment.
+-- Harden insurance claim financial edits against over-approval and over-payment while preserving the existing RPC return type.
 CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _claim_id UUID,
   _amount_approved NUMERIC DEFAULT NULL,
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS JSONB
+) RETURNS public.insurance_claims
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE
@@ -47,7 +47,8 @@ BEGIN
       amount_paid=COALESCE(_amount_paid,amount_paid),
       claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),
       rejection_reason=COALESCE(_rejection_reason,rejection_reason)
-  WHERE id=_claim_id;
+  WHERE id=_claim_id
+  RETURNING * INTO c;
 
   PERFORM public.record_system_audit(
     'insurance_claim_financials_updated','insurance','insurance_claim',_claim_id,'warning',
@@ -55,18 +56,13 @@ BEGIN
       'patient_id',c.patient_id,
       'invoice_id',c.invoice_id,
       'amount_claimed',c.amount_claimed,
-      'amount_approved',v_approved,
-      'amount_paid',v_paid,
+      'amount_approved',c.amount_approved,
+      'amount_paid',c.amount_paid,
       'actor_id',uid
     )
   );
 
-  RETURN jsonb_build_object(
-    'claim_id',_claim_id,
-    'amount_claimed',c.amount_claimed,
-    'amount_approved',v_approved,
-    'amount_paid',v_paid
-  );
+  RETURN c;
 END;
 $$;
 
