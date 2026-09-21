@@ -16,16 +16,7 @@ BEGIN
 END;'';
 
 CREATE OR REPLACE FUNCTION public.get_encounter_clinical_context(_patient_id UUID,_encounter_id UUID DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS 'DECLARE uid UUID:=auth.uid(); r JSONB;
-BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical access required'; END IF;
- IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
- IF _encounter_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.encounters WHERE id=_encounter_id AND patient_id=_patient_id) THEN RAISE EXCEPTION 'Encounter does not belong to patient'; END IF;
- SELECT jsonb_build_object('patient',jsonb_build_object('patient_code',p.patient_code,'name',concat_ws(' ',p.first_name,p.last_name),'blood_group',p.blood_group,'genotype',p.genotype,'allergies',NULLIF(trim(p.allergies),''),'chronic_conditions',NULLIF(trim(p.chronic_conditions),'')),
- 'previous_encounters',COALESCE((SELECT jsonb_agg(x ORDER BY x.created_at DESC) FROM (SELECT jsonb_build_object('id',e.id,'created_at',e.created_at,'status',e.status,'principal_diagnosis',e.principal_diagnosis,'symptoms',e.symptoms,'treatment_plan',e.treatment_plan,'diagnoses',COALESCE((SELECT jsonb_agg(d.diagnosis ORDER BY d.is_principal DESC,d.created_at DESC) FROM public.diagnoses d WHERE d.encounter_id=e.id),'[]'::jsonb)) x,e.created_at FROM public.encounters e WHERE e.patient_id=_patient_id AND (_encounter_id IS NULL OR e.id<>_encounter_id) ORDER BY e.created_at DESC LIMIT 8),'[]'::jsonb),
- 'recent_vitals',COALESCE((SELECT jsonb_agg(jsonb_build_object('recorded_at',v.recorded_at,'systolic',v.systolic,'diastolic',v.diastolic,'pulse_rate',v.pulse_rate,'temperature',v.temperature,'respiratory_rate',v.respiratory_rate,'oxygen_saturation',v.oxygen_saturation,'weight_kg',v.weight_kg,'bmi',v.bmi,'priority',v.priority,'notes',v.notes) ORDER BY v.recorded_at DESC) FROM (SELECT * FROM public.vital_signs WHERE patient_id=_patient_id ORDER BY recorded_at DESC LIMIT 3)v),'[]'::jsonb)) INTO r FROM public.patients p WHERE p.id=_patient_id;
- RETURN r;
-END;'';
+EAS 'T';
 REVOKE ALL ON FUNCTION public.get_attending_patient_history(UUID,UUID) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.get_encounter_clinical_context(UUID,UUID) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_attending_patient_history(UUID,UUID) TO authenticated;
