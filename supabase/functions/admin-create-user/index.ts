@@ -40,9 +40,37 @@ Deno.serve(async (req) => {
       const roleInsert = await service.from('user_roles').insert({ user_id: userId, role: nextRole });
       if (roleInsert.error) return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);
 
-      await service.rpc('record_system_audit', {
+      const { error: auditError } = await service.rpc('record_system_audit', {
         _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',
         _entity_id: userId, _severity: 'info',
         _metadata: { target_user_id: userId, role: nextRole, changed_by: caller.id },
       });
+      if (auditError) return json({ error: 'Role changed but audit recording failed' }, 500);
       return json({ ok: true, user: { id: userId, role: nextRole } });
+    }
+
+    const onboarding = body?.onboarding === 'password' ? 'password' : 'invite';
+    const user = await provisionAdminUser(service, {
+      email: String(body?.email ?? ''),
+      firstName: String(body?.firstName ?? ''),
+      lastName: String(body?.lastName ?? ''),
+      phone: String(body?.phone ?? ''),
+      department: String(body?.department ?? ''),
+      specialization: String(body?.specialization ?? ''),
+      role: String(body?.role ?? 'patient'),
+      onboarding,
+      password: String(body?.password ?? ''),
+    });
+
+    const { error: auditError } = await service.rpc('record_system_audit', {
+      _action: 'admin_create_user', _module: 'administration', _entity_type: 'user',
+      _entity_id: user.id, _severity: 'info',
+      _metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
+    });
+    if (auditError) return json({ error: 'User created but audit recording failed' }, 500);
+
+    return json({ ok: true, user, onboarding });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
