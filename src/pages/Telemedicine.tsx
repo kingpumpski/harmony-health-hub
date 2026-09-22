@@ -22,7 +22,7 @@ export default function Telemedicine() {
   const loadAll = async () => {
     const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
       searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
-      supabase.from('video_sessions').select('*').order('scheduled_at', { ascending: false }).limit(50),
+      supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
     ]);
     if (patientError || sessionError) {
       toast({ title: 'Unable to load telemedicine workspace', description: patientError?.message ?? sessionError?.message, variant: 'destructive' });
