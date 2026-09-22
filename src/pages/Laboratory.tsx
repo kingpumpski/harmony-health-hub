@@ -161,7 +161,7 @@ export default function Laboratory() {
     }
     const patient = patients.find((p) => p.id === patientId);
     if (patient?.email) {
-      try { await supabase.functions.invoke('notify-lab-result', { body: { patientEmail: patient.email, patientName: `${patient.first_name} ${patient.last_name}`, testName: orders.find((o) => o.id === orderId)?.test_name ?? 'Lab Test' } }); }
+      try { await supabase.functions.invoke('notify-lab-result', { body: { labOrderId: orderId } }); }
       catch (e) { console.warn('Email notification failed', e); }
     }
     playWorkflowSound('success');
