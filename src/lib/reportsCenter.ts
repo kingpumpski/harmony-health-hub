@@ -102,7 +102,7 @@ function dueDateFor(period: string, deadline: number) {
 }
 
 async function reconcileFailedRun(runId: string, reason: string): Promise<void> {
-  const { data: currentItems, error: readError } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at');
+  const { data: currentItems, error: readError } = await reportsDb.from('report_generation_items').select('id,run_id,report_id,status,output_format,file_name,data_snapshot,validation_messages,error_message,started_at,completed_at,created_at').eq('run_id', runId).order('created_at');
   if (readError) throw new Error(`${reason} Unable to inspect run items: ${readError.message}`);
   const items = (currentItems ?? []) as ReportRunItem[];
   const incomplete = items.filter((item) => item.status === 'queued' || item.status === 'processing');
@@ -110,7 +110,7 @@ async function reconcileFailedRun(runId: string, reason: string): Promise<void> 
     const { error } = await reportsDb.from('report_generation_items').update({ status: 'failed', error_message: reason, completed_at: new Date().toISOString() }).eq('run_id', runId).in('status', ['queued', 'processing']);
     if (error) throw new Error(`${reason} Unable to mark incomplete report items as failed: ${error.message}`);
   }
-  const { data: reconciledItems, error: reconciledReadError } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at');
+  const { data: reconciledItems, error: reconciledReadError } = await reportsDb.from('report_generation_items').select('id,run_id,report_id,status,output_format,file_name,data_snapshot,validation_messages,error_message,started_at,completed_at,created_at').eq('run_id', runId).order('created_at');
   if (reconciledReadError) throw new Error(`${reason} Unable to re-read run items: ${reconciledReadError.message}`);
   const finalItems = (reconciledItems ?? []) as ReportRunItem[];
   const success = finalItems.filter((item) => item.status === 'completed').length;
@@ -128,14 +128,14 @@ export async function generateRun(facilityId: string, period: string, configs: F
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
   const now = new Date().toISOString();
-  const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('*').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
+  const { data: activeRuns, error: activeRunError } = await reportsDb.from('report_generation_runs').select('id,facility_id,period_start,period_end,frequency,status,total_reports,success_count,warning_count,failed_count,created_at,completed_at').eq('facility_id', facilityId).eq('period_start', start.slice(0, 10)).eq('period_end', end.slice(0, 10)).eq('frequency', 'monthly').in('status', ['queued', 'processing']).order('created_at', { ascending: false });
   if (activeRunError) throw new Error(activeRunError.message);
   for (const activeRun of (activeRuns ?? []) as ReportRun[]) { const result = await reportsDb.rpc('recover_stale_report_run', { _run_id: activeRun.id, _stale_after_minutes: 30 }); if (result.error) throw new Error(result.error.message); }
-  const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('*').single();
+  const { data: runData, error: runError } = await reportsDb.from('report_generation_runs').insert({ facility_id: facilityId, period_start: start.slice(0, 10), period_end: end.slice(0, 10), frequency: 'monthly', status: 'processing', total_reports: enabled.length, created_by: userId, started_at: now, parameters: { period } }).select('id,facility_id,period_start,period_end,frequency,status,total_reports,success_count,warning_count,failed_count,created_at,completed_at').single();
   if (runError) { if (runError.message.toLowerCase().includes('uq_report_generation_active_run') || runError.message.toLowerCase().includes('duplicate key')) throw new Error('A report generation run for this facility and period is already in progress. Refresh the Reports Center and review the existing run.'); throw new Error(runError.message); }
   const run = runData as ReportRun;
   try {
-    const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('*');
+    const { data: itemData, error: itemError } = await reportsDb.from('report_generation_items').insert(enabled.map((config) => ({ run_id: run.id, report_id: config.report_id, status: 'processing', output_format: 'xlsx', started_at: now }))).select('id,run_id,report_id,status,output_format,file_name,data_snapshot,validation_messages,error_message,started_at,completed_at,created_at');
     if (itemError) throw new Error(itemError.message);
     const items = itemData as ReportRunItem[];
     let success = 0; let warning = 0; let failed = 0;
@@ -157,7 +157,7 @@ export async function generateRun(facilityId: string, period: string, configs: F
       if (submissionResult.error) { const { error } = await reportsDb.from('report_generation_items').update({ validation_messages: [...(snapshot.warning ? [snapshot.warning] : []), `Submission tracking could not be initialized: ${submissionResult.error.message}`], status: 'warning' }).eq('id', item.id); if (error) throw new Error(error.message); if (!hasWarning) { success -= 1; warning += 1; } }
     }
     const finalStatus = failed > 0 ? (failed === enabled.length ? 'failed' : 'partial_failed') : 'completed';
-    const { data: finalData, error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', run.id).select('*').single();
+    const { data: finalData, error: finalError } = await reportsDb.from('report_generation_runs').update({ status: finalStatus, success_count: success, warning_count: warning, failed_count: failed, completed_at: new Date().toISOString() }).eq('id', run.id).select('id,facility_id,period_start,period_end,frequency,status,total_reports,success_count,warning_count,failed_count,created_at,completed_at').single();
     if (finalError) throw new Error(finalError.message);
     return finalData as ReportRun;
   } catch (error) {
@@ -167,12 +167,12 @@ export async function generateRun(facilityId: string, period: string, configs: F
   }
 }
 
-export async function getRunItems(runId: string): Promise<ReportRunItem[]> { const { data, error } = await reportsDb.from('report_generation_items').select('*').eq('run_id', runId).order('created_at'); if (error) throw new Error(error.message); return (data ?? []) as ReportRunItem[]; }
+export async function getRunItems(runId: string): Promise<ReportRunItem[]> { const { data, error } = await reportsDb.from('report_generation_items').select('id,run_id,report_id,status,output_format,file_name,data_snapshot,validation_messages,error_message,started_at,completed_at,created_at').eq('run_id', runId).order('created_at'); if (error) throw new Error(error.message); return (data ?? []) as ReportRunItem[]; }
 
 export async function listSubmissions(facilityId: string, period: string): Promise<ReportSubmission[]> {
   const { start, end } = monthBounds(period); const periodStart = start.slice(0, 10); const periodEnd = end.slice(0, 10);
   const sync = await reportsDb.rpc('sync_overdue_report_submissions', { _facility_id: facilityId, _period_start: periodStart, _period_end: periodEnd }); if (sync.error) throw new Error(sync.error.message);
-  const { data, error } = await reportsDb.from('report_submissions').select('*').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date'); if (error) throw new Error(error.message); return (data ?? []) as ReportSubmission[];
+  const { data, error } = await reportsDb.from('report_submissions').select('id,report_id,facility_id,period_start,period_end,due_date,status,submitted_at,submitted_by,submission_reference').eq('facility_id', facilityId).eq('period_start', periodStart).eq('period_end', periodEnd).order('due_date'); if (error) throw new Error(error.message); return (data ?? []) as ReportSubmission[];
 }
 
 export async function markSubmissionsSubmitted(ids: string[]) { if (!ids.length) return; const result = await reportsDb.rpc('mark_report_submissions_submitted', { _submission_ids: ids }); if (result.error) throw new Error(result.error.message); }
