@@ -106,3 +106,6 @@ jobs:
         run: node supabase/tests/database/encounter_detail_read_projection_contract.mjs
       - name: Verify admin read projection contract
         run: node supabase/tests/database/admin_read_projection_contract.mjs
+
+      - name: Verify Reports Center read projection contract
+        run: node supabase/tests/database/reports_center_read_projection_contract.mjs
