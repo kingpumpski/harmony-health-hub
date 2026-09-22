@@ -33,7 +33,7 @@ const knownPermissions = new Set(Object.values(permissionByHref) as Permission[]
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
+    supabase.from('profiles').select('id,first_name,last_name,department,specialization').eq('id', supabaseUser.id).maybeSingle(),
     supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }).limit(1).maybeSingle(),
   ]);
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
