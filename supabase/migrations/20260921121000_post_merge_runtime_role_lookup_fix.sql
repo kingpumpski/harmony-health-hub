@@ -52,12 +52,15 @@ GRANT EXECUTE ON FUNCTION public.get_operational_workspace(text,integer) TO auth
 CREATE OR REPLACE FUNCTION public.get_patient_admission_history(_patient_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
-DECLARE v_role text;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- SELECT ur.role::text INTO v_role FROM public.user_roles ur WHERE ur.user_id=auth.uid() ORDER BY ur.created_at DESC LIMIT 1;
- IF v_role IS NULL THEN RAISE EXCEPTION 'Staff profile required'; END IF;
- IF v_role NOT IN ('admin','practitioner','nurse','midwife','specialist_nurse') THEN RAISE EXCEPTION 'Admission history access is not permitted'; END IF;
+ IF NOT (
+   public.has_role(auth.uid(),'admin') OR
+   public.has_role(auth.uid(),'practitioner') OR
+   public.has_role(auth.uid(),'nurse') OR
+   public.has_role(auth.uid(),'midwife') OR
+   public.has_role(auth.uid(),'specialist_nurse')
+ ) THEN RAISE EXCEPTION 'Admission history access is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients p WHERE p.id=_patient_id AND p.status <> 'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.admitted_at DESC) FROM (SELECT a.id,a.patient_id,a.admitted_at,a.discharged_at,a.ward,a.bed,a.reason,a.status,a.discharge_summary FROM admissions a WHERE a.patient_id=_patient_id ORDER BY a.admitted_at DESC LIMIT 50)x),'[]'::jsonb);
 END $$;
@@ -67,12 +70,16 @@ GRANT EXECUTE ON FUNCTION public.get_patient_admission_history(uuid) TO authenti
 CREATE OR REPLACE FUNCTION public.get_admission_workspace(_limit integer DEFAULT 200)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
-DECLARE v_role text; v_limit integer:=greatest(1,least(coalesce(_limit,200),500));
+DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,200),500));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- SELECT ur.role::text INTO v_role FROM public.user_roles ur WHERE ur.user_id=auth.uid() ORDER BY ur.created_at DESC LIMIT 1;
- IF v_role IS NULL THEN RAISE EXCEPTION 'Staff profile required'; END IF;
- IF v_role NOT IN ('admin','practitioner','nurse','midwife','specialist_nurse') THEN RAISE EXCEPTION 'Admission workspace access is not permitted'; END IF;
+ IF NOT (
+   public.has_role(auth.uid(),'admin') OR
+   public.has_role(auth.uid(),'practitioner') OR
+   public.has_role(auth.uid(),'nurse') OR
+   public.has_role(auth.uid(),'midwife') OR
+   public.has_role(auth.uid(),'specialist_nurse')
+ ) THEN RAISE EXCEPTION 'Admission workspace access is not permitted'; END IF;
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.admitted_at DESC) FROM (SELECT a.id,a.patient_id,a.admitted_at,a.discharged_at,a.ward,a.bed,a.reason,a.status,a.discharge_summary FROM admissions a JOIN patients p ON p.id=a.patient_id WHERE p.status <> 'inactive' ORDER BY a.admitted_at DESC LIMIT v_limit)x),'[]'::jsonb);
 END $$;
 REVOKE ALL ON FUNCTION public.get_admission_workspace(integer) FROM PUBLIC, anon;
