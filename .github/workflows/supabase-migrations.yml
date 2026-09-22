@@ -121,3 +121,6 @@ jobs:
 
       - name: Verify AI nurse dashboard Edge surface
         run: node supabase/tests/database/ai_nurse_dashboard_surface_contract.mjs
+
+      - name: Verify lab result notification Edge surface
+        run: node supabase/tests/database/notify_lab_result_surface_contract.mjs
