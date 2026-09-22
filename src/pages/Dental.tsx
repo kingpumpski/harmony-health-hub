@@ -20,7 +20,7 @@ export default function Dental() {
   const load = async () => {
     const [{ data: pts }, { data: recs }] = await Promise.all([
       searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
-      supabase.from('dental_records').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('dental_records').select('id,patient_id,examination,treatment_plan,procedures_performed,created_at').order('created_at', { ascending: false }).limit(50),
     ]);
     setPatients(pts ?? []);
     setRecords(recs ?? []);
