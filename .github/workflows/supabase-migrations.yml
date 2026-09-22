@@ -121,3 +121,6 @@ jobs:
 
       - name: Verify AI nurse dashboard Edge surface
         run: node supabase/tests/database/ai_nurse_dashboard_surface_contract.mjs
+
+      - name: Verify clinical UI read projection contract
+        run: node supabase/tests/database/clinical_ui_read_projection_contract.mjs
