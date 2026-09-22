@@ -1,10 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
-import { provisionAdminUser, requireAdmin } from '../_shared/admin-user-provisioning.ts';
+import { requireAdmin } from '../_shared/admin-user-provisioning.ts';
 
 const IMPORT_ENTITIES = new Set(['patients', 'pharmacy_inventory', 'icd_codes']);
 const MAX_ROWS = 10000;
-const MAX_USER_ROWS = 500;
 
 const json = (body: unknown, status: number, cors: Record<string,string>) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -66,48 +65,6 @@ Deno.serve(async (req) => {
         _metadata: { filename, total_rows: rows.length, successful_rows: inserted, failed_rows: errors.length },
       });
       return json({ ok: true, entity, total_rows: rows.length, inserted_rows: inserted, failed_rows: errors.length, errors }, 200, cors);
-    }
-
-    if (action === 'bulk_create_users') {
-      const rows = Array.isArray(body?.rows) ? body.rows : [];
-      if (!rows.length || rows.length > MAX_USER_ROWS) {
-        return json({ error: 'Staff import must contain 1-' + MAX_USER_ROWS + ' rows' }, 400, cors);
-      }
-
-      const results: { row: number; email?: string; user_id?: string; status: 'created'|'failed'; error?: string }[] = [];
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i] ?? {};
-        const email = String(row.email ?? '').trim().toLowerCase();
-        try {
-          const onboarding = String(row.onboarding ?? 'invite') === 'password' ? 'password' : 'invite';
-          const user = await provisionAdminUser(service, {
-            email,
-            firstName: String(row.first_name ?? row.firstName ?? ''),
-            lastName: String(row.last_name ?? row.lastName ?? ''),
-            phone: String(row.phone ?? ''),
-            department: String(row.department ?? ''),
-            specialization: String(row.specialization ?? ''),
-            role: String(row.role ?? 'patient'),
-            onboarding,
-            password: onboarding === 'password' ? String(row.password ?? '') : undefined,
-          });
-
-          await service.rpc('record_system_audit', {
-            _action: 'admin_bulk_create_user', _module: 'administration', _entity_type: 'user', _entity_id: user.id,
-            _severity: 'info', _metadata: { email: user.email, role: user.role, onboarding, source_row: i + 2 },
-          });
-          results.push({ row: i + 2, email: user.email ?? email, user_id: user.id, status: 'created' });
-        } catch (e) {
-          results.push({ row: i + 2, email, status: 'failed', error: e instanceof Error ? e.message : String(e) });
-        }
-      }
-
-      return json({
-        ok: true, total_rows: rows.length,
-        created_rows: results.filter(r => r.status === 'created').length,
-        failed_rows: results.filter(r => r.status === 'failed').length,
-        results,
-      }, 200, cors);
     }
 
     return json({ error: 'Unsupported action' }, 400, cors);
