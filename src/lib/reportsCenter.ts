@@ -75,14 +75,14 @@ export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_
 }
 
 export async function listDefinitions(): Promise<ReportDefinition[]> {
-  const { data, error } = await reportsDb.from('report_definitions').select('*, report_categories(*)').eq('is_active', true).order('report_code');
+  const { data, error } = await reportsDb.from('report_definitions').select('id,report_code,report_name,category_id,description,frequency,parameters,default_parameters,extractor_key,supported_formats,submission_deadline_day,is_active,implementation_status,report_categories(id,name,display_order)').eq('is_active', true).order('report_code');
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<Record<string, unknown>>;
   return rows.map((row) => { const categories = row.report_categories as ReportCategory[] | ReportCategory | null | undefined; return { ...row, category: Array.isArray(categories) ? categories[0] ?? null : categories ?? null, parameters: Array.isArray(row.parameters) ? row.parameters : [] }; }) as unknown as ReportDefinition[];
 }
 
 export async function listFacilityConfigs(facilityId: string): Promise<FacilityReportConfig[]> {
-  const { data, error } = await reportsDb.from('facility_report_config').select('*, report_definitions(*, report_categories(*))').eq('facility_id', facilityId).order('report_id');
+  const { data, error } = await reportsDb.from('facility_report_config').select('id,facility_id,report_id,is_enabled,submission_deadline_day,custom_parameters,report_definitions(id,report_code,report_name,category_id,description,frequency,parameters,default_parameters,extractor_key,supported_formats,submission_deadline_day,is_active,implementation_status,report_categories(id,name,display_order))').eq('facility_id', facilityId).order('report_id');
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<Record<string, unknown>>;
   return rows.map((row) => ({ ...row, report: row.report_definitions })) as unknown as FacilityReportConfig[];
