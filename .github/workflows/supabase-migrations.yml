@@ -126,3 +126,5 @@ jobs:
         run: node supabase/tests/database/clinical_ui_read_projection_contract.mjs
       - name: Verify patient detail read projection contract
         run: node supabase/tests/database/patient_detail_read_projection_contract.mjs
+      - name: Verify ancillary clinical read projection contract
+        run: node supabase/tests/database/clinical_ancillary_read_projection_contract.mjs
