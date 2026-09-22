@@ -17,7 +17,7 @@ export default function TreatmentTemplates() {
   const [synthBusy, setSynthBusy] = useState(false);
   const [synthDx, setSynthDx] = useState('');
 
-  const load = () => supabase.from('treatment_templates').select('*').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
+  const load = () => supabase.from('treatment_templates').select('id,name,diagnosis,description,prescriptions,is_ai_generated,created_at').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
   useEffect(() => { load(); }, []);
 
   const save = async (e: React.FormEvent) => {
