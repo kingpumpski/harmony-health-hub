@@ -123,7 +123,10 @@ async function reconcileFailedRun(runId: string, reason: string): Promise<void> 
 
 export async function generateRun(facilityId: string, period: string, configs: FacilityReportConfig[]) {
   const { start, end } = monthBounds(period);
-  const enabled = configs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
+  // Re-read the facility configuration from the database instead of trusting client-supplied config objects.
+  // The client may render stale/tampered configuration; persisted RLS-scoped state is authoritative for generation.
+  const persistedConfigs = await listFacilityConfigs(facilityId);
+  const enabled = persistedConfigs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
   if (!enabled.length) throw new Error('No monthly reports are activated for this facility.');
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('An authenticated user is required to generate reports.');
