@@ -136,3 +136,5 @@ jobs:
         run: node supabase/tests/database/reports_center_read_projection_contract.mjs
       - name: Verify report generation configuration integrity contract
         run: node supabase/tests/database/reports_generation_config_integrity_contract.mjs
+      - name: Verify Reports Center mutation authorization contract
+        run: node supabase/tests/database/reports_center_mutation_authorization_contract.mjs
