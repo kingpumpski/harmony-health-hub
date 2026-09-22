@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'nurse_dashboard') {
       const allowedRoles = ['admin','nurse','specialist_nurse','midwife'];
-      if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
+      if (!hasAnyRole(allowedRoles)) throw new Error('Not authorised');
       const [
         { data: patients, error: patientsError },
         { data: admissionWorkspace, error: admissionError },
