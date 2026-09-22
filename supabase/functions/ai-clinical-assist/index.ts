@@ -30,12 +30,13 @@ Deno.serve(async (req) => {
     const callerId = authData.user.id;
     const { data: callerRoles, error: callerRolesError } = await supabase.from('user_roles').select('role').eq('user_id', callerId);
     if (callerRolesError || !callerRoles?.length) throw new Error('Authorisation role not found');
-    const callerRole = String(callerRoles[0]?.role ?? '');
+    const callerRoleSet = new Set((callerRoles ?? []).map((row) => String(row.role ?? '')));
+    const hasAnyRole = (roles: string[]) => roles.some((role) => callerRoleSet.has(role));
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
-    const requireClinicalRole = () => { if (!aiClinicalRoles.includes(callerRole)) throw new Error('Not authorised'); };
-    const requirePatientContextRole = () => { if (!['admin','practitioner','nurse','midwife','specialist_nurse'].includes(callerRole)) throw new Error('Not authorised for full clinical context'); };
-    const requireProtocolRole = () => { if (!['admin','practitioner'].includes(callerRole)) throw new Error('Not authorised for protocol synthesis'); };
+    const requireClinicalRole = () => { if (!hasAnyRole(aiClinicalRoles)) throw new Error('Not authorised'); };
+    const requirePatientContextRole = () => { if (!hasAnyRole(['admin','practitioner','nurse','midwife','specialist_nurse'])) throw new Error('Not authorised for full clinical context'); };
+    const requireProtocolRole = () => { if (!hasAnyRole(['admin','practitioner'])) throw new Error('Not authorised for protocol synthesis'); };
     const requirePatientId = () => { if (!body.patientId) throw new Error('A patient is required'); };
 
     let systemPrompt = '';
