@@ -16,7 +16,7 @@ const fields = ['facility_name','facility_code','phone','email','country','curre
 export default function Settings(){
  const [config,setConfig]=useState<Config|null>(null); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
  useEffect(()=>{void load()},[]);
- async function load(){setLoading(true);const {data,error}=await db.from('facility_configuration').select('*').limit(1).maybeSingle();if(error)toast.error(error.message);setConfig(data as Config|null);setLoading(false)}
+ async function load(){setLoading(true);const {data,error}=await db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override').limit(1).maybeSingle();if(error)toast.error(error.message);setConfig(data as Config|null);setLoading(false)}
  async function save(){if(!config)return;setSaving(true);const user=(await supabase.auth.getUser()).data.user;const {error}=await db.from('facility_configuration').update({...config,updated_by:user?.id??null}).eq('id',config.id);if(error)toast.error(error.message);else toast.success('Facility configuration saved.');setSaving(false)}
  if(loading)return <div className="p-6 text-sm text-muted-foreground">Loading facility configuration…</div>;
  if(!config)return <div className="card-medical p-6 text-sm text-muted-foreground">No facility configuration is available. Apply the approved configuration migration before using this page.</div>;
