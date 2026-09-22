@@ -118,3 +118,6 @@ jobs:
 
       - name: Verify AI clinical context Edge surface
         run: node supabase/tests/database/ai_edge_clinical_context_surface_contract.mjs
+
+      - name: Verify AI nurse dashboard Edge surface
+        run: node supabase/tests/database/ai_nurse_dashboard_surface_contract.mjs
