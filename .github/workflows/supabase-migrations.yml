@@ -181,6 +181,8 @@ jobs:
       - name: Verify lifecycle patient-context hardening contract
 
       - name: Verify imaging lifecycle role boundary contract
-        run: node supabase/tests/database/imaging_lifecycle_role_boundary_contract.mjs
+
+      - name: Verify maternity patient-context contract
+        run: node supabase/tests/database/maternity_patient_context_contract.mjs        run: node supabase/tests/database/imaging_lifecycle_role_boundary_contract.mjs
       - name: Verify lab lifecycle role boundary contract
         run: node supabase/tests/database/lab_lifecycle_role_boundary_contract.mjs        run: node supabase/tests/database/lifecycle_patient_context_hardening_contract.mjs        run: node supabase/tests/database/clinical_continuity_execute_hardening_contract.mjs
