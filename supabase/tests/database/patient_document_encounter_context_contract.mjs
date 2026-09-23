@@ -1,0 +1,11 @@
+import fs from 'node:fs'; import assert from 'node:assert/strict';
+const s=fs.readFileSync('supabase/migrations/20260923153000_patient_document_encounter_context_hardening.sql','utf8');
+assert(s.includes('CREATE OR REPLACE FUNCTION public.create_patient_document'),'document override missing');
+assert(s.includes('CREATE OR REPLACE FUNCTION public.create_encounter_workflow'),'encounter override missing');
+assert((s.match(/COALESCE\(status,'active'\)<>'inactive'/g)||[]).length>=2,'inactive patient guards missing');
+assert(s.includes('Document type is required'),'document type validation missing');
+assert(s.includes('Encounter clinical information is required'),'encounter content validation missing');
+assert(s.includes('REVOKE ALL ON FUNCTION public.create_patient_document'),'document execute revoke missing');
+assert(s.includes('REVOKE ALL ON FUNCTION public.create_encounter_workflow'),'encounter execute revoke missing');
+assert(!s.includes('profiles.role')&&!s.includes('SELECT role INTO'),'legacy role lookup detected');
+console.log('patient document/encounter context contract: PASS');
