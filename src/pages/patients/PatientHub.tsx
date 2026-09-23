@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, RefreshCw, UserRound } from 'lucide-react';
@@ -20,7 +20,7 @@ function EmptyState({ label }: { label: string }) { return <p className="rounded
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const { user } = useAuth();
   const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
-  const roleSet = new Set(user?.roles ?? (user ? [user.role] : [])); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
+  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any;
