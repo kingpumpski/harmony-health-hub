@@ -4,11 +4,10 @@ CREATE OR REPLACE FUNCTION public.transition_ai_protocol(_protocol_id uuid, _sta
 RETURNS public.ai_protocols
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_role public.app_role; v_row public.ai_protocols; v_status text := lower(btrim(_status));
+DECLARE v_row public.ai_protocols; v_status text := lower(btrim(_status));
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT role INTO v_role FROM public.profiles WHERE id=auth.uid();
-  IF v_role NOT IN ('admin','practitioner') THEN RAISE EXCEPTION 'Not authorised'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF v_status NOT IN ('pending_review','approved','rejected','archived') THEN RAISE EXCEPTION 'Invalid protocol status'; END IF;
   SELECT * INTO v_row FROM public.ai_protocols WHERE id=_protocol_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Protocol not found'; END IF;
@@ -22,5 +21,4 @@ END; $$;
 REVOKE ALL ON FUNCTION public.transition_ai_protocol(uuid,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.transition_ai_protocol(uuid,text) TO authenticated;
 
--- Prevent direct authenticated writes; lifecycle changes must use the server-authorized RPC.
 REVOKE INSERT, UPDATE, DELETE ON public.ai_protocols FROM authenticated;
