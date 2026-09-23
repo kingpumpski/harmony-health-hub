@@ -26,6 +26,12 @@ BEGIN
     OR public.has_role(auth.uid(),'nurse'::public.app_role)
     OR public.has_role(auth.uid(),'midwife'::public.app_role)
     OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'lab_technician'::public.app_role)
+    OR public.has_role(auth.uid(),'radiologist'::public.app_role)
+    OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+    OR public.has_role(auth.uid(),'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Appointment creation denied';
   END IF;
@@ -74,6 +80,12 @@ BEGIN
     OR public.has_role(auth.uid(),'nurse'::public.app_role)
     OR public.has_role(auth.uid(),'midwife'::public.app_role)
     OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'lab_technician'::public.app_role)
+    OR public.has_role(auth.uid(),'radiologist'::public.app_role)
+    OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+    OR public.has_role(auth.uid(),'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Specialist referral access denied';
   END IF;
@@ -120,6 +132,12 @@ BEGIN
     OR public.has_role(auth.uid(),'nurse'::public.app_role)
     OR public.has_role(auth.uid(),'midwife'::public.app_role)
     OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'lab_technician'::public.app_role)
+    OR public.has_role(auth.uid(),'radiologist'::public.app_role)
+    OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+    OR public.has_role(auth.uid(),'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Patient coverage access denied';
   END IF;
@@ -169,6 +187,11 @@ BEGIN
     OR public.has_role(auth.uid(),'midwife'::public.app_role)
     OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
     OR public.has_role(auth.uid(),'lab_technician'::public.app_role)
+    OR public.has_role(auth.uid(),'radiologist'::public.app_role)
+    OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+    OR public.has_role(auth.uid(),'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
