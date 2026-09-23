@@ -160,3 +160,5 @@ jobs:
         run: node supabase/tests/database/operational_workspace_multi_role_authorization_contract.mjs
       - name: Verify patient order context hardening contract
         run: node supabase/tests/database/patient_order_context_hardening_contract.mjs
+      - name: Verify clinical workflow context hardening contract
+        run: node supabase/tests/database/clinical_workflow_context_hardening_contract.mjs
