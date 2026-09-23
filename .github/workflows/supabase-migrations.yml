@@ -177,4 +177,6 @@ jobs:
       - name: Verify legacy clinical context hardening contract
         run: node supabase/tests/database/legacy_clinical_context_hardening_contract.mjs
       - name: Verify clinical continuity execute hardening contract
-        run: node supabase/tests/database/clinical_continuity_execute_hardening_contract.mjs
+
+      - name: Verify lifecycle patient-context hardening contract
+        run: node supabase/tests/database/lifecycle_patient_context_hardening_contract.mjs        run: node supabase/tests/database/clinical_continuity_execute_hardening_contract.mjs
