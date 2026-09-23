@@ -131,16 +131,21 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_procedure_note(_patient_id UUID,_procedure_name TEXT,_template_used TEXT,_indication TEXT,_technique TEXT,_findings TEXT,_complications TEXT,_post_op_plan TEXT,_charge_amount NUMERIC,_service_order_id UUID)
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE _id uuid;
+DECLARE uid UUID:=auth.uid(); sid public.service_orders%ROWTYPE; id UUID;
 BEGIN
- IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
- IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
+ IF COALESCE(_charge_amount,0)<0 THEN RAISE EXCEPTION 'Charge amount cannot be negative'; END IF;
  IF COALESCE(_charge_amount,0)>0 THEN
-  IF _service_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.service_orders WHERE id=_service_order_id AND patient_id=_patient_id AND status IN ('released','in_progress','completed')) THEN RAISE EXCEPTION 'Procedure payment has not been released'; END IF;
+   IF _service_order_id IS NULL THEN RAISE EXCEPTION 'A released service order is required for a chargeable procedure'; END IF;
+   SELECT * INTO sid FROM public.service_orders WHERE id=_service_order_id FOR UPDATE;
+   IF NOT FOUND OR sid.patient_id<>_patient_id OR sid.department<>'procedure' OR (sid.related_entity_id IS NOT NULL AND sid.related_entity_id<>_service_order_id) THEN RAISE EXCEPTION 'Procedure service order linkage is invalid'; END IF;
+   IF sid.status NOT IN('released','in_progress','completed') THEN RAISE EXCEPTION 'Procedure payment has not been released'; END IF;
  END IF;
- INSERT INTO public.procedure_notes(patient_id,procedure_name,template_used,indication,technique,findings,complications,post_op_plan,performed_by,status,charge_amount,service_order_id) VALUES(_patient_id,NULLIF(trim(_procedure_name),''),NULLIF(trim(_template_used),''),NULLIF(trim(_indication),''),NULLIF(trim(_technique),''),NULLIF(trim(_findings),''),NULLIF(trim(_complications),''),NULLIF(trim(_post_op_plan),''),auth.uid(),'completed',GREATEST(COALESCE(_charge_amount,0),0),_service_order_id) RETURNING id INTO _id;
- RETURN _id;
+ INSERT INTO public.procedure_notes(patient_id,procedure_name,template_used,indication,technique,findings,complications,post_op_plan,performed_by,status,charge_amount,service_order_id)
+ VALUES(_patient_id,NULLIF(btrim(_procedure_name),''),NULLIF(btrim(_template_used),''),NULLIF(btrim(_indication),''),NULLIF(btrim(_technique),''),NULLIF(btrim(_findings),''),NULLIF(btrim(_complications),''),NULLIF(btrim(_post_op_plan),''),uid,'completed',COALESCE(_charge_amount,0),_service_order_id)
+ RETURNING id INTO id;
+ RETURN id;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inventory_id uuid,_quantity integer)
