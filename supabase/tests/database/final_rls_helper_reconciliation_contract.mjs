@@ -10,4 +10,5 @@ assert.match(s,/DROP POLICY IF EXISTS imaging_orders_clinical_insert/);
 assert.match(s,/DROP POLICY IF EXISTS lab_orders_clinical_read/);
 assert.match(s,/DROP POLICY IF EXISTS staff_read_visit_authorizations/);
 assert.match(s,/DROP POLICY IF EXISTS va_clinical_all/);
+assert.match(s,/DROP POLICY IF EXISTS .*anesthetic assessments/);
 console.log('final RLS helper reconciliation contract passed');
