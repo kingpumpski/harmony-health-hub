@@ -192,3 +192,5 @@ jobs:
         run: node supabase/tests/database/rls_revoked_helper_reconciliation_contract.mjs
       - name: Verify service-order revoked helper reconciliation contract
         run: node supabase/tests/database/service_order_revoked_helper_reconciliation_contract.mjs
+      - name: Verify final RLS helper reconciliation contract
+        run: node supabase/tests/database/final_rls_helper_reconciliation_contract.mjs
