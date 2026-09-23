@@ -168,3 +168,5 @@ jobs:
         run: node supabase/tests/database/encounter_admission_context_hardening_contract.mjs
       - name: Verify pharmacy fertility context hardening contract
         run: node supabase/tests/database/pharmacy_fertility_context_hardening_contract.mjs
+      - name: Verify emergency theatre transfusion patient context contract
+        run: node supabase/tests/database/emergency_theatre_transfusion_patient_context_contract.mjs
