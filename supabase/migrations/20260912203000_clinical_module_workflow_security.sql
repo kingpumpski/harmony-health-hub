@@ -11,7 +11,7 @@ DECLARE
   v_order public.lab_orders%ROWTYPE;
   v_gate public.service_orders%ROWTYPE;
 BEGIN
-  IF NOT (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'admin')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'lab_technician')) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
 
@@ -52,7 +52,7 @@ DECLARE
   v_catalog public.lab_test_catalogue%ROWTYPE;
   v_result UUID;
 BEGIN
-  IF NOT (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'admin')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'lab_technician')) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
   SELECT * INTO v_order FROM public.lab_orders WHERE id = _lab_order_id FOR UPDATE;
@@ -87,7 +87,7 @@ AS $$
 DECLARE
   v_result public.lab_results%ROWTYPE;
 BEGIN
-  IF NOT (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'admin')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'lab_technician')) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
   SELECT * INTO v_result FROM public.lab_results WHERE id = _lab_result_id FOR UPDATE;
