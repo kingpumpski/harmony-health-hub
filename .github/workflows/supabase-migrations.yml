@@ -198,3 +198,5 @@ jobs:
         run: node supabase/tests/database/final_rls_helper_reconciliation_contract.mjs
       - name: Verify current-user authorization helper execute boundary contract
         run: node supabase/tests/database/current_user_helper_execute_boundary_contract.mjs
+      - name: Verify legacy diagnosis RPC overload retirement contract
+        run: node supabase/tests/database/legacy_diagnosis_rpc_overload_contract.mjs
