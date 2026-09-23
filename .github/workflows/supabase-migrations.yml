@@ -150,5 +150,7 @@ jobs:
         run: node supabase/tests/database/patient_hub_multi_role_ui_authorization_contract.mjs
       - name: Verify Patient Hub clinical snapshot authorization contract
         run: node supabase/tests/database/patient_hub_clinical_snapshot_authorization_contract.mjs
+      - name: Verify offline patient workflow context contract
+        run: node supabase/tests/database/offline_patient_workflow_context_contract.mjs
       - name: Verify operational workspace multi-role authorization contract
         run: node supabase/tests/database/operational_workspace_multi_role_authorization_contract.mjs
