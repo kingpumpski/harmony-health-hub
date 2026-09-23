@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const p='supabase/migrations/20260923113000_clinical_workflow_context_hardening.sql';
+const s=fs.readFileSync(p,'utf8');
+for (const fn of ['add_encounter_diagnosis','remove_encounter_diagnosis','complete_encounter_workflow','create_patient_referral_workflow','create_care_transition_workflow','create_fertility_cycle_workflow','record_fertility_monitoring_workflow','transition_fertility_cycle_workflow','create_dental_record','create_procedure_note','create_pharmacy_pos_sale']) assert(s.includes('CREATE OR REPLACE FUNCTION public.'+fn),fn+' missing');
+assert(s.includes("COALESCE(status,'active')<>'inactive'"));
+assert(s.includes("IF v_status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is closed'"));
+assert(s.includes("SELECT encounter_id INTO v_encounter FROM public.diagnoses WHERE id=_diagnosis_id"));
+assert(s.includes("SELECT patient_id,status INTO v_patient,v_status FROM public.fertility_cycles WHERE id=_cycle_id"));
+assert(s.includes("pseud" )===false);
+assert(!s.includes('profiles.role'));
+assert(!s.includes('SELECT role INTO'));
+assert((s.match(/REVOKE ALL ON FUNCTION/g)||[]).length >= 11);
+console.log('clinical workflow context hardening contract: PASS');
