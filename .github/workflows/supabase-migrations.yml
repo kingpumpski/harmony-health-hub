@@ -188,3 +188,7 @@ jobs:
         run: node supabase/tests/database/lab_lifecycle_role_boundary_contract.mjs
       - name: Verify revoked helper dependency reconciliation contract
         run: node supabase/tests/database/revoked_helper_dependency_reconciliation_contract.mjs
+      - name: Verify RLS revoked helper reconciliation contract
+        run: node supabase/tests/database/rls_revoked_helper_reconciliation_contract.mjs
+      - name: Verify service-order revoked helper reconciliation contract
+        run: node supabase/tests/database/service_order_revoked_helper_reconciliation_contract.mjs
