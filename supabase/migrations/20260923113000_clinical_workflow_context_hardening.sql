@@ -1,7 +1,7 @@
 -- Patient-context and lifecycle hardening for remaining clinical SECURITY DEFINER workflows.
 
-CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(_encounter_id UUID,_diagnosis TEXT)
-RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(_encounter_id UUID,_diagnosis TEXT,_icd_code TEXT DEFAULT NULL)
+RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE v_status text; v_result public.diagnoses;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -10,9 +10,10 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF v_status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is closed'; END IF;
  IF NULLIF(trim(_diagnosis),'') IS NULL THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
- INSERT INTO public.diagnoses(encounter_id,diagnosis,is_principal) VALUES(_encounter_id,trim(_diagnosis),false) RETURNING * INTO v_result;
+ IF _icd_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.icd_codes WHERE code=upper(trim(_icd_code))) THEN RAISE EXCEPTION 'Diagnosis code is not in the approved ICD-10/STG catalogue'; END IF;
+ INSERT INTO public.diagnoses(encounter_id,diagnosis,icd_code,is_principal) VALUES(_encounter_id,trim(_diagnosis),NULLIF(upper(trim(_icd_code)),''),false) RETURNING * INTO v_result;
  RETURN v_result;
-END; $$;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
