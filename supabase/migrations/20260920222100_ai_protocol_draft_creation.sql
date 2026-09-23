@@ -2,11 +2,10 @@ CREATE OR REPLACE FUNCTION public.create_ai_protocol_draft(_diagnosis text,_prot
 RETURNS public.ai_protocols
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_role public.app_role; v_row public.ai_protocols;
+DECLARE v_row public.ai_protocols;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  SELECT role INTO v_role FROM public.profiles WHERE id=auth.uid();
-  IF v_role NOT IN ('admin','practitioner') THEN RAISE EXCEPTION 'Not authorised'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _diagnosis IS NULL OR btrim(_diagnosis)='' THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
   IF _protocol_text IS NULL OR btrim(_protocol_text)='' THEN RAISE EXCEPTION 'Protocol text is required'; END IF;
   IF COALESCE(_case_count,0) < 3 THEN RAISE EXCEPTION 'At least 3 cases are required'; END IF;
