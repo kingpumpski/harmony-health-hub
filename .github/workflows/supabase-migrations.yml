@@ -146,5 +146,7 @@ jobs:
         run: node supabase/tests/database/admission_multi_role_authorization_contract.mjs
       - name: Verify patient history multi-role authorization contract
         run: node supabase/tests/database/patient_history_multi_role_authorization_contract.mjs
+      - name: Verify Patient Hub multi-role UI authorization contract
+        run: node supabase/tests/database/patient_hub_multi_role_ui_authorization_contract.mjs
       - name: Verify operational workspace multi-role authorization contract
         run: node supabase/tests/database/operational_workspace_multi_role_authorization_contract.mjs
