@@ -35,22 +35,6 @@ USING (
   OR patient_id=(SELECT auth.uid())
 );
 
-DROP POLICY IF EXISTS lab_orders_clinical_insert ON public.lab_orders;
-CREATE POLICY lab_orders_clinical_insert ON public.lab_orders
-FOR INSERT TO authenticated
-WITH CHECK (
-  public.current_user_is_clinical_staff()
-  AND requested_by=(SELECT auth.uid())
-);
-
-DROP POLICY IF EXISTS lab_orders_clinical_read ON public.lab_orders;
-CREATE POLICY lab_orders_clinical_read ON public.lab_orders
-FOR SELECT TO authenticated
-USING (
-  public.current_user_is_clinical_staff()
-  OR patient_id=(SELECT auth.uid())
-);
-
 DROP POLICY IF EXISTS staff_read_lab_tests ON public.lab_tests;
 CREATE POLICY staff_read_lab_tests ON public.lab_tests
 FOR SELECT TO authenticated
@@ -216,3 +200,36 @@ CREATE POLICY va_clinical_all ON public.vital_alerts
 FOR ALL TO authenticated
 USING (public.current_user_is_clinical_staff())
 WITH CHECK (public.current_user_is_clinical_staff());
+
+DROP POLICY IF EXISTS "clinical staff read anesthetic assessments" ON public.anesthetic_assessments;
+CREATE POLICY "clinical staff read anesthetic assessments"
+ON public.anesthetic_assessments FOR SELECT TO authenticated
+USING (
+  public.current_user_is_clinical_staff()
+  OR public.current_user_has_role('specialist_nurse')
+  OR public.current_user_has_role('admin')
+);
+
+DROP POLICY IF EXISTS "clinical staff create anesthetic assessments" ON public.anesthetic_assessments;
+CREATE POLICY "clinical staff create anesthetic assessments"
+ON public.anesthetic_assessments FOR INSERT TO authenticated
+WITH CHECK (
+  assessed_by=(SELECT auth.uid())
+  AND (
+    public.current_user_is_clinical_staff()
+    OR public.current_user_has_role('specialist_nurse')
+    OR public.current_user_has_role('admin')
+  )
+);
+
+DROP POLICY IF EXISTS "clinicians update own anesthetic assessments" ON public.anesthetic_assessments;
+CREATE POLICY "clinicians update own anesthetic assessments"
+ON public.anesthetic_assessments FOR UPDATE TO authenticated
+USING (
+  assessed_by=(SELECT auth.uid())
+  OR public.current_user_has_role('admin')
+)
+WITH CHECK (
+  assessed_by=(SELECT auth.uid())
+  OR public.current_user_has_role('admin')
+);
