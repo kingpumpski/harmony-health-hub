@@ -202,3 +202,5 @@ jobs:
         run: node supabase/tests/database/legacy_diagnosis_rpc_overload_contract.mjs
       - name: Verify insurance-case mutation authority contract
         run: node supabase/tests/database/insurance_case_mutation_authority_contract.mjs
+      - name: Verify service-order patient linkage contract
+        run: node supabase/tests/database/service_order_patient_linkage_contract.mjs
