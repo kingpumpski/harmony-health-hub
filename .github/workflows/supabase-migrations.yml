@@ -176,3 +176,5 @@ jobs:
         run: node supabase/tests/database/patient_document_encounter_context_contract.mjs
       - name: Verify legacy clinical context hardening contract
         run: node supabase/tests/database/legacy_clinical_context_hardening_contract.mjs
+      - name: Verify clinical continuity execute hardening contract
+        run: node supabase/tests/database/clinical_continuity_execute_hardening_contract.mjs
