@@ -2,7 +2,7 @@
 
 CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(_encounter_id UUID,_diagnosis TEXT)
 RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE v_status text;
+DECLARE v_status text; v_result public.diagnoses;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
@@ -10,8 +10,8 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF v_status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is closed'; END IF;
  IF NULLIF(trim(_diagnosis),'') IS NULL THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
- INSERT INTO public.diagnoses(encounter_id,diagnosis,is_principal) VALUES(_encounter_id,trim(_diagnosis),false) RETURNING * INTO STRICT;
- RETURN (SELECT d FROM public.diagnoses d WHERE d.encounter_id=_encounter_id AND d.diagnosis=trim(_diagnosis) ORDER BY d.created_at DESC NULLS LAST LIMIT 1);
+ INSERT INTO public.diagnoses(encounter_id,diagnosis,is_principal) VALUES(_encounter_id,trim(_diagnosis),false) RETURNING * INTO v_result;
+ RETURN v_result;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
