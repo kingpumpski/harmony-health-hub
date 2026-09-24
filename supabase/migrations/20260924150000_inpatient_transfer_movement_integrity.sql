@@ -119,8 +119,7 @@ BEGIN
     INTO v_source_count
   FROM public.ward_beds
   WHERE patient_id = _patient_id
-    AND status = 'occupied'
-    AND (_admission_id IS NULL OR admission_id = _admission_id);
+    AND status = 'occupied';
 
   IF _source_bed_id IS NULL THEN
     IF v_source_count > 1 THEN
@@ -280,3 +279,64 @@ $$;
 
 REVOKE ALL ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) TO authenticated;
+
+-- Preserve the legacy assignment entry point, but route every patient placement
+-- through the canonical atomic movement workflow so direct bed assignment cannot
+-- bypass movement history, admission projection sync, or audit logging.
+CREATE OR REPLACE FUNCTION public.assign_ward_bed(
+  _bed_id UUID,
+  _patient_id UUID,
+  _admission_id UUID DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_admission_id UUID := _admission_id;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Nursing role required';
+  END IF;
+
+  IF _bed_id IS NULL OR _patient_id IS NULL THEN
+    RAISE EXCEPTION 'Bed and patient are required';
+  END IF;
+
+  IF v_admission_id IS NULL THEN
+    SELECT a.id
+      INTO v_admission_id
+    FROM public.admissions a
+    WHERE a.patient_id = _patient_id
+      AND a.status = 'admitted'
+    ORDER BY a.admission_date DESC NULLS LAST, a.created_at DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF v_admission_id IS NULL THEN
+    RAISE EXCEPTION 'Active admission not found for patient';
+  END IF;
+
+  RETURN public.transfer_patient_ward_bed_workflow(
+    _patient_id,
+    v_admission_id,
+    _bed_id,
+    NULL,
+    NULL,
+    NULL
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) TO authenticated;
