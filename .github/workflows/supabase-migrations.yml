@@ -242,3 +242,6 @@ jobs:
         run: node supabase/tests/database/legacy_admission_concurrency_contract.mjs
       - name: Verify inpatient occupancy invariants contract
         run: node supabase/tests/database/inpatient_occupancy_invariants_contract.mjs
+
+      - name: Verify inpatient bidirectional link integrity contract
+        run: node supabase/tests/database/inpatient_bidirectional_link_integrity_contract.mjs
