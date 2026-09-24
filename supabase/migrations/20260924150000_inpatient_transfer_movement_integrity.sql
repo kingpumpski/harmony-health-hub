@@ -1183,3 +1183,10 @@ $$;
 
 REVOKE ALL ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) TO authenticated;
+
+
+-- Canonical inpatient mutation boundary: client roles may not mutate admissions directly.
+-- Admission state is owned by the server-authorized admission, movement, and discharge workflows.
+-- Supabase's grants are a separate gate from RLS, so remove client DML explicitly.
+REVOKE INSERT, UPDATE, DELETE ON public.admissions FROM authenticated, anon;
+GRANT SELECT ON public.admissions TO authenticated;
