@@ -238,3 +238,5 @@ jobs:
         run: node supabase/tests/database/ward_bed_release_consistency_contract.mjs
       - name: Verify encounter admission consistency contract
         run: node supabase/tests/database/admit_encounter_admission_consistency_contract.mjs
+      - name: Verify legacy admission concurrency contract
+        run: node supabase/tests/database/legacy_admission_concurrency_contract.mjs
