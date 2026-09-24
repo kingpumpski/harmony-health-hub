@@ -236,3 +236,5 @@ jobs:
         run: node supabase/tests/database/ward_unit_lifecycle_contract.mjs
       - name: Verify ward-bed release consistency contract
         run: node supabase/tests/database/ward_bed_release_consistency_contract.mjs
+      - name: Verify encounter admission consistency contract
+        run: node supabase/tests/database/admit_encounter_admission_consistency_contract.mjs
