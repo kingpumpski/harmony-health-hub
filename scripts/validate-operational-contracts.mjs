@@ -111,3 +111,5 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exitCode = 1;
 }
+assert('ward bed creation validates ward and duplicate identity', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_ward_bed') && inpatientTransferMigration.includes('Ward not found') && inpatientTransferMigration.includes('Bed number already exists in this ward'), 'bed creation must reject missing wards and duplicate bed numbers within a ward');
+assert('cleaning bed lifecycle stays non-patient-owned', inpatientTransferMigration.includes('A bed may only become available after a non-occupied lifecycle state') && inpatientTransferMigration.includes('Occupied or patient-linked beds must use the inpatient movement or discharge workflow'), 'bed inventory transitions must never acquire or clear patient ownership');
