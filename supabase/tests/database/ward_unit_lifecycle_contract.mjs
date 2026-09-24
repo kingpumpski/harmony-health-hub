@@ -14,9 +14,9 @@ const checks=[
  [/REVOKE ALL ON FUNCTION public\.create_ward_unit\(text, text, text, text\) FROM PUBLIC, anon/i,'create execute revoke missing'],
  [/REVOKE ALL ON FUNCTION public\.update_ward_unit\(uuid, text, text, text, text, boolean\) FROM PUBLIC, anon/i,'update execute revoke missing'],
  [/REVOKE ALL ON FUNCTION public\.set_ward_unit_active\(uuid, boolean\) FROM PUBLIC, anon/i,'activation execute revoke missing'],
- [/REVOKE INSERT, UPDATE, DELETE ON public\.ward_units FROM authenticated/i,'direct client write lock missing'],
- [/INSERT INTO public\.wards/i,'legacy wards table must not be used by canonical ward-unit lifecycle']
+ [/REVOKE INSERT, UPDATE, DELETE ON public\.ward_units FROM authenticated/i,'direct client write lock missing']
 ];
 
-for (const [pattern,message] of checks) assert.doesNotMatch(migration,pattern,message);
+for (const [pattern,message] of checks) assert.match(migration,pattern,message);
+assert.doesNotMatch(migration,/INSERT INTO public\.wards/i,'legacy wards table must not be used by canonical ward-unit lifecycle');
 console.log('ward-unit lifecycle contract passed');
