@@ -20,7 +20,7 @@ BEGIN
   IF NOT (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'practitioner') OR has_role(auth.uid(),'nurse') OR has_role(auth.uid(),'midwife') OR has_role(auth.uid(),'specialist_nurse')) THEN
     RAISE EXCEPTION 'Maternity episode creation is not permitted';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM patients WHERE id = _patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM patients WHERE id = _patient_id AND COALESCE(status,'active') <> 'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
   IF _gravida IS NOT NULL AND _gravida < 0 THEN RAISE EXCEPTION 'Gravida cannot be negative'; END IF;
   IF _para IS NOT NULL AND _para < 0 THEN RAISE EXCEPTION 'Para cannot be negative'; END IF;
   IF _risk_level NOT IN ('routine','high','critical') THEN RAISE EXCEPTION 'Invalid maternity risk level'; END IF;
@@ -58,7 +58,7 @@ BEGIN
   IF NOT (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'practitioner') OR has_role(auth.uid(),'nurse') OR has_role(auth.uid(),'midwife') OR has_role(auth.uid(),'specialist_nurse')) THEN
     RAISE EXCEPTION 'Maternity observation recording is not permitted';
   END IF;
-  SELECT patient_id INTO v_patient_id FROM maternity_episodes WHERE id = _episode_id AND status <> 'completed' AND status <> 'cancelled';
+  SELECT me.patient_id INTO v_patient_id FROM maternity_episodes me JOIN public.patients p ON p.id = me.patient_id WHERE me.id = _episode_id AND me.status <> 'completed' AND me.status <> 'cancelled' AND COALESCE(p.status,'active') <> 'inactive';
   IF v_patient_id IS NULL THEN RAISE EXCEPTION 'Active maternity episode not found'; END IF;
   IF _pulse IS NOT NULL AND _pulse < 0 THEN RAISE EXCEPTION 'Pulse cannot be negative'; END IF;
   IF _fetal_heart_rate IS NOT NULL AND _fetal_heart_rate < 0 THEN RAISE EXCEPTION 'Fetal heart rate cannot be negative'; END IF;

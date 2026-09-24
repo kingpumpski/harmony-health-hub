@@ -17,7 +17,7 @@ export default function OutsideLabUploads() {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const { data, error } = await supabase.from('outside_lab_documents').select('*').order('created_at', { ascending: false }).limit(50);
+    const { data, error } = await supabase.from('outside_lab_documents').select('id,patient_id,document_type,title,created_at,ai_analysis').order('created_at', { ascending: false }).limit(50);
     if (error) {
       toast({ title: 'Unable to load outside-lab documents', description: error.message, variant: 'destructive' });
       return;

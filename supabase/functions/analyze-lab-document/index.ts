@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const data = await aiRes.json();
     const analysis = String(data.choices?.[0]?.message?.content ?? '');
     const isUrgent = /^\s*URGENT:/i.test(analysis);
-    const { error: updateError } = await db.from('outside_lab_documents').update({ ai_analysis: analysis, ai_analyzed_at: new Date().toISOString() }).eq('id', documentId);
+    const { error: updateError } = await authClient.rpc('complete_outside_lab_ai_analysis', { _document_id: documentId, _analysis: analysis });
     if (updateError) throw updateError;
     const roles = ['practitioner', 'nurse', 'lab_technician'];
     const severity = isUrgent ? 'critical' : 'info';

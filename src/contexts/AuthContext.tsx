@@ -10,6 +10,7 @@ interface AppUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  roles: UserRole[];
   department?: string;
   specialization?: string;
   permissions: Permission[];
@@ -32,14 +33,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const knownPermissions = new Set(Object.values(permissionByHref) as Permission[]);
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
-  const [{ data: profile, error: profileError }, { data: roleRow, error: roleError }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', supabaseUser.id).maybeSingle(),
-    supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }).limit(1).maybeSingle(),
+  const [{ data: profile, error: profileError }, { data: roleRows, error: roleError }] = await Promise.all([
+    supabase.from('profiles').select('id,first_name,last_name,department,specialization').eq('id', supabaseUser.id).maybeSingle(),
+    supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }),
   ]);
+  const roles = (roleRows ?? []).map((row) => row.role as UserRole).filter(Boolean);
+  const resolvedRole = roles[0] ?? 'patient';
   if (profileError) console.warn('Unable to load user profile; continuing with auth identity.', profileError.message);
   if (roleError) console.warn('Unable to load user role; continuing with default role.', roleError.message);
 
-  const resolvedRole = (roleRow?.role as UserRole) ?? 'patient';
   const defaults = getDefaultPermissions(resolvedRole);
   let permissions = defaults;
 
@@ -64,6 +66,7 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
     firstName: profile?.first_name ?? '',
     lastName: profile?.last_name ?? '',
     role: resolvedRole,
+    roles: roles.length ? roles : ['patient'],
     department: profile?.department ?? undefined,
     specialization: profile?.specialization ?? undefined,
     permissions,
@@ -95,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) setUser(appUser);
       } catch (error) {
         console.error('Auth profile bootstrap failed; continuing with session.', error);
-        if (mounted) setUser({ id: nextSession.user.id, email: nextSession.user.email ?? '', firstName: '', lastName: '', role: 'patient', permissions: getDefaultPermissions('patient') });
+        if (mounted) setUser({ id: nextSession.user.id, email: nextSession.user.email ?? '', firstName: '', lastName: '', role: 'patient', roles: ['patient'], permissions: getDefaultPermissions('patient') });
       } finally {
         if (mounted) setLoading(false);
       }

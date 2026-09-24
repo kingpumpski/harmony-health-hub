@@ -106,16 +106,15 @@ export async function uploadPatientFile(patientId: string, file: File, documentT
     .upload(path, file, { contentType: file.type, upsert: false });
   if (uploadError) throw uploadError;
 
-  const { error: metadataError } = await supabase.from('patient_documents').insert({
-    patient_id: patientId,
-    document_type: documentType,
-    file_name: file.name,
-    storage_path: path,
-    mime_type: file.type,
-    file_size: file.size,
-    notes: 'Uploaded during patient registration.',
-    uploaded_by: authData.user.id,
-  } as any);
+  const { error: metadataError } = await supabase.rpc('upload_patient_document_metadata', {
+    _patient_id: patientId,
+    _document_type: documentType,
+    _file_name: file.name,
+    _storage_path: path,
+    _mime_type: file.type,
+    _file_size: file.size,
+    _notes: 'Uploaded during patient registration.',
+  });
 
   if (metadataError) {
     await supabase.storage.from('patient-documents').remove([path]);

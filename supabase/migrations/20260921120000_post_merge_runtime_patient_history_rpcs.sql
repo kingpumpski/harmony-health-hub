@@ -2,12 +2,10 @@
 CREATE OR REPLACE FUNCTION public.get_patient_appointments(_patient_id uuid, _limit integer DEFAULT 100)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
-DECLARE v_role text; v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
+DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- SELECT ur.role::text INTO v_role FROM public.user_roles ur WHERE ur.user_id=auth.uid() ORDER BY ur.created_at DESC LIMIT 1;
- IF v_role IS NULL THEN RAISE EXCEPTION 'Staff profile required'; END IF;
- IF v_role NOT IN ('admin','practitioner','nurse','midwife','specialist_nurse','front_desk') THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients p WHERE p.id=_patient_id AND p.status <> 'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.scheduled_at DESC) FROM (
   SELECT a.id,a.patient_id,a.scheduled_at,a.reason,a.status,a.department,a.attending_officer_id,a.treatment_status,a.treatment_notes
@@ -20,12 +18,10 @@ GRANT EXECUTE ON FUNCTION public.get_patient_appointments(uuid,integer) TO authe
 CREATE OR REPLACE FUNCTION public.get_patient_invoices(_patient_id uuid, _limit integer DEFAULT 100)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
-DECLARE v_role text; v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
+DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- SELECT ur.role::text INTO v_role FROM public.user_roles ur WHERE ur.user_id=auth.uid() ORDER BY ur.created_at DESC LIMIT 1;
- IF v_role IS NULL THEN RAISE EXCEPTION 'Staff profile required'; END IF;
- IF v_role NOT IN ('admin','accountant','front_desk','practitioner','nurse','midwife','specialist_nurse') THEN RAISE EXCEPTION 'Billing history access is not permitted'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Billing history access is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients p WHERE p.id=_patient_id AND p.status <> 'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC) FROM (
   SELECT i.id,i.patient_id,i.invoice_number,i.total_amount,i.status,i.created_at

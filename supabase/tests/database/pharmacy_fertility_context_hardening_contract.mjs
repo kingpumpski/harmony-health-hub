@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const s=fs.readFileSync('supabase/migrations/20260923140000_pharmacy_fertility_context_hardening.sql','utf8');
+for (const fn of ['prepare_pharmacy_dispensing','confirm_pharmacy_dispense','create_pharmacy_pos_sale','create_fertility_cycle_workflow']) assert(s.includes('CREATE OR REPLACE FUNCTION public.'+fn),fn+' override missing');
+assert(s.includes("COALESCE(status,'active')<>'inactive'"),'inactive patient guard missing');
+assert(s.includes("r.patient_id<>p.patient_id"),'prescription/plan patient binding missing');
+assert(s.includes("so.patient_id<>p.patient_id OR so.related_entity_id<>p.prescription_id"),'service-order patient/context binding missing');
+assert(s.includes("p.computed_quantity IS NOT NULL AND _quantity>p.computed_quantity"),'prescribed quantity guard missing');
+assert(s.includes("PERFORM pg_advisory_xact_lock(hashtextextended('fertility-cycle-number:'||_patient_id::text,0))"),'fertility cycle-number concurrency lock missing');
+assert((s.match(/REVOKE ALL ON FUNCTION/g)||[]).length >= 4,'execution revokes missing');
+assert(!s.includes('profiles.role')&&!s.includes('SELECT role INTO'),'legacy single-role lookup detected');
+console.log('pharmacy/fertility context hardening contract: PASS');

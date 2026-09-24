@@ -26,6 +26,11 @@ BEGIN
     RAISE EXCEPTION 'Appointment creation is not permitted';
   END IF;
 
+  IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
+    RAISE EXCEPTION 'Patient not found';
+  END IF;
+  IF _scheduled_at IS NULL THEN RAISE EXCEPTION 'Scheduled time is required'; END IF;
+
   SELECT id INTO v_existing FROM public.appointments WHERE id = _id;
   IF v_existing IS NOT NULL THEN
     RETURN jsonb_build_object('appointment_id', v_existing, 'already_recorded', true);

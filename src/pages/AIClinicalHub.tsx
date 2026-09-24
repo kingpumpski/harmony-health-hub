@@ -64,14 +64,12 @@ export default function AIClinicalHub() {
         generated_by: 'clinician_requested_session',
         context_generated_at: clinicalContext.generatedAt,
       };
-      const { data, error } = await supabase.from('ai_clinical_sessions' as never).insert({
-        patient_id: patientId,
-        specialist: selected,
-        status: 'draft',
-        input_snapshot: inputSnapshot,
-        provenance,
-        created_by: user.id,
-      } as never).select('id').single();
+      const { data, error } = await supabase.rpc('create_ai_clinical_session' as never, {
+        _patient_id: patientId,
+        _specialist: selected,
+        _input_snapshot: inputSnapshot,
+        _provenance: provenance,
+      } as never);
       if (error) throw new Error(error.message);
       const sessionId = (data as { id: string } | null)?.id ?? '';
       if (!sessionId) throw new Error('The AI session was created without an identifier');
@@ -93,22 +91,14 @@ export default function AIClinicalHub() {
       return;
     }
     setLoading(true);
-    const { error: eventError } = await supabase.rpc('record_ai_clinical_event' as never, {
+    const { error } = await supabase.rpc('request_ai_clinical_analysis' as never, {
       _session_id: activeSessionId,
-      _event_type: 'analysis_requested',
-      _metadata: { requested_at: new Date().toISOString(), specialist: selected },
     } as never);
-    if (!eventError) {
-      const { error } = await supabase.from('ai_clinical_sessions' as never).update({ status: 'analysis_requested' } as never).eq('id', activeSessionId);
-      if (error) {
-        setLoading(false);
-        toast({ title: 'Analysis request could not be recorded', description: error.message, variant: 'destructive' });
-        return;
-      }
+    if (!error) {
       toast({ title: 'Analysis request recorded', description: 'No model output is displayed until a configured AI provider returns a provenance-backed result.' });
       void load();
     } else {
-      toast({ title: 'Analysis request failed', description: eventError.message, variant: 'destructive' });
+      toast({ title: 'Analysis request failed', description: error.message, variant: 'destructive' });
     }
     setLoading(false);
   };

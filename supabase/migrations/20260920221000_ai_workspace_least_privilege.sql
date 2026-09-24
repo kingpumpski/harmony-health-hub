@@ -4,12 +4,11 @@ CREATE OR REPLACE FUNCTION public.get_ai_case_memory_for_diagnosis(_diagnosis te
 RETURNS TABLE(id uuid, diagnosis text, icd_code text, symptoms text, prescriptions jsonb, outcome text, outcome_notes text, age_group text, gender text, created_at timestamptz)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_role public.app_role; v_limit integer;
+DECLARE v_limit integer;
 BEGIN
-  SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
-  IF v_role IS NULL OR v_role NOT IN ('admin','practitioner','nurse','midwife','specialist_nurse','radiologist','pharmacist') THEN
-    RAISE EXCEPTION 'Not authorised';
-  END IF;
+  IF auth.uid() IS NULL OR NOT (
+    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist') OR public.has_role(auth.uid(),'pharmacist')
+  ) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _diagnosis IS NULL OR btrim(_diagnosis) = '' THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
   v_limit := LEAST(GREATEST(COALESCE(_limit,20),1),50);
   RETURN QUERY
@@ -23,14 +22,14 @@ CREATE OR REPLACE FUNCTION public.get_ai_report_requests(_patient_id uuid DEFAUL
 RETURNS TABLE(id uuid, patient_id uuid, report_type text, requested_by uuid, status text, content text, error text, created_at timestamptz, completed_at timestamptz)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_role public.app_role; v_limit integer; v_is_owner boolean;
+DECLARE v_limit integer; v_is_owner boolean; v_is_staff boolean;
 BEGIN
-  SELECT role INTO v_role FROM public.profiles WHERE id = auth.uid();
-  IF v_role IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   SELECT EXISTS(SELECT 1 FROM public.patients p WHERE p.id=_patient_id AND p.user_id=auth.uid()) INTO v_is_owner;
-  IF NOT (v_is_owner OR v_role IN ('admin','practitioner','nurse','midwife','specialist_nurse','radiologist')) THEN
-    RAISE EXCEPTION 'Not authorised';
-  END IF;
+  SELECT (
+    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist')
+  ) INTO v_is_staff;
+  IF NOT (v_is_owner OR v_is_staff) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.patients p WHERE p.id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   v_limit := LEAST(GREATEST(COALESCE(_limit,25),1),50);
