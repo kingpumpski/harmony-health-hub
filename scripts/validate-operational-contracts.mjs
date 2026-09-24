@@ -225,3 +225,10 @@ assert('facility configuration update locks the singleton row', inpatientTransfe
 assert('facility configuration UI uses protected RPC', settingsPage.includes("rpc('update_facility_configuration_workflow'") && !settingsPage.includes(".from('facility_configuration').update"), 'Settings must not bypass the protected configuration workflow');
 
 assert('patient lifecycle status is validated', inpatientTransferMigration.includes("COALESCE(_changes->>'status','') NOT IN ('active','inactive','discharged')"), 'patient demographic updates must not accept arbitrary lifecycle status values');
+
+
+assert('outside-lab AI completion is server-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.complete_outside_lab_ai_analysis('), 'outside-lab AI completion RPC missing');
+assert('outside-lab AI completion locks document state', inpatientTransferMigration.includes('FROM public.outside_lab_documents') && inpatientTransferMigration.includes('FOR UPDATE'), 'outside-lab AI completion must lock the document row');
+assert('outside-lab AI completion is authenticated-only', inpatientTransferMigration.includes('REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) FROM PUBLIC, anon') && inpatientTransferMigration.includes('GRANT EXECUTE ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) TO authenticated'), 'outside-lab AI completion grants are not restricted');
+assert('outside-lab Edge Function uses protected completion RPC', analyzeLabDocument.includes("authClient.rpc('complete_outside_lab_ai_analysis'"), 'outside-lab Edge Function still bypasses the completion RPC');
+assert('outside-lab Edge Function has no direct clinical document update', !analyzeLabDocument.includes(".from('outside_lab_documents').update("), 'outside-lab Edge Function still performs direct document UPDATE');
