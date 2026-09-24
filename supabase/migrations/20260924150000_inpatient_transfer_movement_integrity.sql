@@ -748,10 +748,16 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.ward_units WHERE id = _ward_id
+    SELECT 1 FROM public.ward_units WHERE id = _ward_id AND active = true
   ) THEN
-    RAISE EXCEPTION 'Ward not found';
+    RAISE EXCEPTION 'Active ward not found';
   END IF;
+
+  -- Serialize creation within a ward so two concurrent requests cannot both
+  -- pass the duplicate check before either insert commits.
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(_ward_id::text, 0)
+  );
 
   IF EXISTS (
     SELECT 1
