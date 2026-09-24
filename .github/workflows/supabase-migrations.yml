@@ -159,7 +159,7 @@ jobs:
       - name: Verify AI multi-role authorization contract
         run: node supabase/tests/database/ai_multi_role_authorization_contract.mjs
       - name: Verify operational workspace multi-role authorization contract
-        run: node supabase/tests/database/operational_workspace_multi_role_authorization_contract.mjs
+        run: node supabase/tests/database/operational_workspace_multi-role_authorization_contract.mjs
       - name: Verify patient order context hardening contract
         run: node supabase/tests/database/patient_order_context_hardening_contract.mjs
       - name: Verify clinical workflow context hardening contract
@@ -242,6 +242,7 @@ jobs:
         run: node supabase/tests/database/legacy_admission_concurrency_contract.mjs
       - name: Verify inpatient occupancy invariants contract
         run: node supabase/tests/database/inpatient_occupancy_invariants_contract.mjs
-
       - name: Verify inpatient bidirectional link integrity contract
         run: node supabase/tests/database/inpatient_bidirectional_link_integrity_contract.mjs
+      - name: Verify inpatient bed transfer workflow contract
+        run: node supabase/tests/database/inpatient_bed_transfer_workflow_contract.mjs
