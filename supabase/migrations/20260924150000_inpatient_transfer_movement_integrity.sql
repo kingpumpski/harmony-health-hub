@@ -713,3 +713,136 @@ $$;
 
 REVOKE ALL ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) TO authenticated;
+
+
+-- Harden bed creation and lifecycle transitions. Creation is a server boundary
+-- and must not create duplicate bed identities within a ward.
+CREATE OR REPLACE FUNCTION public.create_ward_bed(
+  _ward_id UUID,
+  _bed_number TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_id UUID;
+  v_bed_number TEXT := NULLIF(pg_catalog.btrim(_bed_number), '');
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Nursing role required';
+  END IF;
+
+  IF _ward_id IS NULL OR v_bed_number IS NULL THEN
+    RAISE EXCEPTION 'Ward and bed number are required';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.ward_units WHERE id = _ward_id
+  ) THEN
+    RAISE EXCEPTION 'Ward not found';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.ward_beds
+    WHERE ward_id = _ward_id
+      AND lower(pg_catalog.btrim(bed_number)) = lower(v_bed_number)
+  ) THEN
+    RAISE EXCEPTION 'Bed number already exists in this ward';
+  END IF;
+
+  INSERT INTO public.ward_beds(ward_id, bed_number, status)
+  VALUES (_ward_id, v_bed_number, 'available')
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_ward_bed(UUID,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_ward_bed(UUID,TEXT) TO authenticated;
+
+-- A bed may only become available after a non-occupied lifecycle state.
+-- Patient ownership always remains under the movement/discharge workflows.
+CREATE OR REPLACE FUNCTION public.set_ward_bed_status(
+  _bed_id UUID,
+  _status TEXT,
+  _notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_bed public.ward_beds%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Nursing role required';
+  END IF;
+
+  IF _status NOT IN ('available','cleaning','maintenance','blocked','reserved') THEN
+    RAISE EXCEPTION 'Unsupported bed status';
+  END IF;
+
+  SELECT *
+    INTO v_bed
+  FROM public.ward_beds
+  WHERE id = _bed_id
+  FOR UPDATE;
+
+  IF v_bed.id IS NULL THEN
+    RAISE EXCEPTION 'Bed not found';
+  END IF;
+
+  IF v_bed.status = 'occupied'
+     OR v_bed.patient_id IS NOT NULL
+     OR v_bed.admission_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Occupied or patient-linked beds must use the inpatient movement or discharge workflow';
+  END IF;
+
+  IF _status = 'available'
+     AND v_bed.status NOT IN ('cleaning','maintenance','blocked','reserved','available') THEN
+    RAISE EXCEPTION 'Bed cannot transition to available from its current state';
+  END IF;
+
+  UPDATE public.ward_beds
+  SET status = _status,
+      notes = COALESCE(NULLIF(pg_catalog.btrim(_notes), ''), notes),
+      updated_at = now(),
+      released_at = CASE
+        WHEN _status = 'available' THEN COALESCE(released_at, now())
+        ELSE released_at
+      END
+  WHERE id = v_bed.id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'bed_id', v_bed.id,
+    'previous_status', v_bed.status,
+    'status', _status
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) TO authenticated;
