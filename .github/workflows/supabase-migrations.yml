@@ -214,3 +214,5 @@ jobs:
         run: node supabase/tests/database/invoice_payment_state_boundary_contract.mjs
       - name: Verify service order financial context contract
         run: node supabase/tests/database/service_order_financial_context_contract.mjs
+      - name: Verify invoice item service order linkage contract
+        run: node supabase/tests/database/invoice_item_service_order_linkage_contract.mjs
