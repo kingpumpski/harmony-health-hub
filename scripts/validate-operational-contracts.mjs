@@ -28,6 +28,7 @@ const migrationReconciliation = read('supabase/migrations/20260917130000_legacy_
 const migrationReconciliationSql = migrationReconciliation.replace(/--[^\n]*(?:\n|$)/g, '');
 const triage = read('src/pages/Triage.tsx');
 const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const careTransitions = read('src/pages/CareTransitions.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
 assert('offline replay restores the persisted idempotency key', offline.includes("[IDEMPOTENCY_HEADER]: item.idempotencyKey"), 'replay must not generate a new key for an existing mutation');
@@ -90,6 +91,8 @@ assert('inpatient transfer requires an available destination bed', inpatientTran
 assert('inpatient transfer releases the source before occupying the destination', inpatientTransferMigration.includes("status = 'available'") && inpatientTransferMigration.includes("status = 'occupied'") && inpatientTransferMigration.includes('source_bed_id') && inpatientTransferMigration.includes('destination_bed_id'), 'movement must atomically reconcile both canonical bed states');
 assert('admission ward and bed projections stay synchronized after movement', inpatientTransferMigration.includes('UPDATE public.admissions') && inpatientTransferMigration.includes('ward =') && inpatientTransferMigration.includes('bed = v_destination.bed_number'), 'legacy admission location fields must follow the canonical ward-bed assignment');
 assert('bed movement creates a completed care-transition record and audit event', inpatientTransferMigration.includes("INSERT INTO public.care_transitions") && inpatientTransferMigration.includes("'completed'") && inpatientTransferMigration.includes("record_system_audit"), 'a completed physical movement must remain visible in continuity and audit history');
+assert('Care Transitions uses the canonical movement RPC for transfers', careTransitions.includes("transfer_patient_ward_bed_workflow") && careTransitions.includes("_destination_bed_id:destinationBedId") && careTransitions.includes("_admission_id:activeAdmission.id"), 'transfer UI must not create a generic transition record without changing canonical bed state');
+assert('Care Transitions derives the current bed and admission from protected workspaces', careTransitions.includes("get_admission_workspace") && careTransitions.includes("get_operational_workspace") && careTransitions.includes("sourceBed") && careTransitions.includes("activeAdmission"), 'movement UI must use server-authorized admission and ward-bed context');
 
 console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
 if (failures.length) {
