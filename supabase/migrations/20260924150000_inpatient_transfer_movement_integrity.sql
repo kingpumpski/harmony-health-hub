@@ -1477,3 +1477,77 @@ REVOKE ALL ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,
 GRANT EXECUTE ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,TEXT) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Procedural clearance is a clinical mutation boundary. The UI may read
+-- assessments, but creation must pass through a server-authorized workflow.
+REVOKE INSERT, UPDATE, DELETE ON public.anesthetic_assessments FROM authenticated, anon;
+GRANT SELECT ON public.anesthetic_assessments TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.create_anesthetic_assessment(
+  _patient_id UUID,
+  _asa_class TEXT DEFAULT 'I',
+  _airway_assessment TEXT DEFAULT NULL,
+  _cardiovascular TEXT DEFAULT NULL,
+  _respiratory TEXT DEFAULT NULL,
+  _allergies TEXT DEFAULT NULL,
+  _medications TEXT DEFAULT NULL,
+  _fasting_status TEXT DEFAULT NULL,
+  _conclusions TEXT DEFAULT NULL,
+  _cleared_for_procedure BOOLEAN DEFAULT FALSE
+)
+RETURNS public.anesthetic_assessments
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  result public.anesthetic_assessments;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.is_clinical_staff(uid)
+    OR public.has_role(uid,'specialist_nurse')
+    OR public.has_role(uid,'admin')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to create anesthetic assessments';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
+    RAISE EXCEPTION 'Patient not found';
+  END IF;
+
+  IF NULLIF(pg_catalog.btrim(_asa_class), '') IS NULL THEN
+    RAISE EXCEPTION 'ASA class is required';
+  END IF;
+
+  IF pg_catalog.btrim(_asa_class) NOT IN ('I','II','III','IV','V','VI') THEN
+    RAISE EXCEPTION 'Invalid ASA class';
+  END IF;
+
+  INSERT INTO public.anesthetic_assessments (
+    patient_id, asa_class, airway_assessment, cardiovascular, respiratory,
+    allergies, medications, fasting_status, conclusions,
+    cleared_for_procedure, cleared_by, assessed_by, status
+  ) VALUES (
+    _patient_id, pg_catalog.btrim(_asa_class),
+    NULLIF(pg_catalog.btrim(_airway_assessment), ''),
+    NULLIF(pg_catalog.btrim(_cardiovascular), ''),
+    NULLIF(pg_catalog.btrim(_respiratory), ''),
+    NULLIF(pg_catalog.btrim(_allergies), ''),
+    NULLIF(pg_catalog.btrim(_medications), ''),
+    NULLIF(pg_catalog.btrim(_fasting_status), ''),
+    NULLIF(pg_catalog.btrim(_conclusions), ''),
+    COALESCE(_cleared_for_procedure, FALSE),
+    CASE WHEN COALESCE(_cleared_for_procedure, FALSE) THEN uid ELSE NULL END,
+    uid,
+    'completed'
+  ) RETURNING * INTO result;
+
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) TO authenticated;
