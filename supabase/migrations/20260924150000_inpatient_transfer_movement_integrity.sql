@@ -340,3 +340,76 @@ $$;
 
 REVOKE ALL ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) TO authenticated;
+
+
+-- Prevent the legacy release entry point from orphaning an active admission.
+-- Active admitted patients must move through the canonical placement/transfer
+-- workflow or the admission/discharge workflow that owns the bed lifecycle.
+CREATE OR REPLACE FUNCTION public.release_ward_bed(
+  _bed_id UUID,
+  _notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_bed public.ward_beds%ROWTYPE;
+  v_admission public.admissions%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Nursing role required';
+  END IF;
+
+  SELECT *
+    INTO v_bed
+  FROM public.ward_beds
+  WHERE id = _bed_id
+  FOR UPDATE;
+
+  IF v_bed.id IS NULL OR v_bed.status <> 'occupied' THEN
+    RAISE EXCEPTION 'Occupied bed not found';
+  END IF;
+
+  IF v_bed.admission_id IS NOT NULL THEN
+    SELECT *
+      INTO v_admission
+    FROM public.admissions
+    WHERE id = v_bed.admission_id
+    FOR UPDATE;
+
+    IF v_admission.id IS NOT NULL AND v_admission.status = 'admitted' THEN
+      RAISE EXCEPTION 'Active admitted patients must use the inpatient movement or discharge workflow';
+    END IF;
+  END IF;
+
+  UPDATE public.ward_beds
+  SET patient_id = NULL,
+      admission_id = NULL,
+      status = 'cleaning',
+      released_at = now(),
+      notes = COALESCE(NULLIF(pg_catalog.btrim(_notes), ''), notes),
+      updated_at = now()
+  WHERE id = v_bed.id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'bed_id', v_bed.id,
+    'status', 'cleaning',
+    'released_patient_id', v_bed.patient_id,
+    'released_admission_id', v_bed.admission_id
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.release_ward_bed(UUID,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.release_ward_bed(UUID,TEXT) TO authenticated;
