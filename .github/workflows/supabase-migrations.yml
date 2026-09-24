@@ -240,3 +240,5 @@ jobs:
         run: node supabase/tests/database/admit_encounter_admission_consistency_contract.mjs
       - name: Verify legacy admission concurrency contract
         run: node supabase/tests/database/legacy_admission_concurrency_contract.mjs
+      - name: Verify inpatient occupancy invariants contract
+        run: node supabase/tests/database/inpatient_occupancy_invariants_contract.mjs
