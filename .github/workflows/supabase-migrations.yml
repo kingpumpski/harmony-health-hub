@@ -204,3 +204,5 @@ jobs:
         run: node supabase/tests/database/insurance_case_mutation_authority_contract.mjs
       - name: Verify service-order patient linkage contract
         run: node supabase/tests/database/service_order_patient_linkage_contract.mjs
+      - name: Verify lab-result patient linkage contract
+        run: node supabase/tests/database/lab_result_patient_linkage_contract.mjs
