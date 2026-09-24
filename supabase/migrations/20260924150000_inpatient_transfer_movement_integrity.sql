@@ -1708,3 +1708,51 @@ GRANT EXECUTE ON FUNCTION public.create_ai_report_request(uuid,text) TO authenti
 REVOKE ALL ON FUNCTION public.complete_ai_report_request(uuid,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.complete_ai_report_request(uuid,text,text) TO authenticated;
 
+-- Patient document metadata is a clinical record boundary. Storage upload remains client-facing,
+-- while the database metadata row is created only through an actor-bound workflow.
+CREATE OR REPLACE FUNCTION public.upload_patient_document_metadata(
+  _patient_id uuid,
+  _document_type text,
+  _file_name text,
+  _storage_path text,
+  _mime_type text DEFAULT NULL,
+  _file_size bigint DEFAULT NULL,
+  _notes text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE uid uuid := auth.uid(); v_id uuid; v_type text := NULLIF(btrim(COALESCE(_document_type,'')), ''); v_name text := NULLIF(btrim(COALESCE(_file_name,'')), ''); v_path text := NULLIF(btrim(COALESCE(_storage_path,'')), '');
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
+  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+  IF v_type IS NULL OR v_name IS NULL OR v_path IS NULL THEN RAISE EXCEPTION 'Document type, file name and storage path are required'; END IF;
+  IF position(_patient_id::text || '/' in v_path) <> 1 THEN RAISE EXCEPTION 'Storage path must be scoped to the patient'; END IF;
+  IF _file_size IS NULL OR _file_size <= 0 OR _file_size > 10485760 THEN RAISE EXCEPTION 'Invalid document size'; END IF;
+  INSERT INTO public.patient_documents(patient_id,document_type,file_name,storage_path,mime_type,file_size,notes,uploaded_by)
+  VALUES (_patient_id,v_type,v_name,v_path,NULLIF(btrim(COALESCE(_mime_type,'')),''),_file_size,NULLIF(btrim(COALESCE(_notes,'')),''),uid)
+  RETURNING id INTO v_id;
+  RETURN jsonb_build_object('document_id',v_id,'patient_id',_patient_id,'storage_path',v_path);
+END; $$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.patient_documents FROM authenticated, anon;
+GRANT SELECT ON public.patient_documents TO authenticated;
+REVOKE ALL ON FUNCTION public.upload_patient_document_metadata(uuid,text,text,text,text,bigint,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.upload_patient_document_metadata(uuid,text,text,text,text,bigint,text) TO authenticated;
+
+-- Keep the legacy patient-hub entry point server-authoritative and compatible.
+CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id uuid, _document_type text, _file_url text, _notes text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+DECLARE uid uuid := auth.uid(); v_id uuid;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+  INSERT INTO public.patient_documents(patient_id,document_type,file_url,notes,uploaded_by) VALUES (_patient_id,_document_type,_file_url,_notes,uid) RETURNING id INTO v_id;
+  RETURN jsonb_build_object('document_id',v_id);
+END; $$;
+REVOKE ALL ON FUNCTION public.create_patient_document(uuid,text,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_patient_document(uuid,text,text,text) TO authenticated;
+
