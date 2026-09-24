@@ -29,6 +29,7 @@ const migrationReconciliationSql = migrationReconciliation.replace(/--[^\n]*(?:\
 const triage = read('src/pages/Triage.tsx');
 const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
 const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
+const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
@@ -157,3 +158,8 @@ assert('anesthetic assessment direct client DML is revoked', inpatientTransferMi
 assert('anesthetic assessment creation is server-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN)') && inpatientTransferMigration.includes('SET search_path TO pg_catalog, public') && inpatientTransferMigration.includes('Not authorized to create anesthetic assessments'), 'procedural assessment creation must remain behind an authenticated clinical workflow');
 assert('anesthetic assessment clearance is actor-bound', inpatientTransferMigration.includes("CASE WHEN COALESCE(_cleared_for_procedure, FALSE) THEN uid ELSE NULL END") && inpatientTransferMigration.includes('assessed_by'), 'procedural clearance must be attributed to the authenticated clinician');
 assert('anesthetic assessment UI uses the protected RPC', anestheticAssessmentPage.includes("rpc('create_anesthetic_assessment'"), 'the assessment UI must not bypass the server-authorized mutation workflow');
+
+assert('vital alert direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.vital_alerts FROM authenticated, anon'), 'vital alert state must not be directly mutable through the Data API');
+assert('vital alert acknowledgement is server-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.acknowledge_vital_alert(UUID)') && inpatientTransferMigration.includes('Not authorized to acknowledge vital alerts') && inpatientTransferMigration.includes('acknowledged_by = uid'), 'alert acknowledgement must be attributed to the authenticated clinical actor');
+assert('vital alert acknowledgement is idempotent', inpatientTransferMigration.includes('AND acknowledged_at IS NULL') && inpatientTransferMigration.includes('COALESCE(acknowledged_at'), 'repeated acknowledgement must not replace the original acknowledgement timestamp');
+assert('critical alert UI uses the protected acknowledgement RPC', criticalAlertOverlay.includes("rpc('acknowledge_vital_alert'"), 'alert dismissal must use the server-authorized acknowledgement workflow');
