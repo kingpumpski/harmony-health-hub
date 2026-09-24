@@ -4,7 +4,8 @@
 CREATE OR REPLACE FUNCTION public.enforce_inpatient_link_consistency()
 RETURNS trigger
 LANGUAGE plpgsql
-SET search_path TO 'public'
+SECURITY DEFINER
+SET search_path TO 'pg_catalog, public'
 AS $function$
 DECLARE
   v_patient_id uuid;
