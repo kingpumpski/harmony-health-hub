@@ -5,6 +5,7 @@ import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, RefreshC
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'stg_diagnoses' | 'service_tariffs' | 'legacy_clinical_records';
 type Row = Record<string, string | number | boolean | null>;
@@ -116,7 +117,7 @@ export default function DataImport() {
 
       if (entity === 'stg_diagnoses') {
         const { data, error } = await supabase.rpc('import_stg_diagnoses' as never, { _standard_code: 'GH-STG', _source_version: sourceVersion || null, _rows: validRows.map((row) => ({ ...row, synonyms: row.synonyms ? String(row.synonyms).split(/[|,;]/).map((v) => v.trim()).filter(Boolean) : [] })) } as never);
-        if (error) throw error; inserted = Number(data ?? 0);
+        if (error) throw error; inserted = Number(data ?? 0); notifyMasterDataChanged('tariffs');
       } else if (entity === 'service_tariffs') {
         const { data, error } = await supabase.rpc('import_service_tariffs' as never, { _source_standard: sourceSystem || 'Facility tariff', _rows: validRows } as never);
         if (error) throw error; inserted = Number(data ?? 0);
