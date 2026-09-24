@@ -35,15 +35,15 @@ export async function queueOfflinePatientRegistration(
   }
 
   const queued = await enqueueOfflineMutation({
-    url: `${SUPABASE_URL}/rest/v1/patients?on_conflict=id`,
+    url: `${SUPABASE_URL}/rest/v1/rpc/register_patient_workflow`,
     method: 'POST',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${data.session.access_token}`,
       'content-type': 'application/json',
-      prefer: 'resolution=ignore-duplicates,return=minimal',
+      prefer: 'return=minimal',
     },
-    body: JSON.stringify(stableRow),
+    body: JSON.stringify({ _patient: stableRow }),
   });
 
   await upsertOfflineReadModel({

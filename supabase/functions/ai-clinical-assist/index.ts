@@ -94,9 +94,14 @@ Deno.serve(async (req) => {
     if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
 
     if (body.mode === 'report') {
-      requirePatientContextRole();
       requirePatientId();
-      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId });
+      const { data: ownerPatient, error: ownerPatientError } = await supabase.from('patients').select('id').eq('id', body.patientId).eq('user_id', callerId).maybeSingle();
+      if (ownerPatientError) throw ownerPatientError;
+      const isOwner = Boolean(ownerPatient);
+      const isClinical = hasAnyRole(aiClinicalRoles);
+      if (!isOwner && !isClinical) throw new Error('Not authorised to generate this report');
+      const contextRpc = isClinical ? 'get_ai_clinical_context' : 'get_patient_hub_clinical_snapshot';
+      const { data: scopedContext, error: contextError } = await supabase.rpc(contextRpc, { _patient_id: body.patientId });
       if (contextError) throw contextError;
       if (!scopedContext) throw new Error('Clinical context unavailable');
 

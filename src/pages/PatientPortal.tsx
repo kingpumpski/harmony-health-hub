@@ -38,21 +38,24 @@ export default function PatientPortal() {
     if (!patient) return;
     setRequesting(true);
     try {
-      const requestId = crypto.randomUUID();
-      const { error: insErr } = await supabase
-        .from('ai_report_requests')
-        .insert({ id: requestId, patient_id: patient.id, requested_by: user?.id, report_type: 'medical_summary', status: 'processing' });
-      if (insErr) throw insErr;
+      const { data: request, error: requestError } = await supabase.rpc('create_ai_report_request', {
+        _patient_id: patient.id,
+        _report_type: 'medical_summary',
+      });
+      if (requestError || !request?.id) throw requestError ?? new Error('Unable to create report request');
+      const requestId = request.id;
 
       const { data, error } = await supabase.functions.invoke('ai-clinical-assist', {
         body: { mode: 'report', patientId: patient.id },
       });
       if (error || data?.error) throw new Error(data?.error ?? error?.message ?? 'AI failed');
 
-      const { error: updateError } = await supabase.from('ai_report_requests').update({
-        status: 'completed', content: data.content, completed_at: new Date().toISOString(),
-      }).eq('id', requestId);
-      if (updateError) throw updateError;
+      const { error: completionError } = await supabase.rpc('complete_ai_report_request', {
+        _request_id: requestId,
+        _content: data.content ?? null,
+        _error: data.content ? null : (data.error ?? 'AI report returned no content'),
+      });
+      if (completionError) throw completionError;
 
       playSuccessSound();
       toast({ title: '✓ Report ready', description: 'Your AI medical report is available below.' });

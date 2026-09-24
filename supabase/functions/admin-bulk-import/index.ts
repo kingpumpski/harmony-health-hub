@@ -18,6 +18,9 @@ Deno.serve(async (req) => {
     const service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const token = auth.replace(/^Bearer\s+/i, '');
     const caller = await requireAdmin(service, token);
+    const authClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
 
     const body = await req.json();
     const action = String(body?.action ?? '');
@@ -37,17 +40,32 @@ Deno.serve(async (req) => {
           if (entity === 'patients') {
             if (!String(row.first_name ?? '').trim() || !String(row.last_name ?? '').trim()) throw new Error('first_name and last_name are required');
             if (row.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(row.email))) throw new Error('invalid email');
-            await service.from('patients').insert({ ...row, created_by: caller.id }).throwOnError();
+            await authClient.rpc('register_patient_workflow', {
+              _patient: { ...row, created_by: undefined },
+            }).then(({ error }) => { if (error) throw error; });
           } else if (entity === 'pharmacy_inventory') {
             if (!String(row.drug_name ?? '').trim()) throw new Error('drug_name is required');
-            await service.from('pharmacy_inventory').insert({
-              drug_name: String(row.drug_name), generic_name: row.generic_name ?? null, strength: row.strength ?? null,
-              form: row.form ?? null, stock_quantity: Number(row.stock_quantity ?? 0), reorder_level: Number(row.reorder_level ?? 20),
-              unit_price: Number(row.unit_price ?? 0), supplier: row.supplier ?? null, expiry_date: row.expiry_date ?? null,
-            }).throwOnError();
+            await authClient.rpc('create_pharmacy_inventory_item', {
+              _drug_name: String(row.drug_name),
+              _brand_name: row.brand_name ?? null,
+              _generic_name: row.generic_name ?? null,
+              _strength: row.strength ?? null,
+              _form: row.form ?? null,
+              _supplier: row.supplier ?? null,
+              _batch_number: row.batch_number ?? null,
+              _expiry_date: row.expiry_date ?? null,
+              _stock_quantity: Number(row.stock_quantity ?? 0),
+              _reorder_level: Number(row.reorder_level ?? 20),
+              _unit_price: Number(row.unit_price ?? 0),
+            }).then(({ error }) => { if (error) throw error; });
           } else {
             if (!String(row.code ?? '').trim() || !String(row.description ?? '').trim()) throw new Error('code and description are required');
-            await service.from('icd_codes').insert({ code: String(row.code), description: String(row.description), version: row.version ?? 'ICD-10', category: row.category ?? null }).throwOnError();
+            await authClient.rpc('create_icd_code_workflow', {
+              _code: String(row.code),
+              _description: String(row.description),
+              _version: row.version ?? 'ICD-10',
+              _category: row.category ?? null,
+            }).then(({ error }) => { if (error) throw error; });
           }
           inserted++;
         } catch (e) {
