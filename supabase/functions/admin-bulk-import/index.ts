@@ -60,7 +60,12 @@ Deno.serve(async (req) => {
             }).then(({ error }) => { if (error) throw error; });
           } else {
             if (!String(row.code ?? '').trim() || !String(row.description ?? '').trim()) throw new Error('code and description are required');
-            await service.from('icd_codes').insert({ code: String(row.code), description: String(row.description), version: row.version ?? 'ICD-10', category: row.category ?? null }).throwOnError();
+            await authClient.rpc('create_icd_code_workflow', {
+              _code: String(row.code),
+              _description: String(row.description),
+              _version: row.version ?? 'ICD-10',
+              _category: row.category ?? null,
+            }).then(({ error }) => { if (error) throw error; });
           }
           inserted++;
         } catch (e) {
