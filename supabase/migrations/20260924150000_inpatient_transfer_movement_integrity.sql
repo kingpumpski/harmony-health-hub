@@ -1998,3 +1998,38 @@ REVOKE ALL ON FUNCTION public.create_meal_plan_workflow(uuid,text,text) FROM PUB
 GRANT EXECUTE ON FUNCTION public.create_meal_plan_workflow(uuid,text,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.mark_meal_order_delivered(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mark_meal_order_delivered(uuid) TO authenticated;
+
+
+-- Patient registration and demographic maintenance are authoritative clinical-record mutations.
+CREATE OR REPLACE FUNCTION public.register_patient_workflow(_patient jsonb)
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+DECLARE uid uuid := auth.uid(); v_patient public.patients; v_id uuid; v_code text;
+BEGIN
+ IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+ IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'front_desk') OR public.has_role(uid,'nurse')) THEN RAISE EXCEPTION 'Patient registration is not permitted'; END IF;
+ IF _patient IS NULL OR jsonb_typeof(_patient) <> 'object' THEN RAISE EXCEPTION 'Patient payload is required'; END IF;
+ v_id := NULLIF(_patient->>'id','')::uuid; v_code := NULLIF(pg_catalog.btrim(_patient->>'patient_code'),'');
+ IF NULLIF(pg_catalog.btrim(_patient->>'first_name'),'') IS NULL OR NULLIF(pg_catalog.btrim(_patient->>'last_name'),'') IS NULL THEN RAISE EXCEPTION 'First name and last name are required'; END IF;
+ INSERT INTO public.patients(id,patient_code,membership_type,membership_expires_at,registration_reason,first_name,last_name,date_of_birth,gender,email,phone,address,city,ghana_card_number,blood_group,genotype,allergies,chronic_conditions,insurance_provider,insurance_number,insurance_group_number,insurance_expiry,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,created_by)
+ VALUES(COALESCE(v_id,gen_random_uuid()),v_code,COALESCE(NULLIF(_patient->>'membership_type',''),'permanent'),NULLIF(_patient->>'membership_expires_at','')::timestamptz,NULLIF(_patient->>'registration_reason',''),pg_catalog.btrim(_patient->>'first_name'),pg_catalog.btrim(_patient->>'last_name'),NULLIF(_patient->>'date_of_birth','')::date,NULLIF(_patient->>'gender',''),NULLIF(_patient->>'email',''),NULLIF(_patient->>'phone',''),NULLIF(_patient->>'address',''),NULLIF(_patient->>'city',''),NULLIF(_patient->>'ghana_card_number',''),NULLIF(_patient->>'blood_group',''),NULLIF(_patient->>'genotype',''),NULLIF(_patient->>'allergies',''),NULLIF(_patient->>'chronic_conditions',''),NULLIF(_patient->>'insurance_provider',''),NULLIF(_patient->>'insurance_number',''),NULLIF(_patient->>'insurance_group_number',''),NULLIF(_patient->>'insurance_expiry','')::date,NULLIF(_patient->>'emergency_contact_name',''),NULLIF(_patient->>'emergency_contact_phone',''),NULLIF(_patient->>'emergency_contact_relation',''),uid)
+ ON CONFLICT (id) DO NOTHING RETURNING * INTO v_patient;
+ IF v_patient.id IS NULL THEN SELECT * INTO v_patient FROM public.patients WHERE id=v_id; IF v_patient.id IS NULL THEN RAISE EXCEPTION 'Patient registration could not be completed'; END IF; END IF;
+ RETURN v_patient;
+END; $$;
+CREATE OR REPLACE FUNCTION public.update_patient_workflow(_patient_id uuid,_changes jsonb)
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+DECLARE uid uuid := auth.uid(); v_patient public.patients;
+BEGIN
+ IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+ IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'front_desk') OR public.has_role(uid,'nurse')) THEN RAISE EXCEPTION 'Patient update is not permitted'; END IF;
+ IF _patient_id IS NULL OR _changes IS NULL OR jsonb_typeof(_changes) <> 'object' THEN RAISE EXCEPTION 'Patient and changes are required'; END IF;
+ SELECT * INTO v_patient FROM public.patients WHERE id=_patient_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found'; END IF;
+ UPDATE public.patients SET patient_code=CASE WHEN _changes ? 'patient_code' THEN NULLIF(pg_catalog.btrim(_changes->>'patient_code'),'') ELSE patient_code END, first_name=CASE WHEN _changes ? 'first_name' THEN NULLIF(pg_catalog.btrim(_changes->>'first_name'),'') ELSE first_name END, last_name=CASE WHEN _changes ? 'last_name' THEN NULLIF(pg_catalog.btrim(_changes->>'last_name'),'') ELSE last_name END, date_of_birth=CASE WHEN _changes ? 'date_of_birth' THEN NULLIF(_changes->>'date_of_birth','')::date ELSE date_of_birth END, gender=CASE WHEN _changes ? 'gender' THEN NULLIF(_changes->>'gender','') ELSE gender END, email=CASE WHEN _changes ? 'email' THEN NULLIF(_changes->>'email','') ELSE email END, phone=CASE WHEN _changes ? 'phone' THEN NULLIF(_changes->>'phone','') ELSE phone END, address=CASE WHEN _changes ? 'address' THEN NULLIF(_changes->>'address','') ELSE address END, ghana_card_number=CASE WHEN _changes ? 'ghana_card_number' THEN NULLIF(_changes->>'ghana_card_number','') ELSE ghana_card_number END, insurance_provider=CASE WHEN _changes ? 'insurance_provider' THEN NULLIF(_changes->>'insurance_provider','') ELSE insurance_provider END, insurance_number=CASE WHEN _changes ? 'insurance_number' THEN NULLIF(_changes->>'insurance_number','') ELSE insurance_number END, emergency_contact_name=CASE WHEN _changes ? 'emergency_contact_name' THEN NULLIF(_changes->>'emergency_contact_name','') ELSE emergency_contact_name END, emergency_contact_phone=CASE WHEN _changes ? 'emergency_contact_phone' THEN NULLIF(_changes->>'emergency_contact_phone','') ELSE emergency_contact_phone END, emergency_contact_relation=CASE WHEN _changes ? 'emergency_contact_relation' THEN NULLIF(_changes->>'emergency_contact_relation','') ELSE emergency_contact_relation END, blood_group=CASE WHEN _changes ? 'blood_group' THEN NULLIF(_changes->>'blood_group','') ELSE blood_group END, allergies=CASE WHEN _changes ? 'allergies' THEN NULLIF(_changes->>'allergies','') ELSE allergies END, chronic_conditions=CASE WHEN _changes ? 'chronic_conditions' THEN NULLIF(_changes->>'chronic_conditions','') ELSE chronic_conditions END, status=CASE WHEN _changes ? 'status' THEN NULLIF(_changes->>'status','') ELSE status END, updated_at=now() WHERE id=_patient_id RETURNING * INTO v_patient;
+ RETURN v_patient;
+END; $$;
+REVOKE INSERT, UPDATE, DELETE ON public.patients FROM authenticated, anon;
+GRANT SELECT ON public.patients TO authenticated;
+REVOKE ALL ON FUNCTION public.register_patient_workflow(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.register_patient_workflow(jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.update_patient_workflow(uuid,jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_patient_workflow(uuid,jsonb) TO authenticated;
