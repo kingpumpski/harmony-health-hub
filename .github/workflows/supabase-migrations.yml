@@ -222,3 +222,5 @@ jobs:
         run: node supabase/tests/database/release_service_order_financial_linkage_contract.mjs
       - name: Verify bill materialization patient-context contract
         run: node supabase/tests/database/bill_materialization_patient_context_contract.mjs
+      - name: Verify admission ward-bed compatibility contract
+        run: node supabase/tests/database/admission_ward_bed_compatibility_contract.mjs
