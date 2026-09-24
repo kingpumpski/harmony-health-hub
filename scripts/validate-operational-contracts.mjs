@@ -132,3 +132,7 @@ assert('encounter admission has no direct admission table mutation', !encounters
 const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
 assert('admissions direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.admissions FROM authenticated, anon'), 'admission state must not be directly mutable through the Data API');
 assert('admissions read grant remains explicit', inpatientTransferMigration.includes('GRANT SELECT ON public.admissions TO authenticated'), 'clinical admission reads must remain explicitly granted after the mutation boundary is closed');
+
+assert('encounters direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.encounters FROM authenticated, anon'), 'encounter state and the encounter-to-admission relationship must not be directly mutable through the Data API');
+assert('encounters read grant remains explicit', inpatientTransferMigration.includes('GRANT SELECT ON public.encounters TO authenticated'), 'clinical encounter reads must remain explicitly granted after the mutation boundary is closed');
+
