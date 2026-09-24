@@ -117,10 +117,10 @@ export default function DataImport() {
 
       if (entity === 'stg_diagnoses') {
         const { data, error } = await supabase.rpc('import_stg_diagnoses' as never, { _standard_code: 'GH-STG', _source_version: sourceVersion || null, _rows: validRows.map((row) => ({ ...row, synonyms: row.synonyms ? String(row.synonyms).split(/[|,;]/).map((v) => v.trim()).filter(Boolean) : [] })) } as never);
-        if (error) throw error; inserted = Number(data ?? 0); notifyMasterDataChanged('tariffs');
+        if (error) throw error; inserted = Number(data ?? 0);
       } else if (entity === 'service_tariffs') {
         const { data, error } = await supabase.rpc('import_service_tariffs' as never, { _source_standard: sourceSystem || 'Facility tariff', _rows: validRows } as never);
-        if (error) throw error; inserted = Number(data ?? 0);
+        if (error) throw error; inserted = Number(data ?? 0); notifyMasterDataChanged('tariffs');
       } else if (entity === 'legacy_clinical_records') {
         const { data: batch, error: batchError } = await supabase.rpc('create_data_migration_batch' as never, { _entity_type: 'legacy_clinical_records', _source_system: sourceSystem, _source_version: sourceVersion || null, _file_name: fileName || null, _source_format: fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx', _total_rows: validRows.length } as never);
         if (batchError) throw batchError;
