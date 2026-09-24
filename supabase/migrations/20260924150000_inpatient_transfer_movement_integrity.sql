@@ -1838,3 +1838,58 @@ REVOKE INSERT, UPDATE, DELETE ON public.inpatient_reviews FROM authenticated, an
 GRANT SELECT ON public.inpatient_reviews TO authenticated;
 REVOKE ALL ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) TO authenticated;
+
+
+-- Patient-document Storage remains an online byte-upload surface, but object names must
+-- be bound to the same patient scope used by the metadata workflow.
+DROP POLICY IF EXISTS "clinical staff upload patient documents" ON storage.objects;
+DROP POLICY IF EXISTS "patient documents storage upload" ON storage.objects;
+CREATE POLICY "patient documents storage upload"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'patient-documents'
+    AND split_part(name, '/', 1) <> ''
+    AND EXISTS (
+      SELECT 1
+      FROM public.patients p
+      WHERE p.id::text = split_part(storage.objects.name, '/', 1)
+        AND public.can_edit_patient_record(auth.uid())
+    )
+  );
+
+DROP POLICY IF EXISTS "clinical staff update patient documents storage" ON storage.objects;
+DROP POLICY IF EXISTS "patient documents storage update" ON storage.objects;
+CREATE POLICY "patient documents storage update"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'patient-documents'
+    AND EXISTS (
+      SELECT 1
+      FROM public.patients p
+      WHERE p.id::text = split_part(storage.objects.name, '/', 1)
+        AND public.can_edit_patient_record(auth.uid())
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'patient-documents'
+    AND EXISTS (
+      SELECT 1
+      FROM public.patients p
+      WHERE p.id::text = split_part(storage.objects.name, '/', 1)
+        AND public.can_edit_patient_record(auth.uid())
+    )
+  );
+
+DROP POLICY IF EXISTS "clinical staff delete patient documents storage" ON storage.objects;
+DROP POLICY IF EXISTS "patient documents storage delete" ON storage.objects;
+CREATE POLICY "patient documents storage delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'patient-documents'
+    AND EXISTS (
+      SELECT 1
+      FROM public.patients p
+      WHERE p.id::text = split_part(storage.objects.name, '/', 1)
+        AND public.can_edit_patient_record(auth.uid())
+    )
+  );
