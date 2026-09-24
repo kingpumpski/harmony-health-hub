@@ -1809,11 +1809,7 @@ BEGIN
     patient_id,
     review_type,
     reviewed_by,
-    reviewer_name,
-    reviewer_role,
-    seen_at,
     findings,
-    assessment,
     plan
   )
   VALUES (
@@ -1821,11 +1817,7 @@ BEGIN
     v_admission.patient_id,
     v_type,
     uid,
-    NULL,
-    NULL,
-    now(),
     NULLIF(btrim(COALESCE(_findings,'')), ''),
-    NULLIF(btrim(COALESCE(_assessment,'')), ''),
     NULLIF(btrim(COALESCE(_plan,'')), '')
   )
   RETURNING * INTO v_review;
