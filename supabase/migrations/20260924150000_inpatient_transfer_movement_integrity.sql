@@ -1595,3 +1595,66 @@ $$;
 
 REVOKE ALL ON FUNCTION public.acknowledge_vital_alert(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.acknowledge_vital_alert(UUID) TO authenticated;
+
+
+-- AI clinical sessions: browser clients may read sessions, but creation and
+-- request-state transitions must use actor-bound workflows. Provider completion
+-- remains behind complete_ai_clinical_session().
+REVOKE INSERT, UPDATE, DELETE ON public.ai_clinical_sessions FROM authenticated, anon;
+GRANT SELECT ON public.ai_clinical_sessions TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.create_ai_clinical_session(
+  _patient_id UUID,
+  _specialist TEXT,
+  _input_snapshot JSONB,
+  _provenance JSONB DEFAULT '{}'::jsonb
+)
+RETURNS public.ai_clinical_sessions
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'pharmacist')) THEN
+    RAISE EXCEPTION 'Not authorized to create AI clinical sessions';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
+  IF _specialist NOT IN ('physician','surgeon','neurosurgeon','radiologist','ophthalmologist','pharmacist','nurse') THEN RAISE EXCEPTION 'Unsupported AI specialist'; END IF;
+  IF _input_snapshot IS NULL THEN RAISE EXCEPTION 'AI case snapshot is required'; END IF;
+  INSERT INTO public.ai_clinical_sessions(patient_id,specialist,status,input_snapshot,provenance,created_by)
+  VALUES (_patient_id,_specialist,'draft',_input_snapshot,COALESCE(_provenance,'{}'::jsonb),uid)
+  RETURNING * INTO result;
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.request_ai_clinical_analysis(_session_id UUID)
+RETURNS public.ai_clinical_sessions
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  UPDATE public.ai_clinical_sessions SET status='analysis_requested', updated_at=pg_catalog.now()
+  WHERE id=_session_id AND status='draft'
+    AND (created_by=uid OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist'))
+  RETURNING * INTO result;
+  IF result.id IS NULL THEN
+    SELECT * INTO result FROM public.ai_clinical_sessions WHERE id=_session_id;
+    IF result.id IS NULL THEN RAISE EXCEPTION 'AI clinical session not found'; END IF;
+    IF result.status <> 'analysis_requested' THEN RAISE EXCEPTION 'AI clinical session is not eligible for analysis request'; END IF;
+    RETURN result;
+  END IF;
+  PERFORM public.record_ai_clinical_event(_session_id,'analysis_requested',pg_catalog.jsonb_build_object('requested_at',pg_catalog.now(),'specialist',result.specialist));
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.request_ai_clinical_analysis(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.request_ai_clinical_analysis(UUID) TO authenticated;
