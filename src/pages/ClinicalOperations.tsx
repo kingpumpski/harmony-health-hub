@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
+import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 
 type Tab = 'capacity' | 'nursing' | 'emergency' | 'theatre' | 'transfusion' | 'insurance';
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -88,7 +89,7 @@ export default function ClinicalOperations() {
         }
       }
       if (error) throw error;
-      toast({ title: 'Saved', description: 'Record created successfully.' }); setForm({}); setPatientId(''); await load();
+      toast({ title: 'Saved', description: 'Record created successfully.' }); if (tab === 'capacity') notifyMasterDataChanged('wards'); setForm({}); setPatientId(''); await load();
     } catch (error) { toast({ title: 'Save failed', description: error instanceof Error ? error.message : 'Please review the form.', variant: 'destructive' }); }
     finally { setBusy(false); }
   };

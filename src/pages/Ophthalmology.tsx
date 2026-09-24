@@ -17,7 +17,7 @@ export default function Ophthalmology() {
   const load = async () => {
     const [{ data: pts, error: pError }, { data: rows, error: eError }] = await Promise.all([
       searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
-      supabase.from('ophthalmology_exams').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('ophthalmology_exams').select('id,patient_id,visual_acuity,refraction,keratometry,intraocular_pressure,color_vision,fundus_notes,status,created_at').order('created_at', { ascending: false }).limit(50),
     ]);
     if (pError || eError) return toast({ title: 'Unable to load ophthalmology workspace', description: pError?.message ?? eError?.message, variant: 'destructive' });
     setPatients(pts ?? []); setExams((rows ?? []) as Exam[]);

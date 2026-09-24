@@ -30,12 +30,13 @@ Deno.serve(async (req) => {
     const callerId = authData.user.id;
     const { data: callerRoles, error: callerRolesError } = await supabase.from('user_roles').select('role').eq('user_id', callerId);
     if (callerRolesError || !callerRoles?.length) throw new Error('Authorisation role not found');
-    const callerRole = String(callerRoles[0]?.role ?? '');
+    const callerRoleSet = new Set((callerRoles ?? []).map((row) => String(row.role ?? '')));
+    const hasAnyRole = (roles: string[]) => roles.some((role) => callerRoleSet.has(role));
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
-    const requireClinicalRole = () => { if (!aiClinicalRoles.includes(callerRole)) throw new Error('Not authorised'); };
-    const requirePatientContextRole = () => { if (!['admin','practitioner','nurse','midwife','specialist_nurse'].includes(callerRole)) throw new Error('Not authorised for full clinical context'); };
-    const requireProtocolRole = () => { if (!['admin','practitioner'].includes(callerRole)) throw new Error('Not authorised for protocol synthesis'); };
+    const requireClinicalRole = () => { if (!hasAnyRole(aiClinicalRoles)) throw new Error('Not authorised'); };
+    const requirePatientContextRole = () => { if (!hasAnyRole(['admin','practitioner','nurse','midwife','specialist_nurse'])) throw new Error('Not authorised for full clinical context'); };
+    const requireProtocolRole = () => { if (!hasAnyRole(['admin','practitioner'])) throw new Error('Not authorised for protocol synthesis'); };
     const requirePatientId = () => { if (!body.patientId) throw new Error('A patient is required'); };
 
     let systemPrompt = '';
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'nurse_dashboard') {
       const allowedRoles = ['admin','nurse','specialist_nurse','midwife'];
-      if (!allowedRoles.includes(callerRole)) throw new Error('Not authorised');
+      if (!hasAnyRole(allowedRoles)) throw new Error('Not authorised');
       const [
         { data: patients, error: patientsError },
         { data: admissionWorkspace, error: admissionError },
@@ -93,9 +94,14 @@ Deno.serve(async (req) => {
     if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
 
     if (body.mode === 'report') {
-      requirePatientContextRole();
       requirePatientId();
-      const { data: scopedContext, error: contextError } = await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId });
+      const { data: ownerPatient, error: ownerPatientError } = await supabase.from('patients').select('id').eq('id', body.patientId).eq('user_id', callerId).maybeSingle();
+      if (ownerPatientError) throw ownerPatientError;
+      const isOwner = Boolean(ownerPatient);
+      const isClinical = hasAnyRole(aiClinicalRoles);
+      if (!isOwner && !isClinical) throw new Error('Not authorised to generate this report');
+      const contextRpc = isClinical ? 'get_ai_clinical_context' : 'get_patient_hub_clinical_snapshot';
+      const { data: scopedContext, error: contextError } = await supabase.rpc(contextRpc, { _patient_id: body.patientId });
       if (contextError) throw contextError;
       if (!scopedContext) throw new Error('Clinical context unavailable');
 

@@ -121,3 +121,128 @@ jobs:
 
       - name: Verify AI nurse dashboard Edge surface
         run: node supabase/tests/database/ai_nurse_dashboard_surface_contract.mjs
+
+      - name: Verify clinical UI read projection contract
+        run: node supabase/tests/database/clinical_ui_read_projection_contract.mjs
+      - name: Verify patient detail read projection contract
+        run: node supabase/tests/database/patient_detail_read_projection_contract.mjs
+      - name: Verify ancillary clinical read projection contract
+        run: node supabase/tests/database/clinical_ancillary_read_projection_contract.mjs
+      - name: Verify encounter detail read projection contract
+        run: node supabase/tests/database/encounter_detail_read_projection_contract.mjs
+      - name: Verify admin read projection contract
+        run: node supabase/tests/database/admin_read_projection_contract.mjs
+      - name: Verify Reports Center read projection contract
+        run: node supabase/tests/database/reports_center_read_projection_contract.mjs
+      - name: Verify report generation configuration integrity contract
+        run: node supabase/tests/database/reports_generation_config_integrity_contract.mjs
+      - name: Verify Reports Center mutation authorization contract
+        run: node supabase/tests/database/reports_center_mutation_authorization_contract.mjs
+      - name: Verify patient API projection contract
+        run: node supabase/tests/database/patient_api_projection_contract.mjs
+      - name: Verify AI multi-role authorization contract
+        run: node supabase/tests/database/ai_edge_multi_role_authorization_contract.mjs
+      - name: Verify AI nurse dashboard multi-role authorization contract
+        run: node supabase/tests/database/ai_nurse_dashboard_multi_role_authorization_contract.mjs
+      - name: Verify admission read multi-role authorization contract
+        run: node supabase/tests/database/admission_multi_role_authorization_contract.mjs
+      - name: Verify patient history multi-role authorization contract
+        run: node supabase/tests/database/patient_history_multi_role_authorization_contract.mjs
+      - name: Verify Patient Hub multi-role UI authorization contract
+        run: node supabase/tests/database/patient_hub_multi_role_ui_authorization_contract.mjs
+      - name: Verify Patient Hub clinical snapshot authorization contract
+        run: node supabase/tests/database/patient_hub_clinical_snapshot_authorization_contract.mjs
+      - name: Verify offline patient workflow context contract
+        run: node supabase/tests/database/offline_patient_workflow_context_contract.mjs
+      - name: Verify encounter patient-context contract
+        run: node supabase/tests/database/encounter_patient_context_contract.mjs
+      - name: Verify AI multi-role authorization contract
+        run: node supabase/tests/database/ai_multi_role_authorization_contract.mjs
+      - name: Verify operational workspace multi-role authorization contract
+        run: node supabase/tests/database/operational_workspace_multi_role_authorization_contract.mjs
+      - name: Verify patient order context hardening contract
+        run: node supabase/tests/database/patient_order_context_hardening_contract.mjs
+      - name: Verify clinical workflow context hardening contract
+        run: node supabase/tests/database/clinical_workflow_context_hardening_contract.mjs
+      - name: Verify Patient Hub entrypoint context hardening contract
+        run: node supabase/tests/database/patient_hub_entrypoint_context_hardening_contract.mjs
+      - name: Verify encounter admission context hardening contract
+        run: node supabase/tests/database/encounter_admission_context_hardening_contract.mjs
+      - name: Verify pharmacy fertility context hardening contract
+        run: node supabase/tests/database/pharmacy_fertility_context_hardening_contract.mjs
+      - name: Verify emergency theatre transfusion patient context contract
+        run: node supabase/tests/database/emergency_theatre_transfusion_patient_context_contract.mjs
+      - name: Verify medication patient context hardening contract
+        run: node supabase/tests/database/medication_patient_context_hardening_contract.mjs
+      - name: Verify patient document encounter context contract
+        run: node supabase/tests/database/patient_document_encounter_context_contract.mjs
+      - name: Verify legacy clinical context hardening contract
+        run: node supabase/tests/database/legacy_clinical_context_hardening_contract.mjs
+      - name: Verify clinical continuity execute hardening contract
+        run: node supabase/tests/database/clinical_continuity_execute_hardening_contract.mjs
+      - name: Verify lifecycle patient-context hardening contract
+        run: node supabase/tests/database/lifecycle_patient_context_hardening_contract.mjs
+      - name: Verify imaging lifecycle role boundary contract
+        run: node supabase/tests/database/imaging_lifecycle_role_boundary_contract.mjs
+      - name: Verify maternity patient-context contract
+        run: node supabase/tests/database/maternity_patient_context_contract.mjs
+      - name: Verify lab lifecycle role boundary contract
+        run: node supabase/tests/database/lab_lifecycle_role_boundary_contract.mjs
+      - name: Verify revoked helper dependency reconciliation contract
+        run: node supabase/tests/database/revoked_helper_dependency_reconciliation_contract.mjs
+      - name: Verify RLS revoked helper reconciliation contract
+        run: node supabase/tests/database/rls_revoked_helper_reconciliation_contract.mjs
+      - name: Verify service-order revoked helper reconciliation contract
+        run: node supabase/tests/database/service_order_revoked_helper_reconciliation_contract.mjs
+      - name: Verify final RLS helper reconciliation contract
+        run: node supabase/tests/database/final_rls_helper_reconciliation_contract.mjs
+      - name: Verify current-user authorization helper execute boundary contract
+        run: node supabase/tests/database/current_user_helper_execute_boundary_contract.mjs
+      - name: Verify legacy diagnosis RPC overload retirement contract
+        run: node supabase/tests/database/legacy_diagnosis_rpc_overload_contract.mjs
+      - name: Verify insurance-case mutation authority contract
+        run: node supabase/tests/database/insurance_case_mutation_authority_contract.mjs
+      - name: Verify service-order patient linkage contract
+        run: node supabase/tests/database/service_order_patient_linkage_contract.mjs
+      - name: Verify lab-result patient linkage contract
+        run: node supabase/tests/database/lab_result_patient_linkage_contract.mjs
+      - name: Verify ward-bed assignment patient context contract
+        run: node supabase/tests/database/ward_bed_assignment_patient_context_contract.mjs
+      - name: Verify pharmacy POS sale linkage contract
+        run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
+      - name: Verify invoice payment state boundary contract
+        run: node supabase/tests/database/invoice_payment_state_boundary_contract.mjs
+      - name: Verify service order financial context contract
+        run: node supabase/tests/database/service_order_financial_context_contract.mjs
+      - name: Verify invoice item service order linkage contract
+        run: node supabase/tests/database/invoice_item_service_order_linkage_contract.mjs
+      - name: Verify tariff adjustment service-order linkage contract
+        run: node supabase/tests/database/tariff_adjustment_service_order_linkage_contract.mjs
+      - name: Verify release service-order financial linkage contract
+        run: node supabase/tests/database/release_service_order_financial_linkage_contract.mjs
+      - name: Verify bill materialization patient-context contract
+        run: node supabase/tests/database/bill_materialization_patient_context_contract.mjs
+      - name: Verify admission ward-bed compatibility contract
+        run: node supabase/tests/database/admission_ward_bed_compatibility_contract.mjs
+      - name: Verify discharge ward-bed consistency contract
+        run: node supabase/tests/database/discharge_ward_bed_consistency_contract.mjs
+      - name: Verify ward-bed assignment transfer boundary contract
+        run: node supabase/tests/database/ward_bed_assignment_transfer_boundary_contract.mjs
+      - name: Verify ward-bed cleaning lifecycle contract
+        run: node supabase/tests/database/ward_bed_cleaning_lifecycle_contract.mjs
+      - name: Verify ward-bed creation boundary contract
+        run: node supabase/tests/database/ward_bed_creation_boundary_contract.mjs
+      - name: Verify ward-unit lifecycle contract
+        run: node supabase/tests/database/ward_unit_lifecycle_contract.mjs
+      - name: Verify ward-bed release consistency contract
+        run: node supabase/tests/database/ward_bed_release_consistency_contract.mjs
+      - name: Verify encounter admission consistency contract
+        run: node supabase/tests/database/admit_encounter_admission_consistency_contract.mjs
+      - name: Verify legacy admission concurrency contract
+        run: node supabase/tests/database/legacy_admission_concurrency_contract.mjs
+      - name: Verify inpatient occupancy invariants contract
+        run: node supabase/tests/database/inpatient_occupancy_invariants_contract.mjs
+      - name: Verify inpatient bidirectional link integrity contract
+        run: node supabase/tests/database/inpatient_bidirectional_link_integrity_contract.mjs
+      - name: Verify inpatient bed transfer workflow contract
+        run: node supabase/tests/database/inpatient_bed_transfer_workflow_contract.mjs

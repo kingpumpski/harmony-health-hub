@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
 interface LabCatalogueItem {
@@ -68,8 +69,9 @@ export default function Laboratory() {
 
   useEffect(() => {
     void loadAll();
+    const unsubscribe = subscribeMasterDataChanged(['lab_tests','patients'], () => void loadAll());
     const refreshTimer = window.setInterval(() => void loadAll(), 30000);
-    return () => window.clearInterval(refreshTimer);
+    return () => { unsubscribe(); window.clearInterval(refreshTimer); };
   }, [user?.id]);
 
   const counters = useMemo(() => {

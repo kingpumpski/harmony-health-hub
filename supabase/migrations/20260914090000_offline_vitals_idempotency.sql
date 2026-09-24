@@ -35,6 +35,13 @@ BEGIN
     RAISE EXCEPTION 'Vital recording is not permitted';
   END IF;
 
+  IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
+    RAISE EXCEPTION 'Patient not found';
+  END IF;
+  IF _appointment_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.appointments WHERE id = _appointment_id AND patient_id = _patient_id) THEN
+    RAISE EXCEPTION 'Appointment does not belong to patient';
+  END IF;
+
   SELECT id INTO v_existing FROM public.vital_signs WHERE id = _id;
   IF v_existing IS NOT NULL THEN
     RETURN jsonb_build_object('vital_id', v_existing, 'already_recorded', true);

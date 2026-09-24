@@ -376,10 +376,10 @@ export default function Encounters() {
   };
   const loadDetails = async (id: string) => {
     const [{ data: dx }, { data: rx }] = await Promise.all([
-      supabase.from("diagnoses").select("*").eq("encounter_id", id),
+      supabase.from("diagnoses").select("id, encounter_id, diagnosis, is_principal").eq("encounter_id", id),
       supabase
         .from("prescriptions")
-        .select("*")
+        .select("id, encounter_id, medication, dosage, frequency, duration, status")
         .eq("encounter_id", id)
         .order("created_at", { ascending: false }),
     ]);

@@ -26,8 +26,8 @@ export default function CanteenMeals() {
   const createPlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pid) return;
-    const { error } = await supabase.from('meal_plans').insert({
-      patient_id: pid, plan_type: planType, restrictions, created_by: user?.id,
+    const { error } = await supabase.rpc('create_meal_plan_workflow', {
+      _patient_id: pid, _plan_type: planType, _restrictions: restrictions || null,
     });
     if (error) return toast({ title: 'Failed', variant: 'destructive' });
     toast({ title: 'Meal plan created' });
@@ -36,7 +36,8 @@ export default function CanteenMeals() {
   };
 
   const markDelivered = async (id: string) => {
-    await supabase.from('meal_orders').update({ status: 'delivered', delivered_at: new Date().toISOString() }).eq('id', id);
+    const { error } = await supabase.rpc('mark_meal_order_delivered', { _order_id: id });
+    if (error) return toast({ title: 'Failed', variant: 'destructive' });
     load();
   };
 

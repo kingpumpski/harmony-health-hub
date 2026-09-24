@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Database, FileSpreadsheet, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import { playSuccessSound } from '@/lib/sounds';
+import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'staff';
 const SCHEMAS: Record<Entity, { label:string; required:string[]; optional:string[]; sample:string; describe:string }> = {
@@ -18,7 +19,7 @@ export default function BulkUpload(){
   const {user}=useAuth(); const isAdmin=user?.role==='admin';
   const [entity,setEntity]=useState<Entity>('patients'); const [rows,setRows]=useState<Record<string,string>[]>([]);
   const [filename,setFilename]=useState(''); const [importing,setImporting]=useState(false); const [history,setHistory]=useState<JobLog[]>([]); const [previewOnly,setPreviewOnly]=useState(true); const [errors,setErrors]=useState<string[]>([]);
-  const loadHistory=async()=>{const {data}=await supabase.from('bulk_import_jobs').select('*').order('created_at',{ascending:false}).limit(20);setHistory((data??[]) as JobLog[]);};
+  const loadHistory=async()=>{const {data}=await supabase.from('bulk_import_jobs').select('id,entity_type,file_name,total_rows,successful_rows,failed_rows,status,created_at').order('created_at',{ascending:false}).limit(20);setHistory((data??[]) as JobLog[]);};
   const handleFile=(file:File)=>{setFilename(file.name);Papa.parse(file,{header:true,skipEmptyLines:true,transformHeader:h=>h.trim().toLowerCase(),complete:r=>{setRows(r.data as Record<string,string>[]);setErrors([]);toast({title:'CSV parsed',description:r.data.length+' rows ready for review.'});},error:e=>toast({title:'Parse error',description:e.message,variant:'destructive'})});};
   const downloadTemplate=()=>{const blob=new Blob([SCHEMAS[entity].sample],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=entity+'_template.csv';a.click();URL.revokeObjectURL(url);};
   const validate=(row:Record<string,string>,idx:number)=>{for(const r of SCHEMAS[entity].required)if(!row[r]?.trim())return 'Row '+(idx+2)+': missing required "'+r+'"';if(entity==='patients'&&row.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email))return 'Row '+(idx+2)+': invalid email';return null;};
@@ -31,7 +32,7 @@ export default function BulkUpload(){
     const remoteErrors=entity==='staff'?(data?.results??[]).filter((r:any)=>r.status==='failed').map((r:any)=>'Row '+r.row+': '+r.error):(data?.errors??[]).map((r:any)=>'Row '+r.row+': '+r.reason);
     setErrors([...localErrors,...remoteErrors]);const inserted=entity==='staff'?Number(data?.created_rows??0):Number(data?.inserted_rows??0);
     toast({title:'Import complete',description:inserted+'/'+valid.length+' rows processed'+(remoteErrors.length?' · '+remoteErrors.length+' failed':''),variant:remoteErrors.length===valid.length?'destructive':'default'});
-    if(inserted)playSuccessSound();setRows([]);setFilename('');await loadHistory();
+    if(inserted){playSuccessSound(); notifyMasterDataChanged(entity==='patients'?'patients':entity==='pharmacy_inventory'?'pharmacy':entity==='icd_codes'?'diagnoses':'all');}setRows([]);setFilename('');await loadHistory();
   };
   if(!isAdmin)return <div className="p-8 text-center"><AlertTriangle className="w-10 h-10 text-warning mx-auto mb-2"/><h2 className="font-heading text-xl">Admin only</h2><p className="text-muted-foreground text-sm">Administrator privileges are required.</p></div>;
   const preview=rows.slice(0,10);const headers=preview.length?Object.keys(preview[0]):[];

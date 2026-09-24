@@ -60,7 +60,7 @@ export async function registerPatient(payload: any) {
   }
 
   try {
-    const { data, error } = await supabase.from('patients').insert(insertRow as any).select().single();
+    const { data, error } = await supabase.rpc('register_patient_workflow', { _patient: insertRow });
     if (error) throw error;
     return { success: true, offlineQueued: false, patientId: data.patient_code, patient: data };
   } catch (error) {
@@ -109,7 +109,7 @@ export async function searchPatients(query: string) {
   return ranked.sort((a, b) => b.score - a.score).map(({ patient }) => patient);
 }
 
-export async function getPatientById(id: string) { const { data } = await supabase.from('patients').select('*').eq('id', id).maybeSingle(); return data; }
+export async function getPatientById(id: string) { const { data } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,gender,email,phone,address,city,ghana_card_number,blood_group,genotype,allergies,chronic_conditions,insurance_provider,insurance_number,insurance_group_number,insurance_expiry,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,status').eq('id', id).maybeSingle(); return data; }
 export async function updatePatient(id: string, data: Partial<Patient>) {
   const updateRow = {
     patient_code: data.patientId,
@@ -132,7 +132,7 @@ export async function updatePatient(id: string, data: Partial<Patient>) {
     status: data.status,
   };
   const cleanRow = Object.fromEntries(Object.entries(updateRow).filter(([, value]) => value !== undefined));
-  const { data: updated, error } = await supabase.from('patients').update(cleanRow as any).eq('id', id).select().single();
+  const { data: updated, error } = await supabase.rpc('update_patient_workflow', { _patient_id: id, _changes: cleanRow });
   if (error) throw error;
   return { success: true, patient: updated };
 }

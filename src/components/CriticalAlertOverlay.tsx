@@ -50,7 +50,7 @@ export default function CriticalAlertOverlay() {
   }, [user]);
 
   const dismiss = async (id: string) => {
-    await supabase.from('vital_alerts').update({ acknowledged_by: user?.id, acknowledged_at: new Date().toISOString() }).eq('id', id);
+    await supabase.rpc('acknowledge_vital_alert', { _alert_id: id });
     setAlerts((prev) => prev.filter(a => a.id !== id));
   };
 

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; membership_type?: string; membership_expires_at?: string | null; insurance_provider: string | null; insurance_number: string | null }
 interface BillableItem { invoice_id: string; invoice_item_id: string; source_type: string | null; source_id: string | null; description: string; category: string | null; department: string | null; quantity: number; unit_price: number; amount: number; paid_amount: number; outstanding_amount: number; service_order_id: string | null; service_order_status: string | null }
@@ -48,7 +49,7 @@ export default function Billing() {
     setItems(rows); setInvoiceId(rows[0]?.invoice_id ?? ''); setSelected([]);
   }, [from, patientId, to]);
 
-  useEffect(() => { void loadPatients(); }, [loadPatients]);
+  useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
   useEffect(() => { void loadBillable(); }, [loadBillable]);
   useEffect(() => {
     if (!patientId) return;

@@ -5,6 +5,7 @@ import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, RefreshC
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'stg_diagnoses' | 'service_tariffs' | 'legacy_clinical_records';
 type Row = Record<string, string | number | boolean | null>;
@@ -137,6 +138,7 @@ export default function DataImport() {
         failed.push(...((data?.errors ?? []) as { row: number; reason: string }[]).map((item) => 'Row ' + item.row + ': ' + item.reason));
       }
     } catch (error) { failed.push(error instanceof Error ? error.message : 'Import failed'); }
+    if (inserted > 0) notifyMasterDataChanged(entity === 'service_tariffs' ? 'tariffs' : entity === 'patients' ? 'patients' : entity === 'pharmacy_inventory' ? 'pharmacy' : entity === 'icd_codes' || entity === 'stg_diagnoses' ? 'diagnoses' : 'all');
     setErrors(failed); setBusy(false); setRows([]); setFileName('');
     toast({ title: failed.length ? 'Import completed with issues' : 'Import complete', description: `${inserted}/${rows.length} rows processed${failed.length ? `; ${failed.length} issues recorded` : ''}.`, variant: failed.length && inserted === 0 ? 'destructive' : 'default' });
   };

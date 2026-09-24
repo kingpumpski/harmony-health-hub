@@ -17,7 +17,7 @@ export default function TreatmentTemplates() {
   const [synthBusy, setSynthBusy] = useState(false);
   const [synthDx, setSynthDx] = useState('');
 
-  const load = () => supabase.from('treatment_templates').select('*').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
+  const load = () => supabase.from('treatment_templates').select('id,name,diagnosis,description,prescriptions,is_ai_generated,created_at').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
   useEffect(() => { load(); }, []);
 
   const save = async (e: React.FormEvent) => {
@@ -27,8 +27,11 @@ export default function TreatmentTemplates() {
       const [med, dose, freq, dur] = line.split('|').map(s => s.trim());
       return { medication: med, dosage: dose, frequency: freq, duration: dur };
     });
-    const { error } = await supabase.from('treatment_templates').insert({
-      name, diagnosis, description, prescriptions, created_by: user?.id,
+    const { error } = await supabase.rpc('create_treatment_template_workflow', {
+      _name: name,
+      _diagnosis: diagnosis || null,
+      _description: description || null,
+      _prescriptions: prescriptions,
     });
     if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Template saved' });

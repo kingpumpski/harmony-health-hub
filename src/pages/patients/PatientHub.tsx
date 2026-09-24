@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, RefreshCw, UserRound } from 'lucide-react';
@@ -20,7 +20,7 @@ function EmptyState({ label }: { label: string }) { return <p className="rounded
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const { user } = useAuth();
   const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
-  const canEdit = Boolean(user && editRoles.has(user.role)); const canClinicalWrite = Boolean(user && clinicalRoles.has(user.role)); const canBill = Boolean(user && billingRoles.has(user.role));
+  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any;
@@ -28,13 +28,13 @@ export default function PatientHub() {
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
       ['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })],
       ['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })],
-      ...(clinicalRoles.has(user?.role ?? '') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
+      ...([...roleSet].some((role) => clinicalRoles.has(role)) ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
     settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; next.vitals = snapshot.vitals ?? []; next.encounters = snapshot.encounters ?? []; next.labs = snapshot.labs ?? []; next.prescriptions = snapshot.prescriptions ?? []; next.documents = snapshot.documents ?? []; } else next[key] = response.data ?? []; } else failed.push(key); });
     setRows(next); if (failed.length) toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`);
-  }, [patientId]);
+  }, [patientId, roleSet]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const refresh = () => setRefreshKey((v) => v + 1);
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading patient record…</div>;
