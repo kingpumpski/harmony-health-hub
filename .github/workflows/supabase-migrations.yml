@@ -230,3 +230,5 @@ jobs:
         run: node supabase/tests/database/ward_bed_assignment_transfer_boundary_contract.mjs
       - name: Verify ward-bed cleaning lifecycle contract
         run: node supabase/tests/database/ward_bed_cleaning_lifecycle_contract.mjs
+      - name: Verify ward-bed creation boundary contract
+        run: node supabase/tests/database/ward_bed_creation_boundary_contract.mjs
