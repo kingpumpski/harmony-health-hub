@@ -136,3 +136,7 @@ assert('admissions read grant remains explicit', inpatientTransferMigration.incl
 assert('encounters direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.encounters FROM authenticated, anon'), 'encounter state and the encounter-to-admission relationship must not be directly mutable through the Data API');
 assert('encounters read grant remains explicit', inpatientTransferMigration.includes('GRANT SELECT ON public.encounters TO authenticated'), 'clinical encounter reads must remain explicitly granted after the mutation boundary is closed');
 
+assert('encounter authoring remains RPC-only', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_encounter_workflow') && inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.complete_encounter_workflow') && inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis'), 'encounter creation, documentation and completion must remain behind server-authorized workflow functions');
+assert('encounter admission remains the sole admission-link mutation path', inpatientTransferMigration.includes('UPDATE public.encounters') && inpatientTransferMigration.includes('SET admission_id = v_admission') && inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.encounters FROM authenticated, anon'), 'encounter admission linkage must be written by the admission workflow rather than the browser');
+
+
