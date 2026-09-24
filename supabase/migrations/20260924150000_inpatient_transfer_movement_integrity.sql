@@ -643,3 +643,73 @@ $$;
 
 REVOKE ALL ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) TO authenticated;
+
+
+-- Existing-bed creation is intentionally separate from movement, but its RPC must
+-- remain the only client-authorized creation boundary. Prevent authenticated
+-- callers from directly inserting/deleting bed rows.
+REVOKE INSERT, UPDATE, DELETE ON public.ward_beds FROM authenticated;
+
+-- Cleaning/available/maintenance transitions are administrative inventory state,
+-- not patient movement. Keep them server-authoritative and reject transitions
+-- that would leave patient/admission ownership behind.
+CREATE OR REPLACE FUNCTION public.set_ward_bed_status(
+  _bed_id UUID,
+  _status TEXT,
+  _notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_bed public.ward_beds%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Nursing role required';
+  END IF;
+
+  IF _status NOT IN ('available','cleaning','maintenance','blocked','reserved') THEN
+    RAISE EXCEPTION 'Unsupported bed status';
+  END IF;
+
+  SELECT *
+    INTO v_bed
+  FROM public.ward_beds
+  WHERE id = _bed_id
+  FOR UPDATE;
+
+  IF v_bed.id IS NULL THEN
+    RAISE EXCEPTION 'Bed not found';
+  END IF;
+
+  IF v_bed.status = 'occupied' OR v_bed.patient_id IS NOT NULL OR v_bed.admission_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Occupied or patient-linked beds must use the inpatient movement or discharge workflow';
+  END IF;
+
+  UPDATE public.ward_beds
+  SET status = _status,
+      notes = COALESCE(NULLIF(pg_catalog.btrim(_notes), ''), notes),
+      updated_at = now(),
+      released_at = CASE WHEN _status = 'available' THEN COALESCE(released_at, now()) ELSE released_at END
+  WHERE id = v_bed.id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'bed_id', v_bed.id,
+    'status', _status
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) TO authenticated;
