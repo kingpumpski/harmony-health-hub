@@ -1190,3 +1190,10 @@ GRANT EXECUTE ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN
 -- Supabase's grants are a separate gate from RLS, so remove client DML explicitly.
 REVOKE INSERT, UPDATE, DELETE ON public.admissions FROM authenticated, anon;
 GRANT SELECT ON public.admissions TO authenticated;
+
+-- Keep the encounter-to-admission relationship server-authoritative as well.
+-- Encounter creation/submission/admission lifecycle RPCs own encounter mutations;
+-- the browser may read encounters but must not write admission_id or any other
+-- encounter column directly through the Data API.
+REVOKE INSERT, UPDATE, DELETE ON public.encounters FROM authenticated, anon;
+GRANT SELECT ON public.encounters TO authenticated;
