@@ -117,7 +117,7 @@ BEGIN
   -- Keep the legacy admission fields synchronized with the canonical bed.
   UPDATE public.admissions
   SET ward=COALESCE(
-        (SELECT w.name FROM public.wards w WHERE w.id=b.ward_id),
+        (SELECT w.name FROM public.ward_units w WHERE w.id=b.ward_id),
         ward
       ),
       bed=b.bed_number,
