@@ -852,3 +852,405 @@ $$;
 
 REVOKE ALL ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) TO authenticated;
+
+
+-- Reconcile legacy admission creation with the canonical inpatient bed workflow.
+-- A supplied bed is treated as a ward_beds UUID; otherwise the admission remains
+-- admitted/awaiting-bed until placement occurs through the movement workflow.
+CREATE OR REPLACE FUNCTION public.create_admission_workflow(
+  _patient_id UUID,
+  _ward TEXT,
+  _bed TEXT DEFAULT NULL,
+  _reason TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_admission UUID;
+  v_bed_id UUID;
+  v_ward_name TEXT;
+  v_bed_ward UUID;
+  v_transfer JSONB;
+  v_ward_input TEXT := NULLIF(pg_catalog.btrim(_ward), '');
+  v_bed_input TEXT := NULLIF(pg_catalog.btrim(_bed), '');
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+  ) THEN
+    RAISE EXCEPTION 'Admission creation is not permitted';
+  END IF;
+
+  IF _patient_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.patients WHERE id = _patient_id
+  ) THEN
+    RAISE EXCEPTION 'Patient not found';
+  END IF;
+
+  IF v_ward_input IS NULL THEN
+    RAISE EXCEPTION 'Ward is required';
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(_patient_id::text, 0)
+  );
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.admissions
+    WHERE patient_id = _patient_id
+      AND status = 'admitted'
+  ) THEN
+    RAISE EXCEPTION 'Patient already has an active admission';
+  END IF;
+
+  SELECT wu.id, wu.name
+    INTO v_bed_ward, v_ward_name
+  FROM public.ward_units wu
+  WHERE wu.active = true
+    AND (
+      lower(pg_catalog.btrim(wu.name)) = lower(v_ward_input)
+      OR lower(pg_catalog.btrim(wu.code)) = lower(v_ward_input)
+    )
+  ORDER BY wu.name
+  LIMIT 1;
+
+  IF v_bed_ward IS NULL THEN
+    RAISE EXCEPTION 'Active ward not found';
+  END IF;
+
+  IF v_bed_input IS NOT NULL THEN
+    IF v_bed_input !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+      RAISE EXCEPTION 'Bed must be a valid ward bed ID';
+    END IF;
+
+    v_bed_id := v_bed_input::uuid;
+
+    SELECT wb.ward_id
+      INTO v_bed_ward
+    FROM public.ward_beds wb
+    WHERE wb.id = v_bed_id
+    FOR SHARE;
+
+    IF v_bed_ward IS NULL THEN
+      RAISE EXCEPTION 'Bed not found';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.ward_units wu
+      WHERE wu.id = v_bed_ward
+        AND wu.active = true
+        AND lower(pg_catalog.btrim(wu.name)) = lower(v_ward_input)
+    ) AND NOT EXISTS (
+      SELECT 1
+      FROM public.ward_units wu
+      WHERE wu.id = v_bed_ward
+        AND wu.active = true
+        AND lower(pg_catalog.btrim(wu.code)) = lower(v_ward_input)
+    ) THEN
+      RAISE EXCEPTION 'Bed does not belong to the selected ward';
+    END IF;
+  END IF;
+
+  INSERT INTO public.admissions(
+    patient_id,
+    ward,
+    bed,
+    reason,
+    admitted_by,
+    status,
+    admitted_at
+  )
+  VALUES (
+    _patient_id,
+    v_ward_name,
+    NULL,
+    NULLIF(pg_catalog.btrim(_reason), ''),
+    uid,
+    'admitted',
+    now()
+  )
+  RETURNING id INTO v_admission;
+
+  IF v_bed_id IS NOT NULL THEN
+    v_transfer := public.transfer_patient_ward_bed_workflow(
+      _patient_id,
+      v_admission,
+      v_bed_id,
+      NULL,
+      NULL,
+      NULL
+    );
+
+    RETURN jsonb_build_object(
+      'admission_id', v_admission,
+      'status', 'admitted',
+      'bed_placement', v_transfer
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'admission_id', v_admission,
+    'status', 'admitted',
+    'bed_placement', NULL,
+    'awaiting_bed', TRUE
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_admission_workflow(UUID,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_admission_workflow(UUID,TEXT,TEXT,TEXT) TO authenticated;
+
+-- The Patient Hub convenience entrypoint must not create an admission through
+-- a second mutation path. Delegate to the canonical admission workflow.
+CREATE OR REPLACE FUNCTION public.create_patient_admission(
+  _patient_id UUID,
+  _reason TEXT,
+  _ward TEXT DEFAULT NULL,
+  _bed TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+BEGIN
+  RETURN public.create_admission_workflow(
+    _patient_id,
+    _ward,
+    _bed,
+    _reason
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_patient_admission(UUID,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_patient_admission(UUID,TEXT,TEXT,TEXT) TO authenticated;
+
+-- Harden encounter admission against duplicate active admissions and stale wards.
+CREATE OR REPLACE FUNCTION public.admit_encounter_workflow(
+  _encounter_id UUID,
+  _reason TEXT DEFAULT NULL,
+  _ward TEXT DEFAULT NULL,
+  _emergency_override BOOLEAN DEFAULT TRUE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  v_enc public.encounters%ROWTYPE;
+  v_admission UUID;
+  v_override BOOLEAN := FALSE;
+  v_order RECORD;
+  v_ward_name TEXT;
+  uid UUID := auth.uid();
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Admission is not permitted for this role';
+  END IF;
+
+  SELECT *
+    INTO v_enc
+  FROM public.encounters
+  WHERE id = _encounter_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Encounter not found';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.patients WHERE id = v_enc.patient_id
+  ) THEN
+    RAISE EXCEPTION 'Encounter patient not found';
+  END IF;
+
+  IF v_enc.status = 'cancelled' THEN
+    RAISE EXCEPTION 'Cancelled encounters cannot be admitted';
+  END IF;
+
+  IF v_enc.admission_id IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'admission_id', v_enc.admission_id,
+      'override', FALSE,
+      'existing', TRUE
+    );
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_enc.patient_id::text, 0)
+  );
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.admissions
+    WHERE patient_id = v_enc.patient_id
+      AND status = 'admitted'
+  ) THEN
+    RAISE EXCEPTION 'Patient already has an active admission';
+  END IF;
+
+  IF NULLIF(pg_catalog.btrim(_ward), '') IS NOT NULL THEN
+    SELECT wu.name
+      INTO v_ward_name
+    FROM public.ward_units wu
+    WHERE wu.active = true
+      AND (
+        lower(pg_catalog.btrim(wu.name)) = lower(pg_catalog.btrim(_ward))
+        OR lower(pg_catalog.btrim(wu.code)) = lower(pg_catalog.btrim(_ward))
+      )
+    ORDER BY wu.name
+    LIMIT 1;
+
+    IF v_ward_name IS NULL THEN
+      RAISE EXCEPTION 'Active ward not found';
+    END IF;
+  END IF;
+
+  SELECT COALESCE(
+    allow_treatment_before_deposit,
+    FALSE
+  )
+  AND COALESCE(admission_financial_override_enabled,FALSE)
+  AND COALESCE(allow_clinical_emergency_override,FALSE)
+  INTO v_override
+  FROM public.facility_configuration
+  WHERE id = 'default'
+  LIMIT 1;
+
+  v_override := COALESCE(v_override,FALSE)
+    AND COALESCE(_emergency_override,TRUE);
+
+  INSERT INTO public.admissions(
+    patient_id, encounter_id, ward, reason, admitted_by, status
+  )
+  VALUES(
+    v_enc.patient_id,
+    v_enc.id,
+    v_ward_name,
+    COALESCE(NULLIF(pg_catalog.btrim(_reason),''),'Clinical admission'),
+    uid,
+    'admitted'
+  )
+  RETURNING id INTO v_admission;
+
+  UPDATE public.encounters
+  SET admission_id = v_admission,
+      updated_at = now()
+  WHERE id = v_enc.id;
+
+  IF v_override THEN
+    FOR v_order IN
+      SELECT *
+      FROM public.service_orders
+      WHERE encounter_id = v_enc.id
+        AND status = 'pending_payment_approval'
+      FOR UPDATE
+    LOOP
+      INSERT INTO public.billing_overrides(
+        service_order_id,patient_id,department,related_entity_id,
+        reason,overridden_by,approved_by,approved_at
+      )
+      VALUES(
+        v_order.id,v_order.patient_id,v_order.department,v_order.related_entity_id,
+        COALESCE(NULLIF(pg_catalog.btrim(_reason),''),
+                 'Emergency treatment before deposit'),
+        uid,uid,now()
+      )
+      ON CONFLICT(service_order_id) DO UPDATE SET
+        reason=EXCLUDED.reason,
+        overridden_by=EXCLUDED.overridden_by,
+        approved_by=EXCLUDED.approved_by,
+        approved_at=EXCLUDED.approved_at;
+
+      UPDATE public.service_orders
+      SET status='released',
+          approved_at=now(),
+          approved_by=uid,
+          released_at=now(),
+          released_by=uid,
+          release_reason='Emergency admission financial override',
+          notes=concat_ws(E'\n',notes,
+            'Emergency admission financial override: treatment released before deposit.'),
+          updated_at=now()
+      WHERE id=v_order.id;
+
+      INSERT INTO public.department_queues(
+        service_order_id,patient_id,department,related_encounter_id,
+        related_invoice_id,payment_required,payment_satisfied,priority,
+        reason,created_by,queued_at,status
+      )
+      VALUES(
+        v_order.id,v_order.patient_id,v_order.department,v_order.encounter_id,
+        v_order.invoice_id,v_order.payment_required,TRUE,'normal',
+        v_order.service_name,uid,now(),'queued'
+      )
+      ON CONFLICT(service_order_id) DO UPDATE SET
+        payment_satisfied=TRUE,
+        status=CASE
+          WHEN public.department_queues.status='cancelled' THEN 'queued'
+          ELSE public.department_queues.status
+        END,
+        updated_at=now();
+    END LOOP;
+
+    PERFORM public.record_system_audit(
+      'admission_financial_override',
+      'admissions',
+      'admission',
+      v_admission,
+      'critical',
+      jsonb_build_object(
+        'encounter_id',v_enc.id,
+        'patient_id',v_enc.patient_id,
+        'override',TRUE
+      )
+    );
+  END IF;
+
+  PERFORM public.record_system_audit(
+    'patient_admitted',
+    'admissions',
+    'admission',
+    v_admission,
+    'info',
+    jsonb_build_object(
+      'encounter_id',v_enc.id,
+      'patient_id',v_enc.patient_id,
+      'financial_override',v_override
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'admission_id',v_admission,
+    'override',v_override,
+    'status','admitted'
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) TO authenticated;
