@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
+import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
 interface Admission { id: string; patient_id: string; admitted_at: string; discharged_at: string | null; ward: string | null; bed: string | null; reason: string | null; status: string; discharge_summary: string | null }
@@ -42,7 +43,7 @@ export default function AdmissionManagement() {
     setBeds((operational?.beds ?? []) as Bed[]);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); return subscribeMasterDataChanged(['wards','beds','patients'], () => void load()); }, [load]);
 
   const counters = useMemo(() => ({
     active: rows.filter((row) => row.status === 'admitted' && !row.discharged_at).length,
