@@ -151,7 +151,7 @@ BEGIN
       RAISE EXCEPTION 'Source bed not found';
     END IF;
 
-    IF v_source.patient_id <> _patient_id OR v_source.admission_id <> _admission_id OR v_source.status <> 'occupied' THEN
+    IF v_source.patient_id IS DISTINCT FROM _patient_id OR v_source.admission_id IS DISTINCT FROM _admission_id OR v_source.status <> 'occupied' THEN
       RAISE EXCEPTION 'Source bed is not occupied by this admitted patient';
     END IF;
   END IF;
