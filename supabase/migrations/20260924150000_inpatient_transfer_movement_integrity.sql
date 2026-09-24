@@ -319,7 +319,7 @@ BEGIN
     FROM public.admissions a
     WHERE a.patient_id = _patient_id
       AND a.status = 'admitted'
-    ORDER BY a.admission_date DESC NULLS LAST, a.created_at DESC NULLS LAST
+    ORDER BY a.admitted_at DESC NULLS LAST
     LIMIT 1;
   END IF;
 
