@@ -1551,3 +1551,47 @@ $$;
 
 REVOKE ALL ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) TO authenticated;
+
+
+-- Vital-alert acknowledgement is an auditable clinical action. Keep the alert
+-- table read/realtime-visible, but prevent arbitrary client mutation of alert state.
+REVOKE INSERT, UPDATE, DELETE ON public.vital_alerts FROM authenticated, anon;
+GRANT SELECT ON public.vital_alerts TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.acknowledge_vital_alert(_alert_id UUID)
+RETURNS public.vital_alerts
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  result public.vital_alerts;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.is_clinical_staff(uid)
+    OR public.has_role(uid,'specialist_nurse')
+    OR public.has_role(uid,'admin')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to acknowledge vital alerts';
+  END IF;
+
+  UPDATE public.vital_alerts
+  SET acknowledged_by = uid,
+      acknowledged_at = COALESCE(acknowledged_at, pg_catalog.now())
+  WHERE id = _alert_id
+    AND acknowledged_at IS NULL
+  RETURNING * INTO result;
+
+  IF result.id IS NULL THEN
+    SELECT * INTO result FROM public.vital_alerts WHERE id = _alert_id FOR UPDATE;
+    IF result.id IS NULL THEN RAISE EXCEPTION 'Vital alert not found'; END IF;
+  END IF;
+
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.acknowledge_vital_alert(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.acknowledge_vital_alert(UUID) TO authenticated;
