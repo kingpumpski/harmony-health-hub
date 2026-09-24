@@ -118,6 +118,13 @@ assert('AI report completion is lifecycle-locked', aiReportMigration.includes("v
 assert('Patient Portal uses protected AI report mutations', patientPortal.includes("rpc('create_ai_report_request'") && patientPortal.includes("rpc('complete_ai_report_request'") && !patientPortal.includes(".from('ai_report_requests').insert") && !patientPortal.includes(".from('ai_report_requests').update"), 'patient report requests must not bypass the server-authorized mutation boundary');
 assert('AI report Edge access is patient-scoped', aiClinicalAssist.includes("eq('user_id', callerId)") && aiClinicalAssist.includes('get_patient_hub_clinical_snapshot') && aiClinicalAssist.includes('Not authorised to generate this report'), 'patient-facing report generation must be restricted to the patient owner or clinical roles');
 
+
+const patientDocumentMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const patientDocumentsLib = read('src/lib/patientDocuments.ts');
+assert('Patient document metadata uses protected mutation', patientDocumentMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.patient_documents FROM authenticated, anon') && patientDocumentMigration.includes('CREATE OR REPLACE FUNCTION public.upload_patient_document_metadata('), 'patient document metadata must not be directly mutable by the browser');
+assert('Patient document metadata is actor and path bound', patientDocumentMigration.includes('uploaded_by)') && patientDocumentMigration.includes('position(_patient_id::text || \'/\' in v_path) <> 1') && patientDocumentMigration.includes('10485760'), 'document metadata must bind the actor, patient-scoped path and size limit');
+assert('Patient document upload uses protected metadata RPC', patientDocumentsLib.includes("rpc('upload_patient_document_metadata'") && !patientDocumentsLib.includes(".from('patient_documents').insert"), 'document metadata writes must use the server-authorized RPC');
+
 console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
 if (failures.length) {
   console.error('\nContract failures:');
