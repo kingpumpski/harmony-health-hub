@@ -210,3 +210,5 @@ jobs:
         run: node supabase/tests/database/ward_bed_assignment_patient_context_contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
+      - name: Verify invoice payment state boundary contract
+        run: node supabase/tests/database/invoice_payment_state_boundary_contract.mjs
