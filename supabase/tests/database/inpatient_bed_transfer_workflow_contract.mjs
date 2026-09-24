@@ -1,20 +1,20 @@
 import fs from 'node:fs';
 
 const migration = fs.readFileSync(
-  'supabase/migrations/20260924143000_add_atomic_inpatient_bed_transfer_workflow.sql',
+  'supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql',
   'utf8',
 );
 
 const required = [
-  "CREATE OR REPLACE FUNCTION public.transfer_inpatient_bed(",
-  "PERFORM pg_advisory_xact_lock(hashtextextended(_admission_id::text, 0))",
+  "CREATE OR REPLACE FUNCTION public.transfer_patient_ward_bed_workflow(",
+  "PERFORM pg_advisory_xact_lock(pg_catalog.hashtextextended(_patient_id::text, 0))",
   "FROM public.admissions",
   "FOR UPDATE",
   "v_admission.status <> 'admitted'",
   "FROM public.ward_beds",
-  "v_target.status <> 'available'",
-  "v_target.patient_id IS NOT NULL",
-  "v_target.admission_id IS NOT NULL",
+  "v_destination.status <> 'available'",
+  "v_destination.patient_id IS NOT NULL",
+  "v_destination.admission_id IS NOT NULL",
   "status = 'occupied'",
   "status = 'cleaning'",
   "UPDATE public.ward_beds",
@@ -23,8 +23,8 @@ const required = [
   "'transfer'",
   "completed_at",
   "public.record_system_audit",
-  "REVOKE ALL ON FUNCTION public.transfer_inpatient_bed(uuid, uuid, text) FROM PUBLIC, anon",
-  "GRANT EXECUTE ON FUNCTION public.transfer_inpatient_bed(uuid, uuid, text) TO authenticated",
+  "REVOKE ALL ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC, anon",
+  "GRANT EXECUTE ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) TO authenticated",
 ];
 
 for (const fragment of required) {
@@ -33,11 +33,11 @@ for (const fragment of required) {
   }
 }
 
-if (!/UPDATE public\.ward_beds[\s\S]*status = 'cleaning'[\s\S]*patient_id = NULL[\s\S]*admission_id = NULL/.test(migration)) {
-  throw new Error('Source bed is not released atomically to cleaning');
+if (!/UPDATE public\.ward_beds[\s\S]*patient_id = NULL[\s\S]*admission_id = NULL[\s\S]*status = 'available'/.test(migration)) {
+  throw new Error('Source bed is not released atomically to available state during transfer');
 }
 
-if (!/UPDATE public\.ward_beds[\s\S]*patient_id = v_admission\.patient_id[\s\S]*admission_id = v_admission\.id[\s\S]*status = 'occupied'/.test(migration)) {
+if (!/UPDATE public\.ward_beds[\s\S]*patient_id = _patient_id[\s\S]*admission_id = _admission_id[\s\S]*status = 'occupied'/.test(migration)) {
   throw new Error('Target bed is not atomically occupied for the admission');
 }
 

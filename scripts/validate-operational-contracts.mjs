@@ -27,7 +27,7 @@ const migrationRpcs = read('supabase/migrations/20260917120500_add_reference_dat
 const migrationReconciliation = read('supabase/migrations/20260917130000_legacy_migration_reconciliation_approval.sql');
 const migrationReconciliationSql = migrationReconciliation.replace(/--[^\n]*(?:\n|$)/g, '');
 const triage = read('src/pages/Triage.tsx');
-const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const inpatientTransferMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
 const analyzeLabDocument = read('supabase/functions/analyze-lab-document/index.ts');
 const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
@@ -110,7 +110,7 @@ assert('replayed discharge reconciles stale occupied beds', inpatientTransferMig
 
 
 
-const aiReportMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const aiReportMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
 const patientPortal = read('src/pages/PatientPortal.tsx');
 const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
 assert('AI report requests are server-authoritative', aiReportMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.create_ai_report_request(') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.complete_ai_report_request('), 'AI report request rows must use protected lifecycle RPCs');
@@ -120,7 +120,7 @@ assert('Patient Portal uses protected AI report mutations', patientPortal.includ
 assert('AI report Edge access is patient-scoped', aiClinicalAssist.includes("eq('user_id', callerId)") && aiClinicalAssist.includes('get_patient_hub_clinical_snapshot') && aiClinicalAssist.includes('Not authorised to generate this report'), 'patient-facing report generation must be restricted to the patient owner or clinical roles');
 
 
-const patientDocumentMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const patientDocumentMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
 const patientDocumentsLib = read('src/lib/patientDocuments.ts');
 assert('Patient document metadata uses protected mutation', patientDocumentMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.patient_documents FROM authenticated, anon') && patientDocumentMigration.includes('CREATE OR REPLACE FUNCTION public.upload_patient_document_metadata('), 'patient document metadata must not be directly mutable by the browser');
 assert('Patient document metadata is actor and path bound', patientDocumentMigration.includes('uploaded_by)') && patientDocumentMigration.includes('position(_patient_id::text || \'/\' in v_path) <> 1') && patientDocumentMigration.includes('10485760'), 'document metadata must bind the actor, patient-scoped path and size limit');
