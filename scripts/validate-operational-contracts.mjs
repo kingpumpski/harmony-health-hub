@@ -30,6 +30,7 @@ const triage = read('src/pages/Triage.tsx');
 const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
 const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
+const aiClinicalHub = read('src/pages/AIClinicalHub.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
@@ -163,3 +164,8 @@ assert('vital alert direct client DML is revoked', inpatientTransferMigration.in
 assert('vital alert acknowledgement is server-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.acknowledge_vital_alert(UUID)') && inpatientTransferMigration.includes('Not authorized to acknowledge vital alerts') && inpatientTransferMigration.includes('acknowledged_by = uid'), 'alert acknowledgement must be attributed to the authenticated clinical actor');
 assert('vital alert acknowledgement is idempotent', inpatientTransferMigration.includes('AND acknowledged_at IS NULL') && inpatientTransferMigration.includes('COALESCE(acknowledged_at'), 'repeated acknowledgement must not replace the original acknowledgement timestamp');
 assert('critical alert UI uses the protected acknowledgement RPC', criticalAlertOverlay.includes("rpc('acknowledge_vital_alert'"), 'alert dismissal must use the server-authorized acknowledgement workflow');
+
+assert('AI clinical sessions direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.ai_clinical_sessions FROM authenticated, anon'), 'AI sessions must not be directly mutable');
+assert('AI session creation is server-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_ai_clinical_session(') && inpatientTransferMigration.includes('Not authorized to create AI clinical sessions'), 'AI session creation must use an authorized workflow');
+assert('AI analysis request uses protected workflow', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.request_ai_clinical_analysis(UUID)') && inpatientTransferMigration.includes('PERFORM public.record_ai_clinical_event'), 'analysis request must be server-authorized and audited');
+assert('AI clinical hub uses protected session RPCs', aiClinicalHub.includes("rpc('create_ai_clinical_session'") && aiClinicalHub.includes("rpc('request_ai_clinical_analysis'") && !aiClinicalHub.includes(".from('ai_clinical_sessions' as never).insert") && !aiClinicalHub.includes(".from('ai_clinical_sessions' as never).update"), 'AI clinical UI must not directly mutate sessions');
