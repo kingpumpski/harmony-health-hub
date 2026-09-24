@@ -1282,3 +1282,114 @@ $$;
 REVOKE ALL ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) TO authenticated;
 
+-- Diagnosis lifecycle follows the same server-authoritative boundary as encounter admission.
+CREATE OR REPLACE FUNCTION public.set_principal_diagnosis(_encounter_id UUID, _diagnosis_id UUID)
+RETURNS public.diagnoses
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  result public.diagnoses;
+  encounter_status TEXT;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to set principal diagnosis';
+  END IF;
+
+  SELECT status INTO encounter_status
+  FROM public.encounters
+  WHERE id = _encounter_id
+  FOR UPDATE;
+
+  IF encounter_status IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
+  IF encounter_status IN ('completed','cancelled') THEN
+    RAISE EXCEPTION 'Completed or cancelled encounters are read-only';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.diagnoses
+    WHERE id = _diagnosis_id
+      AND encounter_id = _encounter_id
+  ) THEN
+    RAISE EXCEPTION 'Diagnosis does not belong to encounter';
+  END IF;
+
+  UPDATE public.diagnoses
+  SET is_principal = false
+  WHERE encounter_id = _encounter_id;
+
+  UPDATE public.diagnoses
+  SET is_principal = true
+  WHERE id = _diagnosis_id
+  RETURNING * INTO result;
+
+  UPDATE public.encounters
+  SET principal_diagnosis = result.diagnosis,
+      updated_at = now()
+  WHERE id = _encounter_id;
+
+  RETURN result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  encounter_status TEXT;
+  was_principal BOOLEAN;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to remove diagnoses';
+  END IF;
+
+  SELECT e.status, d.is_principal
+  INTO encounter_status, was_principal
+  FROM public.encounters e
+  JOIN public.diagnoses d ON d.encounter_id = e.id
+  WHERE d.id = _diagnosis_id
+  FOR UPDATE OF e;
+
+  IF encounter_status IS NULL THEN RAISE EXCEPTION 'Diagnosis does not exist'; END IF;
+  IF encounter_status IN ('completed','cancelled') THEN
+    RAISE EXCEPTION 'Completed or cancelled encounters are read-only';
+  END IF;
+
+  IF was_principal THEN
+    RAISE EXCEPTION 'Principal diagnosis cannot be removed; assign another principal diagnosis first';
+  END IF;
+
+  DELETE FROM public.diagnoses WHERE id = _diagnosis_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.set_principal_diagnosis(UUID,UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_principal_diagnosis(UUID,UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.remove_encounter_diagnosis(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.remove_encounter_diagnosis(UUID) TO authenticated;
+
+-- Diagnoses are read directly by the clinical UI, but authoring/lifecycle changes
+-- must use the server-authorized diagnosis workflows above.
+REVOKE INSERT, UPDATE, DELETE ON public.diagnoses FROM authenticated, anon;
+GRANT SELECT ON public.diagnoses TO authenticated;
+
