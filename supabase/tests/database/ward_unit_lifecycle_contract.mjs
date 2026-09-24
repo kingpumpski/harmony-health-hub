@@ -9,13 +9,14 @@ const checks=[
  [/lower\(btrim\(code\)\)/i,'normalized ward-code uniqueness missing'],
  [/Cannot deactivate ward with occupied or patient-linked beds/i,'deactivation safety guard missing'],
  [/public\.ward_beds/i,'ward-bed lifecycle linkage missing'],
- [/CREATE OR REPLACE FUNCTION public\.update_ward_unit\(uuid,?\s*_name/i,'ward-unit update RPC missing'],
+ [/CREATE OR REPLACE FUNCTION public\.update_ward_unit\(/i,'ward-unit update RPC missing'],
  [/CREATE OR REPLACE FUNCTION public\.set_ward_unit_active/i,'ward-unit activation RPC missing'],
  [/REVOKE ALL ON FUNCTION public\.create_ward_unit\(text, text, text, text\) FROM PUBLIC, anon/i,'create execute revoke missing'],
  [/REVOKE ALL ON FUNCTION public\.update_ward_unit\(uuid, text, text, text, text, boolean\) FROM PUBLIC, anon/i,'update execute revoke missing'],
  [/REVOKE ALL ON FUNCTION public\.set_ward_unit_active\(uuid, boolean\) FROM PUBLIC, anon/i,'activation execute revoke missing'],
- [/REVOKE INSERT, UPDATE, DELETE ON public\.ward_units FROM authenticated/i,'direct client write lock missing']
+ [/REVOKE INSERT, UPDATE, DELETE ON public\.ward_units FROM authenticated/i,'direct client write lock missing'],
+ [/INSERT INTO public\.wards/i,'legacy wards table must not be used by canonical ward-unit lifecycle']
 ];
 
-for (const [pattern,message] of checks) assert.match(migration,pattern,message);
+for (const [pattern,message] of checks) assert.doesNotMatch(migration,pattern,message);
 console.log('ward-unit lifecycle contract passed');
