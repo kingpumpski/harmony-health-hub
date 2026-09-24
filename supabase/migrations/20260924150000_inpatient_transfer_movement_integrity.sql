@@ -1393,3 +1393,87 @@ GRANT EXECUTE ON FUNCTION public.remove_encounter_diagnosis(UUID) TO authenticat
 REVOKE INSERT, UPDATE, DELETE ON public.diagnoses FROM authenticated, anon;
 GRANT SELECT ON public.diagnoses TO authenticated;
 
+
+
+-- Prescription authoring is a clinical encounter mutation boundary. Keep reads available,
+-- but require all client writes to pass through the server-authorized workflow below.
+REVOKE INSERT, UPDATE, DELETE ON public.prescriptions FROM authenticated, anon;
+GRANT SELECT ON public.prescriptions TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.create_encounter_prescription(
+  _encounter_id UUID,
+  _medication TEXT,
+  _dosage TEXT DEFAULT NULL,
+  _frequency TEXT DEFAULT NULL,
+  _duration TEXT DEFAULT NULL
+)
+RETURNS public.prescriptions
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  result public.prescriptions;
+  v_encounter public.encounters%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to prescribe';
+  END IF;
+
+  SELECT *
+    INTO v_encounter
+  FROM public.encounters
+  WHERE id = _encounter_id
+  FOR UPDATE;
+
+  IF v_encounter.id IS NULL THEN
+    RAISE EXCEPTION 'Encounter does not exist';
+  END IF;
+
+  IF v_encounter.status IN ('completed','cancelled') THEN
+    RAISE EXCEPTION 'Completed or cancelled encounters are read-only';
+  END IF;
+
+  IF NULLIF(pg_catalog.btrim(_medication), '') IS NULL THEN
+    RAISE EXCEPTION 'Medication is required';
+  END IF;
+
+  INSERT INTO public.prescriptions (
+    encounter_id,
+    patient_id,
+    prescribed_by,
+    medication,
+    dosage,
+    frequency,
+    duration
+  )
+  VALUES (
+    v_encounter.id,
+    v_encounter.patient_id,
+    uid,
+    pg_catalog.btrim(_medication),
+    NULLIF(pg_catalog.btrim(_dosage), ''),
+    NULLIF(pg_catalog.btrim(_frequency), ''),
+    NULLIF(pg_catalog.btrim(_duration), '')
+  )
+  RETURNING * INTO result;
+
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,TEXT) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
