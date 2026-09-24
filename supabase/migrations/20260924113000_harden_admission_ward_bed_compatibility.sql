@@ -42,7 +42,7 @@ BEGIN
   END IF;
 
   SELECT id INTO v_ward_id
-  FROM public.wards
+  FROM public.ward_units
   WHERE active
     AND (id::text=btrim(_ward) OR lower(name)=lower(btrim(_ward)) OR lower(code)=lower(btrim(_ward)))
   ORDER BY CASE
@@ -72,7 +72,7 @@ BEGIN
     IF EXISTS(
       SELECT 1 FROM public.ward_beds
       WHERE id=v_bed_id
-        AND status NOT IN ('available','vacant')
+        AND status <> 'available'
     ) THEN
       RAISE EXCEPTION 'Selected bed is not available';
     END IF;
@@ -113,7 +113,7 @@ BEGIN
         released_at=NULL,
         updated_at=now()
     WHERE id=v_bed_id
-      AND status IN ('available','vacant');
+      AND status = 'available';
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Bed became unavailable during admission';
