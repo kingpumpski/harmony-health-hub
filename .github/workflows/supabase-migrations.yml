@@ -218,3 +218,5 @@ jobs:
         run: node supabase/tests/database/invoice_item_service_order_linkage_contract.mjs
       - name: Verify tariff adjustment service-order linkage contract
         run: node supabase/tests/database/tariff_adjustment_service_order_linkage_contract.mjs
+      - name: Verify release service-order financial linkage contract
+        run: node supabase/tests/database/release_service_order_financial_linkage_contract.mjs
