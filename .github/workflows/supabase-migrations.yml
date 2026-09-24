@@ -212,3 +212,5 @@ jobs:
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract
         run: node supabase/tests/database/invoice_payment_state_boundary_contract.mjs
+      - name: Verify service order financial context contract
+        run: node supabase/tests/database/service_order_financial_context_contract.mjs
