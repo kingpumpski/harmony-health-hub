@@ -28,6 +28,7 @@ const migrationReconciliation = read('supabase/migrations/20260917130000_legacy_
 const migrationReconciliationSql = migrationReconciliation.replace(/--[^\n]*(?:\n|$)/g, '');
 const triage = read('src/pages/Triage.tsx');
 const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
