@@ -1658,3 +1658,53 @@ REVOKE ALL ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) 
 GRANT EXECUTE ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) TO authenticated;
 REVOKE ALL ON FUNCTION public.request_ai_clinical_analysis(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.request_ai_clinical_analysis(UUID) TO authenticated;
+
+-- AI patient report request/completion boundary.
+CREATE OR REPLACE FUNCTION public.create_ai_report_request(
+  _patient_id uuid,
+  _report_type text DEFAULT 'medical_summary'
+)
+RETURNS public.ai_report_requests
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE uid uuid := auth.uid(); v_report public.ai_report_requests; v_type text := lower(btrim(COALESCE(_report_type, 'medical_summary')));
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
+  IF NOT (EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id AND p.user_id = uid) OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist')) THEN RAISE EXCEPTION 'Not authorised to request this patient report'; END IF;
+  IF v_type <> 'medical_summary' THEN RAISE EXCEPTION 'Unsupported report type'; END IF;
+  INSERT INTO public.ai_report_requests(patient_id, requested_by, report_type, status) VALUES (_patient_id, uid, v_type, 'processing') RETURNING * INTO v_report;
+  RETURN v_report;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.complete_ai_report_request(
+  _request_id uuid, _content text DEFAULT NULL, _error text DEFAULT NULL
+)
+RETURNS public.ai_report_requests
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE uid uuid := auth.uid(); v_request public.ai_report_requests; v_content text := NULLIF(btrim(COALESCE(_content, '')), ''); v_error text := NULLIF(btrim(COALESCE(_error, '')), '');
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF _request_id IS NULL THEN RAISE EXCEPTION 'Report request is required'; END IF;
+  SELECT * INTO v_request FROM public.ai_report_requests WHERE id = _request_id FOR UPDATE;
+  IF v_request.id IS NULL THEN RAISE EXCEPTION 'Report request not found'; END IF;
+  IF NOT (v_request.requested_by = uid OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist')) THEN RAISE EXCEPTION 'Not authorised to complete this patient report'; END IF;
+  IF v_request.status <> 'processing' THEN IF v_request.status IN ('completed','failed') THEN RETURN v_request; END IF; RAISE EXCEPTION 'Report request is not processing'; END IF;
+  IF v_content IS NULL AND v_error IS NULL THEN RAISE EXCEPTION 'Report content or error is required'; END IF;
+  UPDATE public.ai_report_requests SET status = CASE WHEN v_content IS NOT NULL THEN 'completed' ELSE 'failed' END, content = CASE WHEN v_content IS NOT NULL THEN v_content ELSE NULL END, error = CASE WHEN v_content IS NULL THEN v_error ELSE NULL END, completed_at = now() WHERE id = _request_id RETURNING * INTO v_request;
+  RETURN v_request;
+END; $$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon;
+GRANT SELECT ON public.ai_report_requests TO authenticated;
+REVOKE ALL ON FUNCTION public.create_ai_report_request(uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_ai_report_request(uuid,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.complete_ai_report_request(uuid,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_ai_report_request(uuid,text,text) TO authenticated;
+
