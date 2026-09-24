@@ -246,5 +246,3 @@ jobs:
         run: node supabase/tests/database/inpatient_bidirectional_link_integrity_contract.mjs
       - name: Verify inpatient bed transfer workflow contract
         run: node supabase/tests/database/inpatient_bed_transfer_workflow_contract.mjs
-      - name: Verify inpatient bed transfer workflow contract
-        run: node supabase/tests/database/inpatient_bed_transfer_workflow_contract.mjs
