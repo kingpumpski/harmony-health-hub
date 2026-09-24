@@ -413,3 +413,194 @@ $$;
 
 REVOKE ALL ON FUNCTION public.release_ward_bed(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.release_ward_bed(UUID,TEXT) TO authenticated;
+
+
+-- Make discharge the canonical owner of the occupied-bed -> cleaning transition.
+-- This prevents a successful discharge from leaving a stale occupied bed and
+-- keeps the admission lock, bed lock, billing handoff and audit event atomic.
+CREATE OR REPLACE FUNCTION public.discharge_admission_workflow(
+  _admission_id UUID,
+  _summary TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_admission public.admissions%ROWTYPE;
+  v_bed public.ward_beds%ROWTYPE;
+  v_occupied_count INTEGER;
+  v_patient_name TEXT;
+  v_patient_code TEXT;
+  v_notification_id UUID;
+  v_discharged_at TIMESTAMPTZ;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+  ) THEN
+    RAISE EXCEPTION 'Admission discharge is not permitted';
+  END IF;
+
+  SELECT *
+    INTO v_admission
+  FROM public.admissions
+  WHERE id = _admission_id
+  FOR UPDATE;
+
+  IF v_admission.id IS NULL THEN
+    RAISE EXCEPTION 'Admission not found';
+  END IF;
+
+  IF v_admission.status = 'discharged' THEN
+    SELECT id INTO v_notification_id
+    FROM public.notifications
+    WHERE related_entity_id = v_admission.id
+      AND category = 'payment'
+      AND recipient_role = 'accountant'
+      AND metadata->>'workflow' = 'discharge_billing_handoff'
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    RETURN pg_catalog.jsonb_build_object(
+      'admission_id', v_admission.id,
+      'patient_id', v_admission.patient_id,
+      'status', 'discharged',
+      'billing_handoff', 'pending',
+      'existing', TRUE,
+      'notification_id', v_notification_id
+    );
+  END IF;
+
+  IF v_admission.status <> 'admitted' THEN
+    RAISE EXCEPTION 'Admission is not active';
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_admission.patient_id::text, 0)
+  );
+
+  SELECT count(*)
+    INTO v_occupied_count
+  FROM public.ward_beds
+  WHERE patient_id = v_admission.patient_id
+    AND status = 'occupied';
+
+  IF v_occupied_count > 1 THEN
+    RAISE EXCEPTION 'Patient has multiple occupied ward beds';
+  END IF;
+
+  IF v_occupied_count = 1 THEN
+    SELECT *
+      INTO v_bed
+    FROM public.ward_beds
+    WHERE patient_id = v_admission.patient_id
+      AND admission_id = v_admission.id
+      AND status = 'occupied'
+    FOR UPDATE;
+
+    IF v_bed.id IS NULL THEN
+      RAISE EXCEPTION 'Occupied bed does not match the admission';
+    END IF;
+  END IF;
+
+  v_discharged_at := now();
+
+  UPDATE public.admissions
+  SET status = 'discharged',
+      discharged_at = v_discharged_at,
+      discharge_summary = COALESCE(
+        NULLIF(pg_catalog.btrim(_summary), ''),
+        'Discharged from inpatient admission.'
+      ),
+      updated_at = v_discharged_at
+  WHERE id = v_admission.id;
+
+  IF v_bed.id IS NOT NULL THEN
+    UPDATE public.ward_beds
+    SET patient_id = NULL,
+        admission_id = NULL,
+        status = 'cleaning',
+        released_at = v_discharged_at,
+        notes = COALESCE(notes, 'Released on inpatient discharge.'),
+        updated_at = v_discharged_at
+    WHERE id = v_bed.id;
+  END IF;
+
+  SELECT concat_ws(' ', first_name, last_name), patient_code
+    INTO v_patient_name, v_patient_code
+  FROM public.patients
+  WHERE id = v_admission.patient_id;
+
+  SELECT id INTO v_notification_id
+  FROM public.notifications
+  WHERE related_entity_id = v_admission.id
+    AND category = 'payment'
+    AND recipient_role = 'accountant'
+    AND metadata->>'workflow' = 'discharge_billing_handoff'
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF v_notification_id IS NULL THEN
+    INSERT INTO public.notifications(
+      recipient_role, title, message, severity, category, link,
+      related_patient_id, related_entity_id, metadata
+    )
+    VALUES (
+      'accountant',
+      'Discharged patient ready for billing reconciliation',
+      pg_catalog.format(
+        '%s (%s) has been discharged. Reconcile the complete patient bill, including inpatient services, before settlement.',
+        COALESCE(v_patient_name, 'Patient'),
+        COALESCE(v_patient_code, 'no patient code')
+      ),
+      'warning',
+      'payment',
+      '/billing',
+      v_admission.patient_id,
+      v_admission.id,
+      pg_catalog.jsonb_build_object(
+        'workflow', 'discharge_billing_handoff',
+        'admission_id', v_admission.id,
+        'discharged_at', v_discharged_at
+      )
+    )
+    RETURNING id INTO v_notification_id;
+  END IF;
+
+  PERFORM public.record_system_audit(
+    'patient_discharged',
+    'admissions',
+    'admission',
+    v_admission.id,
+    'info',
+    pg_catalog.jsonb_build_object(
+      'patient_id', v_admission.patient_id,
+      'bed_id', v_bed.id,
+      'bed_status', CASE WHEN v_bed.id IS NULL THEN NULL ELSE 'cleaning' END,
+      'billing_handoff_notification_id', v_notification_id
+    )
+  );
+
+  RETURN pg_catalog.jsonb_build_object(
+    'admission_id', v_admission.id,
+    'patient_id', v_admission.patient_id,
+    'status', 'discharged',
+    'bed_id', v_bed.id,
+    'bed_status', CASE WHEN v_bed.id IS NULL THEN NULL ELSE 'cleaning' END,
+    'billing_handoff', 'pending',
+    'notification_id', v_notification_id
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) TO authenticated;
