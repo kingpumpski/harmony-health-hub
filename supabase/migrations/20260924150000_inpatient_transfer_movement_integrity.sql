@@ -2183,3 +2183,63 @@ REVOKE INSERT, UPDATE, DELETE ON public.facility_configuration FROM authenticate
 GRANT SELECT ON public.facility_configuration TO authenticated;
 REVOKE ALL ON FUNCTION public.update_facility_configuration_workflow(UUID,JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_facility_configuration_workflow(UUID,JSONB) TO authenticated;
+
+
+-- Outside-lab AI completion: keep service-role Edge Functions from directly mutating
+-- clinical document state. The caller remains authenticated and role-authorized.
+CREATE OR REPLACE FUNCTION public.complete_outside_lab_ai_analysis(
+  _document_id UUID,
+  _analysis TEXT
+)
+RETURNS public.outside_lab_documents
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_document public.outside_lab_documents;
+  v_analysis TEXT := NULLIF(pg_catalog.btrim(COALESCE(_analysis, '')), '');
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+    OR public.has_role(uid,'radiologist')
+    OR public.has_role(uid,'lab_technician')
+  ) THEN
+    RAISE EXCEPTION 'Clinical role required to complete outside-lab AI analysis';
+  END IF;
+
+  IF _document_id IS NULL OR v_analysis IS NULL THEN
+    RAISE EXCEPTION 'Document id and AI analysis are required';
+  END IF;
+
+  SELECT *
+    INTO v_document
+    FROM public.outside_lab_documents
+   WHERE id = _document_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Outside-lab document not found';
+  END IF;
+
+  UPDATE public.outside_lab_documents
+     SET ai_analysis = v_analysis,
+         ai_analyzed_at = COALESCE(ai_analyzed_at, pg_catalog.now())
+   WHERE id = _document_id
+   RETURNING * INTO v_document;
+
+  RETURN v_document;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) TO authenticated;
