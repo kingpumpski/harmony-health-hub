@@ -461,6 +461,43 @@ BEGIN
   END IF;
 
   IF v_admission.status = 'discharged' THEN
+    PERFORM pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended(v_admission.patient_id::text, 0)
+    );
+
+    SELECT count(*)
+      INTO v_occupied_count
+    FROM public.ward_beds
+    WHERE patient_id = v_admission.patient_id
+      AND status = 'occupied';
+
+    IF v_occupied_count > 1 THEN
+      RAISE EXCEPTION 'Patient has multiple occupied ward beds';
+    END IF;
+
+    IF v_occupied_count = 1 THEN
+      SELECT *
+        INTO v_bed
+      FROM public.ward_beds
+      WHERE patient_id = v_admission.patient_id
+        AND admission_id = v_admission.id
+        AND status = 'occupied'
+      FOR UPDATE;
+
+      IF v_bed.id IS NULL THEN
+        RAISE EXCEPTION 'Discharged admission has an occupied bed with mismatched ownership';
+      END IF;
+
+      UPDATE public.ward_beds
+      SET patient_id = NULL,
+          admission_id = NULL,
+          status = 'cleaning',
+          released_at = COALESCE(released_at, now()),
+          notes = COALESCE(notes, 'Released while reconciling discharged admission.'),
+          updated_at = now()
+      WHERE id = v_bed.id;
+    END IF;
+
     SELECT id INTO v_notification_id
     FROM public.notifications
     WHERE related_entity_id = v_admission.id
@@ -474,6 +511,8 @@ BEGIN
       'admission_id', v_admission.id,
       'patient_id', v_admission.patient_id,
       'status', 'discharged',
+      'bed_id', v_bed.id,
+      'bed_status', CASE WHEN v_bed.id IS NULL THEN NULL ELSE 'cleaning' END,
       'billing_handoff', 'pending',
       'existing', TRUE,
       'notification_id', v_notification_id
