@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -161,7 +162,6 @@ assert('admission management sends bed identity rather than free text', admissio
 assert('encounter admission has no direct admission table mutation', !encountersPage.includes(".from('admissions')") && !encountersPage.includes('.from("admissions")') && encountersPage.includes('admit_encounter_workflow'), 'encounter admission must remain behind the canonical workflow RPC');
 
 
-const inpatientTransferMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
 assert('admissions direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.admissions FROM authenticated, anon'), 'admission state must not be directly mutable through the Data API');
 assert('admissions read grant remains explicit', inpatientTransferMigration.includes('GRANT SELECT ON public.admissions TO authenticated'), 'clinical admission reads must remain explicitly granted after the mutation boundary is closed');
 
