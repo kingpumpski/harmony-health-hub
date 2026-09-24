@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Database, FileSpreadsheet, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import { playSuccessSound } from '@/lib/sounds';
+import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'staff';
 const SCHEMAS: Record<Entity, { label:string; required:string[]; optional:string[]; sample:string; describe:string }> = {
@@ -31,7 +32,7 @@ export default function BulkUpload(){
     const remoteErrors=entity==='staff'?(data?.results??[]).filter((r:any)=>r.status==='failed').map((r:any)=>'Row '+r.row+': '+r.error):(data?.errors??[]).map((r:any)=>'Row '+r.row+': '+r.reason);
     setErrors([...localErrors,...remoteErrors]);const inserted=entity==='staff'?Number(data?.created_rows??0):Number(data?.inserted_rows??0);
     toast({title:'Import complete',description:inserted+'/'+valid.length+' rows processed'+(remoteErrors.length?' · '+remoteErrors.length+' failed':''),variant:remoteErrors.length===valid.length?'destructive':'default'});
-    if(inserted)playSuccessSound();setRows([]);setFilename('');await loadHistory();
+    if(inserted){playSuccessSound(); notifyMasterDataChanged(entity==='patients'?'patients':entity==='pharmacy_inventory'?'pharmacy':entity==='icd_codes'?'diagnoses':'all');}setRows([]);setFilename('');await loadHistory();
   };
   if(!isAdmin)return <div className="p-8 text-center"><AlertTriangle className="w-10 h-10 text-warning mx-auto mb-2"/><h2 className="font-heading text-xl">Admin only</h2><p className="text-muted-foreground text-sm">Administrator privileges are required.</p></div>;
   const preview=rows.slice(0,10);const headers=preview.length?Object.keys(preview[0]):[];
