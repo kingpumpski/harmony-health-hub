@@ -1885,3 +1885,116 @@ CREATE POLICY "patient documents storage delete"
         AND public.can_edit_patient_record(auth.uid())
     )
   );
+
+
+-- Meal-plan and meal-delivery state are operational clinical data. Keep reads available,
+-- but require actor-bound server workflows for creation and delivery completion.
+CREATE OR REPLACE FUNCTION public.create_meal_plan_workflow(
+  _patient_id uuid,
+  _plan_type text,
+  _restrictions text DEFAULT NULL
+)
+RETURNS public.meal_plans
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid uuid := auth.uid();
+  v_plan public.meal_plans;
+  v_type text := NULLIF(pg_catalog.btrim(COALESCE(_plan_type, '')), '');
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.is_clinical_staff(uid)
+    OR public.has_role(uid,'canteen')
+  ) THEN
+    RAISE EXCEPTION 'Meal plan creation is not permitted';
+  END IF;
+  IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id) THEN
+    RAISE EXCEPTION 'Patient not found';
+  END IF;
+  IF v_type IS NULL THEN RAISE EXCEPTION 'Meal plan type is required'; END IF;
+
+  INSERT INTO public.meal_plans(
+    patient_id, plan_type, restrictions, created_by, active
+  ) VALUES (
+    _patient_id,
+    v_type,
+    NULLIF(pg_catalog.btrim(COALESCE(_restrictions, '')), ''),
+    uid,
+    TRUE
+  )
+  RETURNING * INTO v_plan;
+
+  PERFORM public.record_system_audit(
+    'meal_plan_created',
+    'canteen',
+    'meal_plan',
+    v_plan.id,
+    'info',
+    pg_catalog.jsonb_build_object('patient_id', _patient_id, 'plan_type', v_type, 'actor_user_id', uid)
+  );
+
+  RETURN v_plan;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_meal_order_delivered(_order_id uuid)
+RETURNS public.meal_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid uuid := auth.uid();
+  v_order public.meal_orders;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.is_clinical_staff(uid)
+    OR public.has_role(uid,'canteen')
+  ) THEN
+    RAISE EXCEPTION 'Meal delivery update is not permitted';
+  END IF;
+
+  SELECT * INTO v_order
+  FROM public.meal_orders
+  WHERE id = _order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'Meal order not found'; END IF;
+
+  IF v_order.status = 'delivered' THEN
+    RETURN v_order;
+  END IF;
+
+  UPDATE public.meal_orders
+  SET status = 'delivered', delivered_at = COALESCE(delivered_at, pg_catalog.now())
+  WHERE id = _order_id
+  RETURNING * INTO v_order;
+
+  PERFORM public.record_system_audit(
+    'meal_order_delivered',
+    'canteen',
+    'meal_order',
+    v_order.id,
+    'info',
+    pg_catalog.jsonb_build_object('patient_id', v_order.patient_id, 'actor_user_id', uid)
+  );
+
+  RETURN v_order;
+END;
+$$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.meal_plans FROM authenticated, anon;
+GRANT SELECT ON public.meal_plans TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.meal_orders FROM authenticated, anon;
+GRANT SELECT ON public.meal_orders TO authenticated;
+
+REVOKE ALL ON FUNCTION public.create_meal_plan_workflow(uuid,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_meal_plan_workflow(uuid,text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.mark_meal_order_delivered(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.mark_meal_order_delivered(uuid) TO authenticated;
