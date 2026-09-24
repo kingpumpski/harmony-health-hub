@@ -1756,3 +1756,85 @@ END; $$;
 REVOKE ALL ON FUNCTION public.create_patient_document(uuid,text,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_patient_document(uuid,text,text,text) TO authenticated;
 
+
+
+-- Inpatient reviews are append-only clinical observations. Direct client DML is disabled;
+-- review creation is actor-bound to an active admission and records the authenticated reviewer.
+CREATE OR REPLACE FUNCTION public.create_inpatient_review(
+  _admission_id uuid,
+  _review_type text DEFAULT 'ward_review',
+  _findings text DEFAULT NULL,
+  _assessment text DEFAULT NULL,
+  _plan text DEFAULT NULL
+)
+RETURNS public.inpatient_reviews
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid uuid := auth.uid();
+  v_admission public.admissions%ROWTYPE;
+  v_review public.inpatient_reviews;
+  v_type text := NULLIF(btrim(COALESCE(_review_type,'')), '');
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Inpatient review creation is not permitted';
+  END IF;
+  IF _admission_id IS NULL THEN RAISE EXCEPTION 'Admission is required'; END IF;
+  IF v_type IS NULL THEN RAISE EXCEPTION 'Review type is required'; END IF;
+
+  SELECT * INTO v_admission
+  FROM public.admissions
+  WHERE id = _admission_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'Admission not found'; END IF;
+  IF v_admission.status <> 'admitted' THEN
+    RAISE EXCEPTION 'Inpatient reviews require an active admitted admission';
+  END IF;
+  IF v_admission.patient_id IS NULL THEN
+    RAISE EXCEPTION 'Admission patient is required';
+  END IF;
+
+  INSERT INTO public.inpatient_reviews(
+    admission_id,
+    patient_id,
+    review_type,
+    reviewed_by,
+    reviewer_name,
+    reviewer_role,
+    seen_at,
+    findings,
+    assessment,
+    plan
+  )
+  VALUES (
+    v_admission.id,
+    v_admission.patient_id,
+    v_type,
+    uid,
+    NULL,
+    NULL,
+    now(),
+    NULLIF(btrim(COALESCE(_findings,'')), ''),
+    NULLIF(btrim(COALESCE(_assessment,'')), ''),
+    NULLIF(btrim(COALESCE(_plan,'')), '')
+  )
+  RETURNING * INTO v_review;
+
+  RETURN v_review;
+END;
+$$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.inpatient_reviews FROM authenticated, anon;
+GRANT SELECT ON public.inpatient_reviews TO authenticated;
+REVOKE ALL ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) TO authenticated;
