@@ -7,6 +7,8 @@ import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string }
 interface Admission { id: string; patient_id: string; admitted_at: string; discharged_at: string | null; ward: string | null; bed: string | null; reason: string | null; status: string; discharge_summary: string | null }
+interface Ward { id: string; name: string; code?: string | null; active?: boolean }
+interface Bed { id: string; ward_id: string; bed_number: string; status: string; patient_id?: string | null; admission_id?: string | null }
 const db = supabase as any;
 
 export default function AdmissionManagement() {
@@ -16,6 +18,8 @@ export default function AdmissionManagement() {
   const [ward, setWard] = useState('');
   const [bed, setBed] = useState('');
   const [reason, setReason] = useState('');
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [beds, setBeds] = useState<Bed[]>([]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -36,7 +40,7 @@ export default function AdmissionManagement() {
     setRows((workspace?.admissions ?? []) as Admission[]);
     setWards((operational?.wards ?? []) as Ward[]);
     setBeds((operational?.beds ?? []) as Bed[]);
-  }, []);;
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
