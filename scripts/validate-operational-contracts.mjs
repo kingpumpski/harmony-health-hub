@@ -232,3 +232,9 @@ assert('outside-lab AI completion locks document state', inpatientTransferMigrat
 assert('outside-lab AI completion is authenticated-only', inpatientTransferMigration.includes('REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) FROM PUBLIC, anon') && inpatientTransferMigration.includes('GRANT EXECUTE ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) TO authenticated'), 'outside-lab AI completion grants are not restricted');
 assert('outside-lab Edge Function uses protected completion RPC', analyzeLabDocument.includes("authClient.rpc('complete_outside_lab_ai_analysis'"), 'outside-lab Edge Function still bypasses the completion RPC');
 assert('outside-lab Edge Function has no direct clinical document update', !analyzeLabDocument.includes(".from('outside_lab_documents').update("), 'outside-lab Edge Function still performs direct document UPDATE');
+
+
+const adminBulkImport = fs.readFileSync('supabase/functions/admin-bulk-import/index.ts','utf8');
+assert('bulk patient import uses authenticated patient workflow', adminBulkImport.includes("authClient.rpc('register_patient_workflow'") && !adminBulkImport.includes("service.from('patients').insert"), 'bulk patient import must not bypass the patient workflow');
+assert('bulk pharmacy import uses authenticated inventory workflow', adminBulkImport.includes("authClient.rpc('create_pharmacy_inventory_item'") && !adminBulkImport.includes("service.from('pharmacy_inventory').insert"), 'bulk pharmacy import must not bypass the inventory workflow');
+assert('bulk import retains privileged audit persistence', adminBulkImport.includes("service.from('bulk_import_jobs').insert") && adminBulkImport.includes("service.rpc('record_system_audit'"), 'bulk import audit persistence must remain available');
