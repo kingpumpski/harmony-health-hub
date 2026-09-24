@@ -108,6 +108,16 @@ assert('bed inventory status changes reject patient-linked beds', inpatientTrans
 assert('replayed discharge reconciles stale occupied beds', inpatientTransferMigration.includes("IF v_admission.status = 'discharged' THEN") && inpatientTransferMigration.includes('Released while reconciling discharged admission.') && inpatientTransferMigration.includes('Discharged admission has an occupied bed with mismatched ownership'), 'a replayed discharge must not leave a stale occupied bed after an earlier discharge path');
 
 
+
+const aiReportMigration = read('supabase/migrations/20260924150000_inpatient_transfer_movement_integrity.sql');
+const patientPortal = read('src/pages/PatientPortal.tsx');
+const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
+assert('AI report requests are server-authoritative', aiReportMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.create_ai_report_request(') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.complete_ai_report_request('), 'AI report request rows must use protected lifecycle RPCs');
+assert('AI report request creation is actor-bound', aiReportMigration.includes('requested_by, report_type, status') && aiReportMigration.includes("VALUES (_patient_id, uid, v_type, 'processing')") && aiReportMigration.includes('p.user_id = uid'), 'patient report creation must bind the requester to the authenticated actor');
+assert('AI report completion is lifecycle-locked', aiReportMigration.includes("v_request.status <> 'processing'") && aiReportMigration.includes('FOR UPDATE') && aiReportMigration.includes('completed_at = now()'), 'report completion must lock the request and reject invalid lifecycle transitions');
+assert('Patient Portal uses protected AI report mutations', patientPortal.includes("rpc('create_ai_report_request'") && patientPortal.includes("rpc('complete_ai_report_request'") && !patientPortal.includes(".from('ai_report_requests').insert") && !patientPortal.includes(".from('ai_report_requests').update"), 'patient report requests must not bypass the server-authorized mutation boundary');
+assert('AI report Edge access is patient-scoped', aiClinicalAssist.includes("eq('user_id', callerId)") && aiClinicalAssist.includes('get_patient_hub_clinical_snapshot') && aiClinicalAssist.includes('Not authorised to generate this report'), 'patient-facing report generation must be restricted to the patient owner or clinical roles');
+
 console.log(`Operational contract checks: ${checks.filter(({ condition }) => condition).length}/${checks.length} passed`);
 if (failures.length) {
   console.error('\nContract failures:');
