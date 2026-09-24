@@ -2104,3 +2104,81 @@ REVOKE INSERT, UPDATE, DELETE ON public.treatment_templates FROM authenticated, 
 GRANT SELECT ON public.treatment_templates TO authenticated;
 REVOKE ALL ON FUNCTION public.create_treatment_template_workflow(TEXT,TEXT,TEXT,JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_treatment_template_workflow(TEXT,TEXT,TEXT,JSONB) TO authenticated;
+
+
+-- Harden administrator facility configuration writes behind a server-authorized workflow.
+CREATE OR REPLACE FUNCTION public.update_facility_configuration_workflow(
+  _configuration_id UUID,
+  _changes JSONB
+)
+RETURNS public.facility_configuration
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_config public.facility_configuration;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF NOT public.has_role(uid, 'admin') THEN
+    RAISE EXCEPTION 'Administrator role required to update facility configuration';
+  END IF;
+  IF _changes IS NULL OR jsonb_typeof(_changes) <> 'object' THEN
+    RAISE EXCEPTION 'Configuration changes must be a JSON object';
+  END IF;
+
+  SELECT * INTO v_config
+  FROM public.facility_configuration
+  WHERE id = _configuration_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Facility configuration not found';
+  END IF;
+
+  UPDATE public.facility_configuration
+  SET
+    facility_name = CASE WHEN _changes ? 'facility_name' THEN NULLIF(pg_catalog.btrim(_changes->>'facility_name'), '') ELSE facility_name END,
+    facility_code = CASE WHEN _changes ? 'facility_code' THEN NULLIF(pg_catalog.btrim(_changes->>'facility_code'), '') ELSE facility_code END,
+    phone = CASE WHEN _changes ? 'phone' THEN NULLIF(pg_catalog.btrim(_changes->>'phone'), '') ELSE phone END,
+    email = CASE WHEN _changes ? 'email' THEN NULLIF(pg_catalog.btrim(_changes->>'email'), '') ELSE email END,
+    address = CASE WHEN _changes ? 'address' THEN NULLIF(pg_catalog.btrim(_changes->>'address'), '') ELSE address END,
+    country = CASE WHEN _changes ? 'country' THEN NULLIF(pg_catalog.btrim(_changes->>'country'), '') ELSE country END,
+    currency = CASE WHEN _changes ? 'currency' THEN NULLIF(pg_catalog.btrim(_changes->>'currency'), '') ELSE currency END,
+    timezone = CASE WHEN _changes ? 'timezone' THEN NULLIF(pg_catalog.btrim(_changes->>'timezone'), '') ELSE timezone END,
+    routing_mode = CASE WHEN _changes ? 'routing_mode' THEN _changes->>'routing_mode' ELSE routing_mode END,
+    appointment_buffer_minutes = CASE WHEN _changes ? 'appointment_buffer_minutes' THEN GREATEST(0, (_changes->>'appointment_buffer_minutes')::integer) ELSE appointment_buffer_minutes END,
+    maintenance_mode = CASE WHEN _changes ? 'maintenance_mode' THEN (_changes->>'maintenance_mode')::boolean ELSE maintenance_mode END,
+    allow_treatment_before_deposit = CASE WHEN _changes ? 'allow_treatment_before_deposit' THEN (_changes->>'allow_treatment_before_deposit')::boolean ELSE allow_treatment_before_deposit END,
+    admission_financial_override_enabled = CASE WHEN _changes ? 'admission_financial_override_enabled' THEN (_changes->>'admission_financial_override_enabled')::boolean ELSE admission_financial_override_enabled END,
+    require_accounts_release_after_deposit = CASE WHEN _changes ? 'require_accounts_release_after_deposit' THEN (_changes->>'require_accounts_release_after_deposit')::boolean ELSE require_accounts_release_after_deposit END,
+    allow_clinical_emergency_override = CASE WHEN _changes ? 'allow_clinical_emergency_override' THEN (_changes->>'allow_clinical_emergency_override')::boolean ELSE allow_clinical_emergency_override END,
+    updated_by = uid,
+    updated_at = now()
+  WHERE id = _configuration_id
+  RETURNING * INTO v_config;
+
+  IF v_config.routing_mode NOT IN ('pay_before_each_step', 'streamlined') THEN
+    RAISE EXCEPTION 'Invalid facility routing mode';
+  END IF;
+
+  PERFORM public.record_system_audit(
+    'facility_configuration_updated',
+    'administration',
+    'facility_configuration',
+    v_config.id,
+    'info',
+    jsonb_build_object('updated_by', uid, 'changed_fields', (SELECT jsonb_agg(key) FROM jsonb_object_keys(_changes) AS key))
+  );
+
+  RETURN v_config;
+END;
+$$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.facility_configuration FROM authenticated, anon;
+GRANT SELECT ON public.facility_configuration TO authenticated;
+REVOKE ALL ON FUNCTION public.update_facility_configuration_workflow(UUID,JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_facility_configuration_workflow(UUID,JSONB) TO authenticated;
