@@ -2243,3 +2243,51 @@ $$;
 
 REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) TO authenticated;
+
+
+-- ICD catalogue administration: preserve read access while routing writes through
+-- an authenticated administrator workflow.
+CREATE OR REPLACE FUNCTION public.create_icd_code_workflow(
+  _code TEXT,
+  _description TEXT,
+  _version TEXT DEFAULT 'ICD-10',
+  _category TEXT DEFAULT NULL
+)
+RETURNS public.icd_codes
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_code TEXT := pg_catalog.upper(pg_catalog.btrim(COALESCE(_code, '')));
+  v_description TEXT := NULLIF(pg_catalog.btrim(COALESCE(_description, '')), '');
+  v_version TEXT := NULLIF(pg_catalog.btrim(COALESCE(_version, '')), '');
+  v_row public.icd_codes;
+BEGIN
+  IF uid IS NULL OR NOT public.has_role(uid, 'admin') THEN
+    RAISE EXCEPTION 'Administrator access required';
+  END IF;
+  IF v_code = '' OR v_description IS NULL THEN
+    RAISE EXCEPTION 'ICD code and description are required';
+  END IF;
+  IF v_version IS NULL THEN
+    v_version := 'ICD-10';
+  END IF;
+
+  INSERT INTO public.icd_codes(code, version, description, category)
+  VALUES (v_code, v_version, v_description, NULLIF(pg_catalog.btrim(COALESCE(_category, '')), ''))
+  ON CONFLICT (code) DO UPDATE
+    SET version = EXCLUDED.version,
+        description = EXCLUDED.description,
+        category = EXCLUDED.category
+  RETURNING * INTO v_row;
+
+  RETURN v_row;
+END;
+$$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.icd_codes FROM authenticated, anon;
+GRANT SELECT ON public.icd_codes TO authenticated;
+REVOKE ALL ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) TO authenticated;
