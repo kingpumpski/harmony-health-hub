@@ -38,7 +38,8 @@ export default function AdmissionManagement() {
       return;
     }
     setPatients(p ?? []);
-    setRows((workspace?.admissions ?? []) as Admission[]);
+    const admissionRows = Array.isArray(workspace) ? workspace : (workspace?.admissions ?? []);
+    setRows(admissionRows as Admission[]);
     setWards((operational?.wards ?? []) as Ward[]);
     setBeds((operational?.beds ?? []) as Bed[]);
   }, []);
