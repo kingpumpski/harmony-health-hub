@@ -120,7 +120,7 @@ export default function DataImport() {
         if (error) throw error; inserted = Number(data ?? 0);
       } else if (entity === 'service_tariffs') {
         const { data, error } = await supabase.rpc('import_service_tariffs' as never, { _source_standard: sourceSystem || 'Facility tariff', _rows: validRows } as never);
-        if (error) throw error; inserted = Number(data ?? 0); notifyMasterDataChanged('tariffs');
+        if (error) throw error; inserted = Number(data ?? 0);
       } else if (entity === 'legacy_clinical_records') {
         const { data: batch, error: batchError } = await supabase.rpc('create_data_migration_batch' as never, { _entity_type: 'legacy_clinical_records', _source_system: sourceSystem, _source_version: sourceVersion || null, _file_name: fileName || null, _source_format: fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx', _total_rows: validRows.length } as never);
         if (batchError) throw batchError;
@@ -138,6 +138,7 @@ export default function DataImport() {
         failed.push(...((data?.errors ?? []) as { row: number; reason: string }[]).map((item) => 'Row ' + item.row + ': ' + item.reason));
       }
     } catch (error) { failed.push(error instanceof Error ? error.message : 'Import failed'); }
+    if (inserted > 0) notifyMasterDataChanged(entity === 'service_tariffs' ? 'tariffs' : entity === 'patients' ? 'patients' : entity === 'pharmacy_inventory' ? 'pharmacy' : entity === 'icd_codes' || entity === 'stg_diagnoses' ? 'diagnoses' : 'all');
     setErrors(failed); setBusy(false); setRows([]); setFileName('');
     toast({ title: failed.length ? 'Import completed with issues' : 'Import complete', description: `${inserted}/${rows.length} rows processed${failed.length ? `; ${failed.length} issues recorded` : ''}.`, variant: failed.length && inserted === 0 ? 'destructive' : 'default' });
   };
