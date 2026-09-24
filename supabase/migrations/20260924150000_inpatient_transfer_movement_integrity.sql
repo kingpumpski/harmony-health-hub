@@ -2033,3 +2033,74 @@ REVOKE ALL ON FUNCTION public.register_patient_workflow(jsonb) FROM PUBLIC, anon
 GRANT EXECUTE ON FUNCTION public.register_patient_workflow(jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.update_patient_workflow(uuid,jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_patient_workflow(uuid,jsonb) TO authenticated;
+
+
+-- Harden treatment-template authoring behind a server-authorized clinical workflow.
+-- Templates contain prescribing content and must not be directly writable through the Data API.
+CREATE OR REPLACE FUNCTION public.create_treatment_template_workflow(
+  _name TEXT,
+  _diagnosis TEXT DEFAULT NULL,
+  _description TEXT DEFAULT NULL,
+  _prescriptions JSONB DEFAULT '[]'::jsonb
+)
+RETURNS public.treatment_templates
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  v_template public.treatment_templates;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT public.is_clinical_staff(uid) THEN
+    RAISE EXCEPTION 'Clinical role required to create treatment templates';
+  END IF;
+
+  IF NULLIF(pg_catalog.btrim(_name), '') IS NULL THEN
+    RAISE EXCEPTION 'Template name is required';
+  END IF;
+
+  IF _prescriptions IS NULL OR jsonb_typeof(_prescriptions) <> 'array' THEN
+    RAISE EXCEPTION 'Prescriptions must be a JSON array';
+  END IF;
+
+  INSERT INTO public.treatment_templates (
+    name,
+    diagnosis,
+    description,
+    prescriptions,
+    created_by
+  )
+  VALUES (
+    pg_catalog.btrim(_name),
+    NULLIF(pg_catalog.btrim(_diagnosis), ''),
+    NULLIF(pg_catalog.btrim(_description), ''),
+    _prescriptions,
+    uid
+  )
+  RETURNING * INTO v_template;
+
+  PERFORM public.record_system_audit(
+    'treatment_template_created',
+    'clinical',
+    'treatment_template',
+    v_template.id,
+    'info',
+    pg_catalog.jsonb_build_object(
+      'created_by', uid,
+      'diagnosis', v_template.diagnosis
+    )
+  );
+
+  RETURN v_template;
+END;
+$$;
+
+REVOKE INSERT, UPDATE, DELETE ON public.treatment_templates FROM authenticated, anon;
+GRANT SELECT ON public.treatment_templates TO authenticated;
+REVOKE ALL ON FUNCTION public.create_treatment_template_workflow(TEXT,TEXT,TEXT,JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_treatment_template_workflow(TEXT,TEXT,TEXT,JSONB) TO authenticated;
