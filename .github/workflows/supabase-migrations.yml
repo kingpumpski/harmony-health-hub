@@ -226,3 +226,5 @@ jobs:
         run: node supabase/tests/database/admission_ward_bed_compatibility_contract.mjs
       - name: Verify discharge ward-bed consistency contract
         run: node supabase/tests/database/discharge_ward_bed_consistency_contract.mjs
+      - name: Verify ward-bed assignment transfer boundary contract
+        run: node supabase/tests/database/ward_bed_assignment_transfer_boundary_contract.mjs
