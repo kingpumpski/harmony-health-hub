@@ -1035,6 +1035,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.create_patient_admission(UUID,TEXT,TEXT,UUID);
+
 REVOKE ALL ON FUNCTION public.create_patient_admission(UUID,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_patient_admission(UUID,TEXT,TEXT,TEXT) TO authenticated;
 
