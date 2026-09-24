@@ -7,6 +7,8 @@ const migration = fs.readFileSync(
 
 const required = [
   "CREATE OR REPLACE FUNCTION public.enforce_inpatient_link_consistency()",
+  "SECURITY DEFINER",
+  "SET search_path TO 'pg_catalog, public'",
   "TG_TABLE_NAME = 'admissions'",
   "TG_TABLE_NAME = 'encounters'",
   "TG_TABLE_NAME = 'ward_beds'",
