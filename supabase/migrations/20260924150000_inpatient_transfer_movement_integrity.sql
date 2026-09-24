@@ -1197,3 +1197,88 @@ GRANT SELECT ON public.admissions TO authenticated;
 -- encounter column directly through the Data API.
 REVOKE INSERT, UPDATE, DELETE ON public.encounters FROM authenticated, anon;
 GRANT SELECT ON public.encounters TO authenticated;
+
+-- Canonicalize the diagnosis authoring contract to the coded three-argument RPC.
+-- Earlier migrations left both (UUID,TEXT) and (UUID,TEXT,TEXT) overloads alive,
+-- while the current encounter UI supplies _icd_code. Remove the obsolete overload
+-- so PostgREST cannot resolve the call against stale lifecycle behavior.
+DROP FUNCTION IF EXISTS public.add_encounter_diagnosis(UUID,TEXT);
+
+CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(
+  _encounter_id UUID,
+  _diagnosis TEXT,
+  _icd_code TEXT DEFAULT NULL
+)
+RETURNS public.diagnoses
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO pg_catalog, public
+AS $$
+DECLARE
+  uid UUID := auth.uid();
+  result public.diagnoses;
+  encounter_status TEXT;
+  normalized_code TEXT := NULLIF(pg_catalog.upper(pg_catalog.btrim(_icd_code)), '');
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT (
+    public.has_role(uid,'admin')
+    OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse')
+    OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to add diagnoses';
+  END IF;
+
+  SELECT status
+    INTO encounter_status
+  FROM public.encounters
+  WHERE id = _encounter_id
+  FOR UPDATE;
+
+  IF encounter_status IS NULL THEN
+    RAISE EXCEPTION 'Encounter does not exist';
+  END IF;
+
+  IF encounter_status IN ('completed','cancelled') THEN
+    RAISE EXCEPTION 'Completed or cancelled encounters are read-only';
+  END IF;
+
+  IF NULLIF(pg_catalog.btrim(_diagnosis), '') IS NULL THEN
+    RAISE EXCEPTION 'Diagnosis is required';
+  END IF;
+
+  IF normalized_code IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM public.icd_codes
+       WHERE code = normalized_code
+     ) THEN
+    RAISE EXCEPTION 'Diagnosis code is not in the approved ICD-10/STG catalogue';
+  END IF;
+
+  INSERT INTO public.diagnoses (
+    encounter_id,
+    diagnosis,
+    icd_code,
+    is_principal
+  )
+  VALUES (
+    _encounter_id,
+    pg_catalog.btrim(_diagnosis),
+    normalized_code,
+    false
+  )
+  RETURNING * INTO result;
+
+  RETURN result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) TO authenticated;
+
