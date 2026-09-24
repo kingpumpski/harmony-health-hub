@@ -220,3 +220,5 @@ jobs:
         run: node supabase/tests/database/tariff_adjustment_service_order_linkage_contract.mjs
       - name: Verify release service-order financial linkage contract
         run: node supabase/tests/database/release_service_order_financial_linkage_contract.mjs
+      - name: Verify bill materialization patient-context contract
+        run: node supabase/tests/database/bill_materialization_patient_context_contract.mjs
