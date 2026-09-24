@@ -33,11 +33,11 @@ for (const fragment of required) {
   }
 }
 
-if (!/UPDATE public\.ward_beds[\s\S]*status = 'cleaning'[\s\S]*patient_id = NULL[\s\S]*admission_id = NULL/.test(migration)) {
-  throw new Error('Source bed is not released atomically to cleaning');
+if (!/UPDATE public\.ward_beds[\s\S]*patient_id = NULL[\s\S]*admission_id = NULL[\s\S]*status = 'available'/.test(migration)) {
+  throw new Error('Source bed is not released atomically to available state during transfer');
 }
 
-if (!/UPDATE public\.ward_beds[\s\S]*patient_id = v_admission\.patient_id[\s\S]*admission_id = v_admission\.id[\s\S]*status = 'occupied'/.test(migration)) {
+if (!/UPDATE public\.ward_beds[\s\S]*patient_id = _patient_id[\s\S]*admission_id = _admission_id[\s\S]*status = 'occupied'/.test(migration)) {
   throw new Error('Target bed is not atomically occupied for the admission');
 }
 
