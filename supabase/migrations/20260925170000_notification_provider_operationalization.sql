@@ -187,6 +187,7 @@ SECURITY DEFINER
 SET search_path=public
 AS $erasure$
 DECLARE deleted_count INTEGER := 0;
+DECLARE affected_count INTEGER := 0;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin') THEN
@@ -196,21 +197,29 @@ BEGIN
   PERFORM set_config('notification.audit_erasure','on',true);
 
   DELETE FROM public.notifications WHERE recipient_user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.notification_queue WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.notification_delivery_logs WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.notification_audit WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.notification_consent_audit WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.notification_devices WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.scheduled_notifications WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   DELETE FROM public.user_notification_preferences WHERE user_id=_user_id;
-  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  deleted_count := deleted_count + affected_count;
   RETURN deleted_count;
 END;
 $erasure$;
