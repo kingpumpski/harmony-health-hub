@@ -158,6 +158,40 @@ export default function ReportsCenter() {
           </div>}
         </section>
 
+        {isAdmin && selectedFacility && <section className="card-medical p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Notification onboarding</h2>
+            <p className="text-sm text-muted-foreground">Configure notification providers as part of facility onboarding. Only secret references are stored here; provider credentials remain in the server-side secret environment.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p><p className="mt-1 font-semibold">{notificationConfig?.onboarding_status ?? 'not_started'}</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Environment</p><p className="mt-1 font-semibold">{notificationConfig?.environment ?? 'sandbox'}</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Rollout</p><p className="mt-1 font-semibold">{notificationConfig?.rollout_percent ?? 0}%</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">External delivery</p><p className="mt-1 font-semibold">{notificationConfig?.enabled ? 'Enabled' : 'Disabled'}</p></div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <select className="input" value={notificationProvider.channel} onChange={(e) => setNotificationProvider((current) => ({ ...current, channel: e.target.value as typeof current.channel, provider: e.target.value === 'push' ? 'fcm' : e.target.value === 'whatsapp' ? 'twilio_whatsapp' : e.target.value === 'sms' ? 'twilio' : e.target.value === 'voice' ? 'twilio_voice' : 'resend' }))}>
+              <option value="email">Email</option><option value="sms">SMS</option><option value="push">Push</option><option value="whatsapp">WhatsApp</option><option value="voice">Voice</option>
+            </select>
+            <select className="input" value={notificationProvider.environment} onChange={(e) => setNotificationProvider((current) => ({ ...current, environment: e.target.value as typeof current.environment }))}>
+              <option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option>
+            </select>
+            <input className="input" placeholder="Secret reference (not credential)" value={notificationProvider.secretReference} onChange={(e) => setNotificationProvider((current) => ({ ...current, secretReference: e.target.value }))} />
+            <input className="input" placeholder="Sender identity" value={notificationProvider.senderIdentity} onChange={(e) => setNotificationProvider((current) => ({ ...current, senderIdentity: e.target.value }))} />
+            <input className="input" placeholder="Provider account reference" value={notificationProvider.accountReference} onChange={(e) => setNotificationProvider((current) => ({ ...current, accountReference: e.target.value }))} />
+            <button className="btn-primary" onClick={() => void (async () => {
+              try {
+                await configureFacilityNotificationProvider({ facilityId: selectedFacility.id, channel: notificationProvider.channel, provider: notificationProvider.provider, environment: notificationProvider.environment, secretReference: notificationProvider.secretReference || null, senderIdentity: notificationProvider.senderIdentity || null, accountReference: notificationProvider.accountReference || null });
+                setNotificationConfig(await getFacilityNotificationConfig(selectedFacility.id));
+                toast.success('Notification provider configuration saved.');
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Unable to save notification provider configuration.');
+              }
+            })()}>Save provider configuration</button>
+          </div>
+          <p className="text-xs text-muted-foreground">Production enablement remains a separate verification gate. External channels stay disabled until provider credentials, consent, sandbox/test delivery and webhook verification are complete.</p>
+        </section>}
+
         <section className="card-medical p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-semibold">Activated report library</h2><p className="text-sm text-muted-foreground">Only reports activated for the selected facility are eligible for bulk generation.</p></div><div className="flex flex-col gap-2 sm:flex-row"><input className="input" placeholder="Search reports" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input" value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div></div>
           <div className="mt-5 grid gap-3">{visibleConfigs.map((config) => { const report = config.report!; return <div key={config.id} className={cn('flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between', config.is_enabled ? 'border-primary/30 bg-primary/5' : 'border-border')}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-mono text-muted-foreground">{report.report_code}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{report.frequency}</span>{report.implementation_status === 'seeded' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Validation pending</span>}</div><p className="mt-1 font-medium">{report.report_name}</p><p className="text-xs text-muted-foreground">{report.description}</p></div>{isAdmin ? <button className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors', config.is_enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')} onClick={() => void toggle(config)}>{config.is_enabled ? 'Activated' : 'Activate'}</button> : <span className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium', config.is_enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{config.is_enabled ? 'Activated' : 'Not activated'}</span>}</div>; })}</div>
