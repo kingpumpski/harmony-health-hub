@@ -19,6 +19,7 @@ import {
   Save,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import MedicalTermInput from "@/components/MedicalTermInput";
 import type { DiagnosisSuggestion } from "@/lib/medicalTerms";
