@@ -68,8 +68,8 @@ function providerName(channel:Channel){
   if(channel==='email') return emailProvider()==='smtp'?'smtp':'resend';
   return channel==='push'?'fcm':channel==='whatsapp'?'twilio-whatsapp':channel==='sms'?'twilio':'twilio-voice';
 }
-async function providerAllowed(db:any,channel:Channel){const provider=providerName(channel);const {data}=await db.from('notification_provider_health').select('circuit_state,next_probe_at').eq('provider',provider).maybeSingle();if(!data||data.circuit_state==='closed')return true;if(data.circuit_state==='half_open')return true;return !data.next_probe_at||new Date(data.next_probe_at).getTime()<=Date.now();}
-async function providerOutcome(db:any,channel:Channel,ok:boolean,error?:string){const provider=providerName(channel);if(ok){await db.from('notification_provider_health').update({consecutive_failures:0,circuit_state:'closed',opened_at:null,next_probe_at:null,last_error:null,updated_at:new Date().toISOString()}).eq('provider',provider);return;}const {data}=await db.from('notification_provider_health').select('consecutive_failures').eq('provider',provider).maybeSingle();const failures=Number(data?.consecutive_failures??0)+1;const open=failures>=3;await db.from('notification_provider_health').update({consecutive_failures:failures,circuit_state:open?'open':'closed',opened_at:open?new Date().toISOString():null,next_probe_at:open?new Date(Date.now()+300000).toISOString():null,last_error:(error??'Provider failure').slice(0,500),updated_at:new Date().toISOString()}).eq('provider',provider);}
+async function providerAllowed(db:any,channel:Channel,providerOverride?:string){const provider=providerOverride??providerName(channel);const {data}=await db.from('notification_provider_health').select('circuit_state,next_probe_at').eq('provider',provider).maybeSingle();if(!data||data.circuit_state==='closed')return true;if(data.circuit_state==='half_open')return true;return !data.next_probe_at||new Date(data.next_probe_at).getTime()<=Date.now();}
+async function providerOutcome(db:any,channel:Channel,ok:boolean,error?:string,providerOverride?:string){const provider=providerOverride??providerName(channel);if(ok){await db.from('notification_provider_health').update({consecutive_failures:0,circuit_state:'closed',opened_at:null,next_probe_at:null,last_error:null,updated_at:new Date().toISOString()}).eq('provider',provider);return;}const {data}=await db.from('notification_provider_health').select('consecutive_failures').eq('provider',provider).maybeSingle();const failures=Number(data?.consecutive_failures??0)+1;const open=failures>=3;await db.from('notification_provider_health').update({consecutive_failures:failures,circuit_state:open?'open':'closed',opened_at:open?new Date().toISOString():null,next_probe_at:open?new Date(Date.now()+300000).toISOString():null,last_error:(error??'Provider failure').slice(0,500),updated_at:new Date().toISOString()}).eq('provider',provider);}
 function htmlEscape(value:string){return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function resolveText(template:string,vars:Record<string,unknown>){return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,(_,key)=>{const v=key.split('.').reduce<any>((a,k)=>a?.[k],vars);return v===undefined||v===null?'':String(v);});}
 function rolloutAllows(userId:string,facilityId:string,percent:number){if(percent>=100)return true;if(percent<=0)return false;let hash=0;for(const ch of `${facilityId}:${userId}`){hash=((hash<<5)-hash+ch.charCodeAt(0))|0;}return Math.abs(hash)%100<percent;}
@@ -98,7 +98,7 @@ Deno.serve(async req=>{
     if(channel!=='in_app'&&priority!=='critical'&&(pref.pause_non_critical||pref.channel_preferences?.[channel]!==true))continue;
     const started=Date.now();
     const emailConfigs=channel==='email'?await resolveFacilityEmailProviders(db,row.facility_id,String(facilityConfig?.environment??'sandbox')):[];
-    if(channel!=='in_app'&&!await providerAllowed(db,channel)){last='Provider circuit open';continue;}
+    if(channel!=='in_app'&&channel!=='email'&&!await providerAllowed(db,channel)){last='Provider circuit open';continue;}
     const locale=String(row.locale??pref.locale??'en-GH');
     const {data:tpl}=await db.from('notification_templates').select('subject_template,body_template').eq('template_key',row.template_key).eq('locale',locale).eq('channel',channel).eq('active',true).order('version',{ascending:false}).limit(1).maybeSingle();
     const vars={...p,event_name:row.event_name};
@@ -112,9 +112,9 @@ Deno.serve(async req=>{
     }
     const providerCandidates=channel==='email'?emailConfigs:[{provider:providerName(channel),credentials:null}];
     for(const emailConfig of providerCandidates){
-      const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id},emailConfig);
+      const candidateProvider=channel==='email'?String(emailConfig?.provider??providerName(channel)):providerName(channel); if(channel!=='in_app'&&!await providerAllowed(db,channel,candidateProvider)){last='Provider circuit open';continue;} const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id},emailConfig);
       await db.from('notification_delivery_logs').insert({queue_id:row.id,user_id:userId,channel,provider:r.provider,status:r.ok?'sent':'failed',provider_message_id:r.id??null,attempt,latency_ms:Date.now()-started,error_message:r.error??null});
-      await providerOutcome(db,channel,r.ok,r.error);
+      await providerOutcome(db,channel,r.ok,r.error,candidateProvider);
       if(r.ok){ok=true;break;}last=r.error??last;
     }
     if(ok)break;
