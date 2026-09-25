@@ -42,6 +42,8 @@ export default function Laboratory() {
   const [priority, setPriority] = useState('routine');
   const [notes, setNotes] = useState('');
   const [amount, setAmount] = useState('');
+  const [attentionOrderId, setAttentionOrderId] = useState(searchParams.get('order') || '');
+  const [attentionResultId, setAttentionResultId] = useState(searchParams.get('result') || '');
   const [resultFor, setResultFor] = useState<string | null>(null);
   const [resultText, setResultText] = useState('');
   const [numericValue, setNumericValue] = useState('');
@@ -69,6 +71,14 @@ export default function Laboratory() {
     const map: Record<string, LabResult> = {};
     (workspace.results ?? []).forEach((r) => (map[r.lab_order_id] = r));
     setResultsByOrder(map);
+    const requestedOrderId = searchParams.get('order');
+    const requestedResultId = searchParams.get('result');
+    if (requestedOrderId && nextOrders.some((order) => order.id === requestedOrderId)) {
+      setAttentionOrderId(requestedOrderId);
+    } else if (requestedResultId) {
+      const matchingResult = (workspace.results ?? []).find((result) => result.id === requestedResultId);
+      if (matchingResult) setAttentionOrderId(matchingResult.lab_order_id);
+    }
   };
 
   useEffect(() => {
@@ -93,9 +103,21 @@ export default function Laboratory() {
   useEffect(() => {
     const patientFromUrl = searchParams.get('patient');
     const encounterFromUrl = searchParams.get('encounter');
+    const orderFromUrl = searchParams.get('order');
+    const resultFromUrl = searchParams.get('result');
     if (patientFromUrl) setPid(patientFromUrl);
     if (encounterFromUrl) setEncounterId(encounterFromUrl);
+    if (orderFromUrl) setAttentionOrderId(orderFromUrl);
+    if (resultFromUrl) setAttentionResultId(resultFromUrl);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!attentionOrderId) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`lab-order-${attentionOrderId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [attentionOrderId, orders.length]);
 
   useEffect(() => {
     let active = true;
@@ -240,8 +262,9 @@ export default function Laboratory() {
         </form>
         <div className="card-medical p-5"><h2 className="font-semibold mb-3">Lab Queue</h2><div className="space-y-3">
           {orders.map((o) => { const p = patients.find((x) => x.id === o.patient_id); const result = resultsByOrder[o.id]; const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id); return (
-            <div key={o.id} className={`rounded-xl border border-border p-4 transition-all ${o.status === 'completed' ? 'ring-1 ring-critical/15' : ''}`}><div className="flex justify-between items-start gap-3"><div><p className="font-medium">{o.test_name}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
+            <div id={`lab-order-${o.id}`} key={o.id} className={`rounded-xl border border-border p-4 transition-all ${attentionOrderId === o.id ? 'ring-2 ring-primary/40 bg-primary/5 shadow-elevated' : o.status === 'completed' ? 'ring-1 ring-critical/15' : ''}`}><div className="flex justify-between items-start gap-3"><div><p className="font-medium flex items-center gap-2">{o.test_name}{attentionOrderId === o.id && <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/10 px-2 py-0.5 text-primary">Clinical attention</span>}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
               {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" /> Abnormal result flagged — clinical attention required</div>}
+              {attentionResultId === result?.id && <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">Opened from a clinical result notification. Review this laboratory result and acknowledge the attention item when your review is complete.</div>}
               <div className="mt-3 flex flex-wrap gap-2">{o.status === 'ordered' && <button onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}{o.status === 'sample_collected' && <button onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}{o.status === 'completed' && result && <button onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Approve & notify</button>}{o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Approved</span>}</div>
               {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3"><div className="grid gap-2 sm:grid-cols-2"><input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} />{item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}</div><textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" /><input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label><div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div></div>}
               {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2"><p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>{result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}{result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}</div>}
