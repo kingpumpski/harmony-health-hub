@@ -56,6 +56,29 @@ export default function WorkflowSummary() {
     ];
   }, [user]);
 
-  if (!user) return null;
-  return <section aria-label="Workflow navigation" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">{cards.map(({ label, href, icon: Icon, tone, surface }) => <Link key={label} to={href} className={`card-medical ${surface} p-3 min-w-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated`}><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-[11px] leading-tight text-muted-foreground line-clamp-2">{label}</p><p className={`text-sm font-semibold mt-1 ${tone}`}>Open queue</p></div><Icon className={`w-5 h-5 shrink-0 ${tone}`} /></div></Link>)}</section>;
+  if (!user || !cards.length) return null;
+  return (
+    <section aria-label="Workflow navigation" className="mb-6">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Quick access</p>
+          <h2 className="text-base font-semibold">Your active workspaces</h2>
+        </div>
+        <span className="hidden text-xs text-muted-foreground sm:inline">Role-aware shortcuts</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        {cards.map(({ label, href, icon: Icon, tone, surface }) => (
+          <Link key={label} to={href} className={`group card-medical ${surface} min-w-0 p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-[11px] leading-tight text-muted-foreground">{label}</p>
+                <p className={`mt-1 text-sm font-semibold ${tone}`}>Open workspace</p>
+              </div>
+              <div className="rounded-lg bg-background/70 p-1.5 transition-transform group-hover:scale-105"><Icon className={`h-4 w-4 shrink-0 ${tone}`} /></div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
 }
