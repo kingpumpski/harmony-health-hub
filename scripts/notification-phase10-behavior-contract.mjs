@@ -18,7 +18,7 @@ function quiet(now,tz,start,end){
 }
 assert.equal(quiet(new Date('2026-01-15T23:30:00Z'),'Africa/Accra','22:00','07:00'),true);
 assert.equal(quiet(new Date('2026-01-15T12:00:00Z'),'Africa/Accra','22:00','07:00'),false);
-assert.equal(quiet(new Date('2026-06-01T01:30:00Z'),'America/New_York','22:00','07:00'),true);
+assert.equal(quiet(new Date('2026-06-01T03:30:00Z'),'America/New_York','22:00','07:00'),true);
 assert.equal(quiet(new Date('2026-06-01T13:30:00Z'),'America/New_York','22:00','07:00'),false);
 
 function rolloutAllows(userId,facilityId,percent){
