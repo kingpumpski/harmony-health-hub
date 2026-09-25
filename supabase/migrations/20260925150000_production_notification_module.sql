@@ -220,3 +220,12 @@ VALUES
 ('wellness.annual_checkup','en-GH','in_app','Annual check-up reminder','It may be time to schedule your annual health check-up.'),
 ('critical.lab_alert','en-GH','in_app','Critical clinical alert','A critical result requires prompt clinical attention. Open the clinical workspace for details.')
 ON CONFLICT(template_key,locale,channel,version) DO NOTHING;
+UPDATE public.notification_events SET enabled=true WHERE event_name IN (
+  'appointment_booked','appointment_reminder_24h','appointment_reminder_1h','appointment_rescheduled','appointment_cancelled',
+  'appointment_confirmed','appointment_checked_in','consultation_started','diagnosis_ready','treatment_plan_created',
+  'lab_test_ordered','lab_result_ready','prescription_issued','medication_dose_reminder','medication_missed_dose',
+  'medication_refill_reminder','medication_completion','discharge_summary_ready','post_discharge_checkin_72h',
+  'followup_appointment_due','review_request_after_treatment','birthday_wish','seasonal_greeting','annual_checkup_reminder',
+  'welcome_onboarding','profile_incomplete','password_changed','security_alert','invoice_ready','payment_due','payment_received',
+  'critical_lab_alert','abnormal_vitals_alert','urgent_care_needed','outbreak_alert_in_region','inactive_30d','inactive_90d'
+);
