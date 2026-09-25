@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
+import { getDefaultPermissions } from '@/lib/permissions';
 
 type Tab = 'capacity' | 'nursing' | 'emergency' | 'theatre' | 'transfusion' | 'insurance';
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -33,6 +34,12 @@ const roleModules: Record<string, Tab[]> = {
 export default function ClinicalOperations() {
   const { user } = useAuth();
   const allowedTabs = roleModules[String(user?.role ?? '')] ?? [];
+  const permissions = new Set(user?.permissions?.length ? user.permissions : (user ? getDefaultPermissions(user.role) : []));
+  const workflowLinks = [
+    ['Triage', '/vitals', 'triage'], ['Encounters', '/encounters', 'encounters'], ['Theatre', '/theatre-board', 'theatre'],
+    ['Transfusion', '/transfusion-board', 'transfusion'], ['Maternity', '/maternity', 'maternity'], ['Radiology', '/radiology', 'radiology'],
+    ['Fertility', '/fertility', 'fertility'], ['Dental', '/dental', 'dental'], ['Procedures', '/procedures', 'procedures'], ['Anaesthesia', '/anesthesia', 'anesthesia'],
+  ].filter(([, , permission]) => permissions.has(permission as any));
   const [tab, setTab] = useState<Tab>(allowedTabs[0] ?? 'capacity');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -120,7 +127,7 @@ export default function ClinicalOperations() {
 <div><div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary"><Activity className="h-3.5 w-3.5" /> Clinical command · Operations</div><h1 className="text-2xl font-heading font-bold tracking-tight sm:text-3xl">Clinical Operations</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Coordinate capacity, nursing, emergency, theatre, transfusion and insurance workflows from one role-aware workspace.</p></div>
 <button onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2 self-start" aria-label="Refresh clinical operations" disabled={busy}><RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh</button>
 </div></header>
-      <div className="card-medical rounded-2xl p-4"><div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Clinical workflow access</div><div className="flex flex-wrap gap-2"><Link to="/vitals" className="btn-secondary">Triage</Link><Link to="/encounters" className="btn-secondary">Encounters</Link><Link to="/theatre-board" className="btn-secondary">Theatre</Link><Link to="/transfusion-board" className="btn-secondary">Transfusion</Link></div></div>
+      <div className="card-medical rounded-2xl p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Clinical workflow access</div><p className="mt-1 text-xs text-muted-foreground">Role-permitted entry points for the next clinical action.</p></div><span className="text-[10px] rounded-full border border-border px-2 py-1 text-muted-foreground">{workflowLinks.length} available</span></div><div className="flex flex-wrap gap-2">{workflowLinks.map(([labelText, href]) => <Link key={href} to={href} className="btn-secondary">{labelText}</Link>)}</div></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">{tabs.filter(([id]) => allowedTabs.includes(id)).map(([id, labelText, Icon]) => <button key={id} onClick={() => { setTab(id); setForm({}); setPatientId(''); }} className={`min-w-0 rounded-lg border p-3 text-left text-sm ${tab === id ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}><Icon className="mb-2 h-5 w-5" /><span className="block truncate">{labelText}</span></button>)}</div>
       <div className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm">
         {tab !== 'capacity' && <select value={patientId} onChange={(event) => setPatientId(event.target.value)} className="w-full rounded-md border bg-background p-2"><option value="">Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.patient_code} — {patient.first_name} {patient.last_name}</option>)}</select>}
