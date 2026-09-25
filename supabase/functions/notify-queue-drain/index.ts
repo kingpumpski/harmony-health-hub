@@ -3,7 +3,7 @@ import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 import nodemailer from 'npm:nodemailer@7.0.6';
 
 type Channel = 'in_app'|'email'|'sms'|'push'|'whatsapp'|'voice';
-async function resolveFacilityEmailProvider(db:any,facilityId:string|undefined,environment:string){if(!facilityId)return {provider:emailProvider(),credentials:null};const {data}=await db.from('notification_provider_credentials').select('provider,credentials_ciphertext,status').eq('facility_id',facilityId).eq('channel','email').eq('environment',environment).in('status',['configured','verified']).order('updated_at',{ascending:false}).limit(1).maybeSingle();if(!data)return {provider:emailProvider(),credentials:null};const raw=Deno.env.get('NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY');if(!raw)throw new Error('Notification credential encryption key is not configured');const kb=Uint8Array.from(atob(raw),c=>c.charCodeAt(0));if(kb.length!==32)throw new Error('Notification credential encryption key must decode to 32 bytes');const [v,iv64,c64]=String(data.credentials_ciphertext).split('.');if(v!=='v1')throw new Error('Unsupported provider credential version');const key=await crypto.subtle.importKey('raw',kb,'AES-GCM',false,['decrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:Uint8Array.from(atob(iv64),c=>c.charCodeAt(0))},key,Uint8Array.from(atob(c64),c=>c.charCodeAt(0)));return {provider:String(data.provider),credentials:JSON.parse(new TextDecoder().decode(plain))};}
+async function resolveFacilityEmailProviders(db:any,facilityId:string|undefined,environment:string){if(!facilityId)return [{provider:emailProvider(),credentials:null}];const {data}=await db.from('facility_notification_provider_connections').select('provider,priority,is_primary,status').eq('facility_id',facilityId).eq('channel','email').eq('environment',environment).eq('status','verified').order('is_primary',{ascending:false}).order('priority',{ascending:true}).order('updated_at',{ascending:false});const rows=(data??[]) as any[];if(!rows.length)return [{provider:emailProvider(),credentials:null}];const raw=Deno.env.get('NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY');if(!raw)throw new Error('Notification credential encryption key is not configured');const kb=Uint8Array.from(atob(raw),c=>c.charCodeAt(0));if(kb.length!==32)throw new Error('Notification credential encryption key must decode to 32 bytes');const key=await crypto.subtle.importKey('raw',kb,'AES-GCM',false,['decrypt']);const out:any[]=[];for(const row of rows){const {data:cred}=await db.from('notification_provider_credentials').select('credentials_ciphertext,status').eq('facility_id',facilityId).eq('channel','email').eq('provider',row.provider).eq('environment',environment).in('status',['configured','verified']).maybeSingle();if(!cred)continue;const [v,iv64,c64]=String(cred.credentials_ciphertext).split('.');if(v!=='v1')continue;try{const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:Uint8Array.from(atob(iv64),c=>c.charCodeAt(0))},key,Uint8Array.from(atob(c64),c=>c.charCodeAt(0)));out.push({provider:String(row.provider),credentials:JSON.parse(new TextDecoder().decode(plain))});}catch{continue;}}return out.length?out:[{provider:emailProvider(),credentials:null}];}
 
 const BATCH=50, BACKOFF=[10,30,120,600,3600];
 const json=(body:unknown,status=200,cors:Record<string,string>={})=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -97,7 +97,7 @@ Deno.serve(async req=>{
    for(const channel of channels){ const {data:channelConfig}=await db.from('notification_channels').select('enabled').eq('code',channel).maybeSingle(); if(!channelConfig?.enabled){last='Channel disabled';continue;} if(row.facility_id&&facilityConfig&&facilityConfig.enabled_channels?.[channel]!==true){last='Facility channel disabled';continue;}
     if(channel!=='in_app'&&priority!=='critical'&&(pref.pause_non_critical||pref.channel_preferences?.[channel]!==true))continue;
     const started=Date.now();
-    const emailConfig=channel==='email'?await resolveFacilityEmailProvider(db,row.facility_id,String(facilityConfig?.environment??'sandbox')):undefined;
+    const emailConfigs=channel==='email'?await resolveFacilityEmailProviders(db,row.facility_id,String(facilityConfig?.environment??'sandbox')):[];
     if(channel!=='in_app'&&!await providerAllowed(db,channel)){last='Provider circuit open';continue;}
     const locale=String(row.locale??pref.locale??'en-GH');
     const {data:tpl}=await db.from('notification_templates').select('subject_template,body_template').eq('template_key',row.template_key).eq('locale',locale).eq('channel',channel).eq('active',true).order('version',{ascending:false}).limit(1).maybeSingle();
@@ -110,10 +110,14 @@ Deno.serve(async req=>{
       await db.from('notification_delivery_logs').insert({notification_id:nid,queue_id:row.id,user_id:userId,channel,provider:'supabase_realtime',status:'delivered',attempt,latency_ms:Date.now()-started});
       await db.from('notification_audit').insert({notification_id:nid,queue_id:row.id,user_id:userId,event_name:row.event_name,action:'delivery',channel,outcome:'delivered',metadata:{attempt}});ok=true;break;
     }
-    const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id},emailConfig);
-    await db.from('notification_delivery_logs').insert({queue_id:row.id,user_id:userId,channel,provider:r.provider,status:r.ok?'sent':'failed',provider_message_id:r.id??null,attempt,latency_ms:Date.now()-started,error_message:r.error??null});
-    await providerOutcome(db,channel,r.ok,r.error);
-    if(r.ok){ok=true;break;}last=r.error??last;
+    const providerCandidates=channel==='email'?emailConfigs:[{provider:providerName(channel),credentials:null}];
+    for(const emailConfig of providerCandidates){
+      const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id},emailConfig);
+      await db.from('notification_delivery_logs').insert({queue_id:row.id,user_id:userId,channel,provider:r.provider,status:r.ok?'sent':'failed',provider_message_id:r.id??null,attempt,latency_ms:Date.now()-started,error_message:r.error??null});
+      await providerOutcome(db,channel,r.ok,r.error);
+      if(r.ok){ok=true;break;}last=r.error??last;
+    }
+    if(ok)break;
    }
    if(!ok)throw new Error(last);
    await db.from('notification_queue').update({status:'delivered',attempts:attempt,delivered_at:new Date().toISOString(),last_error:null,updated_at:new Date().toISOString()}).eq('id',row.id).eq('status','processing');delivered++;
