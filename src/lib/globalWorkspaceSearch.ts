@@ -89,7 +89,9 @@ export async function searchWorkspaceData(query:string, roles:string[] = []):Pro
       runQuery(supabase.from('imaging_orders').select('id,patient_id,modality,study_name,body_site,priority,status,created_at').or(`study_name.ilike.${term},modality.ilike.${term},body_site.ilike.${term},status.ilike.${term}`).order('created_at',{ascending:false}).limit(8),
         (rows:any[])=>rows.map(r=>({id:r.id,kind:'diagnostic',title:r.study_name||`${r.modality||'Imaging'} study`,subtitle:`Patient ${r.patient_id} · ${r.status||'ordered'}`,href:`/radiology?order=${r.id}`,score:64}))),
       runQuery(supabase.from('diagnoses').select('id,encounter_id,patient_id,diagnosis,icd_code,is_principal,is_provisional,created_at').or(`diagnosis.ilike.${term},icd_code.ilike.${term}`).order('created_at',{ascending:false}).limit(8),
-        (rows:any[])=>rows.map(r=>({id:r.id,kind:'diagnostic',title:r.diagnosis||'Diagnosis',subtitle:`Patient ${r.patient_id} · ${r.icd_code||'No ICD code'}`,href:`/encounters?encounter=${r.encounter_id}`,score:62})))
+        (rows:any[])=>rows.map(r=>({id:r.id,kind:'diagnostic',title:r.diagnosis||'Diagnosis',subtitle:`Patient ${r.patient_id} · ${r.icd_code||'No ICD code'}`,href:`/encounters?encounter=${r.encounter_id}`,score:62}))),
+      runQuery(supabase.from('encounters').select('id,patient_id,encounter_type,chief_complaint,principal_diagnosis,status,created_at,submitted_at,version_no').or(`encounter_type.ilike.${term},chief_complaint.ilike.${term},principal_diagnosis.ilike.${term},status.ilike.${term}`).order('created_at',{ascending:false}).limit(8),
+        (rows:any[])=>rows.map(r=>({id:r.id,kind:'encounter',title:r.encounter_type||'Clinical encounter',subtitle:`Patient ${r.patient_id} · ${r.principal_diagnosis||r.chief_complaint||r.status||'encounter'}`,href:`/encounters?encounter=${r.id}`,score:61})))
     );
   }
   if (canSearchDocuments) {
