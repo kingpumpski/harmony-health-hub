@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BarChart3, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Plus, RefreshCw, Settings2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   createFacility, downloadManifestCsv, downloadRunWorkbook, generateRun, getRunItems, listDefinitions, listFacilities, listFacilityConfigs, setReportEnabled,
-  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem,
+  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem, type FacilityNotificationConfig, type NotificationProviderSecretRequirement, getFacilityNotificationConfig, initializeFacilityNotificationOnboarding, configureFacilityNotificationProvider, listNotificationProviderSecretRequirements,
 } from '@/lib/reportsCenter';
 
 const facilityTypes = [
@@ -36,6 +35,9 @@ export default function ReportsCenter() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [facilityForm, setFacilityForm] = useState({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
+  const [notificationConfig, setNotificationConfig] = useState<FacilityNotificationConfig | null>(null);
+  const [notificationSecretRequirements, setNotificationSecretRequirements] = useState<NotificationProviderSecretRequirement[]>([]);
+  const [notificationProvider, setNotificationProvider] = useState({ channel: 'email' as 'email' | 'sms' | 'push' | 'whatsapp' | 'voice', provider: 'resend', environment: 'sandbox' as 'sandbox' | 'test' | 'production', secretReference: '', senderIdentity: '', accountReference: '' });
 
   const selectedFacility = facilities.find((facility) => facility.id === selectedFacilityId) ?? null;
   const enabledConfigs = configs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
@@ -63,7 +65,7 @@ export default function ReportsCenter() {
   useEffect(() => {
     if (!selectedFacilityId) { setConfigs([]); return; }
     setRun(null); setRunItems([]);
-    listFacilityConfigs(selectedFacilityId).then(setConfigs).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility reports.'));
+    Promise.all([listFacilityConfigs(selectedFacilityId), getFacilityNotificationConfig(selectedFacilityId), listNotificationProviderSecretRequirements()]).then(([nextConfigs, nextNotificationConfig, nextRequirements]) => { setConfigs(nextConfigs); setNotificationConfig(nextNotificationConfig); setNotificationSecretRequirements(nextRequirements); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility configuration.'));
   }, [selectedFacilityId]);
 
   async function toggle(config: FacilityReportConfig) {
@@ -76,7 +78,8 @@ export default function ReportsCenter() {
     if (!facilityForm.name.trim()) { toast.error('Facility name is required.'); return; }
     try {
       const facility = await createFacility({ ...facilityForm, facility_code: facilityForm.facility_code || null, district: facilityForm.district || null, region: facilityForm.region || null, dhims2_uid: facilityForm.dhims2_uid || null });
-      setFacilities((current) => [...current, facility]); setSelectedFacilityId(facility.id); setShowSetup(false); setFacilityForm({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
+      setFacilities((current) => [...current, facility]); setSelectedFacilityId(facility.id);
+      try { setNotificationConfig(await initializeFacilityNotificationOnboarding(facility.id)); } catch (notificationError) { toast.error(notificationError instanceof Error ? notificationError.message : 'Facility created, but notification onboarding could not be initialized.'); } setShowSetup(false); setFacilityForm({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
       toast.success('Facility created and default report configuration seeded.');
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to create facility.'); }
   }
@@ -155,6 +158,53 @@ export default function ReportsCenter() {
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{runItems.map((item) => <div key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-start gap-2">{item.status === 'completed' ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" /> : item.status === 'warning' ? <TriangleAlert className="mt-0.5 h-4 w-4 text-warning" /> : <TriangleAlert className="mt-0.5 h-4 w-4 text-critical" />}<div className="min-w-0"><p className="text-sm font-medium truncate">{item.file_name ?? item.report_id}</p><p className="text-xs text-muted-foreground">{item.data_snapshot.total} source records · {item.status}</p>{item.validation_messages[0] && <p className="mt-1 text-xs text-warning line-clamp-2">{item.validation_messages[0]}</p>}</div></div></div>)}</div>
           </div>}
         </section>
+
+        {isAdmin && selectedFacility && <section className="card-medical p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Notification onboarding</h2>
+            <p className="text-sm text-muted-foreground">Configure notification providers as part of facility onboarding. Only secret references are stored here; provider credentials remain in the server-side secret environment.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p><p className="mt-1 font-semibold">{notificationConfig?.onboarding_status ?? 'not_started'}</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Environment</p><p className="mt-1 font-semibold">{notificationConfig?.environment ?? 'sandbox'}</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">Rollout</p><p className="mt-1 font-semibold">{notificationConfig?.rollout_percent ?? 0}%</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-muted-foreground">External delivery</p><p className="mt-1 font-semibold">{notificationConfig?.enabled ? 'Enabled' : 'Disabled'}</p></div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <select className="input" value={notificationProvider.channel} onChange={(e) => setNotificationProvider((current) => ({ ...current, channel: e.target.value as typeof current.channel, provider: e.target.value === 'push' ? 'fcm' : e.target.value === 'whatsapp' ? 'twilio_whatsapp' : e.target.value === 'sms' ? 'twilio' : e.target.value === 'voice' ? 'twilio_voice' : 'resend' }))}>
+              <option value="email">Email</option><option value="sms">SMS</option><option value="push">Push</option><option value="whatsapp">WhatsApp</option><option value="voice">Voice</option>
+            </select>
+            <select className="input" value={notificationProvider.environment} onChange={(e) => setNotificationProvider((current) => ({ ...current, environment: e.target.value as typeof current.environment }))}>
+              <option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option>
+            </select>
+            <input className="input" placeholder="Secret reference (not credential)" value={notificationProvider.secretReference} onChange={(e) => setNotificationProvider((current) => ({ ...current, secretReference: e.target.value }))} />
+            <input className="input" placeholder="Sender identity" value={notificationProvider.senderIdentity} onChange={(e) => setNotificationProvider((current) => ({ ...current, senderIdentity: e.target.value }))} />
+            <input className="input" placeholder="Provider account reference" value={notificationProvider.accountReference} onChange={(e) => setNotificationProvider((current) => ({ ...current, accountReference: e.target.value }))} />
+            <button className="btn-primary" onClick={() => void (async () => {
+              try {
+                await configureFacilityNotificationProvider({ facilityId: selectedFacility.id, channel: notificationProvider.channel, provider: notificationProvider.provider, environment: notificationProvider.environment, secretReference: notificationProvider.secretReference || null, senderIdentity: notificationProvider.senderIdentity || null, accountReference: notificationProvider.accountReference || null });
+                setNotificationConfig(await getFacilityNotificationConfig(selectedFacility.id));
+                toast.success('Notification provider configuration saved.');
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Unable to save notification provider configuration.');
+              }
+            })()}>Save provider configuration</button>
+          </div>
+          <div className="rounded-xl border border-border p-4">
+            <h3 className="font-semibold">Deployment secret & provider checklist</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Enter these values in the approved deployment secret manager when this organization/facility is onboarded. Never paste credential values into this form or store them in PostgreSQL.</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {notificationSecretRequirements.map((item) => (
+                <div key={item.id} className="rounded-lg bg-muted/40 p-3">
+                  <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs">{item.secret_name}</span><span className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.provider} · {item.environment}</span></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Reference: {item.secret_reference_example ?? 'deployment secret'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Production enablement remains a separate verification gate. External channels stay disabled until the deployment secrets are provisioned, consent policy is confirmed, sandbox/test delivery succeeds, webhook verification succeeds where applicable, and the configured external channels have verified providers.</p>
+        </section>}
 
         <section className="card-medical p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-semibold">Activated report library</h2><p className="text-sm text-muted-foreground">Only reports activated for the selected facility are eligible for bulk generation.</p></div><div className="flex flex-col gap-2 sm:flex-row"><input className="input" placeholder="Search reports" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input" value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div></div>

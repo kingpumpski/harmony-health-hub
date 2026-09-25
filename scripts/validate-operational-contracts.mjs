@@ -331,3 +331,83 @@ assert('header overlay triggers remain mutually exclusive', globalHeader.include
 assert('encounter workspace exposes version history', fs.readFileSync('src/pages/Encounters.tsx','utf8').includes('Version history') && fs.readFileSync('src/pages/Encounters.tsx','utf8').includes('document_versions'), 'encounter workspace must expose immutable document version history');
 assert('encounter workspace exposes audit events', fs.readFileSync('src/pages/Encounters.tsx','utf8').includes('system_audit_log') && fs.readFileSync('src/pages/Encounters.tsx','utf8').includes('Audit events'), 'encounter workspace must expose audit events for finalized/amended documents');
 
+
+const notificationMigration = fs.readFileSync('supabase/migrations/20260925150000_production_notification_module.sql','utf8');
+const notificationWorker = fs.readFileSync('supabase/functions/notify-queue-drain/index.ts','utf8');
+const notificationPrefs = fs.readFileSync('src/pages/NotificationPreferences.tsx','utf8');
+assert('production notification schema is present', notificationMigration.includes('notification_events') && notificationMigration.includes('notification_delivery_logs') && notificationMigration.includes('notification_audit') && notificationMigration.includes('notification_feature_flags'), 'notification module schema must include event, delivery, audit and feature-flag stores');
+assert('notification queue is idempotent', notificationMigration.includes('notification_queue_idempotency_uq') && notificationMigration.includes('enqueue_notification_v2'), 'notification queue must have a server-side idempotency contract');
+assert('notification worker is asynchronous and channel aware', notificationWorker.includes("channel==='email'") && notificationWorker.includes("channel==='sms'") && notificationWorker.includes("channel==='whatsapp'") && notificationWorker.includes("channel==='voice'") && notificationWorker.includes("channel==='in_app'"), 'notification worker must route supported channels asynchronously');
+assert('notification worker has fallback and retry', notificationWorker.includes('BACKOFF') && notificationWorker.includes('fallback_channels') && notificationWorker.includes('status:final?\'failed\':\'pending\''), 'notification worker must retry and fall back across channels');
+assert('notification preference center exists', notificationPrefs.includes('pause_non_critical') && notificationPrefs.includes('quiet_hours_start') && notificationPrefs.includes('channel_preferences'), 'notification preference center must expose quiet hours, channel controls and non-critical pause');
+
+const notificationSmtpMigration = read('supabase/migrations/20260925183000_notification_smtp_provider.sql');
+const notificationWorkerSmtp = read('supabase/functions/notify-queue-drain/index.ts');
+const smtpTestScript = read('scripts/test-smtp.mjs');
+const smtpTestWorkflow = read('.github/workflows/notification-smtp-test.yml');
+assert('SMTP provider contract exists', notificationSmtpMigration.includes("('smtp','email')") && notificationSmtpMigration.includes('secret_reference'), 'SMTP provider health and tenant secret-reference boundaries must exist');
+assert('notification worker supports SMTP email', notificationWorkerSmtp.includes("Deno.env.get('NOTIFICATION_EMAIL_PROVIDER')") && notificationWorkerSmtp.includes("emailProvider()==='smtp'") && notificationWorkerSmtp.includes('SMTP_HOST') && notificationWorkerSmtp.includes('SMTP_PASSWORD'), 'notification worker must support deployment-configured SMTP email');
+assert('SMTP test harness is present', smtpTestScript.includes('SMTP_USERNAME') && smtpTestScript.includes('SMTP_PASSWORD') && smtpTestScript.includes('transporter.verify'), 'SMTP test harness must verify credentials without exposing them');
+assert('SMTP GitHub workflow uses secrets', smtpTestWorkflow.includes('secrets.SMTP_PASSWORD') && smtpTestWorkflow.includes('workflow_dispatch') && smtpTestWorkflow.includes('npm install --no-save nodemailer@7.0.6'), 'SMTP test workflow must use GitHub Actions secrets and manual dispatch');
+const notificationOnboardingCatalog = read('supabase/migrations/20260925184000_notification_onboarding_configuration_catalog.sql');
+const reportsCenterSource = read('src/pages/ReportsCenter.tsx');
+assert('notification onboarding catalog exists', notificationOnboardingCatalog.includes('notification_provider_secret_requirements') && notificationOnboardingCatalog.includes('delivery_policy') && notificationOnboardingCatalog.includes('compliance_policy'), 'notification onboarding must provide complete non-secret configuration and deployment-secret requirements');
+assert('notification onboarding UI exposes deployment checklist', reportsCenterSource.includes('listNotificationProviderSecretRequirements') && reportsCenterSource.includes('Deployment secret & provider checklist'), 'facility onboarding UI must expose the provider deployment checklist without accepting credential values');
+const adminItSettingsMigration = read('supabase/migrations/20260925190000_admin_it_notification_settings_control_plane.sql');
+const adminItSettingsPage = read('src/pages/admin/Settings.tsx');
+const appSource = read('src/App.tsx');
+const headerSource = read('src/components/layout/Header.tsx');
+assert('admin and IT notification settings control plane exists', adminItSettingsMigration.includes('update_facility_notification_configuration') && adminItSettingsMigration.includes("has_role(uid,'it_admin')"), 'administrator and IT administrator notification configuration RPC must exist');
+assert('admin and IT system settings UI exists', adminItSettingsPage.includes('Notification Control Plane') && adminItSettingsPage.includes('update_facility_notification_configuration') && adminItSettingsPage.includes('Save provider metadata'), 'Settings must expose notification control-plane configuration');
+assert('IT administrators can route to system settings', appSource.includes("allowedRoles={['admin','it_admin']}") && headerSource.includes('user.role === "it_admin"') && headerSource.includes('/admin/settings'), 'IT administrators must be able to open system settings');
+const notificationProviderMigration = read('supabase/migrations/20260925170000_notification_provider_operationalization.sql');
+assert(notificationProviderMigration.includes('notification_devices'), 'Notification device registry missing');
+assert(notificationProviderMigration.includes('notification_provider_health'), 'Provider circuit state missing');
+assert(notificationProviderMigration.includes('notification_webhook_events'), 'Webhook idempotency store missing');
+assert(notificationProviderMigration.includes('register_notification_device'), 'Device registration RPC missing');
+
+const notificationWorkerProvider = read('supabase/functions/notify-queue-drain/index.ts');
+assert(notificationWorkerProvider.includes('RESEND_API_KEY'), 'Resend email adapter missing');
+assert(notificationWorkerProvider.includes('FCM_SERVICE_ACCOUNT_JSON'), 'FCM HTTP v1 adapter missing');
+assert(notificationWorkerProvider.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Twilio WhatsApp trial/template adapter missing');
+assert(notificationWorkerProvider.includes('notification_templates'), 'Server-side template lookup missing');
+
+const notificationWebhook = read('supabase/functions/notification-webhook/index.ts');
+assert(notificationWebhook.includes('RESEND_WEBHOOK_SECRET'), 'Resend webhook verification missing');
+assert(notificationWebhook.includes('x-twilio-signature'), 'Twilio webhook verification missing');
+assert(notificationWebhook.includes('notification_webhook_events'), 'Webhook idempotency persistence missing');
+
+const notificationProviderDocs = read('docs/NOTIFICATION_PROVIDER_TEST_SETUP.md');
+assert(notificationProviderDocs.includes('RESEND_API_KEY'), 'Provider runbook missing Resend configuration');
+assert(notificationProviderDocs.includes('FCM_SERVICE_ACCOUNT_JSON'), 'Provider runbook missing FCM configuration');
+assert(notificationProviderDocs.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Provider runbook missing WhatsApp configuration');
+
+const notificationOnboardingMigration = read('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql');
+assert(notificationOnboardingMigration.includes('facility_notification_config'), 'Facility notification onboarding configuration missing');
+assert(notificationOnboardingMigration.includes('facility_notification_provider_connections'), 'Facility provider connection registry missing');
+assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
+assert(notificationOnboardingMigration.includes('mark_facility_notification_production_ready'), 'Production readiness gate missing');
+assert(notificationOnboardingMigration.includes('verify_facility_notification_provider'), 'Provider verification workflow missing');
+assert(notificationOnboardingMigration.includes('secret_reference'), 'Provider secret-reference boundary missing');
+assert(fs.existsSync('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql'), 'Notification onboarding reconciliation migration must use its unique migration version');
+assert(!fs.existsSync('supabase/migrations/20260925180000_notification_facility_onboarding_reconciliation.sql'), 'Duplicate notification onboarding migration version must not remain in the ledger');
+
+const notificationScheduler = read('supabase/functions/notification-scheduler/index.ts');
+assert(notificationScheduler.includes('_facility_id:row.facility_id??null'), 'Scheduled notifications must preserve facility scope when entering the queue');
+
+const notificationSend = read('supabase/functions/notifications-send/index.ts');
+assert(notificationSend.includes('body.facility_id'), 'Notification send API must accept facility scope');
+
+const notificationDrain = read('supabase/functions/notify-queue-drain/index.ts');
+assert(notificationDrain.includes('facility_notification_config'), 'Notification worker must enforce facility onboarding configuration');
+assert(notificationDrain.includes('kill_switch'), 'Notification worker must enforce facility kill switch');
+assert(notificationDrain.includes('enabled_channels?.[channel]!==true'), 'Notification worker must enforce facility channel enablement');
+assert(notificationDrain.includes('rolloutAllows'), 'Notification worker must enforce deterministic facility rollout');
+assert(notificationProviderMigration.includes('erase_notification_history'), 'Notification history erasure helper missing');
+assert(notificationProviderMigration.includes('notification.audit_erasure'), 'Notification erasure must use a controlled audit exception');
+assert(notificationProviderMigration.includes('DELETE FROM public.notifications'), 'Notification erasure must remove in-app notification records');
+
+const notificationProviderPriorityMigration = read('supabase/migrations/20260925210500_notification_provider_priority_control_plane.sql');
+assert('notification provider priority control is versioned', notificationProviderPriorityMigration.includes('priority integer not null default 100') && notificationProviderPriorityMigration.includes('is_primary boolean not null default false') && notificationProviderPriorityMigration.includes('facility_notification_provider_primary_uq'), 'notification provider routing must have deterministic priority and single-primary controls');
+const notificationSettingsSource = read('src/pages/admin/Settings.tsx');
+assert('admin email provider form persists routing controls', notificationSettingsSource.includes('priority:Number(emailDraft.priority||100)') && notificationSettingsSource.includes('isPrimary:emailDraft.isPrimary'), 'the email provider UI must send priority and primary-provider state to the server control plane');
