@@ -24,7 +24,7 @@ type Config = {
 
 type ProviderConnection = {
  id:string; facility_id:string; channel:string; provider:string; environment:string; secret_reference:string|null;
- sender_identity:string|null; account_reference:string|null; status:string; last_verified_at:string|null; last_error:string|null;
+ sender_identity:string|null; account_reference:string|null; status:string; priority:number; is_primary:boolean; last_verified_at:string|null; last_error:string|null;
 };
 
 const db = supabase as any;
@@ -54,7 +54,7 @@ export default function Settings(){
  const [emailProvider,setEmailProvider]=useState<'resend'|'smtp'>('resend');
  const [emailEnvironment,setEmailEnvironment]=useState<'sandbox'|'test'|'production'>('sandbox');
  const [showEmailSecret,setShowEmailSecret]=useState(false);
- const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:'',testRecipient:''});
+ const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:'',testRecipient:'',priority:'100',isPrimary:false});
  const [emailSaving,setEmailSaving]=useState(false);
  const [emailTesting,setEmailTesting]=useState(false);
  const [emailStatus,setEmailStatus]=useState<any>(null);
@@ -81,7 +81,7 @@ export default function Settings(){
      const [cfg, requirements, connections] = await Promise.all([
        getFacilityNotificationConfig(id),
        listNotificationProviderSecretRequirements(),
-       db.from('facility_notification_provider_connections').select('id,facility_id,channel,provider,environment,secret_reference,sender_identity,account_reference,status,last_verified_at,last_error').eq('facility_id',id).order('channel').order('environment'),
+       db.from('facility_notification_provider_connections').select('id,facility_id,channel,provider,environment,secret_reference,sender_identity,account_reference,status,priority,is_primary,last_verified_at,last_error').eq('facility_id',id).order('channel').order('environment'),
      ]);
      setNotification(cfg);
      setSecretRequirements(requirements);
