@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,13 +27,20 @@ export default function Header({ onMenu }: HeaderProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
-  const [notifications] = useState<NotifRow[]>([]);
-  const unread = 0;
-  const hasCritical = false;
+  const [notifications, setNotifications] = useState<NotifRow[]>([]);
+  const db = supabase as any;
+  const loadNotifications = useCallback(async () => {
+    if (!user?.id || user.role === "it_admin") return;
+    const { data } = await db.rpc('get_workflow_notifications', { _limit: 30 });
+    setNotifications(Array.isArray(data) ? data as NotifRow[] : []);
+  }, [user?.id, user?.role]);
+  const unread = notifications.filter((n) => !n.is_read).length;
+  const hasCritical = notifications.some((n) => !n.is_read && ['critical','warning','high'].includes(String(n.severity).toLowerCase()));
   const greeting = `Welcome ${roleLabels[user?.role ?? "patient"]} ${user?.lastName || user?.firstName || ""}`.trim();
   const pageLabel = location.pathname.split("/").filter(Boolean).filter(segment => !/^[0-9a-f-]{8,}$/i.test(segment)).pop()?.replace(/-/g, " ").replace(/\b\w/g, letter => letter.toUpperCase()) || "Dashboard";
 
   useEffect(() => {
+    void loadNotifications();
     if (user?.role === "it_admin") { setSearchResults([]); setIsSearching(false); return; }
     const query = searchTerm.trim();
     if (!query) { setSearchResults([]); setIsSearching(false); return; }
@@ -43,7 +50,15 @@ export default function Header({ onMenu }: HeaderProps) {
       void searchPatients(query).then(results => { if (active) setSearchResults(results.slice(0, 8)); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [searchTerm, user?.role]);
+  }, [searchTerm, user?.role, loadNotifications]);
+
+  useEffect(() => {
+    if (!user?.id || user.role === 'it_admin') return;
+    const channel = supabase.channel(`header-notifications-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void loadNotifications())
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [loadNotifications, user?.id, user?.role]);
 
   if (!user) return null;
 

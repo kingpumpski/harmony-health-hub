@@ -12,6 +12,7 @@ export default function PractitionerDashboard() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attention, setAttention] = useState(0);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -36,7 +37,10 @@ export default function PractitionerDashboard() {
     const review = rows.filter((a) => ['checked_in', 'review'].includes(String(a.status ?? '').toLowerCase()) || ['checked_in', 'review'].includes(String(a.treatment_status ?? '').toLowerCase()));
     const completed = today.filter((a) => String(a.treatment_status ?? a.status ?? '').toLowerCase() === 'completed');
     const emergencyRows = Array.isArray(emergency.data) ? emergency.data as unknown[] : [];
-    const notificationRows = Array.isArray(notifications.data) ? notifications.data as Array<{ is_read?: boolean }> : [];
+    const notificationRows = Array.isArray(notifications.data) ? notifications.data as Array<{ is_read?: boolean; severity?: string }> : [];
+    const unreadNotifications = notificationRows.filter((n) => !n.is_read);
+    const highAttention = unreadNotifications.filter((n) => ['critical', 'warning', 'high'].includes(String(n.severity ?? '').toLowerCase())).length;
+    setAttention(highAttention);
     setMetrics([
       { label: 'Appointments', value: active.length, description: 'Active today', href: '/appointments', icon: Calendar, tone: 'text-primary bg-primary/5' },
       { label: 'Pending reviews', value: review.length, description: 'Checked-in / review queue', href: '/appointments', icon: ClipboardCheck, tone: 'text-warning bg-warning/5' },
@@ -70,6 +74,7 @@ export default function PractitionerDashboard() {
         <div className="flex flex-wrap gap-2"><Link to="/appointments" className="btn-primary inline-flex items-center gap-2"><Calendar className="h-4 w-4" /> My schedule</Link><Link to="/encounters" className="btn-secondary inline-flex items-center gap-2"><Stethoscope className="h-4 w-4" /> Encounters</Link><button type="button" onClick={() => void load()} className="btn-ghost inline-flex items-center gap-2" aria-label="Refresh practitioner dashboard"><Clock3 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button></div>
       </div>
     </section>
+    {attention > 0 && <section className="rounded-2xl border border-critical/30 bg-critical/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-critical">Clinical attention required</p><p className="mt-1 text-xs text-muted-foreground">{attention} unread high-priority workflow event{attention === 1 ? '' : 's'} require acknowledgement.</p></div><Link to="/notifications" className="btn-secondary">Review alerts</Link></div></section>}
     <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Clinical priority counters">
       {metrics.map(({ label, value, description, href, icon: Icon, tone }) => <Link key={label} to={href} className={`group rounded-2xl border border-border p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm ${tone}`}><div className="flex items-start justify-between gap-2"><p className="text-xs font-medium text-muted-foreground">{label}</p><Icon className="h-4 w-4 shrink-0" /></div><p className="mt-2 text-3xl font-bold tabular-nums">{value ?? '—'}</p><p className="mt-1 text-[11px] text-muted-foreground">{description}</p></Link>)}
     </section>
