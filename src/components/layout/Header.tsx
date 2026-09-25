@@ -48,10 +48,10 @@ export default function Header({ onMenu }: HeaderProps) {
     setIsSearching(true);
     const roles = user?.roles ?? (user?.role ? [user.role] : []);
     const timer = window.setTimeout(() => {
-      void searchGlobalWorkspace(query, roles).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
+      void searchGlobalWorkspace(query, roles, user?.permissions ?? []).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [searchTerm, user?.role, loadNotifications]);
+  }, [searchTerm, user?.role, user?.permissions, loadNotifications]);
 
   useEffect(() => {
     if (!user?.id || user.role === 'it_admin') return;
