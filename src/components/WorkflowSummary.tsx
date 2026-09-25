@@ -11,7 +11,7 @@ const canBeds = (role: UserRole) => ['admin', 'nurse', 'midwife', 'specialist_nu
 const canEmergency = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'].includes(role);
 const canTheatre = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'specialist_nurse'].includes(role);
 const canClaims = (role: UserRole) => ['admin', 'accountant'].includes(role);
-const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist'];
+const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician'];
 
 export default function WorkflowSummary() {
   const { user } = useAuth();
@@ -30,6 +30,14 @@ export default function WorkflowSummary() {
       { label: 'Radiology results', href: '/clinical-results', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
       { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-info', surface: 'bg-info/5' },
       { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' },
+    ];
+    if (role === 'radiology_technician') return [...common,
+      { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
+      { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
+    ];
+    if (role === 'radiologist') return [...common,
+      { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
+      { label: 'Radiology results', href: '/clinical-results', icon: ScanLine, tone: 'text-info', surface: 'bg-info/5' },
     ];
     if (role === 'lab_technician') return [...common, { label: 'Laboratory', href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5' }];
     if (role === 'pharmacist') return [...common, { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' }, { label: 'Patients waiting', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' }];
