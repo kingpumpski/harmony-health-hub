@@ -1,0 +1,40 @@
+name: Notification Phase 10 Contracts
+
+on:
+  push:
+    branches:
+      - feature/production-notification-module
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/notification-**/**'
+      - 'supabase/migrations/*notification*'
+      - 'scripts/notification-phase10-offline-contract.mjs'
+      - 'src/pages/admin/Settings.tsx'
+      - 'docs/NOTIFICATION_PROVIDER_TEST_SETUP.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notification-phase10-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run notification Phase 10 offline contract
+        run: node scripts/notification-phase10-offline-contract.mjs
+      - name: Check repository migration filenames for duplicates
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const files=fs.readdirSync('supabase/migrations').filter(x=>x.includes('notification'));
+          const versions=files.map(x=>x.match(/^(\\d+)_/)?.[1]).filter(Boolean);
+          const duplicates=versions.filter((v,i,a)=>a.indexOf(v)!==i);
+          if(duplicates.length){console.error('Duplicate migration versions:',duplicates);process.exit(1)}
+          console.log('Migration filename versions are unique:',versions.length)
+          NODE
