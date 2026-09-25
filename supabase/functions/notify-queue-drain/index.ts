@@ -3,6 +3,8 @@ import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 import nodemailer from 'npm:nodemailer@7.0.6';
 
 type Channel = 'in_app'|'email'|'sms'|'push'|'whatsapp'|'voice';
+async function resolveFacilityEmailProvider(db:any,facilityId:string|undefined,environment:string){if(!facilityId)return {provider:emailProvider(),credentials:null};const {data}=await db.from('notification_provider_credentials').select('provider,credentials_ciphertext,status').eq('facility_id',facilityId).eq('channel','email').eq('environment',environment).in('status',['configured','verified']).order('updated_at',{ascending:false}).limit(1).maybeSingle();if(!data)return {provider:emailProvider(),credentials:null};const raw=Deno.env.get('NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY');if(!raw)throw new Error('Notification credential encryption key is not configured');const kb=Uint8Array.from(atob(raw),c=>c.charCodeAt(0));if(kb.length!==32)throw new Error('Notification credential encryption key must decode to 32 bytes');const [v,iv64,c64]=String(data.credentials_ciphertext).split('.');if(v!=='v1')throw new Error('Unsupported provider credential version');const key=await crypto.subtle.importKey('raw',kb,'AES-GCM',false,['decrypt']);const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:Uint8Array.from(atob(iv64),c=>c.charCodeAt(0))},key,Uint8Array.from(atob(c64),c=>c.charCodeAt(0)));return {provider:String(data.provider),credentials:JSON.parse(new TextDecoder().decode(plain))};}
+
 const BATCH=50, BACKOFF=[10,30,120,600,3600];
 const json=(body:unknown,status=200,cors:Record<string,string>={})=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
 
@@ -23,29 +25,8 @@ async function fcmToken(){
   const token=await tokenRes.json(); if(!tokenRes.ok||!token.access_token)throw new Error('FCM OAuth token request failed');
   fcmAccessToken={token:token.access_token,expires:Date.now()+Number(token.expires_in??3600)*1000}; return token.access_token;
 }
-async function external(channel:Channel, recipient:{email?:string;phone?:string;deviceTokens?:string[]}, subject:string, body:string, payload:Record<string,unknown>={}){
-  if(channel==='email'){
-    if(!recipient.email)return {ok:false,provider:'none',error:'Recipient email unavailable'};
-    if(emailProvider()==='smtp'){
-      const host=Deno.env.get('SMTP_HOST'),user=Deno.env.get('SMTP_USERNAME'),pass=Deno.env.get('SMTP_PASSWORD');
-      if(!host||!user||!pass)return {ok:false,provider:'smtp',error:'SMTP provider not configured'};
-      const port=Number(Deno.env.get('SMTP_PORT')??'587'),secure=(Deno.env.get('SMTP_SECURE')??'false').toLowerCase()==='true';
-      const from=Deno.env.get('SMTP_FROM_EMAIL')??user,fromName=Deno.env.get('SMTP_FROM_NAME')??'Harmony Health Hub';
-      const transporter=nodemailer.createTransport({host,port,secure,auth:{user,pass},tls:{servername:host}});
-      try{
-        const info=await transporter.sendMail({from:`"${fromName.replace(/"/g,'')}" <${from}>`,to:[recipient.email],subject,text:body,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${htmlEscape(subject)}</h2><p>${htmlEscape(body).replace(/\n/g,'<br/>')}</p></div>`});
-        transporter.close();
-        return {ok:true,provider:'smtp',id:info.messageId};
-      }catch(error){
-        transporter.close();
-        return {ok:false,provider:'smtp',error:error instanceof Error?error.message:'SMTP send failed'};
-      }
-    }
-    const key=Deno.env.get('RESEND_API_KEY'),from=Deno.env.get('RESEND_FROM_EMAIL');
-    if(!key||!from)return {ok:false,provider:'resend',error:'Resend provider not configured'};
-    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${htmlEscape(subject)}</h2><p>${htmlEscape(body).replace(/\n/g,'<br/>')}</p></div>`,text:body})});
-    const d=await r.json().catch(()=>({})); return {ok:r.ok,provider:'resend',id:d.id,error:r.ok?undefined:String(d.message??d.name??'Resend error')};
-  }
+async function external(channel:Channel, recipient:{email?:string;phone?:string;deviceTokens?:string[]}, subject:string, body:string, payload:Record<string,unknown>={}, emailConfig?:any){
+  if(channel==='email'){if(!recipient.email)return {ok:false,provider:'none',error:'Recipient email unavailable'};const provider=String(emailConfig?.provider??emailProvider()).toLowerCase();const cfg=emailConfig?.credentials;if(provider==='smtp'){const host=String(cfg?.host??Deno.env.get('SMTP_HOST')??''),user=String(cfg?.username??Deno.env.get('SMTP_USERNAME')??''),pass=String(cfg?.password??Deno.env.get('SMTP_PASSWORD')??'');if(!host||!user||!pass)return {ok:false,provider:'smtp',error:'SMTP provider not configured'};const port=Number(cfg?.port??Deno.env.get('SMTP_PORT')??'587'),secure=Boolean(cfg?.secure??((Deno.env.get('SMTP_SECURE')??'false').toLowerCase()==='true')),from=String(cfg?.from_email??Deno.env.get('SMTP_FROM_EMAIL')??user),fromName=String(cfg?.from_name??Deno.env.get('SMTP_FROM_NAME')??'Harmony Health Hub');const t=nodemailer.createTransport({host,port,secure,auth:{user,pass},tls:{servername:host}});try{const i=await t.sendMail({from:`"${fromName.replace(/"/g,'')}" <${from}>`,to:[recipient.email],subject,text:body,html:`<div><h2>${htmlEscape(subject)}</h2><p>${htmlEscape(body).replace(/\n/g,'<br/>')}</p></div>`});return {ok:true,provider:'smtp',id:i.messageId}}catch(e){return {ok:false,provider:'smtp',error:e instanceof Error?e.message:'SMTP send failed'}}finally{t.close()}}const key=String(cfg?.api_key??Deno.env.get('RESEND_API_KEY')??''),from=String(cfg?.from_email??Deno.env.get('RESEND_FROM_EMAIL')??'');if(!key||!from)return {ok:false,provider:'resend',error:'Resend provider not configured'};const rr=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div><h2>${htmlEscape(subject)}</h2><p>${htmlEscape(body).replace(/\n/g,'<br/>')}</p></div>`,text:body})});const d=await rr.json().catch(()=>({}));return {ok:rr.ok,provider:'resend',id:d.id,error:rr.ok?undefined:String(d.message??d.name??'Resend error')}}
   if(channel==='push'){
     const tokens=recipient.deviceTokens??[]; if(!tokens.length)return {ok:false,provider:'fcm',error:'No active FCM device token'};
     const project=Deno.env.get('FCM_PROJECT_ID'); if(!project)return {ok:false,provider:'fcm',error:'FCM project not configured'};
@@ -116,6 +97,7 @@ Deno.serve(async req=>{
    for(const channel of channels){ const {data:channelConfig}=await db.from('notification_channels').select('enabled').eq('code',channel).maybeSingle(); if(!channelConfig?.enabled){last='Channel disabled';continue;} if(row.facility_id&&facilityConfig&&facilityConfig.enabled_channels?.[channel]!==true){last='Facility channel disabled';continue;}
     if(channel!=='in_app'&&priority!=='critical'&&(pref.pause_non_critical||pref.channel_preferences?.[channel]!==true))continue;
     const started=Date.now();
+    const emailConfig=channel==='email'?await resolveFacilityEmailProvider(db,row.facility_id,String(facilityConfig?.environment??'sandbox')):undefined;
     if(channel!=='in_app'&&!await providerAllowed(db,channel)){last='Provider circuit open';continue;}
     const locale=String(row.locale??pref.locale??'en-GH');
     const {data:tpl}=await db.from('notification_templates').select('subject_template,body_template').eq('template_key',row.template_key).eq('locale',locale).eq('channel',channel).eq('active',true).order('version',{ascending:false}).limit(1).maybeSingle();
@@ -128,7 +110,7 @@ Deno.serve(async req=>{
       await db.from('notification_delivery_logs').insert({notification_id:nid,queue_id:row.id,user_id:userId,channel,provider:'supabase_realtime',status:'delivered',attempt,latency_ms:Date.now()-started});
       await db.from('notification_audit').insert({notification_id:nid,queue_id:row.id,user_id:userId,event_name:row.event_name,action:'delivery',channel,outcome:'delivered',metadata:{attempt}});ok=true;break;
     }
-    const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id});
+    const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id},emailConfig);
     await db.from('notification_delivery_logs').insert({queue_id:row.id,user_id:userId,channel,provider:r.provider,status:r.ok?'sent':'failed',provider_message_id:r.id??null,attempt,latency_ms:Date.now()-started,error_message:r.error??null});
     await providerOutcome(db,channel,r.ok,r.error);
     if(r.ok){ok=true;break;}last=r.error??last;
