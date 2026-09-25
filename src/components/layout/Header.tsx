@@ -75,7 +75,7 @@ export default function Header({ onMenu }: HeaderProps) {
         <div className="min-w-0 flex-1">
           <form onSubmit={e => e.preventDefault()} className="relative mx-auto max-w-2xl">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search modules, features, patients, labs, diagnostics, documents or finance…" className="input-medical h-10 rounded-xl bg-background/80 pl-10 pr-20" />}
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search modules, features, patients, labs, diagnostics, documents or finance…" className="input-medical h-10 rounded-xl bg-background/80 pl-10 pr-20" />
             {searchTerm.trim() && (isSearching || searchResults.length > 0) && <div className="absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="max-h-[min(32rem,70vh)] overflow-auto p-2">
               {searchResults.map(r => <Link key={`${r.kind}:${r.id}`} to={r.href} onClick={() => { setSearchResults([]); setSearchTerm(""); }} className="block rounded-xl p-3 hover:bg-muted/60"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">{r.kind}</span><div className="min-w-0"><p className="text-sm font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.subtitle}</p></div></div></Link>)}
               {!isSearching && searchResults.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">No matching modules, features or records found.</p>}
