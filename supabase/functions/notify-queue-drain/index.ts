@@ -1,4 +1,5 @@
 // Trusted background worker for in-app + external notification delivery.
+// Reconciled onto the current main notification onboarding baseline.
 // Provider credentials are server-side environment variables only.
 // Supported channels: in_app, email (Resend), sms/whatsapp (Twilio), push (signed webhook).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
