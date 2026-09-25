@@ -61,17 +61,33 @@ Deno.serve(async (req) => {
       const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);
       if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);
 
+      const { data: previousRows, error: previousRoleError } = await service
+        .from('user_roles')
+        .select('role, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+      if (previousRoleError) return json({ error: 'Unable to read current role: ' + previousRoleError.message }, 500);
+      const previousRole = previousRows?.[0]?.role ? String(previousRows[0].role) : null;
+
       const roleDelete = await service.from('user_roles').delete().eq('user_id', userId);
       if (roleDelete.error) return json({ error: 'Role update failed: ' + roleDelete.error.message }, 500);
+
       const roleInsert = await service.from('user_roles').insert({ user_id: userId, role: nextRole });
-      if (roleInsert.error) return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);
+      if (roleInsert.error) {
+        if (previousRole) await service.from('user_roles').insert({ user_id: userId, role: previousRole });
+        return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);
+      }
 
       const { error: auditError } = await service.rpc('record_system_audit', {
         _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',
         _entity_id: userId, _severity: 'info',
-        _metadata: { target_user_id: userId, role: nextRole, changed_by: caller.id },
+        _metadata: { target_user_id: userId, role: nextRole, previous_role: previousRole, changed_by: caller.id },
       });
-      if (auditError) return json({ error: 'Role changed but audit recording failed' }, 500);
+      if (auditError) {
+        await service.from('user_roles').delete().eq('user_id', userId);
+        if (previousRole) await service.from('user_roles').insert({ user_id: userId, role: previousRole });
+        return json({ error: 'Role update was rolled back because audit recording failed' }, 500);
+      }
       return json({ ok: true, user: { id: userId, role: nextRole } });
     }
 
