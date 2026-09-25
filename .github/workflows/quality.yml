@@ -17,7 +17,7 @@ env:
   NODE_VERSION: 24
 
 concurrency:
-  group: quality-${{ github.workflow }}-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
