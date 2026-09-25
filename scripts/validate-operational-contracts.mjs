@@ -340,3 +340,25 @@ assert('notification queue is idempotent', notificationMigration.includes('notif
 assert('notification worker is asynchronous and channel aware', notificationWorker.includes("channel==='email'") && notificationWorker.includes("channel==='sms'") && notificationWorker.includes("channel==='whatsapp'") && notificationWorker.includes("channel==='voice'") && notificationWorker.includes("channel==='in_app'"), 'notification worker must route supported channels asynchronously');
 assert('notification worker has fallback and retry', notificationWorker.includes('BACKOFF') && notificationWorker.includes('fallback_channels') && notificationWorker.includes('status:final?\'failed\':\'pending\''), 'notification worker must retry and fall back across channels');
 assert('notification preference center exists', notificationPrefs.includes('pause_non_critical') && notificationPrefs.includes('quiet_hours_start') && notificationPrefs.includes('channel_preferences'), 'notification preference center must expose quiet hours, channel controls and non-critical pause');
+
+const notificationProviderMigration = read('supabase/migrations/20260925170000_notification_provider_operationalization.sql');
+assert(notificationProviderMigration.includes('notification_devices'), 'Notification device registry missing');
+assert(notificationProviderMigration.includes('notification_provider_health'), 'Provider circuit state missing');
+assert(notificationProviderMigration.includes('notification_webhook_events'), 'Webhook idempotency store missing');
+assert(notificationProviderMigration.includes('register_notification_device'), 'Device registration RPC missing');
+
+const notificationWorker = read('supabase/functions/notify-queue-drain/index.ts');
+assert(notificationWorker.includes('RESEND_API_KEY'), 'Resend email adapter missing');
+assert(notificationWorker.includes('FCM_SERVICE_ACCOUNT_JSON'), 'FCM HTTP v1 adapter missing');
+assert(notificationWorker.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Twilio WhatsApp trial/template adapter missing');
+assert(notificationWorker.includes('notification_templates'), 'Server-side template lookup missing');
+
+const notificationWebhook = read('supabase/functions/notification-webhook/index.ts');
+assert(notificationWebhook.includes('RESEND_WEBHOOK_SECRET'), 'Resend webhook verification missing');
+assert(notificationWebhook.includes('x-twilio-signature'), 'Twilio webhook verification missing');
+assert(notificationWebhook.includes('notification_webhook_events'), 'Webhook idempotency persistence missing');
+
+const notificationProviderDocs = read('docs/NOTIFICATION_PROVIDER_TEST_SETUP.md');
+assert(notificationProviderDocs.includes('RESEND_API_KEY'), 'Provider runbook missing Resend configuration');
+assert(notificationProviderDocs.includes('FCM_SERVICE_ACCOUNT_JSON'), 'Provider runbook missing FCM configuration');
+assert(notificationProviderDocs.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Provider runbook missing WhatsApp configuration');
