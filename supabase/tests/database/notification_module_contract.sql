@@ -8,9 +8,14 @@ BEGIN
  ASSERT to_regclass('public.notification_delivery_logs') IS NOT NULL, 'notification_delivery_logs missing';
  ASSERT to_regclass('public.notification_audit') IS NOT NULL, 'notification_audit missing';
  ASSERT to_regclass('public.notification_feature_flags') IS NOT NULL, 'notification_feature_flags missing';
+ ASSERT to_regclass('public.facility_notification_config') IS NOT NULL, 'facility_notification_config missing';
+ ASSERT to_regclass('public.facility_notification_provider_connections') IS NOT NULL, 'facility_notification_provider_connections missing';
+ ASSERT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='scheduled_notifications' AND column_name='facility_id'),'scheduled notification facility scope missing';
  SELECT count(*) INTO c FROM public.notification_events WHERE event_name IN ('appointment_reminder_24h','critical_lab_alert','medication_dose_reminder');
  ASSERT c=3,'core notification events missing';
  SELECT count(*) INTO c FROM public.notification_channels WHERE code IN ('in_app','email','sms','push','whatsapp','voice');
  ASSERT c=6,'channel catalog incomplete';
  ASSERT EXISTS(SELECT 1 FROM pg_indexes WHERE indexname='notification_queue_idempotency_uq'),'queue idempotency index missing';
+ ASSERT to_regprocedure('public.initialize_facility_notification_onboarding(uuid)') IS NOT NULL,'facility notification onboarding initializer missing';
+ ASSERT to_regprocedure('public.mark_facility_notification_production_ready(uuid)') IS NOT NULL,'facility notification production gate missing';
 END $$;
