@@ -102,6 +102,7 @@ CREATE OR REPLACE FUNCTION public.ensure_notification_preferences(_user_id UUID)
 RETURNS public.user_notification_preferences LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r public.user_notification_preferences;
 BEGIN
+  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin')) THEN RAISE EXCEPTION 'Forbidden'; END IF;
   INSERT INTO public.user_notification_preferences(user_id) VALUES(_user_id) ON CONFLICT(user_id) DO NOTHING;
   SELECT * INTO r FROM public.user_notification_preferences WHERE user_id=_user_id; RETURN r;
 END; $$;
@@ -123,6 +124,11 @@ BEGIN
   IF qid IS NULL THEN SELECT id INTO qid FROM public.notification_queue WHERE idempotency_key=idem; END IF;
   RETURN qid;
 END; $$;
+
+REVOKE ALL ON FUNCTION public.notification_feature_enabled(TEXT,UUID) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.notification_feature_enabled(TEXT,UUID) TO authenticated,service_role;
+REVOKE ALL ON FUNCTION public.ensure_notification_preferences(UUID) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.ensure_notification_preferences(UUID) TO authenticated,service_role;
 
 REVOKE ALL ON FUNCTION public.enqueue_notification_v2(TEXT,UUID,JSONB,TEXT,JSONB,TEXT,TIMESTAMPTZ,TEXT,UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.enqueue_notification_v2(TEXT,UUID,JSONB,TEXT,JSONB,TEXT,TIMESTAMPTZ,TEXT,UUID,TEXT,TEXT) TO authenticated, service_role;
