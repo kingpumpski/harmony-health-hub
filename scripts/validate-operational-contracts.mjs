@@ -369,6 +369,8 @@ assert(notificationOnboardingMigration.includes('facility_notification_provider_
 assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
 assert(notificationOnboardingMigration.includes('mark_facility_notification_production_ready'), 'Production readiness gate missing');
 assert(notificationOnboardingMigration.includes('secret_reference'), 'Provider secret-reference boundary missing');
+assert(fs.existsSync('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql'), 'Notification onboarding reconciliation migration must use its unique migration version');
+assert(!fs.existsSync('supabase/migrations/20260925180000_notification_facility_onboarding_reconciliation.sql'), 'Duplicate notification onboarding migration version must not remain in the ledger');
 
 const notificationScheduler = read('supabase/functions/notification-scheduler/index.ts');
 assert(notificationScheduler.includes('_facility_id:row.facility_id??null'), 'Scheduled notifications must preserve facility scope when entering the queue');
