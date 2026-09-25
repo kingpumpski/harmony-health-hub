@@ -221,6 +221,8 @@ export default function Settings(){
         <select className="input-medical" value={emailProvider} onChange={e=>setEmailProvider(e.target.value as any)}><option value="resend">Resend</option><option value="smtp">Custom SMTP</option></select>
         <select className="input-medical" value={emailEnvironment} onChange={e=>setEmailEnvironment(e.target.value as any)}><option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option></select>
         <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>\n        <input className="input-medical" type="email" placeholder="Test recipient email" value={emailDraft.testRecipient} onChange={e=>setEmailDraft({...emailDraft,testRecipient:e.target.value})}/>
+        <input className="input-medical" type="number" min="0" max="10000" placeholder="Provider priority (lower first)" value={emailDraft.priority} onChange={e=>setEmailDraft({...emailDraft,priority:e.target.value})}/>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailDraft.isPrimary} onChange={e=>setEmailDraft({...emailDraft,isPrimary:e.target.checked})}/>Use as primary provider</label>
         <input className="input-medical" placeholder="From name" value={emailDraft.from_name} onChange={e=>setEmailDraft({...emailDraft,from_name:e.target.value})}/>
         {emailProvider==='smtp' ? <>
           <input className="input-medical" placeholder="SMTP host" value={emailDraft.host} onChange={e=>setEmailDraft({...emailDraft,host:e.target.value})}/>
