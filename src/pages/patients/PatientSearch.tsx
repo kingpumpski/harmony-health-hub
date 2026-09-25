@@ -21,6 +21,7 @@ export default function PatientSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('Search by patient name, patient code, phone, email or Ghana Card.');
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault();
@@ -28,11 +29,13 @@ export default function PatientSearch() {
     if (!value) {
       setResults([]);
       setError('');
+      setHasSearched(false);
       setMessage('Enter a search term to find a patient.');
       return;
     }
 
     setIsLoading(true);
+    setHasSearched(true);
     setError('');
     try {
       const items = await searchPatients(value);
@@ -68,6 +71,8 @@ export default function PatientSearch() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, patient code, Ghana Card, phone or email"
             className="input-medical pl-12 w-full"
+            autoComplete="off"
+            enterKeyHint="search"
             aria-label="Search patients"
             aria-describedby="patient-search-help"
           />
@@ -130,7 +135,7 @@ export default function PatientSearch() {
           </div>
         ))}
       </div>}
-      {!isLoading && query.trim() && !results.length && !error && <div className="card-medical p-8 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">No patient found</h2><p className="mt-1 text-sm text-muted-foreground">Check the identifier or search using the patient’s full name.</p><Link to="/registration" className="btn-secondary mt-4 inline-flex">Register a new patient</Link></div>}
+      {!isLoading && hasSearched && query.trim() && !results.length && !error && <div className="card-medical p-8 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">No patient found</h2><p className="mt-1 text-sm text-muted-foreground">Check the identifier or search using the patient’s full name.</p><Link to="/registration" className="btn-secondary mt-4 inline-flex">Register a new patient</Link></div>}
     </div>
   );
 }
