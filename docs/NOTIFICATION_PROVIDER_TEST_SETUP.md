@@ -103,3 +103,35 @@ All provider credentials must remain server-side Edge Function secrets.
 ## References
 
 Provider documentation should be checked again immediately before enabling a provider because free/test quotas and trial restrictions can change.
+
+
+## Production organization/facility onboarding
+
+Provider settings are designed to be configured **when an organization/facility is created, onboarded or registered**, rather than hard-coded into the application.
+
+The onboarding flow should collect:
+
+1. Organization/facility identity and facility scope.
+2. Default locale and IANA timezone.
+3. Notification policy and quiet hours.
+4. Channels the organization intends to offer.
+5. Provider selection per channel: Email, Push, WhatsApp, SMS and Voice.
+6. Provider account/sender identifiers.
+7. Provider secret references.
+8. Webhook endpoint/verification configuration.
+9. Organization branding/sender identity.
+10. Consent wording and external-channel policy.
+11. Sandbox/test versus production environment.
+12. Rollout percentage and emergency kill switch.
+
+### Credential boundary
+
+The onboarding UI must **never store provider API secrets in ordinary organization configuration tables**. The onboarding workflow stores only a non-secret reference such as a secret identifier. Actual credentials are provisioned into the server-side secret manager/environment used by the notification Edge Functions.
+
+This permits each organization to onboard its own provider configuration without exposing secrets to patients, browser code or ordinary application tables.
+
+### Production readiness sequence
+
+Organization registration → notification onboarding initialized → provider connections configured → sandbox/test credentials verified → consent verified → test notifications delivered → webhooks verified → audit/delivery tracking verified → organization marked `production_ready` → controlled rollout → full enablement.
+
+The database function `mark_facility_notification_production_ready` intentionally refuses to enable production until the onboarding state has reached `sandbox_ready` or `verification_pending`.
