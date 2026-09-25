@@ -73,14 +73,14 @@ export default function PatientSearch() {
             className="input-medical pl-12 w-full"
             autoComplete="off"
             enterKeyHint="search"
-            aria-label="Search patients"
             aria-describedby="patient-search-help"
           />
         </div>
+        {query && <button type="button" onClick={() => { setQuery(''); setResults([]); setHasSearched(false); setError(''); setMessage('Enter a search term to find a patient.'); }} className="btn-secondary inline-flex items-center gap-2" aria-label="Clear patient search">Clear search</button>}
         <p id="patient-search-help" className="text-xs text-muted-foreground">Use a patient code, name, Ghana Card, phone number or email. Avoid entering unnecessary clinical information.</p>
         {error && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><XCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2">
+          <button type="submit" disabled={isLoading} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-60">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Search Patients
           </button>
