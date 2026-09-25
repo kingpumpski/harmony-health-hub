@@ -11,6 +11,7 @@ on:
       - 'supabase/functions/notification-**/**'
       - 'supabase/migrations/*notification*'
       - 'scripts/notification-phase10-offline-contract.mjs'
+      - 'scripts/notification-phase10-behavior-contract.mjs'
       - 'src/pages/admin/Settings.tsx'
       - 'docs/NOTIFICATION_PROVIDER_TEST_SETUP.md'
   workflow_dispatch:
@@ -28,6 +29,8 @@ jobs:
           node-version: 22
       - name: Run notification Phase 10 offline contract
         run: node scripts/notification-phase10-offline-contract.mjs
+      - name: Run notification Phase 10 behavior contracts
+        run: node scripts/notification-phase10-behavior-contract.mjs
       - name: Check repository migration filenames for duplicates
         run: |
           node - <<'NODE'
