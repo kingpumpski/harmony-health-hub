@@ -118,7 +118,6 @@ assert('replayed discharge reconciles stale occupied beds', inpatientTransferMig
 
 const aiReportMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
 const patientPortal = read('src/pages/PatientPortal.tsx');
-const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
 assert('AI report requests are server-authoritative', aiReportMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.create_ai_report_request(') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.complete_ai_report_request('), 'AI report request rows must use protected lifecycle RPCs');
 assert('AI report request creation is actor-bound', aiReportMigration.includes('requested_by, report_type, status') && aiReportMigration.includes("VALUES (_patient_id, uid, v_type, 'processing')") && aiReportMigration.includes('p.user_id = uid'), 'patient report creation must bind the requester to the authenticated actor');
 assert('AI report completion is lifecycle-locked', aiReportMigration.includes("v_request.status <> 'processing'") && aiReportMigration.includes('FOR UPDATE') && aiReportMigration.includes('completed_at = now()'), 'report completion must lock the request and reject invalid lifecycle transitions');
