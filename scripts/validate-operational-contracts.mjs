@@ -28,6 +28,8 @@ const migrationReconciliation = read('supabase/migrations/20260917130000_legacy_
 const migrationReconciliationSql = migrationReconciliation.replace(/--[^\n]*(?:\n|$)/g, '');
 const triage = read('src/pages/Triage.tsx');
 const inpatientTransferMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
+const reportAccessGrantMigration = read('supabase/migrations/20260925092107_grant_report_access_policy_functions.sql');
+const reportAccessScopeMigration = read('supabase/migrations/20260925092128_scope_report_policy_authorization_helpers.sql');
 const analyzeLabDocument = read('supabase/functions/analyze-lab-document/index.ts');
 const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
@@ -35,6 +37,9 @@ const aiClinicalHub = read('src/pages/AIClinicalHub.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
 const admissionManagement = read('src/pages/AdmissionManagement.tsx');
 const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
+
+assert('report policy helpers are reconciled in migration history', reportAccessGrantMigration.includes('grant execute on function public.has_facility_access(uuid, uuid) to authenticated') && reportAccessScopeMigration.includes('revoke execute on function public.has_facility_access(uuid, uuid) from authenticated'), 'report authorization helper grants must remain reconciled to the production migration history');
+assert('facility report RLS uses current-user authorization wrappers', reportAccessScopeMigration.includes('current_user_has_facility_access') && reportAccessScopeMigration.includes('current_user_has_role') && reportAccessScopeMigration.includes('create policy config_access') && reportAccessScopeMigration.includes('create policy config_admin_update'), 'facility report configuration policies must use current-user-scoped authorization wrappers');
 
 assert('admission workspace array response is handled by admission management', admissionManagement.includes('Array.isArray(workspace) ? workspace : (workspace?.admissions ?? [])'), 'admission management must tolerate the canonical array response from get_admission_workspace');
 assert('admission workspace array response is handled by care transitions', careTransitions.includes('Array.isArray(a) ? a : (a?.admissions ?? [])'), 'care transitions must tolerate the canonical array response from get_admission_workspace');
