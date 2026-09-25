@@ -409,3 +409,5 @@ assert(notificationProviderMigration.includes('DELETE FROM public.notifications'
 
 const notificationProviderPriorityMigration = read('supabase/migrations/20260925210500_notification_provider_priority_control_plane.sql');
 assert('notification provider priority control is versioned', notificationProviderPriorityMigration.includes('priority integer not null default 100') && notificationProviderPriorityMigration.includes('is_primary boolean not null default false') && notificationProviderPriorityMigration.includes('facility_notification_provider_primary_uq'), 'notification provider routing must have deterministic priority and single-primary controls');
+const notificationSettingsSource = read('src/pages/admin/Settings.tsx');
+assert('admin email provider form persists routing controls', notificationSettingsSource.includes('priority:Number(emailDraft.priority||100)') && notificationSettingsSource.includes('isPrimary:emailDraft.isPrimary'), 'the email provider UI must send priority and primary-provider state to the server control plane');
