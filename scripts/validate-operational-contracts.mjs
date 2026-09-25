@@ -347,11 +347,11 @@ assert(notificationProviderMigration.includes('notification_provider_health'), '
 assert(notificationProviderMigration.includes('notification_webhook_events'), 'Webhook idempotency store missing');
 assert(notificationProviderMigration.includes('register_notification_device'), 'Device registration RPC missing');
 
-const notificationWorker = read('supabase/functions/notify-queue-drain/index.ts');
-assert(notificationWorker.includes('RESEND_API_KEY'), 'Resend email adapter missing');
-assert(notificationWorker.includes('FCM_SERVICE_ACCOUNT_JSON'), 'FCM HTTP v1 adapter missing');
-assert(notificationWorker.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Twilio WhatsApp trial/template adapter missing');
-assert(notificationWorker.includes('notification_templates'), 'Server-side template lookup missing');
+const notificationWorkerProvider = read('supabase/functions/notify-queue-drain/index.ts');
+assert(notificationWorkerProvider.includes('RESEND_API_KEY'), 'Resend email adapter missing');
+assert(notificationWorkerProvider.includes('FCM_SERVICE_ACCOUNT_JSON'), 'FCM HTTP v1 adapter missing');
+assert(notificationWorkerProvider.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Twilio WhatsApp trial/template adapter missing');
+assert(notificationWorkerProvider.includes('notification_templates'), 'Server-side template lookup missing');
 
 const notificationWebhook = read('supabase/functions/notification-webhook/index.ts');
 assert(notificationWebhook.includes('RESEND_WEBHOOK_SECRET'), 'Resend webhook verification missing');
@@ -363,12 +363,15 @@ assert(notificationProviderDocs.includes('RESEND_API_KEY'), 'Provider runbook mi
 assert(notificationProviderDocs.includes('FCM_SERVICE_ACCOUNT_JSON'), 'Provider runbook missing FCM configuration');
 assert(notificationProviderDocs.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Provider runbook missing WhatsApp configuration');
 
-const notificationOnboardingMigration = read('supabase/migrations/20260925180000_facility_notification_onboarding.sql');
+const notificationOnboardingMigration = read('supabase/migrations/20260925180000_notification_facility_onboarding_reconciliation.sql');
 assert(notificationOnboardingMigration.includes('facility_notification_config'), 'Facility notification onboarding configuration missing');
 assert(notificationOnboardingMigration.includes('facility_notification_provider_connections'), 'Facility provider connection registry missing');
 assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
 assert(notificationOnboardingMigration.includes('mark_facility_notification_production_ready'), 'Production readiness gate missing');
 assert(notificationOnboardingMigration.includes('secret_reference'), 'Provider secret-reference boundary missing');
+
+const notificationScheduler = read('supabase/functions/notification-scheduler/index.ts');
+assert(notificationScheduler.includes('_facility_id:row.facility_id??null'), 'Scheduled notifications must preserve facility scope when entering the queue');
 
 const notificationSend = read('supabase/functions/notifications-send/index.ts');
 assert(notificationSend.includes('body.facility_id'), 'Notification send API must accept facility scope');
