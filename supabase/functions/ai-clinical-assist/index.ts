@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       ]);
       const dashboardErrors = [patientsError, admissionError, medicationsError, handoversError, triageError, queueError].filter(Boolean);
       if (dashboardErrors.length) throw dashboardErrors[0];
-      const admissions = admissionWorkspace?.admissions ?? [];
+      const admissions = Array.isArray(admissionWorkspace) ? admissionWorkspace : (admissionWorkspace?.admissions ?? []);
       return new Response(JSON.stringify({ patients: patients ?? [], admissions, medications: medications ?? [], handovers: handovers ?? [], triage: triage ?? [], queue: queue ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
