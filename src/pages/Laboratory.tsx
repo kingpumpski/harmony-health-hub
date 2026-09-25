@@ -27,12 +27,15 @@ interface LabResult {
 interface CreateLabOrderResponse { lab_order_id: string; service_order_id: string; status: string }
 
 export default function Laboratory() {
-  const { user } = useAuth();\n  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [catalogue, setCatalogue] = useState<LabCatalogueItem[]>([]);
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [resultsByOrder, setResultsByOrder] = useState<Record<string, LabResult>>({});
-  const [pid, setPid] = useState(searchParams.get('patient') || '');\n  const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');\n  const [encounters, setEncounters] = useState<EncounterOption[]>([]);
+  const [pid, setPid] = useState(searchParams.get('patient') || '');
+  const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');
+  const [encounters, setEncounters] = useState<EncounterOption[]>([]);
   const [catalogueId, setCatalogueId] = useState('');
   const [testName, setTestName] = useState('');
   const [category, setCategory] = useState('');
@@ -223,7 +226,9 @@ export default function Laboratory() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={createOrder} className="card-medical p-5 space-y-3 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New Lab Order</h2>
-          <select value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>\n          <select value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}><option value="">Attach to encounter (optional)</option>{encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}</select>\n          <p className="text-[11px] text-muted-foreground">Attach the originating encounter when the order is part of a clinical visit. The server verifies the encounter belongs to the selected patient.</p>
+          <select value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>
+          <select value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}><option value="">Attach to encounter (optional)</option>{encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}</select>
+          <p className="text-[11px] text-muted-foreground">Attach the originating encounter when the order is part of a clinical visit. The server verifies the encounter belongs to the selected patient.</p>
           <select value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full"><option value="">Select catalogue test…</option>{catalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ''}</option>)}</select>
           <input value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" />
           <input value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
