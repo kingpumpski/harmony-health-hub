@@ -24,6 +24,25 @@ export interface FacilityNotificationConfig {
   rollout_percent: number;
   kill_switch: boolean;
   onboarding_status: 'not_started' | 'in_progress' | 'sandbox_ready' | 'verification_pending' | 'production_ready' | 'suspended';
+  branding: Record<string, unknown>;
+  provider_defaults: Record<string, unknown>;
+  delivery_policy: Record<string, unknown>;
+  webhook_policy: Record<string, unknown>;
+  compliance_policy: Record<string, unknown>;
+  operational_contacts: Record<string, unknown>;
+  deployment_secret_namespace: string | null;
+  production_approved_at: string | null;
+  production_approved_by: string | null;
+}
+export interface NotificationProviderSecretRequirement {
+  id: string;
+  provider: string;
+  channel: 'email' | 'sms' | 'push' | 'whatsapp' | 'voice';
+  secret_name: string;
+  environment: 'all' | 'sandbox' | 'test' | 'production';
+  required: boolean;
+  description: string;
+  secret_reference_example: string | null;
 }
 export interface ReportSubmission { id: string; report_id: string; facility_id: string; period_start: string; period_end: string; due_date: string; status: 'pending' | 'submitted' | 'overdue' | 'accepted' | 'rejected'; submitted_at: string | null; submitted_by: string | null; submission_reference: string | null; }
 
@@ -88,9 +107,15 @@ export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_
 }
 
 export async function getFacilityNotificationConfig(facilityId: string): Promise<FacilityNotificationConfig | null> {
-  const { data, error } = await reportsDb.from('facility_notification_config').select('facility_id,environment,enabled,default_locale,default_timezone,quiet_hours_start,quiet_hours_end,enabled_channels,rollout_percent,kill_switch,onboarding_status').eq('facility_id', facilityId).maybeSingle();
+  const { data, error } = await reportsDb.from('facility_notification_config').select('facility_id,environment,enabled,default_locale,default_timezone,quiet_hours_start,quiet_hours_end,enabled_channels,rollout_percent,kill_switch,onboarding_status,branding,provider_defaults,delivery_policy,webhook_policy,compliance_policy,operational_contacts,deployment_secret_namespace,production_approved_at,production_approved_by').eq('facility_id', facilityId).maybeSingle();
   if (error) throw new Error(error.message);
   return (data ?? null) as FacilityNotificationConfig | null;
+}
+
+export async function listNotificationProviderSecretRequirements(): Promise<NotificationProviderSecretRequirement[]> {
+  const { data, error } = await reportsDb.from('notification_provider_secret_requirements').select('id,provider,channel,secret_name,environment,required,description,secret_reference_example').order('channel').order('provider').order('secret_name');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as NotificationProviderSecretRequirement[];
 }
 
 export async function initializeFacilityNotificationOnboarding(facilityId: string): Promise<FacilityNotificationConfig> {
