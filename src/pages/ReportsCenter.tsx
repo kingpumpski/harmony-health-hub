@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   createFacility, downloadManifestCsv, downloadRunWorkbook, generateRun, getRunItems, listDefinitions, listFacilities, listFacilityConfigs, setReportEnabled,
-  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem, type FacilityNotificationConfig, getFacilityNotificationConfig, initializeFacilityNotificationOnboarding, configureFacilityNotificationProvider,
+  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem, type FacilityNotificationConfig, type NotificationProviderSecretRequirement, getFacilityNotificationConfig, initializeFacilityNotificationOnboarding, configureFacilityNotificationProvider, listNotificationProviderSecretRequirements,
 } from '@/lib/reportsCenter';
 
 const facilityTypes = [
@@ -36,6 +36,7 @@ export default function ReportsCenter() {
   const [category, setCategory] = useState('all');
   const [facilityForm, setFacilityForm] = useState({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
   const [notificationConfig, setNotificationConfig] = useState<FacilityNotificationConfig | null>(null);
+  const [notificationSecretRequirements, setNotificationSecretRequirements] = useState<NotificationProviderSecretRequirement[]>([]);
   const [notificationProvider, setNotificationProvider] = useState({ channel: 'email' as 'email' | 'sms' | 'push' | 'whatsapp' | 'voice', provider: 'resend', environment: 'sandbox' as 'sandbox' | 'test' | 'production', secretReference: '', senderIdentity: '', accountReference: '' });
 
   const selectedFacility = facilities.find((facility) => facility.id === selectedFacilityId) ?? null;
@@ -64,7 +65,7 @@ export default function ReportsCenter() {
   useEffect(() => {
     if (!selectedFacilityId) { setConfigs([]); return; }
     setRun(null); setRunItems([]);
-    Promise.all([listFacilityConfigs(selectedFacilityId), getFacilityNotificationConfig(selectedFacilityId)]).then(([nextConfigs, nextNotificationConfig]) => { setConfigs(nextConfigs); setNotificationConfig(nextNotificationConfig); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility configuration.'));
+    Promise.all([listFacilityConfigs(selectedFacilityId), getFacilityNotificationConfig(selectedFacilityId), listNotificationProviderSecretRequirements()]).then(([nextConfigs, nextNotificationConfig, nextRequirements]) => { setConfigs(nextConfigs); setNotificationConfig(nextNotificationConfig); setNotificationSecretRequirements(nextRequirements); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility configuration.'));
   }, [selectedFacilityId]);
 
   async function toggle(config: FacilityReportConfig) {
@@ -189,7 +190,20 @@ export default function ReportsCenter() {
               }
             })()}>Save provider configuration</button>
           </div>
-          <p className="text-xs text-muted-foreground">Production enablement remains a separate verification gate. External channels stay disabled until provider credentials, consent, sandbox/test delivery and webhook verification are complete.</p>
+          <div className="rounded-xl border border-border p-4">
+            <h3 className="font-semibold">Deployment secret & provider checklist</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Enter these values in the approved deployment secret manager when this organization/facility is onboarded. Never paste credential values into this form or store them in PostgreSQL.</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {notificationSecretRequirements.map((item) => (
+                <div key={item.id} className="rounded-lg bg-muted/40 p-3">
+                  <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs">{item.secret_name}</span><span className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.provider} · {item.environment}</span></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Reference: {item.secret_reference_example ?? 'deployment secret'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Production enablement remains a separate verification gate. External channels stay disabled until the deployment secrets are provisioned, consent policy is confirmed, sandbox/test delivery succeeds, webhook verification succeeds where applicable, and the configured external channels have verified providers.</p>
         </section>}
 
         <section className="card-medical p-5">
