@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
+import nodemailer from 'npm:nodemailer@7.0.6';
 
 type Channel = 'in_app'|'email'|'sms'|'push'|'whatsapp'|'voice';
 const BATCH=50, BACKOFF=[10,30,120,600,3600];
@@ -25,6 +26,21 @@ async function fcmToken(){
 async function external(channel:Channel, recipient:{email?:string;phone?:string;deviceTokens?:string[]}, subject:string, body:string, payload:Record<string,unknown>={}){
   if(channel==='email'){
     if(!recipient.email)return {ok:false,provider:'none',error:'Recipient email unavailable'};
+    if(emailProvider()==='smtp'){
+      const host=Deno.env.get('SMTP_HOST'),user=Deno.env.get('SMTP_USERNAME'),pass=Deno.env.get('SMTP_PASSWORD');
+      if(!host||!user||!pass)return {ok:false,provider:'smtp',error:'SMTP provider not configured'};
+      const port=Number(Deno.env.get('SMTP_PORT')??'587'),secure=(Deno.env.get('SMTP_SECURE')??'false').toLowerCase()==='true';
+      const from=Deno.env.get('SMTP_FROM_EMAIL')??user,fromName=Deno.env.get('SMTP_FROM_NAME')??'Harmony Health Hub';
+      const transporter=nodemailer.createTransport({host,port,secure,auth:{user,pass},tls:{servername:host}});
+      try{
+        const info=await transporter.sendMail({from:`"${fromName.replace(/"/g,'')}" <${from}>`,to:[recipient.email],subject,text:body,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${subject}</h2><p>${body.replace(/\n/g,'<br/>')}</p></div>`});
+        transporter.close();
+        return {ok:true,provider:'smtp',id:info.messageId};
+      }catch(error){
+        transporter.close();
+        return {ok:false,provider:'smtp',error:error instanceof Error?error.message:'SMTP send failed'};
+      }
+    }
     const key=Deno.env.get('RESEND_API_KEY'),from=Deno.env.get('RESEND_FROM_EMAIL');
     if(!key||!from)return {ok:false,provider:'resend',error:'Resend provider not configured'};
     const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${subject}</h2><p>${body.replace(/\n/g,'<br/>')}</p></div>`,text:body})});
@@ -66,7 +82,11 @@ async function external(channel:Channel, recipient:{email?:string;phone?:string;
   }
   return {ok:false,provider:'none',error:'Unsupported channel'};
 }
-function providerName(channel:Channel){return channel==='email'?'resend':channel==='push'?'fcm':channel==='whatsapp'?'twilio-whatsapp':channel==='sms'?'twilio':'twilio-voice';}
+function emailProvider(){return (Deno.env.get('NOTIFICATION_EMAIL_PROVIDER')??'resend').toLowerCase();}
+function providerName(channel:Channel){
+  if(channel==='email') return emailProvider()==='smtp'?'smtp':'resend';
+  return channel==='push'?'fcm':channel==='whatsapp'?'twilio-whatsapp':channel==='sms'?'twilio':'twilio-voice';
+}
 async function providerAllowed(db:any,channel:Channel){const provider=providerName(channel);const {data}=await db.from('notification_provider_health').select('circuit_state,next_probe_at').eq('provider',provider).maybeSingle();if(!data||data.circuit_state==='closed')return true;if(data.circuit_state==='half_open')return true;return !data.next_probe_at||new Date(data.next_probe_at).getTime()<=Date.now();}
 async function providerOutcome(db:any,channel:Channel,ok:boolean,error?:string){const provider=providerName(channel);if(ok){await db.from('notification_provider_health').update({consecutive_failures:0,circuit_state:'closed',opened_at:null,next_probe_at:null,last_error:null,updated_at:new Date().toISOString()}).eq('provider',provider);return;}const {data}=await db.from('notification_provider_health').select('consecutive_failures').eq('provider',provider).maybeSingle();const failures=Number(data?.consecutive_failures??0)+1;const open=failures>=3;await db.from('notification_provider_health').update({consecutive_failures:failures,circuit_state:open?'open':'closed',opened_at:open?new Date().toISOString():null,next_probe_at:open?new Date(Date.now()+300000).toISOString():null,last_error:(error??'Provider failure').slice(0,500),updated_at:new Date().toISOString()}).eq('provider',provider);}
 function resolveText(template:string,vars:Record<string,unknown>){return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,(_,key)=>{const v=key.split('.').reduce<any>((a,k)=>a?.[k],vars);return v===undefined||v===null?'':String(v);});}
