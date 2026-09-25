@@ -285,6 +285,13 @@ assert('prescription UI requires selecting the diagnosis being treated', fs.read
 assert('practitioner dashboard surfaces workflow attention', fs.readFileSync('src/pages/dashboard/PractitionerDashboard.tsx','utf8').includes('Clinical attention required') && fs.readFileSync('src/pages/dashboard/PractitionerDashboard.tsx','utf8').includes('Review alerts'), 'high-priority unread workflow events must be surfaced on the practitioner dashboard');
 assert('header notification badge uses workflow notification RPC', fs.readFileSync('src/components/layout/Header.tsx','utf8').includes("get_workflow_notifications") && fs.readFileSync('src/components/layout/Header.tsx','utf8').includes('hasCritical'), 'header attention state must come from the server-authorized notification workspace');
 assert('notification attention respects IT admin boundary', fs.readFileSync('src/components/layout/Header.tsx','utf8').includes("user.role === 'it_admin'"), 'IT Admin notification subscriptions must remain scoped by the existing notification boundary');
+const headerRuntimeSource = read('src/components/layout/Header.tsx');
+const mainRuntimeSource = read('src/main.tsx');
+const serviceWorkerSource = read('public/sw.js');
+assert('header owns its Supabase client import', headerRuntimeSource.includes('import { supabase } from "@/integrations/supabase/client";') && headerRuntimeSource.includes('const db = supabase as any;'), 'Header notification/search runtime must not depend on an implicit global supabase variable');
+assert('production startup registers the current service worker', mainRuntimeSource.includes('navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: "none" })') || mainRuntimeSource.includes("navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: 'none' })"), 'production startup must refresh the service worker without stale script-cache dependence');
+assert('GitHub Pages shell cache is versioned', serviceWorkerSource.includes('harmony-health-hub-shell-v13'), 'GitHub Pages service-worker shell cache must be invalidated when runtime assets are repaired');
+
 const globalWorkspaceSearch = read('src/lib/globalWorkspaceSearch.ts');
 const globalHeader = read('src/components/layout/Header.tsx');
 assert('global search is workspace-wide rather than patient-only', globalHeader.includes('Search modules, features, patients, labs, diagnostics, documents or finance') && globalHeader.includes('searchGlobalWorkspace'), 'global search must search project modules/features and cross-domain records rather than only patients');
