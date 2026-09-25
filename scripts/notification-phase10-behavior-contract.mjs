@@ -36,6 +36,8 @@ assert.match(worker,/max_attempts/);
 assert.match(worker,/notification_provider_health/);
 assert.match(worker,/consecutive_failures/);
 assert.match(worker,/providerAllowed/);
+assert.match(worker,/providerOverride/);
+assert.match(worker,/candidateProvider/);
 assert.match(worker,/providerOutcome/);
 assert.match(worker,/resolveFacilityEmailProviders/);
 assert.match(worker,/order\('is_primary'/);
