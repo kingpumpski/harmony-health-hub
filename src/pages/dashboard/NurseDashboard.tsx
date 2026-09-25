@@ -21,6 +21,7 @@ export default function NurseDashboard() {
   const [handovers, setHandovers] = useState<DashboardRow[]>([]);
   const [triage, setTriage] = useState<DashboardRow[]>([]);
   const [queue, setQueue] = useState<DashboardRow[]>([]);
+  const [workflowNotifications, setWorkflowNotifications] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'critical' | 'attention'>('all');
 
@@ -36,6 +37,8 @@ export default function NurseDashboard() {
       setHandovers((data?.handovers ?? []) as DashboardRow[]);
       setTriage((data?.triage ?? []) as DashboardRow[]);
       setQueue((data?.queue ?? []) as DashboardRow[]);
+      const { data: notifications } = await (supabase as any).rpc('get_workflow_notifications', { _limit: 100 });
+      setWorkflowNotifications((Array.isArray(notifications) ? notifications : []) as DashboardRow[]);
     }
     setLoading(false);
   }, []);
@@ -47,6 +50,8 @@ export default function NurseDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'department_queues' }, () => void load(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'nursing_shift_handovers' }, () => void load(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'triage_assessments' }, () => { playWorkflowSound('critical'); void load(true); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admissions' }, () => { playWorkflowSound('info'); void load(true); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => { playWorkflowSound('info'); void load(true); })
       .subscribe();
     const timer = window.setInterval(() => void load(true), 60000);
     return () => { void supabase.removeChannel(channel); window.clearInterval(timer); };
@@ -62,6 +67,7 @@ export default function NurseDashboard() {
   const criticalPatients = useMemo(() => triage.filter(t => ['critical', 'urgent'].includes(String(t.priority ?? t.status ?? '').toLowerCase())).slice(0, 12), [triage]);
   const pendingHandovers = useMemo(() => handovers.filter(h => !h.acknowledged_at), [handovers]);
   const inpatientRows = useMemo(() => activeAdmissions.slice(0, 30).map(a => ({ ...a, status: criticalPatients.some(t => t.patient_id === a.patient_id) ? 'critical' : 'stable' })), [activeAdmissions, criticalPatients]);
+  const unreadAdmissionAlerts = useMemo(() => workflowNotifications.filter(n => !n.is_read && /new inpatient admission/i.test(String(n.title ?? ''))), [workflowNotifications]);
 
   const refresh = () => { void load(); };
 
@@ -78,6 +84,11 @@ export default function NurseDashboard() {
           <button onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
         </div>
       </div>
+
+      {unreadAdmissionAlerts.length > 0 && <div className="rounded-xl border border-info/30 bg-info/5 p-4 flex flex-wrap items-center justify-between gap-3 animate-pulse">
+        <div className="flex items-center gap-3"><BellRing className="w-5 h-5 text-info" /><div><p className="font-semibold text-info">New inpatient admission</p><p className="text-sm text-muted-foreground">{unreadAdmissionAlerts.length} admission notification(s) require acknowledgement in the nursing workflow.</p></div></div>
+        <Link to="/notifications" className="btn-secondary">Review admission alerts</Link>
+      </div>}
 
       {criticalPatients.length > 0 && <div className="rounded-xl border border-critical/30 bg-critical/5 p-4 flex flex-wrap items-center justify-between gap-3 animate-pulse">
         <div className="flex items-center gap-3"><AlertTriangle className="w-5 h-5 text-critical" /><div><p className="font-semibold text-critical">Clinical attention required</p><p className="text-sm text-muted-foreground">{criticalPatients.length} recent critical/urgent triage record(s) require nursing review.</p></div></div>
