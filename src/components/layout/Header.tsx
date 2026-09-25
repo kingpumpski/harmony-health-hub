@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { UserRole } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { searchGlobalWorkspace, type GlobalSearchResult } from "@/lib/globalWorkspaceSearch";
+import { notificationSoundKind, playWorkflowSound } from "@/lib/workflowFeedback";
 
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
@@ -29,14 +30,36 @@ export default function Header({ onMenu }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
+  const [notificationAttention, setNotificationAttention] = useState(false);
+  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
+  const notificationIdsRef = useRef<Set<string>>(new Set());
+  const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLFormElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const accountContainerRef = useRef<HTMLDivElement>(null);
   const db = supabase as any;
   const loadNotifications = useCallback(async () => {
     if (!user?.id || user.role === "it_admin") return;
-    const { data } = await db.rpc('get_workflow_notifications', { _limit: 30 });
-    setNotifications(Array.isArray(data) ? data as NotifRow[] : []);
+    const [{ data }, { data: config }] = await Promise.all([
+      db.rpc('get_workflow_notifications', { _limit: 30 }),
+      db.from('facility_configuration').select('notification_sound_enabled').limit(1).maybeSingle(),
+    ]);
+    const soundEnabled = config?.notification_sound_enabled !== false;
+    setNotificationSoundEnabled(soundEnabled);
+    const rows = Array.isArray(data) ? data as NotifRow[] : [];
+    const unreadRows = rows.filter((n) => !n.is_read);
+    const previousIds = notificationIdsRef.current;
+    const newUnread = unreadRows.filter((n) => !previousIds.has(n.id));
+    if (notificationInitializedRef.current && newUnread.length > 0) {
+      const newest = newUnread[0];
+      if (soundEnabled) playWorkflowSound(notificationSoundKind(newest));
+      setNotificationAttention(true);
+    }
+    const hadInitialized = notificationInitializedRef.current;
+    notificationIdsRef.current = new Set(rows.map((n) => n.id));
+    notificationInitializedRef.current = true;
+    setNotifications(rows);
+    if (!hadInitialized && unreadRows.length > 0) setNotificationAttention(true);
   }, [user?.id, user?.role]);
   const unread = notifications.filter((n) => !n.is_read).length;
   const hasCritical = notifications.some((n) => !n.is_read && ['critical','warning','high'].includes(String(n.severity).toLowerCase()));
@@ -105,13 +128,16 @@ export default function Header({ onMenu }: HeaderProps) {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <span className="hidden xl:inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-success" />{roleLabels[user.role]}</span>
           <div ref={notificationContainerRef} className="relative">
-            <button type="button" onClick={() => { setShowNotifications(v => !v); setShowAccount(false); }} className={cn("relative rounded-xl p-2 hover:bg-muted", hasCritical && "animate-pulse")} aria-label="Notifications">
-              <Bell className={cn("h-5 w-5", hasCritical ? "text-critical" : "text-muted-foreground")} />
+            <button type="button" onClick={() => { setShowNotifications(v => { const next = !v; if (next) setNotificationAttention(false); return next; }); setShowAccount(false); }} className={cn("relative rounded-xl p-2 hover:bg-muted", notificationAttention && "animate-pulse")} aria-label="Notifications">
+              <Bell className={cn("h-5 w-5", notificationAttention || hasCritical ? "text-critical" : "text-muted-foreground")} />
               {unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold text-critical-foreground">{unread > 9 ? "9+" : unread}</span>}
             </button>
             {showNotifications && <div className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-elevated">
               <div className="flex items-center justify-between border-b p-4"><h3 className="font-semibold">Notifications</h3><Link to="/notifications" onClick={() => setShowNotifications(false)} className="text-xs text-primary">View all</Link></div>
-              <div className="max-h-96 overflow-y-auto">{notifications.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No notifications yet.</p> : notifications.map(n => <div key={n.id} className={cn("flex cursor-pointer gap-3 border-b p-3 last:border-0 hover:bg-muted/50", !n.is_read && "bg-primary/5")} onClick={() => { if (n.link) { setShowNotifications(false); navigate(n.link); } }}>{sevIcon(n.severity)}<div className="min-w-0 flex-1"><p className="text-sm font-medium">{n.title}</p><p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p></div></div>)}</div>
+              <div className="max-h-96 overflow-y-auto">{notifications.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No notifications yet.</p> : notifications.map(n => <div key={n.id} className={cn("flex cursor-pointer gap-3 border-b p-3 last:border-0 hover:bg-muted/50", !n.is_read && "bg-primary/5")} onClick={() => {
+                    void db.rpc('mark_notification_read', { _notification_id: n.id }).finally(() => void loadNotifications());
+                    if (n.link) { setShowNotifications(false); navigate(n.link); }
+                  }}>{sevIcon(n.severity)}<div className="min-w-0 flex-1"><p className="text-sm font-medium">{n.title}</p><p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p></div></div>)}</div>
             </div>}
           </div>
           <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="rounded-xl p-2 hover:bg-muted" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-5 w-5 text-muted-foreground" /> : <Moon className="h-5 w-5 text-muted-foreground" />}</button>

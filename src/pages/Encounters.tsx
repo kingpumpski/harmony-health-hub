@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BedDouble,
@@ -58,6 +58,9 @@ interface Prescription {
   status: string;
   diagnosis_id?: string | null;
 }
+interface LabOrder { id:string; test_name:string|null; status:string|null; priority:string|null; created_at:string; }
+interface ImagingOrder { id:string; modality:string|null; study_name:string|null; status:string|null; priority:string|null; created_at:string; }
+interface ServiceOrder { id:string; service_name:string|null; department:string|null; status:string|null; payment_required:boolean|null; created_at:string; }
 interface BMIContext {
   bmi: number | null;
   category: string;
@@ -217,6 +220,9 @@ export default function Encounters() {
   const [admitting, setAdmitting] = useState(false);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
   const [symptoms, setSymptoms] = useState("");
   const [clerking, setClerking] = useState("");
@@ -249,12 +255,18 @@ export default function Encounters() {
   };
 
   const loadDetails = async (id: string) => {
-    const [{ data: dx }, { data: rx }] = await Promise.all([
+    const [{ data: dx }, { data: rx }, { data: labs }, { data: imaging }, { data: services }] = await Promise.all([
       supabase.from("diagnoses").select("id, encounter_id, diagnosis, is_principal").eq("encounter_id", id),
       supabase.from("prescriptions").select("id, encounter_id, medication, dosage, frequency, duration, status, diagnosis_id").eq("encounter_id", id).order("created_at", { ascending: false }),
+      supabase.from("lab_orders").select("id,test_name,status,priority,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("imaging_orders").select("id,modality,study_name,status,priority,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("service_orders").select("id,service_name,department,status,payment_required,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
     ]);
     setDiagnoses((dx ?? []) as Diagnosis[]);
     setPrescriptions((rx ?? []) as Prescription[]);
+    setLabOrders((labs ?? []) as LabOrder[]);
+    setImagingOrders((imaging ?? []) as ImagingOrder[]);
+    setServiceOrders((services ?? []) as ServiceOrder[]);
   };
 
   useEffect(() => { void loadAll(); }, []);
@@ -484,11 +496,19 @@ export default function Encounters() {
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
                 <div className="space-y-5">
                   <section className="rounded-2xl border border-border bg-card p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Encounter details</h3><p className="text-xs text-muted-foreground mt-1">Auditable clinical entry surface</p></div><span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span></div>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div></div>
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3><p className="text-xs text-muted-foreground mt-1">History, examination context and treatment plan remain part of the auditable encounter document.</p></div><span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span></div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div><div className="md:col-span-2"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Treatment plan</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.treatment_plan || "Not yet documented"}</p></div></div>
                   </section>
                   <section className="rounded-2xl border border-border bg-card p-5">
-                    <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
+                    <section className="rounded-2xl border border-border bg-card p-5">
+                     <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnostic & service orders</h3><p className="text-xs text-muted-foreground">Orders attached to this encounter remain visible so downstream departments can continue treatment without leaving the clinical document.</p></div><span className="text-xs text-muted-foreground">{labOrders.length + imagingOrders.length + serviceOrders.length} order(s)</span></div>
+                     <div className="grid gap-3 md:grid-cols-3">
+                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Laboratory</span><span className="text-lg font-bold tabular-nums">{labOrders.length}</span></div><div className="mt-2 space-y-2">{labOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.test_name || "Lab test"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!labOrders.length && <p className="text-xs text-muted-foreground">No laboratory orders.</p>}</div><Link to="/laboratory" className="mt-3 inline-flex text-xs text-primary">Open laboratory</Link></div>
+                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Imaging</span><span className="text-lg font-bold tabular-nums">{imagingOrders.length}</span></div><div className="mt-2 space-y-2">{imagingOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.study_name || o.modality || "Imaging order"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!imagingOrders.length && <p className="text-xs text-muted-foreground">No imaging orders.</p>}</div><Link to="/radiology" className="mt-3 inline-flex text-xs text-primary">Open radiology</Link></div>
+                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Other services</span><span className="text-lg font-bold tabular-nums">{serviceOrders.length}</span></div><div className="mt-2 space-y-2">{serviceOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.service_name || "Service"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!serviceOrders.length && <p className="text-xs text-muted-foreground">No service orders.</p>}</div><Link to="/department-queue" className="mt-3 inline-flex text-xs text-primary">Open department queue</Link></div>
+                     </div>
+                   </section>
+                   <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
                     {selected.status !== "completed" && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add provisional diagnosis" className="input-medical flex-1" /><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add</button></div>}
                     <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span className="ml-2 text-xs rounded-full bg-muted px-2 py-1">Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
                   </section>

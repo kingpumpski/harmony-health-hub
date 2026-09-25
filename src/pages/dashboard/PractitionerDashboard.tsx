@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, Calendar, CheckCircle2, ClipboardCheck, Clock3, Image as ImageIcon, Stethoscope, Users, BellRing, Baby, Brain } from 'lucide-react';
+import { Activity, AlertTriangle, BedDouble, Calendar, CheckCircle2, ClipboardCheck, Clock3, Image as ImageIcon, FlaskConical, Stethoscope, Users, BellRing, Baby, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
@@ -19,7 +19,7 @@ export default function PractitionerDashboard() {
     setLoading(true);
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const end = new Date(); end.setHours(23, 59, 59, 999);
-    const [appointments, emergency, admissions, icu, alerts, notifications] = await Promise.all([
+    const [appointments, emergency, admissions, icu, alerts, notifications, labOrders, imagingOrders, serviceOrders] = await Promise.all([
       getOperationalWorkspace('appointments', 200),
       getOperationalWorkspace('emergency', 100),
       supabase.from('admissions').select('id', { count: 'exact', head: true }).eq('status', 'admitted'),
@@ -31,6 +31,7 @@ export default function PractitionerDashboard() {
     if (emergency.error) toast({ title: 'Emergency counters unavailable', description: emergency.error.message, variant: 'destructive' });
     if (admissions.error) toast({ title: 'Inpatient counter unavailable', description: admissions.error.message, variant: 'destructive' });
     if (alerts.error) toast({ title: 'Critical alert counter unavailable', description: alerts.error.message, variant: 'destructive' });
+    if (labOrders.error || imagingOrders.error || serviceOrders.error) toast({ title: 'Department counters partially unavailable', description: 'Some diagnostic/service counters could not be refreshed.', variant: 'destructive' });
     const rows = Array.isArray(appointments.data) ? appointments.data as Array<{ scheduled_at?: string; status?: string; treatment_status?: string }> : [];
     const today = rows.filter((a) => { const t = new Date(a.scheduled_at ?? '').getTime(); return t >= start.getTime() && t <= end.getTime(); });
     const active = today.filter((a) => !['completed', 'cancelled', 'no_show'].includes(String(a.treatment_status ?? a.status ?? 'scheduled')));
@@ -49,7 +50,9 @@ export default function PractitionerDashboard() {
       { label: 'Inpatients', value: admissions.count ?? null, description: 'Currently admitted', href: '/inpatient', icon: BedDouble, tone: 'text-info bg-info/5' },
       { label: 'ICU', value: icu.count ?? null, description: 'Admitted in ICU', href: '/inpatient', icon: Activity, tone: 'text-critical bg-critical/5' },
       { label: 'Notifications', value: notificationRows.filter((n) => !n.is_read).length, description: 'Unread workflow events', href: '/notifications', icon: BellRing, tone: 'text-warning bg-warning/5' },
-      { label: 'Radiology', value: null, description: 'Open imaging work', href: '/radiology', icon: ImageIcon, tone: 'text-primary bg-primary/5' },
+      { label: 'Laboratory', value: labOrders.error ? null : (labOrders.data?.length ?? 0), description: 'Open diagnostic work', href: '/laboratory', icon: FlaskConical, tone: 'text-info bg-info/5' },
+      { label: 'Radiology', value: imagingOrders.error ? null : (imagingOrders.data?.length ?? 0), description: 'Open imaging work', href: '/radiology', icon: ImageIcon, tone: 'text-primary bg-primary/5' },
+      { label: 'Services', value: serviceOrders.error ? null : (serviceOrders.data?.length ?? 0), description: 'Open service orders', href: '/department-queue', icon: ClipboardCheck, tone: 'text-warning bg-warning/5' },
     ]);
     setLoading(false);
   }, [user?.id]);
@@ -62,6 +65,9 @@ export default function PractitionerDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admissions' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vital_alerts' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_orders' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders' }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, user?.id]);
