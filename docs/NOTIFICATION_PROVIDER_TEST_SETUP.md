@@ -79,3 +79,87 @@ Google App Passwords: https://support.google.com/mail/answer/185833
 Nodemailer SMTP: https://nodemailer.com/smtp
 GitHub Actions secrets: https://docs.github.com/en/actions/concepts/security/secrets
 Supabase Edge Function secrets: https://supabase.com/docs/guides/functions/secrets
+
+
+## Complete organization/facility onboarding configuration
+
+The notification module is designed so that provider credentials and deployment details are supplied during organization/facility onboarding and again/updated during deployment promotion. The application stores configuration metadata and secret references only.
+
+### Configuration captured during onboarding
+
+- Facility identity: facility ID/code, name, region/district, locale and IANA timezone.
+- Delivery policy: quiet hours, critical-alert override, retry/backoff policy, maximum attempts, fallback policy, deduplication window and rollout percentage.
+- Channel policy: in-app, email, SMS, push, WhatsApp and voice enablement; per-channel kill switches; critical-event behavior.
+- Consent/compliance: external-channel consent requirement, critical override policy, minimum-necessary content, audit retention/erasure policy.
+- Branding/sender metadata: organization display name, sender identity, reply-to/contact details and approved sender references.
+- Provider metadata: provider, channel, environment (sandbox/test/production), account reference, sender identity, secret reference and verification status.
+- Webhook metadata: public callback URL reference, signed-webhook requirement, verification state and idempotency requirement.
+- Operational contacts: notification administrator/on-call contact references and escalation ownership.
+- Deployment secret namespace/reference: the approved secret-manager/deployment boundary for the organization.
+
+### Deployment secrets/keys/tokens supplied outside the application database
+
+**Email — Resend**
+- RESEND_API_KEY
+- RESEND_FROM_EMAIL
+- RESEND_WEBHOOK_SECRET
+- NOTIFICATION_WEBHOOK_PUBLIC_URL
+
+**Email — SMTP**
+- NOTIFICATION_EMAIL_PROVIDER=smtp
+- SMTP_HOST
+- SMTP_PORT
+- SMTP_SECURE
+- SMTP_USERNAME
+- SMTP_PASSWORD
+- SMTP_FROM_EMAIL
+- SMTP_FROM_NAME
+
+**Push — Firebase Cloud Messaging**
+- FCM_PROJECT_ID
+- FCM_SERVICE_ACCOUNT_JSON
+- Client applications must register FCM device tokens through the notification device registry.
+
+**SMS — Twilio**
+- TWILIO_ACCOUNT_SID
+- TWILIO_AUTH_TOKEN
+- TWILIO_SMS_FROM
+- NOTIFICATION_WEBHOOK_PUBLIC_URL when status callbacks are used.
+
+**WhatsApp — Twilio**
+- TWILIO_ACCOUNT_SID
+- TWILIO_AUTH_TOKEN
+- TWILIO_WHATSAPP_FROM
+- TWILIO_WHATSAPP_CONTENT_SID for approved Sandbox/test templates
+- NOTIFICATION_WEBHOOK_PUBLIC_URL when status callbacks are used.
+
+**Voice — Twilio**
+- TWILIO_ACCOUNT_SID
+- TWILIO_AUTH_TOKEN
+- TWILIO_VOICE_FROM
+- TWILIO_VOICE_TWIML_URL
+- NOTIFICATION_WEBHOOK_PUBLIC_URL when status callbacks are used.
+
+### Secret-handling rule
+
+Credential values, API keys, access tokens, passwords, private keys and service-account JSON are never entered into normal facility configuration fields and never stored in PostgreSQL. The onboarding form records only the provider metadata and secret reference. The actual values are provisioned into the approved deployment secret boundary before provider verification.
+
+For multi-organization production, each organization's provider credential must resolve from an organization/facility-isolated secret namespace. A single global provider secret must not be treated as tenant-isolated production credentials.
+
+### Go-live sequence
+
+1. Create organization/facility.
+2. Initialize notification onboarding automatically.
+3. Select channels and providers.
+4. Enter non-secret provider metadata and secret references.
+5. Provision actual secrets in the deployment environment/secret manager.
+6. Verify provider credentials and sender identities.
+7. Register push devices where applicable.
+8. Configure and verify signed webhooks.
+9. Test sandbox/test delivery with synthetic data only.
+10. Confirm consent/preferences and quiet-hour policy.
+11. Enable channels and set rollout percentage.
+12. Run controlled production readiness verification.
+13. Promote to production only after the facility-level provider verification gate passes.
+
+External channels remain disabled until this sequence is completed. In-app notifications can remain enabled as the safe baseline.
