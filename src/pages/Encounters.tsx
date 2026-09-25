@@ -233,6 +233,10 @@ export default function Encounters() {
   const [amendmentClerking, setAmendmentClerking] = useState("");
   const [amendmentPrincipal, setAmendmentPrincipal] = useState("");
   const [amendmentPlan, setAmendmentPlan] = useState("");
+  const [versionHistory, setVersionHistory] = useState<any[]>([]);
+  const [auditHistory, setAuditHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const activePatientId = selected?.patient_id || patientId;
 
   const loadAll = async () => {
@@ -269,6 +273,26 @@ export default function Encounters() {
   useEffect(() => {
     if (selected) void loadDetails(selected.id);
   }, [selected]);
+
+  const loadHistory = async (encounterId: string) => {
+    setHistoryLoading(true);
+    const [{ data: versions, error: versionError }, auditResult] = await Promise.all([
+      supabase.from("document_versions").select("id,entity_type,entity_id,version_no,action,snapshot,changed_by,changed_at").eq("entity_type", "encounter").eq("entity_id", encounterId).order("version_no", { ascending: false }),
+      user?.roles?.includes("admin")
+        ? supabase.from("system_audit_log").select("id,actor_id,action,module,entity_type,entity_id,severity,metadata,created_at").eq("entity_type", "encounter").eq("entity_id", encounterId).order("created_at", { ascending: false }).limit(50)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    const audits = auditResult.data;
+    const auditError = auditResult.error;
+    setHistoryLoading(false);
+    if (versionError || auditError) {
+      toast({ title: "History unavailable", description: versionError?.message ?? auditError?.message, variant: "destructive" });
+      return;
+    }
+    setVersionHistory(versions ?? []);
+    setAuditHistory(audits ?? []);
+    setShowVersionHistory(true);
+  };
 
   const createEncounter = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -442,6 +466,7 @@ export default function Encounters() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? `Submitted · v${selected.version_no ?? 1}` : "Draft"}</span>
                 {selected.status === "completed" && <button type="button" onClick={beginAmendment} className="btn-secondary inline-flex items-center gap-2"><Pencil className="w-4 h-4" /> Amend</button>}
+                <button type="button" onClick={() => void loadHistory(selected.id)} className="btn-secondary inline-flex items-center gap-2"><History className="w-4 h-4" /> Version history</button>
                 {selected.status === "completed" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
                 {selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}
                 {selected.status !== "completed" && <button type="button" onClick={() => void submitEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Submit for final</button>}
@@ -474,6 +499,22 @@ export default function Encounters() {
                   </section>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showVersionHistory && selected && (
+        <div className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-sm p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="encounter-version-history-title">
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-card p-5">
+              <div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Audit & document history</p><h2 id="encounter-version-history-title" className="text-lg font-semibold">Encounter version history</h2><p className="text-xs text-muted-foreground">Finalized versions remain immutable snapshots; amendments create a new version.</p></div>
+              <button type="button" onClick={() => setShowVersionHistory(false)} className="btn-ghost" aria-label="Close version history"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-5 space-y-6">
+              {historyLoading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading audit history…</div> : <>
+                <section><h3 className="mb-3 flex items-center gap-2 font-semibold"><History className="h-4 w-4 text-primary" /> Document versions</h3><div className="space-y-3">{versionHistory.map((v) => <article key={v.id} className="rounded-2xl border border-border bg-card p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><span className="font-semibold">Version {v.version_no}</span><span className="ml-2 rounded-full bg-muted px-2 py-1 text-[10px] uppercase">{v.action}</span></div><span className="text-xs text-muted-foreground">{new Date(v.changed_at).toLocaleString()}</span></div><p className="mt-2 text-xs text-muted-foreground">Changed by: {v.changed_by === user?.id ? "You" : v.changed_by || "Recorded clinical actor"}</p></article>)}{!versionHistory.length && <p className="text-sm text-muted-foreground">No version snapshots are available yet.</p>}</div></section>
+                <section><h3 className="mb-3 flex items-center gap-2 font-semibold"><ShieldAlert className="h-4 w-4 text-critical" /> Audit events</h3><p className="mb-3 text-xs text-muted-foreground">{user?.roles?.includes("admin") ? "Administrative audit events for this encounter." : "Administrative audit events are restricted to authorized administrators."}</p><div className="space-y-2">{auditHistory.map((a) => <article key={a.id} className="rounded-xl border border-border p-3"><div className="flex flex-wrap justify-between gap-2"><div><span className="font-medium text-sm">{a.action}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{a.severity || "info"}</span></div><span className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</span></div><p className="mt-1 text-xs text-muted-foreground">Actor: {a.actor_id === user?.id ? "You" : a.actor_id || "System"}</p></article>)}{!auditHistory.length && <p className="text-sm text-muted-foreground">No audit events are available for this encounter.</p>}</div></section>
+              </>}
             </div>
           </div>
         </div>
