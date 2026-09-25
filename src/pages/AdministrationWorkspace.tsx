@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Database, FileClock, Settings, ShieldCheck, Upload, Users } from 'lucide-react';
+import { Bell, Database, FileClock, Settings, ShieldCheck, Upload, Users } from 'lucide-react';
 
 const items = [
   { label: 'User Management', href: '/admin/users', icon: Users, description: 'Onboard users, assign roles and manage staff access.' },
   { label: 'Roles & Permissions', href: '/admin/permissions', icon: ShieldCheck, description: 'Configure role permissions without changing application code.' },
   { label: 'Facility Settings', href: '/admin/settings', icon: Settings, description: 'Configure facility workflows, including emergency treatment and financial overrides.' },
+  { label: 'Notifications', href: '/notifications', icon: Bell, description: 'Review alerts, notification history and actionable clinical or operational messages.' },
+  { label: 'Notification Delivery', href: '/admin/settings', icon: Bell, description: 'Configure facility email, SMS, WhatsApp and other delivery providers from secure settings.' },
   { label: 'System Library', href: '/admin/system', icon: Database, description: 'Maintain shared system configuration and reference data.' },
   { label: 'Audit Logs', href: '/admin/logs', icon: FileClock, description: 'Review administrative and operational audit activity.' },
   { label: 'Data Import & Sync', href: '/admin/data-import', icon: Upload, description: 'Controlled imports and offline synchronization administration.' },

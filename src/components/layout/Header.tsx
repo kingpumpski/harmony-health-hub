@@ -11,7 +11,7 @@ import { notificationSoundKind, playWorkflowSound } from "@/lib/workflowFeedback
 
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
-  radiologist: "Radiologist", lab_technician: "Lab Technician", pharmacist: "Pharmacist", accountant: "Accounts Officer",
+  radiologist: "Radiologist", radiology_technician: "Radiology Technician", lab_technician: "Lab Technician", pharmacist: "Pharmacist", accountant: "Accounts Officer",
   front_desk: "Front Desk Officer", canteen: "Canteen Staff", patient: "Patient", it_admin: "IT Admin",
 };
 

@@ -33,6 +33,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
   midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','handover','emergency','theatre','transfusion','triage','medication_administration'],
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
+  radiology_technician: ['dashboard','radiology','department_queue','patients','notifications'],
   front_desk: ['dashboard','patients','registration','appointments','triage','finance','billing'],
   accountant: ['dashboard','finance','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports'],
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],

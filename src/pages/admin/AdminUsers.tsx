@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast';
 const availableRoles = [
   { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
-  { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
+  { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'radiology_technician', label: 'Radiology Technician' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
 ] as const;
 type RoleValue = string;
@@ -22,11 +22,14 @@ export default function AdminUsers() {
   const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false);
   const loadDirectory = async () => {
     setLoading(true);
-    const { data: profiles } = await supabase.from('profiles').select('id, email, first_name, last_name').order('created_at', { ascending: false }).limit(200);
-    const ids = (profiles ?? []).map(p => p.id);
-    const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
-    const roleMap = new Map<string, string>(); (roles ?? []).forEach(r => roleMap.set(r.user_id, String(r.role)));
-    setUsers((profiles ?? []).map(p => ({ id: p.id, email: p.email, first_name: p.first_name, last_name: p.last_name, role: roleMap.get(p.id) ?? 'patient' }))); setLoading(false);
+    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { action: 'list_users' } });
+    if (error || data?.error) {
+      setLoading(false);
+      toast({ title: 'Directory unavailable', description: data?.error ?? error?.message ?? 'Unable to load user directory', variant: 'destructive' });
+      return;
+    }
+    setUsers(Array.isArray(data?.users) ? data.users : []);
+    setLoading(false);
   };
   useEffect(() => { if (canManage) void loadDirectory(); }, [canManage]);
   const createUser = async (e: React.FormEvent) => {
@@ -43,7 +46,9 @@ export default function AdminUsers() {
       body: { action: 'update_role', userId, role },
     });
     if (error || data?.error) return toast({ title: 'Failed', description: data?.error ?? error?.message ?? 'Unable to update role', variant: 'destructive' });
-    toast({ title: 'Role updated', description: 'Set to ' + role }); void loadDirectory();
+    setUsers(current => current.map(row => row.id === userId ? { ...row, role } : row));
+    toast({ title: 'Role updated', description: 'Set to ' + role });
+    void loadDirectory();
   };
   const promoteByEmail = async (e: React.FormEvent) => {
     e.preventDefault(); if (!searchEmail.trim()) return;
