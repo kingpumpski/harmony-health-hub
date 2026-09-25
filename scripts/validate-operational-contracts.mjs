@@ -262,3 +262,7 @@ assert('bulk ICD import uses protected workflow', adminBulkImport.includes("auth
 
 const clinicalOperationsPage = read('src/pages/ClinicalOperations.tsx');
 assert('theatre creation does not assign non-practitioners as surgeons', clinicalOperationsPage.includes("const canSelfAssignSurgeon = user?.roles?.includes('practitioner') ?? false;") && clinicalOperationsPage.includes("_surgeon_id: canSelfAssignSurgeon ? user.id : null"), 'theatre creation must not pass nurse/admin identities into the practitioner-only surgeon field');
+
+
+const sidebar = read('src/components/layout/Sidebar.tsx');
+assert('radiology is present in clinical sidebar', sidebar.includes("item(ScanLine, 'Radiology', '/radiology', 'radiology')") && sidebar.includes("item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results')"), 'clinical sidebar must expose radiology workspaces');
