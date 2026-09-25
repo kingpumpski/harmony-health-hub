@@ -66,7 +66,7 @@ async function external(channel:Channel, recipient:{email?:string;phone?:string;
   }
   return {ok:false,provider:'none',error:'Unsupported channel'};
 }
-function resolveText(template:string,vars:Record<string,unknown>){return template.replace(/\\{\\{\\s*([a-zA-Z0-9_.-]+)\\s*\\}\\}/g,(_,key)=>{const v=key.split('.').reduce<any>((a,k)=>a?.[k],vars);return v===undefined||v===null?'':String(v);});}
+function resolveText(template:string,vars:Record<string,unknown>){return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,(_,key)=>{const v=key.split('.').reduce<any>((a,k)=>a?.[k],vars);return v===undefined||v===null?'':String(v);});}
 function quiet(now:Date,tz:string,start:string,end:string){const p=new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now);const m=Number(p.find(x=>x.type==='hour')?.value??0)*60+Number(p.find(x=>x.type==='minute')?.value??0);const [sh,sm]=start.split(':').map(Number),[eh,em]=end.split(':').map(Number),s=sh*60+sm,e=eh*60+em;return s>e?m>=s||m<e:m>=s&&m<e;}
 
 Deno.serve(async req=>{
