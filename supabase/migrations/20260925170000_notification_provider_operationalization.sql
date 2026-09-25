@@ -142,14 +142,14 @@ GRANT EXECUTE ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,T
 CREATE OR REPLACE FUNCTION public.prevent_notification_audit_mutation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $notification$
 BEGIN
   IF TG_OP = 'DELETE' AND current_setting('notification.audit_erasure', true) = 'on' THEN
     RETURN OLD;
   END IF;
   RAISE EXCEPTION 'Notification audit is immutable';
 END;
-$;
+$notification$;
 
 DROP TRIGGER IF EXISTS notification_audit_immutable ON public.notification_audit;
 CREATE TRIGGER notification_audit_immutable
@@ -161,14 +161,14 @@ RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=public
-AS $
+AS $erasure$
 DECLARE deleted_count INTEGER := 0;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin') THEN
-    RAISE EXCEPTION 'Forbidden'; END IF;
+    RAISE EXCEPTION 'Forbidden';
+  END IF;
 
-  -- Authorized erasure is the only controlled exception to immutable audit retention.
   PERFORM set_config('notification.audit_erasure','on',true);
 
   DELETE FROM public.notifications WHERE recipient_user_id=_user_id;
@@ -182,7 +182,7 @@ BEGIN
   DELETE FROM public.user_notification_preferences WHERE user_id=_user_id;
   RETURN deleted_count;
 END;
-$;
+$erasure$;
 
 REVOKE ALL ON FUNCTION public.erase_notification_history(UUID) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.erase_notification_history(UUID) TO authenticated;
