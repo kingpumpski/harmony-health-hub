@@ -5,6 +5,9 @@ import {
   BedDouble,
   CheckCircle2,
   Clock3,
+  Pencil,
+  Save,
+  Send,
   FileText,
   HeartPulse,
   History,
@@ -53,6 +56,7 @@ interface Prescription {
   frequency: string | null;
   duration: string | null;
   status: string;
+  diagnosis_id?: string | null;
 }
 interface BMIContext {
   bmi: number | null;
@@ -221,6 +225,14 @@ export default function Encounters() {
   const [dose, setDose] = useState("");
   const [freq, setFreq] = useState("");
   const [duration, setDuration] = useState("");
+  const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
+  const [amending, setAmending] = useState(false);
+  const [amendmentReason, setAmendmentReason] = useState("");
+  const [amendmentBusy, setAmendmentBusy] = useState(false);
+  const [amendmentSymptoms, setAmendmentSymptoms] = useState("");
+  const [amendmentClerking, setAmendmentClerking] = useState("");
+  const [amendmentPrincipal, setAmendmentPrincipal] = useState("");
+  const [amendmentPlan, setAmendmentPlan] = useState("");
   const activePatientId = selected?.patient_id || patientId;
 
   const loadAll = async () => {
@@ -235,7 +247,7 @@ export default function Encounters() {
   const loadDetails = async (id: string) => {
     const [{ data: dx }, { data: rx }] = await Promise.all([
       supabase.from("diagnoses").select("id, encounter_id, diagnosis, is_principal").eq("encounter_id", id),
-      supabase.from("prescriptions").select("id, encounter_id, medication, dosage, frequency, duration, status").eq("encounter_id", id).order("created_at", { ascending: false }),
+      supabase.from("prescriptions").select("id, encounter_id, medication, dosage, frequency, duration, status, diagnosis_id").eq("encounter_id", id).order("created_at", { ascending: false }),
     ]);
     setDiagnoses((dx ?? []) as Diagnosis[]);
     setPrescriptions((rx ?? []) as Prescription[]);
@@ -296,12 +308,13 @@ export default function Encounters() {
   const addPrescription = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selected || !med.trim()) return;
-    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null });
+    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: selectedDiagnosisId || null });
     if (error) return toast({ title: "Prescription failed", description: error.message, variant: "destructive" });
     setMed("");
     setDose("");
     setFreq("");
     setDuration("");
+    setSelectedDiagnosisId("");
     void loadDetails(selected.id);
   };
 
@@ -319,11 +332,41 @@ export default function Encounters() {
     void loadAll();
   };
 
-  const completeEncounter = async () => {
+  const submitEncounter = async () => {
     if (!selected) return;
-    const { data, error } = await db.rpc("complete_encounter_workflow", { _encounter_id: selected.id });
-    if (error) return toast({ title: "Encounter completion failed", description: error.message, variant: "destructive" });
-    setSelected(data as Encounter);
+    const { data, error } = await db.rpc("submit_encounter_workflow", { _encounter_id: selected.id, _specialty: null, _appointment_date: null, _referral_reason: null });
+    if (error) return toast({ title: "Encounter submission failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, status: "completed", submitted_at: new Date().toISOString(), version_no: data?.version_no ?? selected.version_no ?? 1 });
+    toast({ title: "Encounter submitted", description: "The final clinical document has been locked and versioned." });
+    void loadAll();
+  };
+
+  const beginAmendment = () => {
+    if (!selected || selected.status !== "completed") return;
+    setAmendmentSymptoms(selected.symptoms ?? "");
+    setAmendmentClerking(selected.clerking_notes ?? "");
+    setAmendmentPrincipal(selected.principal_diagnosis ?? "");
+    setAmendmentPlan(selected.treatment_plan ?? "");
+    setAmendmentReason("");
+    setAmending(true);
+  };
+
+  const saveAmendment = async () => {
+    if (!selected || !amendmentReason.trim() || amendmentBusy) return;
+    setAmendmentBusy(true);
+    const { data, error } = await db.rpc("amend_encounter_workflow", {
+      _encounter_id: selected.id,
+      _symptoms: amendmentSymptoms || null,
+      _clerking_notes: amendmentClerking || null,
+      _principal_diagnosis: amendmentPrincipal || null,
+      _treatment_plan: amendmentPlan || null,
+      _reason: amendmentReason.trim(),
+    });
+    setAmendmentBusy(false);
+    if (error) return toast({ title: "Amendment failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, symptoms: amendmentSymptoms || null, clerking_notes: amendmentClerking || null, principal_diagnosis: amendmentPrincipal || null, treatment_plan: amendmentPlan || null, version_no: data?.version_no ?? (selected.version_no ?? 1) + 1 });
+    setAmending(false);
+    toast({ title: "Encounter amended", description: "The previous finalized version remains preserved in the audit history." });
     void loadAll();
   };
 
@@ -397,13 +440,20 @@ export default function Encounters() {
                 <p className="text-xs text-muted-foreground">{patients.find((p) => p.id === selected.patient_id)?.patient_code ?? selected.patient_id} · {new Date(selected.created_at).toLocaleString()} · {encounterAge(selected.created_at)}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? "Submitted" : "Draft"}</span>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? `Submitted · v${selected.version_no ?? 1}` : "Draft"}</span>
+                {selected.status === "completed" && <button type="button" onClick={beginAmendment} className="btn-secondary inline-flex items-center gap-2"><Pencil className="w-4 h-4" /> Amend</button>}
                 {selected.status === "completed" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
                 {selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}
-                {selected.status !== "completed" && <button type="button" onClick={() => void completeEncounter()} className="btn-primary inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Submit for final</button>}
+                {selected.status !== "completed" && <button type="button" onClick={() => void submitEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Submit for final</button>}
                 <button type="button" onClick={() => setSelected(null)} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button>
               </div>
             </div>
+            {amending && selected.status === "completed" && <section className="mb-5 rounded-2xl border border-warning/40 bg-warning/5 p-5">
+              <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><Pencil className="w-4 h-4" /> Amend finalized encounter</h3><p className="mt-1 text-xs text-muted-foreground">Amendments create a new document version. The previous finalized snapshot remains preserved.</p></div><span className="rounded-full border border-warning/40 px-2 py-1 text-[10px] font-semibold">Version {selected.version_no ?? 1} → {(selected.version_no ?? 1) + 1}</span></div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2"><textarea value={amendmentSymptoms} onChange={(e) => setAmendmentSymptoms(e.target.value)} className="input-medical" rows={4} placeholder="Symptoms / presentation" /><textarea value={amendmentClerking} onChange={(e) => setAmendmentClerking(e.target.value)} className="input-medical" rows={4} placeholder="Clerking / history" /><input value={amendmentPrincipal} onChange={(e) => setAmendmentPrincipal(e.target.value)} className="input-medical" placeholder="Principal diagnosis" /><textarea value={amendmentPlan} onChange={(e) => setAmendmentPlan(e.target.value)} className="input-medical" rows={3} placeholder="Treatment plan" /></div>
+              <div className="mt-3"><label className="text-xs font-semibold">Amendment reason</label><textarea value={amendmentReason} onChange={(e) => setAmendmentReason(e.target.value)} className="input-medical mt-1 w-full" rows={2} placeholder="Why is this finalized clinical document being amended?" required /></div>
+              <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setAmending(false)} className="btn-ghost">Cancel</button><button type="button" onClick={() => void saveAmendment()} disabled={amendmentBusy || !amendmentReason.trim()} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{amendmentBusy ? "Saving…" : "Save amendment"}</button></div>
+            </section>}
             <div className="flex-1 overflow-auto p-3 sm:p-5">
               <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
@@ -419,7 +469,7 @@ export default function Encounters() {
                   </section>
                   <section className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment remains explicitly linked to the documented clinical assessment.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>
-                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" className="btn-primary md:col-span-2">Add prescription</button></form>}
+                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><select value={selectedDiagnosisId} onChange={(e) => setSelectedDiagnosisId(e.target.value)} className="input-medical md:col-span-2" required><option value="">Select diagnosis being treated…</option>{diagnoses.map((dx) => <option key={dx.id} value={dx.id}>{dx.diagnosis}{dx.is_principal ? " · Principal" : ""}</option>)}</select><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" disabled={!diagnoses.length} className="btn-primary md:col-span-2">Add prescription</button></form>}
                     <div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || "Dose not recorded"} · {rx.frequency || "Frequency not recorded"} · {rx.duration || "Duration not recorded"}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div>
                   </section>
                 </div>
