@@ -2470,6 +2470,8 @@ export type Database = {
         | "canteen"
         | "patient"
         | "specialist_nurse"
+        | "radiologist"
+        | "radiology_technician"
         | "it_admin"
     }
     CompositeTypes: {
@@ -2610,6 +2612,9 @@ export const Constants = {
         "canteen",
         "patient",
         "specialist_nurse",
+        "radiologist",
+        "radiology_technician",
+        "it_admin",
       ],
     },
   },
