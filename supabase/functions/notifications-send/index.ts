@@ -10,8 +10,12 @@ Deno.serve(async req => {
   const body=await req.json();
   const recipient=body.user_id??user.id;
   if(recipient!==user.id){
-    const {data:allowed}=await db.rpc('notification_feature_enabled',{_key:'notifications.admin_send',_user_id:user.id});
-    if(!allowed)return new Response(JSON.stringify({error:'FORBIDDEN'}),{status:403,headers:{...cors,'content-type':'application/json'}});
+    const {data:allowed,error:roleError}=await db.rpc('has_role',{_user_id:user.id,_role:'admin'});
+    if(roleError||allowed!==true)return new Response(JSON.stringify({error:'FORBIDDEN'}),{status:403,headers:{...cors,'content-type':'application/json'}});
+  }
+  if(body.facility_id){
+    const {data:facilityAllowed,error:facilityError}=await db.rpc('has_facility_access',{_user_id:user.id,_facility_id:body.facility_id});
+    if(facilityError||facilityAllowed!==true)return new Response(JSON.stringify({error:'FACILITY_SCOPE_REQUIRED'}),{status:403,headers:{...cors,'content-type':'application/json'}});
   }
   const {data,error}=await db.rpc('enqueue_notification_v2',{
     _event_name:body.event_name,_user_id:recipient,_payload:body.payload??{},_template_key:body.template_key,
