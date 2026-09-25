@@ -18,4 +18,8 @@ BEGIN
  ASSERT EXISTS(SELECT 1 FROM pg_indexes WHERE indexname='notification_queue_idempotency_uq'),'queue idempotency index missing';
  ASSERT to_regprocedure('public.initialize_facility_notification_onboarding(uuid)') IS NOT NULL,'facility notification onboarding initializer missing';
  ASSERT to_regprocedure('public.mark_facility_notification_production_ready(uuid)') IS NOT NULL,'facility notification production gate missing';
+ ASSERT to_regprocedure('public.verify_facility_notification_provider(uuid,text,text,boolean,text)') IS NOT NULL,'facility notification provider verification function missing';
+ ASSERT to_regclass('public.notification_provider_secret_requirements') IS NOT NULL,'notification provider secret requirements catalog missing';
+ SELECT count(*) INTO c FROM public.notification_provider_secret_requirements WHERE provider IN ('resend','smtp','fcm','twilio','twilio_whatsapp','twilio_voice');
+ ASSERT c >= 20,'notification provider deployment secret catalog incomplete';
 END $$;
