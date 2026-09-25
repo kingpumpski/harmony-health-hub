@@ -27,6 +27,7 @@ export default function Imaging() {
   const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
 
   const load = async (announce = false) => {
+    if (!user?.id) return;
     setLoading(true);
     const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
     if (error) {
@@ -44,10 +45,13 @@ export default function Imaging() {
   };
 
   useEffect(() => {
+    if (!user) return;
+    const imagingRoles = new Set(['admin', 'radiologist', 'radiology_technician', 'practitioner']);
+    if (!user.roles.some((role) => imagingRoles.has(role))) return;
     void load();
     const refreshTimer = window.setInterval(() => void load(true), 30000);
     return () => window.clearInterval(refreshTimer);
-  }, []);
+  }, [user]);
 
   const counters = useMemo(() => ({
     awaiting_release: orders.filter((order) => ['pending_payment_approval', 'pending_payment'].includes(order.status)).length,
