@@ -142,7 +142,8 @@ GRANT EXECUTE ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,T
 CREATE OR REPLACE FUNCTION public.prevent_notification_audit_mutation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $1
+AS $
+BEGIN
   IF TG_OP = 'DELETE' AND current_setting('notification.audit_erasure', true) = 'on' THEN
     RETURN OLD;
   END IF;
