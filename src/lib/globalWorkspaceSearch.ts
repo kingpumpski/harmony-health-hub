@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { permissionByHref } from '@/lib/permissions';
 
 export type GlobalSearchKind = 'module' | 'patient' | 'lab' | 'diagnostic' | 'document' | 'accounting' | 'encounter';
 export interface GlobalSearchResult { id: string; kind: GlobalSearchKind; title: string; subtitle: string; href: string; score: number; }
@@ -40,10 +41,15 @@ const MODULES: SearchModule[] = [
 function escapeLike(value: string) { return value.replace(/\\/g,'\\\\').replace(/%/g,'\\%').replace(/_/g,'\\_'); }
 function patientLabel(p: any) { return p?.patient_code ? `${p.first_name ?? ''} ${p.last_name ?? ''} · ${p.patient_code}`.trim() : `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim(); }
 
-export function searchWorkspaceModules(query: string, roles: string[] = []) {
+export function searchWorkspaceModules(query: string, roles: string[] = [], permissions: string[] = []) {
   const q = query.trim().toLocaleLowerCase();
   if (!q) return [];
-  return MODULES.filter(m => !m.roles || roles.some(role => m.roles?.includes(role))).map(m => {
+  return MODULES.filter(m => {
+    if (roles.includes('admin')) return true;
+    if (m.roles && !roles.some(role => m.roles?.includes(role))) return false;
+    const requiredPermission = permissionByHref[m.href];
+    return !requiredPermission || permissions.includes(requiredPermission);
+  }).map(m => {
     const haystack = [m.title,m.description,...m.keywords].join(' ').toLocaleLowerCase();
     const title = m.title.toLocaleLowerCase();
     const score = title === q ? 120 : title.startsWith(q) ? 100 : haystack.includes(q) ? 80 : 0;
@@ -79,7 +85,7 @@ export async function searchWorkspaceData(query:string):Promise<GlobalSearchResu
   ]);
   return results.flat().sort((a,b)=>b.score-a.score).slice(0,24);
 }
-export async function searchGlobalWorkspace(query:string, roles:string[]=[]) {
-  const [modules,data]=await Promise.all([Promise.resolve(searchWorkspaceModules(query,roles)),searchWorkspaceData(query)]);
+export async function searchGlobalWorkspace(query:string, roles:string[]=[], permissions:string[] = []) {
+  const [modules,data]=await Promise.all([Promise.resolve(searchWorkspaceModules(query,roles,permissions)),searchWorkspaceData(query)]);
   return [...modules,...data].sort((a,b)=>b.score-a.score).slice(0,30);
 }
