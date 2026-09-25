@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench } from 'lucide-react';
+import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,14 @@ export default function Settings(){
  const [notificationLoading,setNotificationLoading]=useState(false);
  const [notificationSaving,setNotificationSaving]=useState(false);
  const [providerDraft,setProviderDraft]=useState({channel:'email',provider:'resend',environment:'sandbox',secretReference:'',senderIdentity:'',accountReference:''});
+ const [emailProvider,setEmailProvider]=useState<'resend'|'smtp'>('resend');
+ const [emailEnvironment,setEmailEnvironment]=useState<'sandbox'|'test'|'production'>('sandbox');
+ const [showEmailSecret,setShowEmailSecret]=useState(false);
+ const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:''});
+ const [emailSaving,setEmailSaving]=useState(false);
+ const [emailTesting,setEmailTesting]=useState(false);
+ const [emailStatus,setEmailStatus]=useState<any>(null);
+
 
  useEffect(()=>{void load()},[]);
  async function load(){
@@ -95,6 +103,24 @@ export default function Settings(){
    const {error}=await db.rpc('update_facility_configuration_workflow',{_configuration_id:config.id,_changes:changes});
    if(error)toast.error(error.message);else toast.success('Facility configuration saved.');
    setSaving(false);
+ }
+ async function configureEmail(test:boolean){
+   if(!facilityId)return;
+   setEmailSaving(!test); setEmailTesting(test);
+   try {
+     const {data:{session}}=await supabase.auth.getSession();
+     if(!session?.access_token) throw new Error('Authenticated session required.');
+     const credentials=emailProvider==='smtp'
+       ? {host:emailDraft.host,port:Number(emailDraft.port),secure:emailDraft.secure,username:emailDraft.username,password:emailDraft.password,from_email:emailDraft.from_email,from_name:emailDraft.from_name}
+       : {api_key:emailDraft.api_key,from_email:emailDraft.from_email};
+     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:user?.email})});
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok) throw new Error(result.error??'Email provider configuration failed.');
+     setEmailStatus(result); toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
+     await loadNotificationSettings(facilityId);
+     if(test)setEmailDraft(d=>({...d,password:'',api_key:''}));
+   } catch(error){ toast.error(error instanceof Error?error.message:'Unable to configure email provider.'); }
+   finally {setEmailSaving(false);setEmailTesting(false);}
  }
  async function saveNotification(){
    if(!notification || !facilityId) return;
@@ -186,6 +212,25 @@ export default function Settings(){
       <label className="text-sm space-y-1"><span>Secret namespace/reference</span><input className="input-medical w-full" placeholder="e.g. org/acme/notifications" value={notification.deployment_secret_namespace ?? ''} onChange={e=>setNotification({...notification,deployment_secret_namespace:e.target.value})}/></label>
       <label className="text-sm space-y-1"><span>Organization display name</span><input className="input-medical w-full" value={String(notification.branding?.display_name ?? '')} onChange={e=>setNotification({...notification,branding:{...notification.branding,display_name:e.target.value}})}/></label>
       <label className="text-sm space-y-1"><span>Reply/contact email</span><input className="input-medical w-full" value={String(notification.branding?.reply_to ?? '')} onChange={e=>setNotification({...notification,branding:{...notification.branding,reply_to:e.target.value}})}/></label>
+    </div>
+
+    <div className="rounded-xl border p-4 space-y-4">
+      <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4"/>Email Service Configuration</h3>
+      <p className="text-xs text-muted-foreground">IT Admins can configure the facility's outbound email service. Credentials are encrypted server-side and are never displayed after submission.</p>
+      <div className="grid gap-3 md:grid-cols-3">
+        <select className="input-medical" value={emailProvider} onChange={e=>setEmailProvider(e.target.value as any)}><option value="resend">Resend</option><option value="smtp">Custom SMTP</option></select>
+        <select className="input-medical" value={emailEnvironment} onChange={e=>setEmailEnvironment(e.target.value as any)}><option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option></select>
+        <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>
+        <input className="input-medical" placeholder="From name" value={emailDraft.from_name} onChange={e=>setEmailDraft({...emailDraft,from_name:e.target.value})}/>
+        {emailProvider==='smtp' ? <>
+          <input className="input-medical" placeholder="SMTP host" value={emailDraft.host} onChange={e=>setEmailDraft({...emailDraft,host:e.target.value})}/>
+          <input className="input-medical" type="number" placeholder="Port" value={emailDraft.port} onChange={e=>setEmailDraft({...emailDraft,port:e.target.value})}/>
+          <input className="input-medical" placeholder="SMTP username" value={emailDraft.username} onChange={e=>setEmailDraft({...emailDraft,username:e.target.value})}/>
+          <div className="flex gap-2"><input className="input-medical flex-1" type={showEmailSecret?'text':'password'} placeholder="SMTP password / app password" value={emailDraft.password} onChange={e=>setEmailDraft({...emailDraft,password:e.target.value})}/><button type="button" className="btn-secondary" onClick={()=>setShowEmailSecret(v=>!v)} aria-label="Toggle SMTP password visibility">{showEmailSecret?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}</button></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailDraft.secure} onChange={e=>setEmailDraft({...emailDraft,secure:e.target.checked})}/>TLS/SSL</label>
+        </> : <input className="input-medical md:col-span-2" type={showEmailSecret?'text':'password'} placeholder="Resend API key" value={emailDraft.api_key} onChange={e=>setEmailDraft({...emailDraft,api_key:e.target.value})}/>}</div>
+      <div className="flex flex-wrap gap-2"><button type="button" disabled={emailSaving||emailTesting} onClick={()=>void configureEmail(false)} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>Save email provider</button><button type="button" disabled={emailSaving||emailTesting} onClick={()=>void configureEmail(true)} className="btn-secondary inline-flex items-center gap-2"><Send className="w-4 h-4"/>{emailTesting?'Testing…':'Save & send test'}</button><button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={()=>setShowEmailSecret(v=>!v)}>{showEmailSecret?<EyeOff className="w-4 h-4"/>:<Eye className="w-4 h-4"/>}Secret visibility</button></div>
+      {emailStatus && <div className="rounded-lg bg-muted/50 p-3 text-xs"><b>Status:</b> {emailStatus.status ?? 'configured'} · <b>Provider:</b> {emailStatus.provider}</div>}
     </div>
     <div className="rounded-xl border p-4 space-y-3">
       <h3 className="font-semibold flex items-center gap-2"><Wrench className="w-4 h-4"/>Provider configuration</h3>
