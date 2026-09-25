@@ -174,3 +174,8 @@ Multiple verified email providers may coexist for the same facility/environment.
 The application requires the Supabase Edge Function secret `NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY`, encoded as base64 and decoding to exactly 32 bytes. This is a platform-level encryption key; facility SMTP/Resend credentials are stored only as encrypted ciphertext. Do not place provider passwords, API keys, or app passwords in PostgreSQL plaintext, frontend environment variables, or source control.
 
 The existing GitHub Actions SMTP workflow remains a controlled CI test harness. It is not the tenant/facility provider configuration path.
+
+
+### Hosted Supabase SMTP constraint
+
+For hosted Supabase Edge Functions, do not rely on SMTP port 587 for runtime delivery: the current Supabase Functions limits document states that outbound connections to ports 25 and 587 are not allowed. For Gmail SMTP, use SSL on port **465** if the provider/network path permits it, or use Resend/another HTTPS-based provider for production delivery. The GitHub Actions SMTP harness is outside Supabase and can still test port 587.
