@@ -258,3 +258,11 @@ assert('ICD catalogue direct client DML is revoked', inpatientTransferMigration.
 assert('ICD catalogue creation is administrator-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_icd_code_workflow(') && inpatientTransferMigration.includes("public.has_role(uid, 'admin')"), 'ICD catalogue workflow is not administrator-authorized');
 assert('ICD catalogue workflow is authenticated-only', inpatientTransferMigration.includes('REVOKE ALL ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon') && inpatientTransferMigration.includes('GRANT EXECUTE ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) TO authenticated'), 'ICD catalogue workflow grants are not restricted');
 assert('bulk ICD import uses protected workflow', adminBulkImport.includes("authClient.rpc('create_icd_code_workflow'") && !adminBulkImport.includes("service.from('icd_codes').insert"), 'bulk ICD import must not bypass the protected workflow');
+
+
+const clinicalOperationsPage = read('src/pages/ClinicalOperations.tsx');
+assert('theatre creation does not assign non-practitioners as surgeons', clinicalOperationsPage.includes("const canSelfAssignSurgeon = user?.roles?.includes('practitioner') ?? false;") && clinicalOperationsPage.includes("_surgeon_id: canSelfAssignSurgeon ? user.id : null"), 'theatre creation must not pass nurse/admin identities into the practitioner-only surgeon field');
+
+
+const sidebar = read('src/components/layout/Sidebar.tsx');
+assert('radiology is present in clinical sidebar', sidebar.includes("item(ScanLine, 'Radiology', '/radiology', 'radiology')") && sidebar.includes("item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results')"), 'clinical sidebar must expose radiology workspaces');

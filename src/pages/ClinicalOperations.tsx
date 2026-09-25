@@ -41,6 +41,7 @@ export default function ClinicalOperations() {
   const [form, setForm] = useState<Record<string, string>>({});
   const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
   const workspaceModule = tab === 'capacity' ? 'ward' : tab === 'nursing' ? 'nursing_care' : tab;
+  const canSelfAssignSurgeon = user?.roles?.includes('practitioner') ?? false;
 
   useEffect(() => {
     if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) setTab(allowedTabs[0]);
@@ -81,7 +82,7 @@ export default function ClinicalOperations() {
         } else if (tab === 'emergency') {
           const result = await supabase.rpc('create_emergency_case', { _patient_id: patientId, _chief_complaint: form.complaint, _acuity: form.acuity || 'urgent', _arrival_mode: form.arrival_mode || 'walk_in', _assigned_officer: user.id } as never); error = result.error;
         } else if (tab === 'theatre') {
-          const result = await supabase.rpc('create_theatre_case', { _patient_id: patientId, _procedure_name: form.procedure_name, _scheduled_start: form.scheduled_start || null, _theatre_name: form.theatre_name || null, _urgency: form.urgency || 'elective', _surgeon_id: user.id } as never); error = result.error;
+          const result = await supabase.rpc('create_theatre_case', { _patient_id: patientId, _procedure_name: form.procedure_name, _scheduled_start: form.scheduled_start || null, _theatre_name: form.theatre_name || null, _urgency: form.urgency || 'elective', _surgeon_id: canSelfAssignSurgeon ? user.id : null } as never); error = result.error;
         } else if (tab === 'transfusion') {
           const result = await supabase.rpc('create_transfusion_record', { _patient_id: patientId, _blood_product: form.blood_product, _unit_identifier: form.unit_identifier, _blood_group: form.blood_group || null, _consent_confirmed: form.consent === 'true' } as never); error = result.error;
         } else {
