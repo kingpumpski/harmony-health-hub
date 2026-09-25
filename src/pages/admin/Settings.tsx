@@ -113,7 +113,7 @@ export default function Settings(){
      const credentials=emailProvider==='smtp'
        ? {host:emailDraft.host,port:Number(emailDraft.port),secure:emailDraft.secure,username:emailDraft.username,password:emailDraft.password,from_email:emailDraft.from_email,from_name:emailDraft.from_name}
        : {api_key:emailDraft.api_key,from_email:emailDraft.from_email};
-     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email})});
+     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email,priority:Number(emailDraft.priority||100),isPrimary:emailDraft.isPrimary})});
      const result=await response.json().catch(()=>({}));
      if(!response.ok) throw new Error(result.error??'Email provider configuration failed.');
      setEmailStatus(result); toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
