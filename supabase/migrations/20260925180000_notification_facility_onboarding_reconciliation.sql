@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.facility_notification_config (
   facility_id UUID PRIMARY KEY REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
   environment TEXT NOT NULL DEFAULT 'sandbox' CHECK (environment IN ('sandbox','test','production')),
-  enabled BOOLEAN NOT NULL DEFAULT false,
+  enabled BOOLEAN NOT NULL DEFAULT true,
   default_locale TEXT NOT NULL DEFAULT 'en-GH',
   default_timezone TEXT NOT NULL DEFAULT 'Africa/Accra',
   quiet_hours_start TIME NOT NULL DEFAULT '22:00',
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.facility_notification_config (
   sender_config JSONB NOT NULL DEFAULT '{}'::jsonb,
   webhook_config JSONB NOT NULL DEFAULT '{}'::jsonb,
   consent_policy JSONB NOT NULL DEFAULT '{"external_channels_require_consent":true,"critical_override":true}'::jsonb,
-  rollout_percent INTEGER NOT NULL DEFAULT 0 CHECK (rollout_percent BETWEEN 0 AND 100),
+  rollout_percent INTEGER NOT NULL DEFAULT 100 CHECK (rollout_percent BETWEEN 0 AND 100),
   kill_switch BOOLEAN NOT NULL DEFAULT false,
   onboarding_status TEXT NOT NULL DEFAULT 'not_started'
     CHECK (onboarding_status IN ('not_started','in_progress','sandbox_ready','verification_pending','production_ready','suspended')),
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.facility_notification_provider_connections (
   UNIQUE(facility_id, channel, environment)
 );
 
-ALTER TABLE public.scheduled_notifications
+-- Reconcile the previously shipped onboarding schema if it has already been applied to a target database.\nALTER TABLE public.facility_notification_config\n  ADD COLUMN IF NOT EXISTS consent_policy JSONB NOT NULL DEFAULT '{"external_channels_require_consent":true,"critical_override":true}'::jsonb,\n  ADD COLUMN IF NOT EXISTS rollout_percent INTEGER NOT NULL DEFAULT 100,\n  ADD COLUMN IF NOT EXISTS kill_switch BOOLEAN NOT NULL DEFAULT false,\n  ADD COLUMN IF NOT EXISTS onboarding_status TEXT NOT NULL DEFAULT 'not_started',\n  ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,\n  ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();\n\nALTER TABLE public.facility_notification_provider_connections\n  ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'sandbox',\n  ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb,\n  ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMPTZ,\n  ADD COLUMN IF NOT EXISTS last_error TEXT,\n  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,\n  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();\n\nCREATE UNIQUE INDEX IF NOT EXISTS facility_notification_provider_connections_env_uq\n  ON public.facility_notification_provider_connections(facility_id,channel,environment);\n\nDROP POLICY IF EXISTS "facility notification config scoped read" ON public.facility_notification_config;\nDROP POLICY IF EXISTS "facility notification config admin update" ON public.facility_notification_config;\nDROP POLICY IF EXISTS "facility notification config access" ON public.facility_notification_config;\nDROP POLICY IF EXISTS "facility notification config admin manage" ON public.facility_notification_config;\nDROP POLICY IF EXISTS "facility notification provider admin read" ON public.facility_notification_provider_connections;\nDROP POLICY IF EXISTS "facility notification provider admin update" ON public.facility_notification_provider_connections;\nDROP POLICY IF EXISTS "facility notification provider access" ON public.facility_notification_provider_connections;\nDROP POLICY IF EXISTS "facility notification provider admin manage" ON public.facility_notification_provider_connections;\n\nALTER TABLE public.scheduled_notifications
   ADD COLUMN IF NOT EXISTS facility_id UUID REFERENCES public.healthcare_facilities(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_scheduled_notifications_facility_due
   ON public.scheduled_notifications(facility_id,status,run_at);
