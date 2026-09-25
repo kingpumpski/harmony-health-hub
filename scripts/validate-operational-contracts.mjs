@@ -363,7 +363,7 @@ assert(notificationProviderDocs.includes('RESEND_API_KEY'), 'Provider runbook mi
 assert(notificationProviderDocs.includes('FCM_SERVICE_ACCOUNT_JSON'), 'Provider runbook missing FCM configuration');
 assert(notificationProviderDocs.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Provider runbook missing WhatsApp configuration');
 
-const notificationOnboardingMigration = read('supabase/migrations/20260925180000_notification_facility_onboarding_reconciliation.sql');
+const notificationOnboardingMigration = read('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql');
 assert(notificationOnboardingMigration.includes('facility_notification_config'), 'Facility notification onboarding configuration missing');
 assert(notificationOnboardingMigration.includes('facility_notification_provider_connections'), 'Facility provider connection registry missing');
 assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
