@@ -9,7 +9,7 @@ import type { UserRole } from '@/types';
 const roles: { value: UserRole; label: string }[] = [
   { value: 'it_admin', label: 'IT Admin' },
   { value: 'admin', label: 'Administrator' }, { value: 'practitioner', label: 'Practitioner' }, { value: 'nurse', label: 'Nurse' },
-  { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'radiologist', label: 'Radiologist' },
+  { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'radiology_technician', label: 'Radiology Technician' },
   { value: 'lab_technician', label: 'Lab Technician' }, { value: 'pharmacist', label: 'Pharmacist' }, { value: 'accountant', label: 'Accountant' },
   { value: 'front_desk', label: 'Front Desk' }, { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
 ];
