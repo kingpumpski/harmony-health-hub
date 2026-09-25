@@ -163,3 +163,14 @@ For multi-organization production, each organization's provider credential must 
 13. Promote to production only after the facility-level provider verification gate passes.
 
 External channels remain disabled until this sequence is completed. In-app notifications can remain enabled as the safe baseline.
+
+
+## Facility-managed email providers
+
+IT Administrators and Administrators can configure facility email providers from **System Settings → Email Service Configuration**. Supported providers are Resend and SMTP. Provider credentials are encrypted server-side and are never returned to the UI after submission.
+
+Multiple verified email providers may coexist for the same facility/environment. Each provider has a numeric **priority** (lower numbers are attempted first) and an optional **primary** designation. Only one provider can be primary for a facility/channel/environment. Delivery records each provider attempt, and the worker proceeds to the next configured provider before falling back to the next notification channel.
+
+The application requires the Supabase Edge Function secret `NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY`, encoded as base64 and decoding to exactly 32 bytes. This is a platform-level encryption key; facility SMTP/Resend credentials are stored only as encrypted ciphertext. Do not place provider passwords, API keys, or app passwords in PostgreSQL plaintext, frontend environment variables, or source control.
+
+The existing GitHub Actions SMTP workflow remains a controlled CI test harness. It is not the tenant/facility provider configuration path.
