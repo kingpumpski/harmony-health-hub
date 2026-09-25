@@ -54,7 +54,7 @@ export default function Settings(){
  const [emailProvider,setEmailProvider]=useState<'resend'|'smtp'>('resend');
  const [emailEnvironment,setEmailEnvironment]=useState<'sandbox'|'test'|'production'>('sandbox');
  const [showEmailSecret,setShowEmailSecret]=useState(false);
- const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:''});
+ const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:'',testRecipient:''});
  const [emailSaving,setEmailSaving]=useState(false);
  const [emailTesting,setEmailTesting]=useState(false);
  const [emailStatus,setEmailStatus]=useState<any>(null);
@@ -113,7 +113,7 @@ export default function Settings(){
      const credentials=emailProvider==='smtp'
        ? {host:emailDraft.host,port:Number(emailDraft.port),secure:emailDraft.secure,username:emailDraft.username,password:emailDraft.password,from_email:emailDraft.from_email,from_name:emailDraft.from_name}
        : {api_key:emailDraft.api_key,from_email:emailDraft.from_email};
-     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:user?.email})});
+     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email})});
      const result=await response.json().catch(()=>({}));
      if(!response.ok) throw new Error(result.error??'Email provider configuration failed.');
      setEmailStatus(result); toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
@@ -220,7 +220,7 @@ export default function Settings(){
       <div className="grid gap-3 md:grid-cols-3">
         <select className="input-medical" value={emailProvider} onChange={e=>setEmailProvider(e.target.value as any)}><option value="resend">Resend</option><option value="smtp">Custom SMTP</option></select>
         <select className="input-medical" value={emailEnvironment} onChange={e=>setEmailEnvironment(e.target.value as any)}><option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option></select>
-        <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>
+        <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>\n        <input className="input-medical" type="email" placeholder="Test recipient email" value={emailDraft.testRecipient} onChange={e=>setEmailDraft({...emailDraft,testRecipient:e.target.value})}/>
         <input className="input-medical" placeholder="From name" value={emailDraft.from_name} onChange={e=>setEmailDraft({...emailDraft,from_name:e.target.value})}/>
         {emailProvider==='smtp' ? <>
           <input className="input-medical" placeholder="SMTP host" value={emailDraft.host} onChange={e=>setEmailDraft({...emailDraft,host:e.target.value})}/>
