@@ -56,6 +56,10 @@ Deno.serve(async req=>{
   if(insertError?.code==='23505')return json({ok:true,duplicate:true},200,cors);
   if(insertError)return json({error:'WEBHOOK_STORE_FAILED'},500,cors);
 
+  if(provider==='resend' && eventType==='email.received'){
+    const d=payload?.data??{};
+    await db.from('notification_inbound_emails').upsert({provider:'resend',provider_message_id:String(d.email_id??d.id??'')||null,message_id:String(d.message_id??d.email_id??d.id??'')||null,from_address:typeof d.from==='string'?d.from:null,to_addresses:Array.isArray(d.to)?d.to:[],cc_addresses:Array.isArray(d.cc)?d.cc:[],subject:typeof d.subject==='string'?d.subject:null,text_body:typeof d.text==='string'?d.text:null,html_body:typeof d.html==='string'?d.html:null,attachments:Array.isArray(d.attachments)?d.attachments:[],received_at:new Date().toISOString(),raw_event:payload,processing_status:'received'},{onConflict:'provider,provider_message_id'});
+  }
   const externalId=String(payload?.data?.email_id??payload?.data?.id??payload?.MessageSid??payload?.CallSid??'');
   if(externalId){
     const statusMap:Record<string,string>={
