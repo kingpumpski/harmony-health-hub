@@ -54,7 +54,7 @@ export default function Settings(){
  const [emailProvider,setEmailProvider]=useState<'resend'|'smtp'>('resend');
  const [emailEnvironment,setEmailEnvironment]=useState<'sandbox'|'test'|'production'>('sandbox');
  const [showEmailSecret,setShowEmailSecret]=useState(false);
- const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'587',secure:false,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:'',testRecipient:'',priority:'100',isPrimary:false});
+ const [emailDraft,setEmailDraft]=useState({host:'smtp.gmail.com',port:'465',secure:true,username:'',password:'',from_email:'',from_name:'Harmony Health Hub',api_key:'',testRecipient:'',priority:'100',isPrimary:false});
  const [emailSaving,setEmailSaving]=useState(false);
  const [emailTesting,setEmailTesting]=useState(false);
  const [emailStatus,setEmailStatus]=useState<any>(null);
