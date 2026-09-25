@@ -15,15 +15,15 @@ const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife']);
 const billingRoles = new Set(['admin', 'accountant', 'front_desk']);
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'; }
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) { return <section className="card-medical p-5 space-y-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-lg font-semibold">{title}</h2>{action}</div>{children}</section>; }
-function EmptyState({ label }: { label: string }) { return <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">No {label} recorded yet.</p>; }
+function EmptyState({ label }: { label: string }) { return <div className="rounded-2xl border border-dashed border-border p-8 text-center"><FileText className="mx-auto h-7 w-7 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No {label} recorded yet</p><p className="mt-1 text-xs text-muted-foreground">When this information becomes available, it will appear here.</p></div>; }
 
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const { user } = useAuth();
-  const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
+  const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
   const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
-    if (!patientId) return; const db = supabase as any;
+    if (!patientId) return; const db = supabase as any; setHistoryLoading(true);
     const specs = [
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
       ['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })],
@@ -33,16 +33,16 @@ export default function PatientHub() {
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
     settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; next.vitals = snapshot.vitals ?? []; next.encounters = snapshot.encounters ?? []; next.labs = snapshot.labs ?? []; next.prescriptions = snapshot.prescriptions ?? []; next.documents = snapshot.documents ?? []; } else next[key] = response.data ?? []; } else failed.push(key); });
-    setRows(next); if (failed.length) toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`);
+    setRows(next); if (failed.length) toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`); setHistoryLoading(false);
   }, [patientId, roleSet]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const refresh = () => setRefreshKey((v) => v + 1);
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading patient record…</div>;
   if (!patient) return <div className="p-8 space-y-4"><p className="font-medium">Patient record not found.</p><Link to="/patients" className="btn-secondary inline-flex">Back to search</Link></div>;
-  return <div className="space-y-5 animate-fade-in">
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-3"><button onClick={() => navigate('/patients')} className="p-2 rounded-lg hover:bg-muted" aria-label="Back to patient search"><ArrowLeft className="w-5 h-5" /></button><div><h1 className="text-2xl font-heading font-bold">{patient.first_name} {patient.last_name}</h1><p className="text-sm text-muted-foreground">Patient code: {patient.patient_code} · {patient.status}</p></div></div><button onClick={refresh} className="btn-secondary inline-flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4" /> Refresh record</button></div>
-    <div className="overflow-x-auto rounded-2xl border border-border bg-card"><div className="flex min-w-max gap-1 p-2">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}><Icon className="w-4 h-4" />{tab.label}</button>; })}</div></div>
-    {activeTab === 'profile' && <ProfileTab patient={patient} canEdit={canEdit} onSaved={(next) => setPatient(next)} />}
+  return <div className="space-y-5 animate-fade-in pb-6">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-3"><button onClick={() => navigate('/patients')} className="p-2 rounded-lg hover:bg-muted" aria-label="Back to patient search"><ArrowLeft className="w-5 h-5" /></button><div><h1 className="text-2xl font-heading font-bold">{patient.first_name} {patient.last_name}</h1><p className="text-sm text-muted-foreground">Patient code: {patient.patient_code} · {patient.status}</p></div></div><button onClick={refresh} disabled={historyLoading} className="btn-secondary inline-flex items-center justify-center gap-2">{historyLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}{historyLoading ? 'Refreshing…' : 'Refresh record'}</button></div>
+    <div className="overflow-x-auto rounded-2xl border border-border bg-card"><div className="flex min-w-max gap-1 p-2" role="tablist" aria-label="Patient record sections">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`} role="tab" aria-selected={activeTab === tab.key} aria-controls={`patient-tab-${tab.key}`} onKeyDown={(event) => { if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); setActiveTab(tabs[(tabs.findIndex((item) => item.key === activeTab) + 1) % tabs.length].key); } if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); setActiveTab(tabs[(tabs.findIndex((item) => item.key === activeTab) - 1 + tabs.length) % tabs.length].key); } }}><Icon className="w-4 h-4" />{tab.label}</button>; })}</div></div>
+    <div id={`patient-tab-${activeTab}`} role="tabpanel" tabIndex={0} className="outline-none">{activeTab === 'profile' && <ProfileTab patient={patient} canEdit={canEdit} onSaved={(next) => setPatient(next)} />}
     {activeTab === 'appointments' && <AppointmentsTab patientId={patient.id} rows={rows.appointments ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
     {activeTab === 'vitals' && <VitalsTab patientId={patient.id} rows={rows.vitals ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
     {activeTab === 'encounters' && <EncountersTab patientId={patient.id} rows={rows.encounters ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
@@ -50,7 +50,7 @@ export default function PatientHub() {
     {activeTab === 'prescriptions' && <PrescriptionsTab patientId={patient.id} encounterId={rows.encounters?.[0]?.id ?? null} rows={rows.prescriptions ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
     {activeTab === 'billing' && <BillingTab patientId={patient.id} rows={rows.invoices ?? []} canWrite={canBill} onSaved={refresh} />}
     {activeTab === 'documents' && <DocumentsTab patientId={patient.id} rows={rows.documents ?? []} canWrite={canEdit} onSaved={refresh} />}
-    {activeTab === 'admission' && <AdmissionTab patientId={patient.id} rows={rows.admissions ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
+    {activeTab === 'admission' && <AdmissionTab patientId={patient.id} rows={rows.admissions ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}</div>
   </div>;
 }
 
