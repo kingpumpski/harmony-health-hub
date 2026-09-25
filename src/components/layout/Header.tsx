@@ -71,7 +71,7 @@ export default function Header({ onMenu }: HeaderProps) {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <span className="hidden xl:inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-success" />{roleLabels[user.role]}</span>
           <div className="relative">
-            <button onClick={() => setShowNotifications(v => !v)} className={cn("relative rounded-xl p-2 hover:bg-muted", hasCritical && "animate-pulse")} aria-label="Notifications">
+            <button type="button" onClick={() => setShowNotifications(v => !v)} className={cn("relative rounded-xl p-2 hover:bg-muted", hasCritical && "animate-pulse")} aria-label="Notifications">
               <Bell className={cn("h-5 w-5", hasCritical ? "text-critical" : "text-muted-foreground")} />
               {unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold text-critical-foreground">{unread > 9 ? "9+" : unread}</span>}
             </button>
@@ -80,16 +80,16 @@ export default function Header({ onMenu }: HeaderProps) {
               <div className="max-h-96 overflow-y-auto">{notifications.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No notifications yet.</p> : notifications.map(n => <div key={n.id} className={cn("flex cursor-pointer gap-3 border-b p-3 last:border-0 hover:bg-muted/50", !n.is_read && "bg-primary/5")} onClick={() => { if (n.link) { setShowNotifications(false); navigate(n.link); } }}>{sevIcon(n.severity)}<div className="min-w-0 flex-1"><p className="text-sm font-medium">{n.title}</p><p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p></div></div>)}</div>
             </div>}
           </div>
-          <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="rounded-xl p-2 hover:bg-muted" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-5 w-5 text-muted-foreground" /> : <Moon className="h-5 w-5 text-muted-foreground" />}</button>
+          <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="rounded-xl p-2 hover:bg-muted" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-5 w-5 text-muted-foreground" /> : <Moon className="h-5 w-5 text-muted-foreground" />}</button>
           <div className="relative">
-            <button onClick={() => setShowAccount(v => !v)} className="rounded-xl p-1.5 hover:bg-muted" aria-label="Account menu"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{(user.firstName?.[0] || "U").toUpperCase()}{(user.lastName?.[0] || "").toUpperCase()}</div></button>
+            <button type="button" onClick={() => setShowAccount(v => !v)} className="rounded-xl p-1.5 hover:bg-muted" aria-label="Account menu"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{(user.firstName?.[0] || "U").toUpperCase()}{(user.lastName?.[0] || "").toUpperCase()}</div></button>
             {showAccount && <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated">
               <div className="border-b p-4"><p className="text-sm font-semibold">{user.firstName} {user.lastName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p><p className="mt-1 text-xs text-primary">{roleLabels[user.role]}</p></div>
               <div className="p-2">
                 <Link to="/profile" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><UserRound className="h-4 w-4" />My profile & workspace</Link>
                 {user.role === "admin" && <><Link to="/admin/settings" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />System settings</Link><Link to="/admin/shifts" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Clock3 className="h-4 w-4" />Staff shifts</Link></>}
                 <Link to="/notifications" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Bell className="h-4 w-4" />Notifications</Link>
-                <button onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-critical hover:bg-critical/10"><LogOut className="h-4 w-4" />Sign out</button>
+                <button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-critical hover:bg-critical/10"><LogOut className="h-4 w-4" />Sign out</button>
               </div>
             </div>}
           </div>
