@@ -51,7 +51,7 @@ Deno.serve(async req=>{
    const priority=String(row.priority??event?.priority_level??'medium');const pref=prefs??{timezone:'Africa/Accra',quiet_hours_start:'22:00:00',quiet_hours_end:'07:00:00',pause_non_critical:false,channel_preferences:{in_app:true}};
    if(quiet(new Date(),pref.timezone,pref.quiet_hours_start,pref.quiet_hours_end)&&event?.quiet_hours_behavior==='delay'&&priority!=='critical'){await db.from('notification_queue').update({status:'pending',next_attempt_at:new Date(Date.now()+1800000).toISOString(),updated_at:new Date().toISOString()}).eq('id',row.id).eq('status','processing');continue;}
    const channels=(Array.isArray(row.fallback_channels)?row.fallback_channels:['in_app']) as Channel[];let ok=false,last='No eligible channel';
-   for(const channel of channels){
+   for(const channel of channels){ const {data:channelConfig}=await db.from('notification_channels').select('enabled').eq('code',channel).maybeSingle(); if(!channelConfig?.enabled){last='Channel disabled';continue;}
     if(channel!=='in_app'&&priority!=='critical'&&(pref.pause_non_critical||pref.channel_preferences?.[channel]!==true))continue;
     const started=Date.now();
     if(channel==='in_app'){
