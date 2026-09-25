@@ -77,10 +77,20 @@ SECURITY DEFINER
 SET search_path=public
 AS $$
 DECLARE result_id UUID;
+DECLARE existing_user UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _provider <> 'fcm' THEN RAISE EXCEPTION 'Unsupported push provider'; END IF;
+  IF _platform NOT IN ('web','android','ios') THEN RAISE EXCEPTION 'Unsupported device platform'; END IF;
   IF length(trim(_token)) < 20 THEN RAISE EXCEPTION 'Invalid device token'; END IF;
+
+  SELECT user_id INTO existing_user
+  FROM public.notification_devices
+  WHERE provider=_provider AND token=trim(_token)
+  FOR UPDATE;
+  IF existing_user IS NOT NULL AND existing_user <> auth.uid() THEN
+    RAISE EXCEPTION 'Device token is already registered to another user';
+  END IF;
 
   INSERT INTO public.notification_devices(user_id,provider,platform,token,device_label,active,last_seen_at,updated_at)
   VALUES(auth.uid(),_provider,_platform,trim(_token),_device_label,true,now(),now())
