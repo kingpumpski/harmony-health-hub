@@ -189,6 +189,19 @@ BEGIN
   WHERE facility_id=_facility_id AND channel=_channel AND environment=_environment
   RETURNING * INTO v;
   IF v.id IS NULL THEN RAISE EXCEPTION 'Notification provider connection not found'; END IF;
+  IF _verified AND v.secret_reference IS NULL THEN
+    RAISE EXCEPTION 'Verified provider requires a deployment secret reference';
+  END IF;
+  IF _verified THEN
+    UPDATE public.facility_notification_config
+    SET onboarding_status=CASE
+      WHEN environment='production' THEN 'verification_pending'
+      ELSE 'sandbox_ready'
+    END,
+    verified_at=now(),verified_by=auth.uid(),updated_by=auth.uid(),updated_at=now()
+    WHERE facility_id=_facility_id
+      AND onboarding_status <> 'production_ready';
+  END IF;
   RETURN v;
 END $;
 
@@ -208,6 +221,20 @@ BEGIN
     WHERE facility_id=_facility_id AND environment IN ('test','production') AND status='verified'
   ) THEN
     RAISE EXCEPTION 'At least one verified external notification provider is required';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_each_text(COALESCE((SELECT enabled_channels FROM public.facility_notification_config WHERE facility_id=_facility_id), '{}'::jsonb)) AS enabled(code,is_enabled)
+    WHERE code <> 'in_app' AND is_enabled='true'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.facility_notification_provider_connections pc
+        WHERE pc.facility_id=_facility_id
+          AND pc.channel=enabled.code
+          AND pc.environment IN ('test','production')
+          AND pc.status='verified'
+      )
+  ) THEN
+    RAISE EXCEPTION 'Every enabled external notification channel must have a verified provider';
   END IF;
   UPDATE public.facility_notification_config
   SET environment='production',enabled=true,rollout_percent=100,kill_switch=false,
