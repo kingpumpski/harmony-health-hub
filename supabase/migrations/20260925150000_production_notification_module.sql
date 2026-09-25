@@ -12,6 +12,9 @@ ALTER TABLE public.notification_queue
   ADD COLUMN IF NOT EXISTS fallback_channels JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMPTZ;
 
+ALTER TABLE public.notification_queue ADD COLUMN IF NOT EXISTS facility_id UUID REFERENCES public.healthcare_facilities(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_notification_queue_facility ON public.notification_queue(facility_id, status, scheduled_for);
+
 CREATE UNIQUE INDEX IF NOT EXISTS notification_queue_idempotency_uq ON public.notification_queue(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.notification_channels (
