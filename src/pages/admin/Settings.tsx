@@ -8,7 +8,7 @@ type Config = {
  address:string|null; country:string; currency:string; timezone:string; routing_mode:string;
  appointment_buffer_minutes:number; maintenance_mode:boolean; allow_treatment_before_deposit:boolean;
  admission_financial_override_enabled:boolean; require_accounts_release_after_deposit:boolean;
- allow_clinical_emergency_override:boolean;
+ allow_clinical_emergency_override:boolean; require_principal_diagnosis_for_final:boolean; inherit_inpatient_diagnoses:boolean; notification_sound_enabled:boolean;
 };
 const db = supabase as any;
 const fields = ['facility_name','facility_code','phone','email','country','currency','timezone'] as const;
@@ -35,6 +35,12 @@ export default function Settings(){
     <Toggle label="Allow admission financial override" checked={config.admission_financial_override_enabled} onChange={v=>setConfig({...config,admission_financial_override_enabled:v})}/>
     <Toggle label="Allow clinical emergency override" checked={config.allow_clinical_emergency_override} onChange={v=>setConfig({...config,allow_clinical_emergency_override:v})}/>
     <Toggle label="Require Accounts release after deposit" checked={config.require_accounts_release_after_deposit} onChange={v=>setConfig({...config,require_accounts_release_after_deposit:v})}/>
+   </section>
+   <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-4">
+    <div><h2 className="font-semibold">Clinical encounter continuity</h2><p className="text-xs text-muted-foreground mt-1">Facility-level rules for draft-first documentation, principal diagnosis reporting and inpatient continuity.</p></div>
+    <Toggle label="Require principal diagnosis before final submission" checked={config.require_principal_diagnosis_for_final} onChange={v=>setConfig({...config,require_principal_diagnosis_for_final:v})}/>
+    <Toggle label="Inherit diagnoses into subsequent inpatient encounters" checked={config.inherit_inpatient_diagnoses} onChange={v=>setConfig({...config,inherit_inpatient_diagnoses:v})}/>
+    <Toggle label="Enable workflow notification sounds" checked={config.notification_sound_enabled} onChange={v=>setConfig({...config,notification_sound_enabled:v})}/>
    </section>
    <button disabled={saving} onClick={()=>void save()} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>{saving?'Saving…':'Save configuration'}</button>
   </section>
