@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
+  BedDouble,
   CheckCircle2,
+  Clock3,
   FileText,
   HeartPulse,
   History,
@@ -10,19 +12,13 @@ import {
   Plus,
   ShieldAlert,
   Stethoscope,
-  BedDouble,
   Trash2,
-  X,
-  Clock3,
   UserRound,
-  Send,
-  Save,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import MedicalTermInput from "@/components/MedicalTermInput";
-import type { DiagnosisSuggestion } from "@/lib/medicalTerms";
 
 interface Patient {
   id: string;
@@ -40,6 +36,7 @@ interface Encounter {
   status: string;
   admission_id: string | null;
   created_at: string;
+  practitioner_id?: string | null;
   submitted_at?: string | null;
   version_no?: number | null;
 }
@@ -99,63 +96,338 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error } = await db.rpc("get_patient_bmi_context", {
-        _patient_id: patientId,
-      });
+      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
       if (!active) return;
       if (error) {
-        toast({
-          title: "BMI context unavailable",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
         return;
       }
       setBmi((data?.[0] ?? null) as BMIContext | null);
     };
     void load();
-    return (
+    return () => {
+      active = false;
+    };
+  }, [patientId]);
+  return (
+    <section className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-primary" /> BMI clinical context</h4>
+          <p className="text-[11px] text-muted-foreground mt-1">Latest server-calculated measurement</p>
+        </div>
+        <span className="text-2xl font-bold">{bmi?.bmi ?? "—"}</span>
+      </div>
+      {bmi && (
+        <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+          <span>Category: <b>{bmi.category}</b></span>
+          <span>Weight: <b>{bmi.weight_kg ?? "—"} kg</b></span>
+          <span>Height: <b>{bmi.height_m ?? "—"} m</b></span>
+          <span>Recorded: <b>{bmi.recorded_at ? new Date(bmi.recorded_at).toLocaleDateString() : "—"}</b></span>
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground mt-3">BMI is one clinical input alongside age, pregnancy status, diagnoses, examination findings, renal/hepatic function, allergies and medication-specific guidance. It does not automatically determine a prescription or dose.</p>
+    </section>
+  );
+}
+
+function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; encounterId?: string }) {
+  const [context, setContext] = useState<ClinicalContext | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      const { data, error } = await db.rpc("get_encounter_clinical_context", { _patient_id: patientId, _encounter_id: encounterId ?? null });
+      if (!active) return;
+      if (error) toast({ title: "Clinical history unavailable", description: error.message, variant: "destructive" });
+      setContext((data ?? null) as ClinicalContext | null);
+      setLoading(false);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [patientId, encounterId]);
+  const patient = context?.patient;
+  const conditions = useMemo(() => {
+    const historical = (context?.previous_encounters ?? []).flatMap((e) => [e.principal_diagnosis, ...e.diagnoses]).filter((v): v is string => Boolean(v));
+    const chronic = patient?.chronic_conditions?.split(/[,;\n]+/) ?? [];
+    return Array.from(new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean))).slice(0, 12);
+  }, [context, patient]);
+  return (
+    <aside className="card-medical p-5 space-y-4 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+      <div className="flex items-start justify-between gap-3">
+        <div><h3 className="font-semibold flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety context</h3><p className="text-xs text-muted-foreground mt-1">High-value history stays beside the active encounter.</p></div>
+        {loading && <span className="text-xs text-muted-foreground">Loading…</span>}
+      </div>
+      {patient && (
+        <section className="rounded-xl border border-border p-3">
+          <p className="font-medium text-sm">{patient.name}</p>
+          <p className="text-xs text-muted-foreground">{patient.patient_code}</p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div>Blood group<p className="font-medium">{patient.blood_group || "Not recorded"}</p></div>
+            <div>Genotype<p className="font-medium">{patient.genotype || "Not recorded"}</p></div>
+          </div>
+        </section>
+      )}
+      <BMIContextCard patientId={patientId} />
+      {patient?.allergies && <section className="rounded-xl border border-critical/40 bg-critical/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm text-critical"><AlertTriangle className="w-4 h-4" /> Allergies / alerts</div><p className="text-sm mt-2 whitespace-pre-wrap">{patient.allergies}</p></section>}
+      {conditions.length > 0 && <section className="rounded-xl border border-warning/40 bg-warning/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm mb-2"><AlertTriangle className="w-4 h-4" /> Conditions to notice</div><div className="flex flex-wrap gap-2">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium">{condition}</span>)}</div></section>}
+      {context?.recent_vitals?.[0] && (
+        <section className="rounded-xl border border-border p-4">
+          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4" /> Latest recorded vitals</h4>
+          <p className="text-[11px] text-muted-foreground mt-1">{new Date(context.recent_vitals[0].recorded_at).toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <span>BP: <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span>
+            <span>Pulse: <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span>
+            <span>Temp: <b>{context.recent_vitals[0].temperature ?? "—"}</b></span>
+            <span>SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span>
+          </div>
+        </section>
+      )}
+      <section>
+        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Previous encounters</h4>
+        {!context?.previous_encounters?.length ? <p className="text-sm text-muted-foreground">No previous encounters recorded.</p> : <div className="space-y-3">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-xl border border-border p-3 bg-background/70"><div className="flex justify-between gap-2"><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span><span className="text-xs rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-sm font-semibold mt-2">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p>{item.symptoms && <p className="text-xs mt-2"><b>Presentation:</b> {item.symptoms}</p>}{item.treatment_plan && <p className="text-xs text-muted-foreground mt-1"><b className="text-foreground">Previous plan:</b> {item.treatment_plan}</p>}</article>)}</div>}
+      </section>
+    </aside>
+  );
+}
+
+function encounterAge(createdAt: string) {
+  const ageMs = Math.max(0, Date.now() - new Date(createdAt).getTime());
+  const minutes = Math.floor(ageMs / 60000);
+  if (minutes < 60) return `${minutes}m old`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h old`;
+  return `${Math.floor(hours / 24)}d old`;
+}
+
+export default function Encounters() {
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [selected, setSelected] = useState<Encounter | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [admitting, setAdmitting] = useState(false);
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
+  const [symptoms, setSymptoms] = useState("");
+  const [clerking, setClerking] = useState("");
+  const [newDx, setNewDx] = useState("");
+  const [med, setMed] = useState("");
+  const [dose, setDose] = useState("");
+  const [freq, setFreq] = useState("");
+  const [duration, setDuration] = useState("");
+  const activePatientId = selected?.patient_id || patientId;
+
+  const loadAll = async () => {
+    const [{ data: pts }, { data: encs }] = await Promise.all([
+      supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
+      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, admission_id, created_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+    ]);
+    setPatients((pts ?? []) as Patient[]);
+    setEncounters((encs ?? []) as Encounter[]);
+  };
+
+  const loadDetails = async (id: string) => {
+    const [{ data: dx }, { data: rx }] = await Promise.all([
+      supabase.from("diagnoses").select("id, encounter_id, diagnosis, is_principal").eq("encounter_id", id),
+      supabase.from("prescriptions").select("id, encounter_id, medication, dosage, frequency, duration, status").eq("encounter_id", id).order("created_at", { ascending: false }),
+    ]);
+    setDiagnoses((dx ?? []) as Diagnosis[]);
+    setPrescriptions((rx ?? []) as Prescription[]);
+  };
+
+  useEffect(() => { void loadAll(); }, []);
+  useEffect(() => {
+    const id = searchParams.get("encounter");
+    const p = searchParams.get("patient");
+    if (p) setPatientId(p);
+    if (id) {
+      const found = encounters.find((e) => e.id === id);
+      if (found) {
+        setSelected(found);
+        setIsHistoryOpen(false);
+      }
+    }
+  }, [searchParams, encounters]);
+  useEffect(() => {
+    if (selected) void loadDetails(selected.id);
+  }, [selected]);
+
+  const createEncounter = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!patientId) return toast({ title: "Select a patient", variant: "destructive" });
+    const { data, error } = await db.rpc("create_encounter_workflow", { _patient_id: patientId, _symptoms: symptoms || null, _clerking_notes: clerking || null });
+    if (error) return toast({ title: "Encounter creation failed", description: error.message, variant: "destructive" });
+    setSymptoms("");
+    setClerking("");
+    setSelected(data as Encounter);
+    setIsHistoryOpen(false);
+    void loadAll();
+  };
+
+  const addDiagnosis = async () => {
+    if (!selected || !newDx.trim()) return toast({ title: "Enter a diagnosis", description: "Document a provisional diagnosis before adding it.", variant: "destructive" });
+    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim() });
+    if (error) return toast({ title: "Diagnosis failed", description: error.message, variant: "destructive" });
+    setNewDx("");
+    void loadDetails(selected.id);
+  };
+
+  const setPrincipal = async (dx: Diagnosis) => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("set_principal_diagnosis", { _encounter_id: selected.id, _diagnosis_id: dx.id });
+    if (error) return toast({ title: "Principal diagnosis failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, principal_diagnosis: data?.diagnosis ?? dx.diagnosis });
+    void loadDetails(selected.id);
+  };
+
+  const removeDiagnosis = async (id: string) => {
+    if (!selected) return;
+    const { error } = await db.rpc("remove_encounter_diagnosis", { _diagnosis_id: id });
+    if (error) return toast({ title: "Diagnosis removal failed", description: error.message, variant: "destructive" });
+    void loadDetails(selected.id);
+  };
+
+  const addPrescription = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected || !med.trim()) return;
+    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null });
+    if (error) return toast({ title: "Prescription failed", description: error.message, variant: "destructive" });
+    setMed("");
+    setDose("");
+    setFreq("");
+    setDuration("");
+    void loadDetails(selected.id);
+  };
+
+  const admitEncounter = async () => {
+    if (!selected || admitting) return;
+    const reason = window.prompt("Admission reason", selected.principal_diagnosis || "Clinical admission");
+    if (reason === null) return;
+    const ward = window.prompt("Ward (optional)", "") ?? "";
+    setAdmitting(true);
+    const { data, error } = await db.rpc("admit_encounter_workflow", { _encounter_id: selected.id, _reason: reason.trim() || "Clinical admission", _ward: ward.trim() || null, _emergency_override: true });
+    setAdmitting(false);
+    if (error) return toast({ title: "Admission failed", description: error.message, variant: "destructive" });
+    toast({ title: data?.override ? "Emergency admission activated" : "Patient admitted", description: data?.override ? "Eligible pending services were released for emergency treatment before deposit." : "The admission has been recorded." });
+    setSelected({ ...selected, admission_id: data?.admission_id ?? selected.admission_id });
+    void loadAll();
+  };
+
+  const completeEncounter = async () => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("complete_encounter_workflow", { _encounter_id: selected.id });
+    if (error) return toast({ title: "Encounter completion failed", description: error.message, variant: "destructive" });
+    setSelected(data as Encounter);
+    void loadAll();
+  };
+
+  const selectEncounter = (item: Encounter) => {
+    setSelected(item);
+    setIsHistoryOpen(false);
+  };
+
+  return (
     <div className="space-y-6 animate-fade-in">
       <header className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Patient Care · Encounter</p><h1 className="text-2xl font-heading font-bold tracking-tight">Encounter Workspace</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Review historical encounters first, then open the selected document in a focused clinical workspace without leaving the encounter page.</p></div>
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Patient Care · Longitudinal encounter record</p>
+            <h1 className="text-2xl font-heading font-bold tracking-tight flex items-center gap-2"><Stethoscope className="w-6 h-6 text-primary" /> Encounter Workspace</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Historical encounters are the primary selection surface. Open a complete clinical document in one focused workspace without leaving the encounter page.</p>
+          </div>
           <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-secondary inline-flex items-center gap-2"><History className="w-4 h-4" /> Encounter history</button>
         </div>
       </header>
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
         <form onSubmit={createEncounter} className="card-medical p-5 space-y-4">
-          <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New encounter</h2><p className="mt-1 text-xs text-muted-foreground">Save creates a draft. Final submission happens only after the clinical document is complete.</p></div><span className="rounded-full border border-warning/40 bg-warning/5 px-2.5 py-1 text-[10px] font-semibold text-warning">Draft-first</span></div>
+          <div className="flex items-start justify-between gap-3">
+            <div><h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New encounter</h2><p className="mt-1 text-xs text-muted-foreground">Save creates a draft. Final submission happens only after the clinical document is complete.</p></div>
+            <span className="rounded-full border border-warning/40 bg-warning/5 px-2.5 py-1 text-[10px] font-semibold text-warning">Draft-first</span>
+          </div>
           <select value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}</select>
           <div className="grid gap-3 md:grid-cols-2"><textarea value={symptoms} onChange={(e) => setSymptoms(e.target.value)} placeholder="Presenting symptoms / complaints" className="input-medical w-full" rows={4} /><textarea value={clerking} onChange={(e) => setClerking(e.target.value)} placeholder="Clerking / history notes" className="input-medical w-full" rows={4} /></div>
-          <button type="submit" className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save draft</button>
+          <button type="submit" className="btn-primary inline-flex items-center gap-2"><FileText className="w-4 h-4" /> Save draft</button>
         </form>
         <section className="card-medical p-5">
           <div className="flex items-center justify-between gap-3 mb-3"><div><h2 className="font-semibold flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Recent encounters</h2><p className="text-xs text-muted-foreground mt-1">{encounters.length} recent records</p></div><button type="button" onClick={() => setIsHistoryOpen(true)} className="text-xs text-primary">View all</button></div>
-          <div className="space-y-2 max-h-[320px] overflow-auto">{encounters.slice(0, 8).map((item) => { const p = patients.find((x) => x.id === item.patient_id); const active = selected?.id === item.id; return <button type="button" key={item.id} onClick={() => { setSelected(item); setIsHistoryOpen(false); }} className={`w-full rounded-xl border p-3 text-left transition-colors ${active ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/40'}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-medium text-sm truncate">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</p><p className="text-xs text-muted-foreground">{p?.patient_code ?? item.patient_id} · {new Date(item.created_at).toLocaleDateString()}</p></div><span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px] capitalize">{item.status}</span></div><p className="mt-2 text-xs text-muted-foreground truncate">{item.principal_diagnosis || item.symptoms || 'Clinical encounter'}</p></button>; })}</div>
+          <div className="space-y-2 max-h-[320px] overflow-auto">{encounters.slice(0, 8).map((item) => { const p = patients.find((x) => x.id === item.patient_id); const active = selected?.id === item.id; return <button type="button" key={item.id} onClick={() => selectEncounter(item)} className={`w-full rounded-xl border p-3 text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-medium text-sm truncate">{p ? `${p.first_name} ${p.last_name}` : "Patient record"}</p><p className="text-xs text-muted-foreground">{p?.patient_code ?? item.patient_id} · {new Date(item.created_at).toLocaleDateString()}</p></div><span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px] capitalize">{item.status}</span></div><p className="mt-2 text-xs text-muted-foreground truncate">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p></button>; })}</div>
         </section>
       </section>
-      {isHistoryOpen && <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-sm p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="encounter-history-title">
-        <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
-          <div className="flex items-center justify-between gap-3 border-b border-border p-5"><div><h2 id="encounter-history-title" className="text-lg font-semibold">Patient encounter history</h2><p className="text-xs text-muted-foreground">Select an entire row to open the clinical document.</p></div><button type="button" onClick={() => setIsHistoryOpen(false)} className="btn-ghost" aria-label="Close encounter history"><X className="w-5 h-5" /></button></div>
-          <div className="flex-1 overflow-auto p-4"><div className="overflow-hidden rounded-2xl border border-border">
-            {encounters.map((item) => { const p = patients.find((x) => x.id === item.patient_id); const creator = item.practitioner_id === user?.id ? 'You' : 'Clinical staff'; return <button type="button" key={item.id} onClick={() => { setSelected(item); setIsHistoryOpen(false); }} className="grid w-full grid-cols-[minmax(0,1.6fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_90px] gap-3 border-b border-border p-4 text-left last:border-b-0 hover:bg-muted/40 focus-visible:bg-muted/40"><div className="min-w-0"><p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</p><p className="text-xs text-muted-foreground truncate">{p?.patient_code ?? item.patient_id}</p></div><div><p className="text-xs text-muted-foreground">Date</p><p className="text-sm">{new Date(item.created_at).toLocaleDateString()}</p><p className="text-[10px] text-muted-foreground">{encounterAge(item.created_at)}</p></div><div><p className="text-xs text-muted-foreground">Created by</p><p className="text-sm">{creator}</p><p className="text-[10px] text-muted-foreground">Version {item.version_no ?? 1}</p></div><div className="flex items-start justify-end"><span className="rounded-full bg-muted px-2 py-1 text-[10px] capitalize">{item.status}</span></div></button>; })}
-            {!encounters.length && <div className="p-10 text-center text-sm text-muted-foreground">No historical encounters are available.</div>}
-          </div></div>
-        </div>
-      </div>}
-      {selected && <div className="fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="active-encounter-title">
-        <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-4 sm:p-5">
-            <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Active clinical document</p><h2 id="active-encounter-title" className="mt-1 text-lg font-semibold truncate">Encounter · {patients.find((p) => p.id === selected.patient_id)?.first_name ?? 'Patient'} {patients.find((p) => p.id === selected.patient_id)?.last_name ?? ''}</h2><p className="text-xs text-muted-foreground">{patients.find((p) => p.id === selected.patient_id)?.patient_code ?? selected.patient_id} · {new Date(selected.created_at).toLocaleString()} · {encounterAge(selected.created_at)}</p></div>
-            <div className="flex flex-wrap items-center gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === 'completed' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>{selected.status === 'completed' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock3 className="w-3.5 h-3.5" />}{selected.status === 'completed' ? 'Submitted' : 'Draft'}</span>{selected.status === 'completed' && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? 'Admitting…' : 'Initiate admission'}</button>}{selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}{selected.status !== 'completed' && <button type="button" onClick={() => void completeEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Submit for final</button>}<button type="button" onClick={() => setSelected(null)} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button></div>
+
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-sm p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="encounter-history-title">
+          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-border p-5">
+              <div><h2 id="encounter-history-title" className="text-lg font-semibold">Patient encounter history</h2><p className="text-xs text-muted-foreground">Select an entire row to open the clinical document.</p></div>
+              <button type="button" onClick={() => setIsHistoryOpen(false)} className="btn-ghost" aria-label="Close encounter history"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="overflow-hidden rounded-2xl border border-border">
+                {encounters.map((item) => {
+                  const p = patients.find((x) => x.id === item.patient_id);
+                  const creator = item.practitioner_id === user?.id ? "You" : "Clinical staff";
+                  return <button type="button" key={item.id} onClick={() => selectEncounter(item)} className="grid w-full grid-cols-1 gap-3 border-b border-border p-4 text-left last:border-b-0 hover:bg-muted/40 focus-visible:bg-muted/40 md:grid-cols-[minmax(0,1.6fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_90px]">
+                    <div className="min-w-0"><p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : "Patient record"}</p><p className="text-xs text-muted-foreground truncate">{p?.patient_code ?? item.patient_id}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Date</p><p className="text-sm">{new Date(item.created_at).toLocaleDateString()}</p><p className="text-[10px] text-muted-foreground">{encounterAge(item.created_at)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Created by</p><p className="text-sm">{creator}</p><p className="text-[10px] text-muted-foreground">Version {item.version_no ?? 1}</p></div>
+                    <div className="flex items-start justify-start md:justify-end"><span className="rounded-full bg-muted px-2 py-1 text-[10px] capitalize">{item.status}</span></div>
+                  </button>;
+                })}
+                {!encounters.length && <div className="p-10 text-center text-sm text-muted-foreground">No historical encounters are available.</div>}
+              </div>
+            </div>
           </div>
-          <div className="flex-1 overflow-auto p-3 sm:p-5"><div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]"><ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} /><div className="space-y-5">
-            <section className="rounded-2xl border border-border bg-card p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Encounter details</h3><p className="text-xs text-muted-foreground mt-1">Auditable clinical entry surface</p></div><span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? 'Created by you' : 'Attending clinician'}</span></div><div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || '—'}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || '—'}</p></div></div></section>
-            <section className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>{selected.status !== 'completed' && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add coded diagnosis" className="input-medical flex-1" /><button type="button" onClick={addDiagnosis} className="btn-primary">Add provisional</button></div>}<div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span className="ml-2 text-xs rounded-full bg-muted px-2 py-1">Provisional</span>}</div>{selected.status !== 'completed' && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div></section>
-            <section className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment can be initiated when clinically indicated; diagnosis remains explicitly documented.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>{selected.status !== 'completed' && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" className="btn-primary md:col-span-2">Add prescription</button></form>}<div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || 'Dose not recorded'} · {rx.frequency || 'Frequency not recorded'} · {rx.duration || 'Duration not recorded'}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div></section>
-          </div></div></div>
         </div>
-      </div>}
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="active-encounter-title">
+          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-4 sm:p-5">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Active clinical document</p>
+                <h2 id="active-encounter-title" className="mt-1 text-lg font-semibold truncate">Encounter · {patients.find((p) => p.id === selected.patient_id)?.first_name ?? "Patient"} {patients.find((p) => p.id === selected.patient_id)?.last_name ?? ""}</h2>
+                <p className="text-xs text-muted-foreground">{patients.find((p) => p.id === selected.patient_id)?.patient_code ?? selected.patient_id} · {new Date(selected.created_at).toLocaleString()} · {encounterAge(selected.created_at)}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? "Submitted" : "Draft"}</span>
+                {selected.status === "completed" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
+                {selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}
+                {selected.status !== "completed" && <button type="button" onClick={() => void completeEncounter()} className="btn-primary inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Submit for final</button>}
+                <button type="button" onClick={() => setSelected(null)} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-3 sm:p-5">
+              <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+                <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
+                <div className="space-y-5">
+                  <section className="rounded-2xl border border-border bg-card p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Encounter details</h3><p className="text-xs text-muted-foreground mt-1">Auditable clinical entry surface</p></div><span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span></div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div></div>
+                  </section>
+                  <section className="rounded-2xl border border-border bg-card p-5">
+                    <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
+                    {selected.status !== "completed" && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add provisional diagnosis" className="input-medical flex-1" /><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add</button></div>}
+                    <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span className="ml-2 text-xs rounded-full bg-muted px-2 py-1">Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
+                  </section>
+                  <section className="rounded-2xl border border-border bg-card p-5">
+                    <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment remains explicitly linked to the documented clinical assessment.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>
+                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" className="btn-primary md:col-span-2">Add prescription</button></form>}
+                    <div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || "Dose not recorded"} · {rx.frequency || "Frequency not recorded"} · {rx.duration || "Duration not recorded"}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
