@@ -362,3 +362,17 @@ const notificationProviderDocs = read('docs/NOTIFICATION_PROVIDER_TEST_SETUP.md'
 assert(notificationProviderDocs.includes('RESEND_API_KEY'), 'Provider runbook missing Resend configuration');
 assert(notificationProviderDocs.includes('FCM_SERVICE_ACCOUNT_JSON'), 'Provider runbook missing FCM configuration');
 assert(notificationProviderDocs.includes('TWILIO_WHATSAPP_CONTENT_SID'), 'Provider runbook missing WhatsApp configuration');
+
+const notificationOnboardingMigration = read('supabase/migrations/20260925180000_facility_notification_onboarding.sql');
+assert(notificationOnboardingMigration.includes('facility_notification_config'), 'Facility notification onboarding configuration missing');
+assert(notificationOnboardingMigration.includes('facility_notification_provider_connections'), 'Facility provider connection registry missing');
+assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
+assert(notificationOnboardingMigration.includes('mark_facility_notification_production_ready'), 'Production readiness gate missing');
+assert(notificationOnboardingMigration.includes('secret_reference'), 'Provider secret-reference boundary missing');
+
+const notificationSend = read('supabase/functions/notifications-send/index.ts');
+assert(notificationSend.includes('body.facility_id'), 'Notification send API must accept facility scope');
+
+const notificationDrain = read('supabase/functions/notify-queue-drain/index.ts');
+assert(notificationDrain.includes('facility_notification_config'), 'Notification worker must enforce facility onboarding configuration');
+assert(notificationDrain.includes('kill_switch'), 'Notification worker must enforce facility kill switch');
