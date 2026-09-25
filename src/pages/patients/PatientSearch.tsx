@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Loader2, UserPlus, MessageSquare, ArrowRight } from 'lucide-react';
+import { Search, Loader2, UserPlus, MessageSquare, ArrowRight, XCircle } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
 
 interface PatientSearchResult {
@@ -20,21 +20,31 @@ export default function PatientSearch() {
   const [results, setResults] = useState<PatientSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('Search by patient name, patient code, phone, email or Ghana Card.');
+  const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault();
     const value = query.trim();
     if (!value) {
       setResults([]);
+      setError('');
+      setHasSearched(false);
       setMessage('Enter a search term to find a patient.');
       return;
     }
 
     setIsLoading(true);
+    setHasSearched(true);
+    setError('');
     try {
       const items = await searchPatients(value);
       setResults(items as PatientSearchResult[]);
       setMessage(items.length ? `${items.length} patient(s) found.` : 'No matching patients found.');
+    } catch (searchError) {
+      setResults([]);
+      setMessage('Search could not be completed.');
+      setError(searchError instanceof Error ? searchError.message : 'Unable to search patients right now.');
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +63,7 @@ export default function PatientSearch() {
         </Link>
       </div>
 
-      <form onSubmit={handleSearch} className="card-medical p-6">
+      <form onSubmit={handleSearch} className="card-medical p-5 sm:p-6 space-y-4">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -61,11 +71,16 @@ export default function PatientSearch() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, patient code, Ghana Card, phone or email"
             className="input-medical pl-12 w-full"
-            aria-label="Search patients"
+            autoComplete="off"
+            enterKeyHint="search"
+            aria-describedby="patient-search-help"
           />
         </div>
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2">
+        {query && <button type="button" onClick={() => { setQuery(''); setResults([]); setHasSearched(false); setError(''); setMessage('Enter a search term to find a patient.'); }} className="btn-secondary inline-flex items-center gap-2" aria-label="Clear patient search">Clear search</button>}
+        <p id="patient-search-help" className="text-xs text-muted-foreground">Use a patient code, name, Ghana Card, phone number or email. Avoid entering unnecessary clinical information.</p>
+        {error && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><XCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button type="submit" disabled={isLoading} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-60">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Search Patients
           </button>
@@ -73,7 +88,7 @@ export default function PatientSearch() {
         </div>
       </form>
 
-      <div className="grid gap-4">
+      {results.length > 0 && <div className="grid gap-4">
         {results.map((patient) => (
           <div key={patient.id} className="card-medical p-5 rounded-3xl border border-border hover:shadow-md transition-shadow">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -119,7 +134,8 @@ export default function PatientSearch() {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
+      {!isLoading && hasSearched && query.trim() && !results.length && !error && <div className="card-medical p-8 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">No patient found</h2><p className="mt-1 text-sm text-muted-foreground">Check the identifier or search using the patient’s full name.</p><Link to="/registration" className="btn-secondary mt-4 inline-flex">Register a new patient</Link></div>}
     </div>
   );
 }
