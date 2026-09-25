@@ -31,6 +31,7 @@ export default function Header({ onMenu }: HeaderProps) {
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [notificationAttention, setNotificationAttention] = useState(false);
+  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(true);
   const notificationIdsRef = useRef<Set<string>>(new Set());
   const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLFormElement>(null);
@@ -39,20 +40,26 @@ export default function Header({ onMenu }: HeaderProps) {
   const db = supabase as any;
   const loadNotifications = useCallback(async () => {
     if (!user?.id || user.role === "it_admin") return;
-    const { data } = await db.rpc('get_workflow_notifications', { _limit: 30 });
+    const [{ data }, { data: config }] = await Promise.all([
+      db.rpc('get_workflow_notifications', { _limit: 30 }),
+      db.from('facility_configuration').select('notification_sound_enabled').limit(1).maybeSingle(),
+    ]);
+    const soundEnabled = config?.notification_sound_enabled !== false;
+    setNotificationSoundEnabled(soundEnabled);
     const rows = Array.isArray(data) ? data as NotifRow[] : [];
     const unreadRows = rows.filter((n) => !n.is_read);
     const previousIds = notificationIdsRef.current;
     const newUnread = unreadRows.filter((n) => !previousIds.has(n.id));
     if (notificationInitializedRef.current && newUnread.length > 0) {
       const newest = newUnread[0];
-      playWorkflowSound(notificationSoundKind(newest));
+      if (soundEnabled) playWorkflowSound(notificationSoundKind(newest));
       setNotificationAttention(true);
     }
+    const hadInitialized = notificationInitializedRef.current;
     notificationIdsRef.current = new Set(rows.map((n) => n.id));
     notificationInitializedRef.current = true;
     setNotifications(rows);
-    if (!showNotifications && unreadRows.length > 0 && !notificationInitializedRef.current) setNotificationAttention(true);
+    if (!hadInitialized && unreadRows.length > 0) setNotificationAttention(true);
   }, [user?.id, user?.role]);
   const unread = notifications.filter((n) => !n.is_read).length;
   const hasCritical = notifications.some((n) => !n.is_read && ['critical','warning','high'].includes(String(n.severity).toLowerCase()));
