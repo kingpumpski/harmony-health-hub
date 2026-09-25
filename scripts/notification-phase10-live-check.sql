@@ -1,0 +1,6 @@
+-- Read-only Phase 10 notification verification. No writes.
+select (select count(*) from public.notification_provider_credentials) as provider_credentials, (select count(*) from public.facility_notification_provider_connections) as provider_connections, (select count(*) from public.notification_queue) as queued_notifications, (select count(*) from public.notification_delivery_logs) as delivery_logs, (select count(*) from public.notification_webhook_events) as webhook_events, (select count(*) from public.notification_inbound_emails) as inbound_emails;
+
+select indexname from pg_indexes where schemaname='public' and indexname in ('notification_queue_idempotency_uq','facility_notification_provider_primary_uq','facility_notification_provider_priority_idx') order by indexname;
+
+select p.proname, pg_get_function_identity_arguments(p.oid) as arguments, has_function_privilege('anon',p.oid,'EXECUTE') as anon_execute, has_function_privilege('authenticated',p.oid,'EXECUTE') as authenticated_execute from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('claim_notification_queue','enqueue_notification_v2','initialize_facility_notification_onboarding','set_facility_notification_provider','verify_facility_notification_provider','erase_notification_history') order by p.proname, arguments;
