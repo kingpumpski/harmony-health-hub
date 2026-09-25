@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types";
-import { searchPatients } from "@/lib/healthApi";
+import { supabase } from "@/integrations/supabase/client";
+import { searchGlobalWorkspace, type GlobalSearchResult } from "@/lib/globalWorkspaceSearch";
 
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
@@ -23,7 +24,7 @@ export default function Header({ onMenu }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
@@ -41,13 +42,13 @@ export default function Header({ onMenu }: HeaderProps) {
 
   useEffect(() => {
     void loadNotifications();
-    if (user?.role === "it_admin") { setSearchResults([]); setIsSearching(false); return; }
     const query = searchTerm.trim();
     if (!query) { setSearchResults([]); setIsSearching(false); return; }
     let active = true;
     setIsSearching(true);
+    const roles = user?.roles ?? (user?.role ? [user.role] : []);
     const timer = window.setTimeout(() => {
-      void searchPatients(query).then(results => { if (active) setSearchResults(results.slice(0, 8)); }).finally(() => { if (active) setIsSearching(false); });
+      void searchGlobalWorkspace(query, roles).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
   }, [searchTerm, user?.role, loadNotifications]);
@@ -74,10 +75,10 @@ export default function Header({ onMenu }: HeaderProps) {
         <div className="min-w-0 flex-1">
           <form onSubmit={e => e.preventDefault()} className="relative mx-auto max-w-2xl">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            {user.role !== "it_admin" && <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search patients by name, code or phone…" className="input-medical h-10 rounded-xl bg-background/80 pl-10 pr-20" />}
-            {user.role !== "it_admin" && searchTerm.trim() && (isSearching || searchResults.length > 0) && <div className="absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="max-h-72 overflow-auto p-2">
-              {searchResults.slice(0, 8).map(r => <Link key={r.id} to={`/patients/${r.id}/chat`} onClick={() => { setSearchResults([]); setSearchTerm(""); }} className="block rounded-xl p-3 hover:bg-muted/60"><p className="text-sm font-medium">{r.fullName}</p><p className="text-xs text-muted-foreground">{r.patientId} · {r.phone || "no phone"}</p></Link>)}
-              {!isSearching && searchResults.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">No matching patient records found.</p>}
+            {user.role !== "it_admin" && <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search modules, features, patients, labs, diagnostics, documents or finance…" className="input-medical h-10 rounded-xl bg-background/80 pl-10 pr-20" />}
+            {searchTerm.trim() && (isSearching || searchResults.length > 0) && <div className="absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="max-h-[min(32rem,70vh)] overflow-auto p-2">
+              {searchResults.map(r => <Link key={`${r.kind}:${r.id}`} to={r.href} onClick={() => { setSearchResults([]); setSearchTerm(""); }} className="block rounded-xl p-3 hover:bg-muted/60"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">{r.kind}</span><div className="min-w-0"><p className="text-sm font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.subtitle}</p></div></div></Link>)}
+              {!isSearching && searchResults.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">No matching modules, features or records found.</p>}
             </div></div>}
             {isSearching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Searching…</span>}
           </form>
