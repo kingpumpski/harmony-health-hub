@@ -353,6 +353,13 @@ const notificationOnboardingCatalog = read('supabase/migrations/20260925184000_n
 const reportsCenterSource = read('src/pages/ReportsCenter.tsx');
 assert('notification onboarding catalog exists', notificationOnboardingCatalog.includes('notification_provider_secret_requirements') && notificationOnboardingCatalog.includes('delivery_policy') && notificationOnboardingCatalog.includes('compliance_policy'), 'notification onboarding must provide complete non-secret configuration and deployment-secret requirements');
 assert('notification onboarding UI exposes deployment checklist', reportsCenterSource.includes('listNotificationProviderSecretRequirements') && reportsCenterSource.includes('Deployment secret & provider checklist'), 'facility onboarding UI must expose the provider deployment checklist without accepting credential values');
+const adminItSettingsMigration = read('supabase/migrations/20260925190000_admin_it_notification_settings_control_plane.sql');
+const adminItSettingsPage = read('src/pages/admin/Settings.tsx');
+const appSource = read('src/App.tsx');
+const headerSource = read('src/components/layout/Header.tsx');
+assert('admin and IT notification settings control plane exists', adminItSettingsMigration.includes('update_facility_notification_configuration') && adminItSettingsMigration.includes("has_role(uid,'it_admin')"), 'administrator and IT administrator notification configuration RPC must exist');
+assert('admin and IT system settings UI exists', adminItSettingsPage.includes('Notification Control Plane') && adminItSettingsPage.includes('update_facility_notification_configuration') && adminItSettingsPage.includes('Save provider metadata'), 'Settings must expose notification control-plane configuration');
+assert('IT administrators can route to system settings', appSource.includes("allowedRoles={['admin','it_admin']}") && headerSource.includes('user.role === "it_admin"') && headerSource.includes('/admin/settings'), 'IT administrators must be able to open system settings');
 const notificationProviderMigration = read('supabase/migrations/20260925170000_notification_provider_operationalization.sql');
 assert(notificationProviderMigration.includes('notification_devices'), 'Notification device registry missing');
 assert(notificationProviderMigration.includes('notification_provider_health'), 'Provider circuit state missing');
