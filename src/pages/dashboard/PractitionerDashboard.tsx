@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, Calendar, CheckCircle2, ClipboardCheck, Clock3, Image as ImageIcon, Stethoscope, Users, BellRing, Baby, Brain } from 'lucide-react';
+import { Activity, AlertTriangle, BedDouble, Calendar, CheckCircle2, ClipboardCheck, Clock3, Image as ImageIcon, FlaskConical, Stethoscope, Users, BellRing, Baby, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
