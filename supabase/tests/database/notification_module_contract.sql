@@ -23,3 +23,31 @@ BEGIN
  SELECT count(*) INTO c FROM public.notification_provider_secret_requirements WHERE provider IN ('resend','smtp','fcm','twilio','twilio_whatsapp','twilio_voice');
  ASSERT c >= 20,'notification provider deployment secret catalog incomplete';
 END $$;
+
+-- Deterministic facility provider routing contract.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public'
+      and table_name='facility_notification_provider_connections'
+      and column_name='priority'
+  ) then
+    raise exception 'notification provider priority column is missing';
+  end if;
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public'
+      and table_name='facility_notification_provider_connections'
+      and column_name='is_primary'
+  ) then
+    raise exception 'notification provider primary flag is missing';
+  end if;
+  if not exists (
+    select 1 from pg_indexes
+    where schemaname='public'
+      and indexname='facility_notification_provider_primary_uq'
+  ) then
+    raise exception 'notification provider primary uniqueness boundary is missing';
+  end if;
+end $$;
