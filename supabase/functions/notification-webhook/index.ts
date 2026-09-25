@@ -3,8 +3,9 @@ import { buildCorsHeaders, handlePreflight } from '../_shared/cors.ts';
 
 const json=(body:unknown,status=200,cors:Record<string,string>={})=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
 
-async function hmac(secret:string,message:string){
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+async function hmac(secret:string,message:string,hash='SHA-256',base64Secret=false){
+  const material=base64Secret?Uint8Array.from(atob(secret),c=>c.charCodeAt(0)):new TextEncoder().encode(secret);
+  const key=await crypto.subtle.importKey('raw',material,{name:'HMAC',hash},false,['sign']);
   const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(message));
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
@@ -24,7 +25,8 @@ Deno.serve(async req=>{
     const secret=Deno.env.get('RESEND_WEBHOOK_SECRET');
     const svixId=req.headers.get('svix-id')??'',timestamp=req.headers.get('svix-timestamp')??'',signature=req.headers.get('svix-signature')??'';
     if(!secret||!svixId||!timestamp||!signature)return json({error:'INVALID_WEBHOOK'},401,cors);
-    const expected=await hmac(secret,svixId+'.'+timestamp+'.'+raw);
+    const signingSecret=secret.replace(/^whsec_/,'');
+    const expected=await hmac(signingSecret,svixId+'.'+timestamp+'.'+raw,'SHA-256',true);
     const signatures=parseSvix(signature);
     if(!signatures.some(s=>s===expected))return json({error:'INVALID_SIGNATURE'},401,cors);
     const parsed=JSON.parse(raw); eventId=svixId; eventType=String(parsed.type??''); payload=parsed;
@@ -35,7 +37,7 @@ Deno.serve(async req=>{
     if(!authToken||!signature||!publicUrl)return json({error:'TWILIO_WEBHOOK_NOT_CONFIGURED'},503,cors);
     const params=new URLSearchParams(raw);
     const data=[...params.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+v).join('');
-    const expected=await hmac(authToken,publicUrl+data);
+    const expected=await hmac(authToken,publicUrl+data,'SHA-1',false);
     if(expected!==signature)return json({error:'INVALID_SIGNATURE'},401,cors);
     eventId=params.get('MessageSid')??params.get('CallSid')??crypto.randomUUID();
     eventType=params.get('MessageStatus')??params.get('CallStatus')??'received';
