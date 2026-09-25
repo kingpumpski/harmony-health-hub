@@ -341,6 +341,14 @@ assert('notification worker is asynchronous and channel aware', notificationWork
 assert('notification worker has fallback and retry', notificationWorker.includes('BACKOFF') && notificationWorker.includes('fallback_channels') && notificationWorker.includes('status:final?\'failed\':\'pending\''), 'notification worker must retry and fall back across channels');
 assert('notification preference center exists', notificationPrefs.includes('pause_non_critical') && notificationPrefs.includes('quiet_hours_start') && notificationPrefs.includes('channel_preferences'), 'notification preference center must expose quiet hours, channel controls and non-critical pause');
 
+const notificationSmtpMigration = read('supabase/migrations/20260925183000_notification_smtp_provider.sql');
+const notificationWorkerSmtp = read('supabase/functions/notify-queue-drain/index.ts');
+const smtpTestScript = read('scripts/test-smtp.mjs');
+const smtpTestWorkflow = read('.github/workflows/notification-smtp-test.yml');
+assert('SMTP provider contract exists', notificationSmtpMigration.includes("('smtp','email')") && notificationSmtpMigration.includes('secret_reference'), 'SMTP provider health and tenant secret-reference boundaries must exist');
+assert('notification worker supports SMTP email', notificationWorkerSmtp.includes("Deno.env.get('NOTIFICATION_EMAIL_PROVIDER')") && notificationWorkerSmtp.includes("emailProvider()==='smtp'") && notificationWorkerSmtp.includes('SMTP_HOST') && notificationWorkerSmtp.includes('SMTP_PASSWORD'), 'notification worker must support deployment-configured SMTP email');
+assert('SMTP test harness is present', smtpTestScript.includes('SMTP_USERNAME') && smtpTestScript.includes('SMTP_PASSWORD') && smtpTestScript.includes('transporter.verify'), 'SMTP test harness must verify credentials without exposing them');
+assert('SMTP GitHub workflow uses secrets', smtpTestWorkflow.includes('secrets.SMTP_PASSWORD') && smtpTestWorkflow.includes('workflow_dispatch') && smtpTestWorkflow.includes('npm install --no-save nodemailer@7.0.6'), 'SMTP test workflow must use GitHub Actions secrets and manual dispatch');
 const notificationProviderMigration = read('supabase/migrations/20260925170000_notification_provider_operationalization.sql');
 assert(notificationProviderMigration.includes('notification_devices'), 'Notification device registry missing');
 assert(notificationProviderMigration.includes('notification_provider_health'), 'Provider circuit state missing');
