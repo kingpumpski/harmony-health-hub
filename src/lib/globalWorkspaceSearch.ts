@@ -5,7 +5,7 @@ export type GlobalSearchKind = 'module' | 'patient' | 'lab' | 'diagnostic' | 'do
 export interface GlobalSearchResult { id: string; kind: GlobalSearchKind; title: string; subtitle: string; href: string; score: number; }
 type SearchModule = { title: string; description: string; href: string; keywords: string[]; roles?: string[] };
 
-const CLINICAL_ROLES = ['practitioner','nurse','midwife','specialist_nurse','radiologist','lab_technician'];
+const CLINICAL_ROLES = ['practitioner','nurse','midwife','specialist_nurse','radiologist','radiology_technician','lab_technician'];
 const ACCOUNTING_ROLES = ['accountant'];
 const MODULES: SearchModule[] = [
   { title:'Dashboard', description:'Clinical and operational command center', href:'/dashboard', keywords:['home','command center','worklist','counters'] },
