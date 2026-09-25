@@ -18,7 +18,7 @@ Deno.serve(async req => {
     _channels:body.channels??['in_app'],_priority:body.priority??'medium',
     _scheduled_for:body.scheduled_for??new Date().toISOString(),
     _idempotency_key:body.idempotency_key??body.event_id??crypto.randomUUID(),
-    _tenant_id:body.tenant_id??null,_locale:body.locale??null,_timezone:body.timezone??null
+    _tenant_id:body.tenant_id??null,_locale:body.locale??null,_timezone:body.timezone??null,_facility_id:body.facility_id??null
   });
   if(error)return new Response(JSON.stringify({error:error.message}),{status:error.message.includes('disabled')?422:400,headers:{...cors,'content-type':'application/json'}});
   return new Response(JSON.stringify({queue_id:data,status:'queued'}),{status:202,headers:{...cors,'content-type':'application/json'}});
