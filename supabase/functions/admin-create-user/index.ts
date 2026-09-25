@@ -22,6 +22,32 @@ Deno.serve(async (req) => {
     const caller = await requireAdmin(service, token);
     const body = await req.json();
 
+    if (body?.action === 'list_users') {
+      const { data: profiles, error: profileError } = await service
+        .from('profiles')
+        .select('id, email, first_name, last_name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (profileError) return json({ error: 'User directory lookup failed: ' + profileError.message }, 500);
+      const ids = (profiles ?? []).map((p) => p.id);
+      const { data: roles, error: roleError } = ids.length
+        ? await service.from('user_roles').select('user_id, role').in('user_id', ids)
+        : { data: [], error: null };
+      if (roleError) return json({ error: 'Role directory lookup failed: ' + roleError.message }, 500);
+      const roleMap = new Map<string, string>();
+      (roles ?? []).forEach((row) => roleMap.set(row.user_id, String(row.role)));
+      return json({
+        ok: true,
+        users: (profiles ?? []).map((profile) => ({
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          role: roleMap.get(profile.id) ?? 'patient',
+        })),
+      });
+    }
+
     if (body?.action === 'update_role') {
       const userId = String(body?.userId ?? '').trim();
       const nextRole = String(body?.role ?? '').trim().toLowerCase();
