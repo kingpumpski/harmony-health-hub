@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const worker=fs.readFileSync('supabase/functions/notify-queue-drain/index.ts','utf8');
 const provider=fs.readFileSync('supabase/functions/notification-provider-config/index.ts','utf8');
 const webhook=fs.readFileSync('supabase/functions/notification-webhook/index.ts','utf8');
+const catalog=fs.readFileSync('supabase/migrations/20260925220000_notification_event_catalog_expansion.sql','utf8');
 
 const BACKOFF=[10,30,120,600,3600];
 assert.deepEqual(BACKOFF,[10,30,120,600,3600]);
@@ -52,4 +53,9 @@ assert.match(provider,/credentials_ciphertext/);
 assert.match(webhook,/notification_webhook_events/);
 assert.match(webhook,/23505/);
 assert.match(webhook,/INVALID_SIGNATURE/);
+const catalogEvents=(catalog.match(/\n\('[a-z0-9_]+','/g)||[]).length;
+assert.ok(catalogEvents>=70,`notification event catalog expansion contains ${catalogEvents} events; expected >=70`);
+assert.match(catalog,/notification_provider_failed/);
+assert.match(catalog,/outbreak_alert/);
+assert.match(catalog,/data_erasure_requested/);
 console.log('Notification Phase 10 behavior contracts passed.');
