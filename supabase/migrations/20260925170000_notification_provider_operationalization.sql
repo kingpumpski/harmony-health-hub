@@ -113,7 +113,7 @@ REVOKE ALL ON FUNCTION public.revoke_notification_device(TEXT) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.revoke_notification_device(TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.record_notification_consent(
-  _channel TEXT, _category TEXT, _granted BOOLEAN, _consent_version TEXT
+  _channel TEXT, _category TEXT, _granted BOOLEAN, _consent_version TEXT, _user_agent TEXT DEFAULT NULL, _consent_ip INET DEFAULT NULL
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -125,7 +125,7 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
 
   INSERT INTO public.notification_consent_audit(user_id,channel,category,granted,consent_version,consented_at,consent_ip,user_agent)
-  VALUES(auth.uid(),_channel,_category,_granted,_consent_version,now(),NULL,current_setting('request.headers',true))
+  VALUES(auth.uid(),_channel,_category,_granted,_consent_version,now(),_consent_ip,_user_agent)
   RETURNING id INTO result_id;
 
   UPDATE public.user_notification_preferences
@@ -136,8 +136,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,TEXT) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,TEXT,TEXT,INET) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.record_notification_consent(TEXT,TEXT,BOOLEAN,TEXT,TEXT,INET) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.erase_notification_history(_user_id UUID DEFAULT auth.uid())
 RETURNS INTEGER
