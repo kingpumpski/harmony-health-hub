@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'critical';
 export type NotificationCategory = 'lab' | 'payment' | 'appointment' | 'encounter' | 'triage' | 'prescription' | 'telemedicine' | 'admission' | 'other';
-export type StaffRole = 'admin' | 'practitioner' | 'nurse' | 'midwife' | 'specialist_nurse' | 'lab_technician' | 'radiologist' | 'pharmacist' | 'accountant' | 'front_desk' | 'canteen' | 'patient';
+export type StaffRole = 'admin' | 'practitioner' | 'nurse' | 'midwife' | 'specialist_nurse' | 'lab_technician' | 'radiologist' | 'radiology_technician' | 'pharmacist' | 'accountant' | 'front_desk' | 'canteen' | 'patient';
 interface NotifyOptions { recipientRole?: StaffRole; recipientUserId?: string; title:string; message:string; severity?:NotificationSeverity; category?:NotificationCategory; link?:string; relatedPatientId?:string; relatedEntityId?:string; metadata?:Record<string,unknown> }
 
 async function createWorkflowNotification(opts: NotifyOptions) {
