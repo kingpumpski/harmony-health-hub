@@ -25,11 +25,17 @@ Deno.serve(async req=>{
     const secret=Deno.env.get('RESEND_WEBHOOK_SECRET');
     const svixId=req.headers.get('svix-id')??'',timestamp=req.headers.get('svix-timestamp')??'',signature=req.headers.get('svix-signature')??'';
     if(!secret||!svixId||!timestamp||!signature)return json({error:'INVALID_WEBHOOK'},401,cors);
+    const timestampSeconds=Number(timestamp);
+    if(!Number.isFinite(timestampSeconds) || Math.abs(Math.floor(Date.now()/1000)-timestampSeconds)>300){
+      return json({error:'STALE_WEBHOOK'},401,cors);
+    }
     const signingSecret=secret.replace(/^whsec_/,'');
     const expected=await hmac(signingSecret,svixId+'.'+timestamp+'.'+raw,'SHA-256',true);
     const signatures=parseSvix(signature);
     if(!signatures.some(s=>s===expected))return json({error:'INVALID_SIGNATURE'},401,cors);
-    const parsed=JSON.parse(raw); eventId=svixId; eventType=String(parsed.type??''); payload=parsed;
+    let parsed:Record<string,any>;
+    try { parsed=JSON.parse(raw); } catch { return json({error:'INVALID_JSON'},400,cors); }
+    eventId=svixId; eventType=String(parsed.type??''); payload=parsed;
   } else if(provider==='twilio'){
     const authToken=Deno.env.get('TWILIO_AUTH_TOKEN');
     const signature=req.headers.get('x-twilio-signature');
