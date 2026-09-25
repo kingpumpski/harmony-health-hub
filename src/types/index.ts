@@ -5,6 +5,7 @@ export type UserRole =
   | 'midwife'
   | 'specialist_nurse'
   | 'radiologist'
+  | 'radiology_technician'
   | 'lab_technician'
   | 'pharmacist'
   | 'accountant'
