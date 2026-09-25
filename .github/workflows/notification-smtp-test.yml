@@ -1,0 +1,45 @@
+name: Notification SMTP Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_ref:
+        description: "Feature branch or commit containing the SMTP test"
+        required: true
+        default: "feature/production-notification-module"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smtp-test:
+    name: Verify and send controlled SMTP test
+    runs-on: ubuntu-latest
+    environment: notification-test
+    timeout-minutes: 5
+    env:
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      SMTP_SECURE: ${{ vars.SMTP_SECURE }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+      SMTP_TEST_RECIPIENT: ${{ vars.SMTP_TEST_RECIPIENT }}
+    steps:
+      - name: Checkout SMTP test source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.test_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install SMTP test dependency
+        run: npm install --no-save nodemailer@7.0.6
+
+      - name: Verify and send SMTP test
+        run: node scripts/test-smtp.mjs
