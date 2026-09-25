@@ -96,7 +96,6 @@ export default function Laboratory() {
   useEffect(() => {
     let active = true;
     const loadEncounters = async () => {
-      setEncounterId((current) => current);
       if (!pid) {
         setEncounters([]);
         return;
@@ -119,7 +118,7 @@ export default function Laboratory() {
     };
     void loadEncounters();
     return () => { active = false; };
-  }, [pid, encounterId]);
+  }, [pid]);
 
   const selectTest = (id: string) => {
     setCatalogueId(id);
@@ -139,7 +138,7 @@ export default function Laboratory() {
     }
     const { data, error } = await supabase.rpc('create_lab_order_with_payment_gate', {
       _patient_id: pid, _test_name: testName, _test_category: category || null,
-      _priority: priority, _clinical_notes: notes || null, _amount: numericAmount,
+      _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
     } as never);
     if (error) {
       playWorkflowSound('error');
