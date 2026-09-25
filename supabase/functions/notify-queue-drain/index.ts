@@ -43,7 +43,7 @@ async function external(channel:Channel, recipient:{email?:string;phone?:string;
     }
     const key=Deno.env.get('RESEND_API_KEY'),from=Deno.env.get('RESEND_FROM_EMAIL');
     if(!key||!from)return {ok:false,provider:'resend',error:'Resend provider not configured'};
-    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${subject}</h2><p>${body.replace(/\n/g,'<br/>')}</p></div>`,text:body})});
+    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${htmlEscape(subject)}</h2><p>${htmlEscape(body).replace(/\n/g,'<br/>')}</p></div>`,text:body})});
     const d=await r.json().catch(()=>({})); return {ok:r.ok,provider:'resend',id:d.id,error:r.ok?undefined:String(d.message??d.name??'Resend error')};
   }
   if(channel==='push'){
