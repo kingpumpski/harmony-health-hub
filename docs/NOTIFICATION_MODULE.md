@@ -90,3 +90,13 @@ All persisted instants are UTC. Recipient timezone is stored as an IANA timezone
 
 ## Standout roadmap
 Send-time optimization, fatigue caps, contextual wellness, caregiver consent, two-way SMS/WhatsApp, voice escalation, wearable integration, symptom-check links and public-health feeds remain controlled extensions. AI-generated health content must remain assistive and never make autonomous clinical decisions.
+
+## Administrator and IT control plane
+
+The notification module is configurable from System Settings (/admin/settings) for both admin and it_admin accounts. The page exposes facility selection, locale/timezone, quiet hours, channel enablement, rollout percentage, kill switch, branding/sender metadata, deployment secret namespace/reference, provider metadata and the non-secret deployment secret checklist.
+
+- Admin and IT administrators use server-authorized RPCs for configuration; direct browser DML is not the control path.
+- Provider credentials, API keys, passwords, service-account JSON and access tokens are never stored in PostgreSQL or entered into the settings form.
+- Provider verification is available to authorized admin/IT operators for troubleshooting and onboarding.
+- Final production readiness remains an administrator governance action and requires verified providers for enabled external channels.
+- The IT administrator account also retains access to system logs and offline synchronization tools for troubleshooting.
