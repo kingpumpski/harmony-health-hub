@@ -406,3 +406,6 @@ assert(notificationDrain.includes('rolloutAllows'), 'Notification worker must en
 assert(notificationProviderMigration.includes('erase_notification_history'), 'Notification history erasure helper missing');
 assert(notificationProviderMigration.includes('notification.audit_erasure'), 'Notification erasure must use a controlled audit exception');
 assert(notificationProviderMigration.includes('DELETE FROM public.notifications'), 'Notification erasure must remove in-app notification records');
+
+const notificationProviderPriorityMigration = read('supabase/migrations/20260925210500_notification_provider_priority_control_plane.sql');
+assert('notification provider priority control is versioned', notificationProviderPriorityMigration.includes('priority integer not null default 100') && notificationProviderPriorityMigration.includes('is_primary boolean not null default false') && notificationProviderPriorityMigration.includes('facility_notification_provider_primary_uq'), 'notification provider routing must have deterministic priority and single-primary controls');
