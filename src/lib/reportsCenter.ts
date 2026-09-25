@@ -12,6 +12,19 @@ export interface FacilityReportConfig { id: string; facility_id: string; report_
 export interface ReportSnapshot { total: number; by_dimension: Array<{ dimension: string; value: string; count: number }>; source: string; warning?: string; error?: string; }
 export interface ReportRunItem { id: string; run_id: string; report_id: string; status: ReportStatus; output_format: 'xlsx' | 'csv' | 'pdf'; file_name: string | null; data_snapshot: ReportSnapshot; validation_messages: string[]; error_message: string | null; }
 export interface ReportRun { id: string; facility_id: string; period_start: string; period_end: string; frequency: ReportFrequency; status: string; total_reports: number; success_count: number; warning_count: number; failed_count: number; created_at: string; completed_at: string | null; }
+export interface FacilityNotificationConfig {
+  facility_id: string;
+  environment: 'sandbox' | 'test' | 'production';
+  enabled: boolean;
+  default_locale: string;
+  default_timezone: string;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  enabled_channels: Record<string, boolean>;
+  rollout_percent: number;
+  kill_switch: boolean;
+  onboarding_status: 'not_started' | 'in_progress' | 'sandbox_ready' | 'verification_pending' | 'production_ready' | 'suspended';
+}
 export interface ReportSubmission { id: string; report_id: string; facility_id: string; period_start: string; period_end: string; due_date: string; status: 'pending' | 'submitted' | 'overdue' | 'accepted' | 'rejected'; submitted_at: string | null; submitted_by: string | null; submission_reference: string | null; }
 
 const SOURCE_TABLES: Record<string, string> = { opd_morbidity: 'encounters + diagnoses', opd_attendance: 'appointments', laboratory: 'lab_orders + lab_results', inpatient_days: 'admissions / inpatient module', surgeries: 'procedure/theatre module', maternity: 'maternity module' };
@@ -72,6 +85,32 @@ export async function createFacility(input: Omit<HealthcareFacility, 'id' | 'is_
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Facility creation returned no facility record.');
   return data as HealthcareFacility;
+}
+
+export async function getFacilityNotificationConfig(facilityId: string): Promise<FacilityNotificationConfig | null> {
+  const { data, error } = await reportsDb.from('facility_notification_config').select('facility_id,environment,enabled,default_locale,default_timezone,quiet_hours_start,quiet_hours_end,enabled_channels,rollout_percent,kill_switch,onboarding_status').eq('facility_id', facilityId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data ?? null) as FacilityNotificationConfig | null;
+}
+
+export async function initializeFacilityNotificationOnboarding(facilityId: string): Promise<FacilityNotificationConfig> {
+  const { data, error } = await reportsDb.rpc('initialize_facility_notification_onboarding', { _facility_id: facilityId });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Notification onboarding returned no configuration.');
+  return data as FacilityNotificationConfig;
+}
+
+export async function configureFacilityNotificationProvider(input: {
+  facilityId: string; channel: 'email' | 'sms' | 'push' | 'whatsapp' | 'voice'; provider: string;
+  environment: 'sandbox' | 'test' | 'production'; secretReference?: string | null; senderIdentity?: string | null; accountReference?: string | null;
+}) {
+  const { data, error } = await reportsDb.rpc('set_facility_notification_provider', {
+    _facility_id: input.facilityId, _channel: input.channel, _provider: input.provider, _environment: input.environment,
+    _secret_reference: input.secretReference ?? null, _sender_identity: input.senderIdentity ?? null,
+    _account_reference: input.accountReference ?? null, _metadata: {}
+  });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function listDefinitions(): Promise<ReportDefinition[]> {
