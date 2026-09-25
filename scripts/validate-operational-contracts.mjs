@@ -376,6 +376,7 @@ assert(notificationOnboardingMigration.includes('facility_notification_config'),
 assert(notificationOnboardingMigration.includes('facility_notification_provider_connections'), 'Facility provider connection registry missing');
 assert(notificationOnboardingMigration.includes('initialize_facility_notification_onboarding'), 'Facility notification onboarding initializer missing');
 assert(notificationOnboardingMigration.includes('mark_facility_notification_production_ready'), 'Production readiness gate missing');
+assert(notificationOnboardingMigration.includes('verify_facility_notification_provider'), 'Provider verification workflow missing');
 assert(notificationOnboardingMigration.includes('secret_reference'), 'Provider secret-reference boundary missing');
 assert(fs.existsSync('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql'), 'Notification onboarding reconciliation migration must use its unique migration version');
 assert(!fs.existsSync('supabase/migrations/20260925180000_notification_facility_onboarding_reconciliation.sql'), 'Duplicate notification onboarding migration version must not remain in the ledger');
