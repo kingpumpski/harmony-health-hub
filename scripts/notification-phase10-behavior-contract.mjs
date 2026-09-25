@@ -43,7 +43,7 @@ assert.match(worker,/order\('priority'/);
 assert.match(worker,/enabled_channels\?\.\[channel\]!==true/);
 assert.match(provider,/smtpPort\s*===\s*25/);
 assert.match(provider,/smtpPort\s*===\s*587/);
-assert.match(provider,/smtpPort\s*===\s*465/);
+assert.match(provider,/credentials\.port\?\?465/);
 assert.match(provider,/secure\s*!==\s*true/);
 assert.match(provider,/AES-GCM/);
 assert.match(provider,/credentials_ciphertext/);
