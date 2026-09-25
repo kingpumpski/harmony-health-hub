@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -51,7 +51,6 @@ export default function Settings(){
  const [notificationLoading,setNotificationLoading]=useState(false);
  const [notificationSaving,setNotificationSaving]=useState(false);
  const [providerDraft,setProviderDraft]=useState({channel:'email',provider:'resend',environment:'sandbox',secretReference:'',senderIdentity:'',accountReference:''});
- useMemo(()=>facilities.find(f=>f.id===facilityId) ?? null,[facilities,facilityId]);
 
  useEffect(()=>{void load()},[]);
  async function load(){
