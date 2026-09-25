@@ -265,7 +265,5 @@ begin
 end;
 $function$;
 
-revoke execute on function public.admit_encounter_workflow(uuid,text,uuid,boolean) from public, anon, authenticated;
-revoke execute on function public.admit_encounter_workflow(uuid,text,boolean) from public, anon, authenticated;
 revoke execute on function public.admit_encounter_workflow(uuid,text,text,boolean) from public, anon, authenticated;
 grant execute on function public.admit_encounter_workflow(uuid,text,text,boolean) to authenticated;
