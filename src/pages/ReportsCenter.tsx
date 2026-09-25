@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   createFacility, downloadManifestCsv, downloadRunWorkbook, generateRun, getRunItems, listDefinitions, listFacilities, listFacilityConfigs, setReportEnabled,
-  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem,
+  type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem, type FacilityNotificationConfig, getFacilityNotificationConfig, initializeFacilityNotificationOnboarding, configureFacilityNotificationProvider,
 } from '@/lib/reportsCenter';
 
 const facilityTypes = [
@@ -36,6 +36,8 @@ export default function ReportsCenter() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [facilityForm, setFacilityForm] = useState({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
+  const [notificationConfig, setNotificationConfig] = useState<FacilityNotificationConfig | null>(null);
+  const [notificationProvider, setNotificationProvider] = useState({ channel: 'email' as 'email' | 'sms' | 'push' | 'whatsapp' | 'voice', provider: 'resend', environment: 'sandbox' as 'sandbox' | 'test' | 'production', secretReference: '', senderIdentity: '', accountReference: '' });
 
   const selectedFacility = facilities.find((facility) => facility.id === selectedFacilityId) ?? null;
   const enabledConfigs = configs.filter((config) => config.is_enabled && config.report?.frequency === 'monthly');
@@ -63,7 +65,7 @@ export default function ReportsCenter() {
   useEffect(() => {
     if (!selectedFacilityId) { setConfigs([]); return; }
     setRun(null); setRunItems([]);
-    listFacilityConfigs(selectedFacilityId).then(setConfigs).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility reports.'));
+    Promise.all([listFacilityConfigs(selectedFacilityId), getFacilityNotificationConfig(selectedFacilityId)]).then(([nextConfigs, nextNotificationConfig]) => { setConfigs(nextConfigs); setNotificationConfig(nextNotificationConfig); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility configuration.'));
   }, [selectedFacilityId]);
 
   async function toggle(config: FacilityReportConfig) {
@@ -76,7 +78,8 @@ export default function ReportsCenter() {
     if (!facilityForm.name.trim()) { toast.error('Facility name is required.'); return; }
     try {
       const facility = await createFacility({ ...facilityForm, facility_code: facilityForm.facility_code || null, district: facilityForm.district || null, region: facilityForm.region || null, dhims2_uid: facilityForm.dhims2_uid || null });
-      setFacilities((current) => [...current, facility]); setSelectedFacilityId(facility.id); setShowSetup(false); setFacilityForm({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
+      setFacilities((current) => [...current, facility]); setSelectedFacilityId(facility.id);
+      try { setNotificationConfig(await initializeFacilityNotificationOnboarding(facility.id)); } catch (notificationError) { toast.error(notificationError instanceof Error ? notificationError.message : 'Facility created, but notification onboarding could not be initialized.'); } setShowSetup(false); setFacilityForm({ name: '', facility_code: '', facility_type: 'district_hospital', district: '', region: '', dhims2_uid: '' });
       toast.success('Facility created and default report configuration seeded.');
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to create facility.'); }
   }
