@@ -147,7 +147,12 @@ export default function Header({ onMenu }: HeaderProps) {
               <div className="border-b p-4"><p className="text-sm font-semibold">{user.firstName} {user.lastName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p><p className="mt-1 text-xs text-primary">{roleLabels[user.role]}</p></div>
               <div className="p-2">
                 <Link to="/profile" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><UserRound className="h-4 w-4" />My profile & workspace</Link>
-                {(user.role === "admin" || user.role === "it_admin") && <><Link to="/admin/settings" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />System settings</Link>{user.role === "admin" && <Link to="/admin/shifts" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Clock3 className="h-4 w-4" />Staff shifts</Link></>}
+                {(user.role === "admin" || user.role === "it_admin") && (
+                  <>
+                    <Link to="/admin/settings" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />System settings</Link>
+                    {user.role === "admin" && <Link to="/admin/shifts" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Clock3 className="h-4 w-4" />Staff shifts</Link>}
+                  </>
+                )}
                 <Link to="/notifications" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Bell className="h-4 w-4" />Notifications</Link>
                 <button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-critical hover:bg-critical/10"><LogOut className="h-4 w-4" />Sign out</button>
               </div>
