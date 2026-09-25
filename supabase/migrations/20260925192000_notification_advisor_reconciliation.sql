@@ -12,8 +12,6 @@ CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_create
   ON public.facility_notification_provider_connections(created_by);
 CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_updated_by
   ON public.facility_notification_provider_connections(updated_by);
-CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_verified_by
-  ON public.facility_notification_provider_connections(verified_by);
 CREATE INDEX IF NOT EXISTS idx_notification_deliveries_user_id
   ON public.notification_deliveries(user_id);
 
