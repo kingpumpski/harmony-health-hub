@@ -14,7 +14,8 @@ interface LabCatalogueItem {
   unit: string | null; reference_low: number | null; reference_high: number | null; reference_text: string | null;
   default_charge: number; active: boolean;
 }
-interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }\ninterface LabOrder {
+interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }
+interface LabOrder {
   id: string; patient_id: string; test_name: string; test_category: string | null;
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
 }
