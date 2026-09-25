@@ -66,6 +66,7 @@ async function external(channel:Channel, recipient:{email?:string;phone?:string;
   }
   return {ok:false,provider:'none',error:'Unsupported channel'};
 }
+function resolveText(template:string,vars:Record<string,unknown>){return template.replace(/\\{\\{\\s*([a-zA-Z0-9_.-]+)\\s*\\}\\}/g,(_,key)=>{const v=key.split('.').reduce<any>((a,k)=>a?.[k],vars);return v===undefined||v===null?'':String(v);});}
 function quiet(now:Date,tz:string,start:string,end:string){const p=new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(now);const m=Number(p.find(x=>x.type==='hour')?.value??0)*60+Number(p.find(x=>x.type==='minute')?.value??0);const [sh,sm]=start.split(':').map(Number),[eh,em]=end.split(':').map(Number),s=sh*60+sm,e=eh*60+em;return s>e?m>=s||m<e:m>=s&&m<e;}
 
 Deno.serve(async req=>{
@@ -88,13 +89,18 @@ Deno.serve(async req=>{
    for(const channel of channels){ const {data:channelConfig}=await db.from('notification_channels').select('enabled').eq('code',channel).maybeSingle(); if(!channelConfig?.enabled){last='Channel disabled';continue;}
     if(channel!=='in_app'&&priority!=='critical'&&(pref.pause_non_critical||pref.channel_preferences?.[channel]!==true))continue;
     const started=Date.now();
+    const locale=String(row.locale??pref.locale??'en-GH');
+    const {data:tpl}=await db.from('notification_templates').select('subject_template,body_template').eq('template_key',row.template_key).eq('locale',locale).eq('channel',channel).eq('active',true).order('version',{ascending:false}).limit(1).maybeSingle();
+    const vars={...p,event_name:row.event_name};
+    const subject=resolveText(String(tpl?.subject_template??p.subject??p.title??'Health notification'),vars);
+    const body=resolveText(String(tpl?.body_template??p.message??'Please sign in to your secure health record.'),vars);
     if(channel==='in_app'){
-      const {data:n,error:e}=await db.from('notifications').insert({recipient_user_id:userId,title:String(p.title??'Notification'),message:String(p.message??'You have a new notification.'),severity:String(p.severity??'info'),category:String(p.category??'other'),link:p.link??null,related_patient_id:p.related_patient_id??null,related_entity_id:p.related_entity_id??null,metadata:{...(p.metadata as Record<string,unknown>??{}),event_name:row.event_name},source_queue_id:row.id}).select('id').single();
+      const {data:n,error:e}=await db.from('notifications').insert({recipient_user_id:userId,title:subject,message:body,severity:String(p.severity??'info'),category:String(p.category??'other'),link:p.link??null,related_patient_id:p.related_patient_id??null,related_entity_id:p.related_entity_id??null,metadata:{...(p.metadata as Record<string,unknown>??{}),event_name:row.event_name},source_queue_id:row.id}).select('id').single();
       if(e&&e.code!=='23505'){last=e.message;continue;} const nid=n?.id;
       await db.from('notification_delivery_logs').insert({notification_id:nid,queue_id:row.id,user_id:userId,channel,provider:'supabase_realtime',status:'delivered',attempt,latency_ms:Date.now()-started});
       await db.from('notification_audit').insert({notification_id:nid,queue_id:row.id,user_id:userId,event_name:row.event_name,action:'delivery',channel,outcome:'delivered',metadata:{attempt}});ok=true;break;
     }
-    const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},String(p.subject??p.title??'Health notification'),String(p.message??'Please sign in to your secure health record.'),{...p,event_name:row.event_name,queue_id:row.id});
+    const r=await external(channel,{email:profile.email??undefined,phone:profile.phone??undefined,deviceTokens:(devices??[]).map((d:any)=>d.token)},subject,body,{...p,event_name:row.event_name,queue_id:row.id});
     await db.from('notification_delivery_logs').insert({queue_id:row.id,user_id:userId,channel,provider:r.provider,status:r.ok?'sent':'failed',provider_message_id:r.id??null,attempt,latency_ms:Date.now()-started,error_message:r.error??null});
     if(r.ok){ok=true;break;}last=r.error??last;
    }
