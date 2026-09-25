@@ -73,6 +73,26 @@ ALTER TABLE public.facility_notification_provider_connections
 CREATE UNIQUE INDEX IF NOT EXISTS facility_notification_provider_connections_env_uq
   ON public.facility_notification_provider_connections(facility_id,channel,environment);
 
+-- The original onboarding migration enforced UNIQUE(facility_id, channel).
+-- Replace that narrower constraint so sandbox/test/production connections can coexist
+-- without weakening the new environment-scoped uniqueness rule.
+DO $
+DECLARE v_constraint TEXT;
+BEGIN
+  SELECT conname INTO v_constraint
+  FROM pg_constraint
+  WHERE conrelid='public.facility_notification_provider_connections'::regclass
+    AND contype='u'
+    AND conkey = ARRAY[
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.facility_notification_provider_connections'::regclass AND attname='facility_id'),
+      (SELECT attnum FROM pg_attribute WHERE attrelid='public.facility_notification_provider_connections'::regclass AND attname='channel')
+    ]
+  LIMIT 1;
+  IF v_constraint IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.facility_notification_provider_connections DROP CONSTRAINT %I', v_constraint);
+  END IF;
+END $;
+
 DROP POLICY IF EXISTS "facility notification config scoped read" ON public.facility_notification_config;
 DROP POLICY IF EXISTS "facility notification config admin update" ON public.facility_notification_config;
 DROP POLICY IF EXISTS "facility notification config access" ON public.facility_notification_config;
@@ -150,6 +170,30 @@ BEGIN
   RETURNING * INTO v;
   RETURN v;
 END $$;
+
+CREATE OR REPLACE FUNCTION public.verify_facility_notification_provider(
+  _facility_id UUID,_channel TEXT,_environment TEXT DEFAULT 'sandbox',_verified BOOLEAN DEFAULT true,_error TEXT DEFAULT NULL
+)
+RETURNS public.facility_notification_provider_connections
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+DECLARE v public.facility_notification_provider_connections;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+    RAISE EXCEPTION 'Facility notification provider verification requires administrator facility access';
+  END IF;
+  UPDATE public.facility_notification_provider_connections
+  SET status=CASE WHEN _verified THEN 'verified' ELSE 'failed' END,
+      last_verified_at=CASE WHEN _verified THEN now() ELSE last_verified_at END,
+      last_error=CASE WHEN _verified THEN NULL ELSE NULLIF(left(_error,500),'') END,
+      updated_by=auth.uid(),updated_at=now()
+  WHERE facility_id=_facility_id AND channel=_channel AND environment=_environment
+  RETURNING * INTO v;
+  IF v.id IS NULL THEN RAISE EXCEPTION 'Notification provider connection not found'; END IF;
+  RETURN v;
+END $;
+
+REVOKE ALL ON FUNCTION public.verify_facility_notification_provider(UUID,TEXT,TEXT,BOOLEAN,TEXT) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.verify_facility_notification_provider(UUID,TEXT,TEXT,BOOLEAN,TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.mark_facility_notification_production_ready(_facility_id UUID)
 RETURNS public.facility_notification_config
