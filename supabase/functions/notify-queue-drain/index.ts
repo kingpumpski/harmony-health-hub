@@ -5,7 +5,7 @@ type Channel = 'in_app'|'email'|'sms'|'push'|'whatsapp'|'voice';
 const BATCH=50, BACKOFF=[10,30,120,600,3600];
 const json=(body:unknown,status=200,cors:Record<string,string>={})=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
 
-function b64url(data:Uint8Array|string){const bytes=typeof data==='string'?new TextEncoder().encode(data):data;let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');}
+function b64url(data:Uint8Array|string){const bytes=typeof data==='string'?new TextEncoder().encode(data):data;let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,'-').replace(/\//g/g,'_').replace(/=+$/,'');}
 let fcmAccessToken:{token:string;expires:number}|null=null;
 async function fcmToken(){
   if(fcmAccessToken&&fcmAccessToken.expires>Date.now()+60000)return fcmAccessToken.token;
@@ -27,7 +27,7 @@ async function external(channel:Channel, recipient:{email?:string;phone?:string;
     if(!recipient.email)return {ok:false,provider:'none',error:'Recipient email unavailable'};
     const key=Deno.env.get('RESEND_API_KEY'),from=Deno.env.get('RESEND_FROM_EMAIL');
     if(!key||!from)return {ok:false,provider:'resend',error:'Resend provider not configured'};
-    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${subject}</h2><p>${body.replace(/\\n/g,'<br/>')}</p></div>`,text:body})});
+    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({from,to:[recipient.email],subject,html:`<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>${subject}</h2><p>${body.replace(/\n/g,'<br/>')}</p></div>`,text:body})});
     const d=await r.json().catch(()=>({})); return {ok:r.ok,provider:'resend',id:d.id,error:r.ok?undefined:String(d.message??d.name??'Resend error')};
   }
   if(channel==='push'){
