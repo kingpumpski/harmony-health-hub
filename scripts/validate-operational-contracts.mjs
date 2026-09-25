@@ -379,3 +379,8 @@ assert(notificationSend.includes('body.facility_id'), 'Notification send API mus
 const notificationDrain = read('supabase/functions/notify-queue-drain/index.ts');
 assert(notificationDrain.includes('facility_notification_config'), 'Notification worker must enforce facility onboarding configuration');
 assert(notificationDrain.includes('kill_switch'), 'Notification worker must enforce facility kill switch');
+assert(notificationDrain.includes('enabled_channels?.[channel]!==true'), 'Notification worker must enforce facility channel enablement');
+assert(notificationDrain.includes('rolloutAllows'), 'Notification worker must enforce deterministic facility rollout');
+assert(notificationProviderMigration.includes('erase_notification_history'), 'Notification history erasure helper missing');
+assert(notificationProviderMigration.includes('notification.audit_erasure'), 'Notification erasure must use a controlled audit exception');
+assert(notificationProviderMigration.includes('DELETE FROM public.notifications'), 'Notification erasure must remove in-app notification records');
