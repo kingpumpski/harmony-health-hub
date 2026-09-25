@@ -33,6 +33,12 @@ const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
 const aiClinicalHub = read('src/pages/AIClinicalHub.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
+const admissionManagement = read('src/pages/AdmissionManagement.tsx');
+const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
+
+assert('admission workspace array response is handled by admission management', admissionManagement.includes('Array.isArray(workspace) ? workspace : (workspace?.admissions ?? [])'), 'admission management must tolerate the canonical array response from get_admission_workspace');
+assert('admission workspace array response is handled by care transitions', careTransitions.includes('Array.isArray(a) ? a : (a?.admissions ?? [])'), 'care transitions must tolerate the canonical array response from get_admission_workspace');
+assert('admission workspace array response is handled by AI nurse dashboard', aiClinicalAssist.includes('Array.isArray(admissionWorkspace) ? admissionWorkspace : (admissionWorkspace?.admissions ?? [])'), 'AI nurse dashboard must tolerate the canonical array response from get_admission_workspace');
 
 assert('offline mutations always receive a unique idempotency key', offline.includes("const idempotencyKey = crypto.randomUUID();") && offline.includes("[IDEMPOTENCY_HEADER]: idempotencyKey"), 'queue creation must generate and persist the idempotency header');
 assert('offline replay restores the persisted idempotency key', offline.includes("[IDEMPOTENCY_HEADER]: item.idempotencyKey"), 'replay must not generate a new key for an existing mutation');
@@ -112,7 +118,6 @@ assert('replayed discharge reconciles stale occupied beds', inpatientTransferMig
 
 const aiReportMigration = read('supabase/migrations/20260924232338_inpatient_transfer_movement_integrity.sql');
 const patientPortal = read('src/pages/PatientPortal.tsx');
-const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
 assert('AI report requests are server-authoritative', aiReportMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.create_ai_report_request(') && aiReportMigration.includes('CREATE OR REPLACE FUNCTION public.complete_ai_report_request('), 'AI report request rows must use protected lifecycle RPCs');
 assert('AI report request creation is actor-bound', aiReportMigration.includes('requested_by, report_type, status') && aiReportMigration.includes("VALUES (_patient_id, uid, v_type, 'processing')") && aiReportMigration.includes('p.user_id = uid'), 'patient report creation must bind the requester to the authenticated actor');
 assert('AI report completion is lifecycle-locked', aiReportMigration.includes("v_request.status <> 'processing'") && aiReportMigration.includes('FOR UPDATE') && aiReportMigration.includes('completed_at = now()'), 'report completion must lock the request and reject invalid lifecycle transitions');
@@ -155,7 +160,6 @@ assert('patient hub admission entrypoint delegates to canonical workflow', inpat
 assert('encounter admission rejects duplicate active patient admission', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.admit_encounter_workflow') && inpatientTransferMigration.includes('Patient already has an active admission') && inpatientTransferMigration.includes('Active ward not found'), 'encounter admission must serialize against the patient and validate ward projections');
 
 
-const admissionManagement = read('src/pages/AdmissionManagement.tsx');
 const encountersPage = read('src/pages/Encounters.tsx');
 assert('admission management uses protected ward workspace', admissionManagement.includes("get_operational_workspace") && admissionManagement.includes("_module: 'ward'"), 'admission UI must source ward/bed choices from the protected operational workspace');
 assert('admission management sends bed identity rather than free text', admissionManagement.includes('value={item.id}') && admissionManagement.includes("item.status === 'available'") && admissionManagement.includes("_bed: bed || null"), 'admission UI must submit a selected available bed ID or explicitly await placement');
