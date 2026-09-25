@@ -116,6 +116,7 @@ CREATE OR REPLACE FUNCTION public.enqueue_notification_v2(
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE qid UUID; idem TEXT := COALESCE(_idempotency_key, _event_name || ':' || _user_id::text || ':' || md5(_payload::text));
 BEGIN
+  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin')) THEN RAISE EXCEPTION 'Forbidden'; END IF;
   IF _user_id IS NULL THEN RAISE EXCEPTION 'Notification recipient required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.notification_events WHERE event_name=_event_name AND enabled) THEN RAISE EXCEPTION 'Notification event is disabled or unknown'; END IF;
   INSERT INTO public.notification_queue(channel,payload,status,idempotency_key,tenant_id,user_id,priority,event_name,template_key,locale,timezone,scheduled_for,fallback_channels,next_attempt_at)
