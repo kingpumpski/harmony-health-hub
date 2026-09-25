@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 
@@ -14,7 +14,7 @@ interface LabCatalogueItem {
   unit: string | null; reference_low: number | null; reference_high: number | null; reference_text: string | null;
   default_charge: number; active: boolean;
 }
-interface LabOrder {
+interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }\ninterface LabOrder {
   id: string; patient_id: string; test_name: string; test_category: string | null;
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
 }
@@ -26,12 +26,12 @@ interface LabResult {
 interface CreateLabOrderResponse { lab_order_id: string; service_order_id: string; status: string }
 
 export default function Laboratory() {
-  const { user } = useAuth();
+  const { user } = useAuth();\n  const [searchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [catalogue, setCatalogue] = useState<LabCatalogueItem[]>([]);
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [resultsByOrder, setResultsByOrder] = useState<Record<string, LabResult>>({});
-  const [pid, setPid] = useState('');
+  const [pid, setPid] = useState(searchParams.get('patient') || '');\n  const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');\n  const [encounters, setEncounters] = useState<EncounterOption[]>([]);
   const [catalogueId, setCatalogueId] = useState('');
   const [testName, setTestName] = useState('');
   const [category, setCategory] = useState('');
@@ -86,6 +86,41 @@ export default function Laboratory() {
     return { active, awaitingSample, processing, awaitingApproval, approved };
   }, [orders]);
 
+  useEffect(() => {
+    const patientFromUrl = searchParams.get('patient');
+    const encounterFromUrl = searchParams.get('encounter');
+    if (patientFromUrl) setPid(patientFromUrl);
+    if (encounterFromUrl) setEncounterId(encounterFromUrl);
+  }, [searchParams]);
+
+  useEffect(() => {
+    let active = true;
+    const loadEncounters = async () => {
+      setEncounterId((current) => current);
+      if (!pid) {
+        setEncounters([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('encounters')
+        .select('id,patient_id,created_at,status,principal_diagnosis')
+        .eq('patient_id', pid)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!active) return;
+      if (error) {
+        setEncounters([]);
+        toast({ title: 'Encounter context unavailable', description: error.message, variant: 'destructive' });
+        return;
+      }
+      setEncounters((data ?? []) as EncounterOption[]);
+      if (encounterId && !(data ?? []).some((item) => item.id === encounterId)) setEncounterId('');
+    };
+    void loadEncounters();
+    return () => { active = false; };
+  }, [pid, encounterId]);
+
   const selectTest = (id: string) => {
     setCatalogueId(id);
     const item = catalogue.find((entry) => entry.id === id);
@@ -119,7 +154,7 @@ export default function Laboratory() {
       } as never);
       if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
     }
-    setPid(''); setCatalogueId(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
+    setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
     playWorkflowSound('success');
     toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
     void loadAll();
@@ -188,7 +223,7 @@ export default function Laboratory() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <form onSubmit={createOrder} className="card-medical p-5 space-y-3 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New Lab Order</h2>
-          <select value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>
+          <select value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>\n          <select value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}><option value="">Attach to encounter (optional)</option>{encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}</select>\n          <p className="text-[11px] text-muted-foreground">Attach the originating encounter when the order is part of a clinical visit. The server verifies the encounter belongs to the selected patient.</p>
           <select value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full"><option value="">Select catalogue test…</option>{catalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ''}</option>)}</select>
           <input value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" />
           <input value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
