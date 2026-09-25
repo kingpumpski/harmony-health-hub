@@ -13,13 +13,13 @@ jobs:
     environment: notification-test
     timeout-minutes: 5
     env:
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      SMTP_SECURE: ${{ vars.SMTP_SECURE }}
       SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
-      SMTP_TEST_RECIPIENT: ${{ secrets.SMTP_TEST_RECIPIENT }}
+      SMTP_TEST_RECIPIENT: ${{ vars.SMTP_TEST_RECIPIENT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
