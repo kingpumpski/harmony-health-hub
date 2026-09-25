@@ -16,6 +16,7 @@ const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
 export default function Billing() {
   const { user } = useAuth();
+  const canPrepareBill = user?.roles?.some((role) => ['admin', 'accountant', 'front_desk'].includes(role)) ?? false;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [patientId, setPatientId] = useState('');
@@ -40,25 +41,25 @@ export default function Billing() {
   }, []);
 
   const loadBillable = useCallback(async () => {
-    if (!patientId) { setItems([]); setSelected([]); setInvoiceId(''); return; }
+    if (!patientId || !canPrepareBill) { setItems([]); setSelected([]); setInvoiceId(''); return; }
     setLoading(true);
     const { data, error } = await db.rpc('prepare_patient_billable_items', { _patient_id: patientId, _from: `${from}T00:00:00+00:00`, _to: `${to}T23:59:59+00:00` });
     setLoading(false);
     if (error) { playWorkflowSound('critical'); return toast.error(`Unable to prepare patient bill: ${error.message}`); }
     const rows = (data ?? []) as BillableItem[];
     setItems(rows); setInvoiceId(rows[0]?.invoice_id ?? ''); setSelected([]);
-  }, [from, patientId, to]);
+  }, [canPrepareBill, from, patientId, to]);
 
   useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
   useEffect(() => { void loadBillable(); }, [loadBillable]);
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId || !canPrepareBill) return;
     const channel = supabase.channel(`billing-live-${patientId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_orders', filter: `patient_id=eq.${patientId}` }, () => void loadBillable())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `patient_id=eq.${patientId}` }, () => void loadBillable())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [loadBillable, patientId]);
+  }, [canPrepareBill, loadBillable, patientId]);
 
   const totals = useMemo(() => items.reduce((acc, item) => {
     acc.gross += Number(item.amount || 0); acc.paid += Number(item.paid_amount || 0); acc.outstanding += Number(item.outstanding_amount || 0);
