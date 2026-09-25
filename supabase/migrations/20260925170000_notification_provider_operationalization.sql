@@ -84,7 +84,7 @@ BEGIN
   IF _platform NOT IN ('web','android','ios') THEN RAISE EXCEPTION 'Unsupported device platform'; END IF;
   IF length(trim(_token)) < 20 THEN RAISE EXCEPTION 'Invalid device token'; END IF;
 
-  SELECT user_id INTO existing_user
+  SELECT user_id, id INTO existing_user, result_id
   FROM public.notification_devices
   WHERE provider=_provider AND token=trim(_token)
   FOR UPDATE;
@@ -92,12 +92,26 @@ BEGIN
     RAISE EXCEPTION 'Device token is already registered to another user';
   END IF;
 
-  INSERT INTO public.notification_devices(user_id,provider,platform,token,device_label,active,last_seen_at,updated_at)
-  VALUES(auth.uid(),_provider,_platform,trim(_token),_device_label,true,now(),now())
-  ON CONFLICT(provider,token)
-  DO UPDATE SET user_id=auth.uid(), platform=excluded.platform, device_label=excluded.device_label,
-                active=true, last_seen_at=now(), updated_at=now()
-  RETURNING id INTO result_id;
+  IF result_id IS NULL THEN
+    INSERT INTO public.notification_devices(user_id,provider,platform,token,device_label,active,last_seen_at,updated_at)
+    VALUES(auth.uid(),_provider,_platform,trim(_token),_device_label,true,now(),now())
+    ON CONFLICT(provider,token) DO NOTHING
+    RETURNING id INTO result_id;
+    IF result_id IS NULL THEN
+      SELECT user_id, id INTO existing_user, result_id
+      FROM public.notification_devices
+      WHERE provider=_provider AND token=trim(_token)
+      FOR UPDATE;
+      IF existing_user <> auth.uid() THEN
+        RAISE EXCEPTION 'Device token is already registered to another user';
+      END IF;
+    END IF;
+  ELSE
+    UPDATE public.notification_devices
+    SET platform=_platform, device_label=_device_label, active=true,
+        last_seen_at=now(), updated_at=now()
+    WHERE id=result_id AND user_id=auth.uid();
+  END IF;
   RETURN result_id;
 END;
 $$;
@@ -182,14 +196,21 @@ BEGIN
   PERFORM set_config('notification.audit_erasure','on',true);
 
   DELETE FROM public.notifications WHERE recipient_user_id=_user_id;
-  DELETE FROM public.notification_queue WHERE user_id=_user_id;
-  DELETE FROM public.notification_delivery_logs WHERE user_id=_user_id;
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  DELETE FROM public.notification_queue WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
+  DELETE FROM public.notification_delivery_logs WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   DELETE FROM public.notification_audit WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   DELETE FROM public.notification_consent_audit WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   DELETE FROM public.notification_devices WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   DELETE FROM public.scheduled_notifications WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   DELETE FROM public.user_notification_preferences WHERE user_id=_user_id;
+  GET DIAGNOSTICS deleted_count = deleted_count + ROW_COUNT;
   RETURN deleted_count;
 END;
 $erasure$;
