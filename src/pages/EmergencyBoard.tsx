@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Siren } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 type Row = { id: string; patient_id: string | null; chief_complaint: string; acuity: string; arrival_mode: string | null; assigned_officer: string | null; status: string; arrival_time: string };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
