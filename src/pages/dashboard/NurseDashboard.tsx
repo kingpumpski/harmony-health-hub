@@ -23,12 +23,16 @@ export default function NurseDashboard() {
   const [queue, setQueue] = useState<DashboardRow[]>([]);
   const [workflowNotifications, setWorkflowNotifications] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'critical' | 'attention'>('all');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
+    setError(null);
     const { data, error } = await supabase.functions.invoke('ai-clinical-assist', { body: { mode: 'nurse_dashboard' } });
     if (error || data?.error) {
+      setError(data?.error ?? error?.message ?? 'Workspace unavailable');
+      setPatients([]); setAdmissions([]); setMedications([]); setHandovers([]); setTriage([]); setQueue([]); setWorkflowNotifications([]);
       toast.error('Nursing dashboard refresh: ' + (data?.error ?? error?.message ?? 'Workspace unavailable'));
     } else {
       setPatients((data?.patients ?? []) as Patient[]);
@@ -37,8 +41,8 @@ export default function NurseDashboard() {
       setHandovers((data?.handovers ?? []) as DashboardRow[]);
       setTriage((data?.triage ?? []) as DashboardRow[]);
       setQueue((data?.queue ?? []) as DashboardRow[]);
-      const { data: notifications } = await (supabase as any).rpc('get_workflow_notifications', { _limit: 100 });
-      setWorkflowNotifications((Array.isArray(notifications) ? notifications : []) as DashboardRow[]);
+      const { data: notifications, error: notificationError } = await (supabase as any).rpc('get_workflow_notifications', { _limit: 100 });
+      if (notificationError) { setError(notificationError.message); setWorkflowNotifications([]); } else setWorkflowNotifications((Array.isArray(notifications) ? notifications : []) as DashboardRow[]);
     }
     setLoading(false);
   }, []);
@@ -73,6 +77,8 @@ export default function NurseDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {error && <div role="alert" className="rounded-xl border border-critical/30 bg-critical/5 p-4 flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold text-critical">Nursing dashboard data unavailable</p><p className="text-sm text-muted-foreground mt-1">{error}</p></div><button type="button" onClick={refresh} className="btn-secondary">Retry</button></div>}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Nursing Station</h1>
