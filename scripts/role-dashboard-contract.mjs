@@ -5,6 +5,7 @@ const dashboard=read('src/pages/Dashboard.tsx');
 const permissions=read('src/lib/permissions.ts');
 const migration=read('supabase/migrations/20260926233000_role_dashboard_server_summary.sql');
 
+if (!migration.includes('SECURITY INVOKER')) throw new Error('Dashboard summary must remain RLS-aware');
 const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
 const expected=[
   ['admin','AdminDashboard'],
