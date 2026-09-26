@@ -51,6 +51,8 @@ jobs:
 
       - name: Offline replay security contract
         run: npm run test:offline-replay
+      - name: Workflow transition contract
+        run: npm run test:workflow-transitions
 
       - name: Production build
         run: npm run build
