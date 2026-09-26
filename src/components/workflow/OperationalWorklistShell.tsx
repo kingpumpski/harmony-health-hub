@@ -9,6 +9,7 @@ interface OperationalWorklistShellProps {
   description: string;
   actions?: ReactNode;
   counters?: Counter[];
+  beforeList?: ReactNode;
   listTitle: string;
   listDescription?: string;
   listMeta?: ReactNode;
@@ -27,6 +28,7 @@ export default function OperationalWorklistShell({
   description,
   actions,
   counters = [],
+  beforeList,
   listTitle,
   listDescription,
   listMeta,
@@ -61,6 +63,8 @@ export default function OperationalWorklistShell({
           ))}
         </div>
       )}
+
+      {beforeList}
 
       <section className="card-medical overflow-hidden p-0" aria-labelledby={`${title.toLowerCase().replace(/\\s+/g, '-')}-worklist-heading`}>
         <div className="flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
