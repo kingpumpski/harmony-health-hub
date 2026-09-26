@@ -133,3 +133,50 @@ END; $$;
 REVOKE ALL ON FUNCTION public.get_appointment_clinicians() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_appointment_clinicians() TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+CREATE OR REPLACE FUNCTION public.get_appointment_worklist(_limit INTEGER DEFAULT 300)
+RETURNS TABLE(
+  id UUID,
+  patient_id UUID,
+  patient_code TEXT,
+  patient_first_name TEXT,
+  patient_last_name TEXT,
+  scheduled_at TIMESTAMPTZ,
+  consultation_type TEXT,
+  practitioner_id UUID,
+  practitioner_name TEXT,
+  department TEXT,
+  reason TEXT,
+  status TEXT,
+  attending_officer_id UUID,
+  treatment_status TEXT,
+  treatment_notes TEXT
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_limit INTEGER:=greatest(1,least(coalesce(_limit,300),500));
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(),'nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'midwife'::public.app_role)
+    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+  ) THEN RAISE EXCEPTION 'Appointment worklist access denied'; END IF;
+  RETURN QUERY
+  SELECT a.id,a.patient_id,p.patient_code,p.first_name,p.last_name,a.scheduled_at,
+    COALESCE(a.consultation_type,'General Consultation'),a.practitioner_id,
+    NULLIF(trim(concat_ws(' ',pr.first_name,pr.last_name)),''),a.department,a.reason,a.status,
+    a.attending_officer_id,a.treatment_status,a.treatment_notes
+  FROM public.appointments a
+  JOIN public.patients p ON p.id=a.patient_id
+  LEFT JOIN public.profiles pr ON pr.id=a.practitioner_id
+  WHERE COALESCE(p.status,'active') <> 'inactive'
+  ORDER BY a.scheduled_at ASC
+  LIMIT v_limit;
+END; $$;
+REVOKE ALL ON FUNCTION public.get_appointment_worklist(INTEGER) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_appointment_worklist(INTEGER) TO authenticated;
+NOTIFY pgrst, 'reload schema';
