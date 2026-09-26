@@ -6,8 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 type Card={key:string;label:string;value:number;href:string;description:string};
 
 export default function CanteenDashboard(){
-  const [cards,setCards]=useState<Card[]>([]); const [loading,setLoading]=useState(true);
-  const load=useCallback(async()=>{setLoading(true);const {data}=await (supabase as any).rpc('get_role_dashboard_summary');setCards((data?.cards??[]) as Card[]);setLoading(false)},[]);
+  const [cards,setCards]=useState<Card[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState<string | null>(null);
+  const load=useCallback(async()=>{setLoading(true);setError(null);const {data,error:rpcError}=await (supabase as any).rpc('get_role_dashboard_summary');if(rpcError){setError(rpcError.message);setCards([])}else{setCards((data?.cards??[]) as Card[])}setLoading(false)},[]);
   useEffect(()=>{void load()},[load]);
   const icons:Record<string,typeof Utensils>={meals_due:Utensils,pending:Utensils,plans:ClipboardList,restrictions:AlertTriangle};
   return <div className="space-y-6 animate-fade-in">
