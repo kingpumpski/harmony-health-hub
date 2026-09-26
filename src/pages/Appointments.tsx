@@ -1,100 +1,397 @@
-import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CheckCircle2, Edit3, Play, Plus, UserCheck, Stethoscope, ClipboardCheck, Clock3, Activity } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock3, Plus, RefreshCw, Stethoscope, UserCheck, X } from 'lucide-react';
 import { notifyRoles } from '@/lib/notifications';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 
-interface Patient { id: string; first_name: string; last_name: string; user_id?: string | null }
-interface Appointment { id: string; patient_id: string; scheduled_at: string; reason: string | null; status: string; department: string | null; attending_officer_id?: string | null; treatment_status?: string | null; treatment_notes?: string | null }
-const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse']);
-const editableRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk']);
-const treatmentStatuses = ['scheduled', 'claimed', 'in_progress', 'completed', 'cancelled', 'no_show'];
-const closedStatuses = new Set(['completed', 'cancelled', 'no_show']);
+interface Patient {
+  id: string;
+  patient_code: string;
+  first_name: string;
+  last_name: string;
+}
+interface Appointment {
+  id: string;
+  patient_id: string;
+  scheduled_at: string;
+  reason: string | null;
+  status: string;
+  department: string | null;
+  practitioner_id?: string | null;
+  attending_officer_id?: string | null;
+  treatment_status?: string | null;
+  treatment_notes?: string | null;
+  consultation_type?: string | null;
+  patient_code?: string | null;
+  patient_first_name?: string | null;
+  patient_last_name?: string | null;
+  practitioner_name?: string | null;
+}
+interface Clinician {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  department: string | null;
+  specialization: string | null;
+  clinician_role: string;
+}
+
+const consultationTypes = [
+  'General Consultation',
+  'Specialist Consultation',
+  'Follow-up Consultation',
+  'Fertility Consultation',
+  'Maternity Consultation',
+  'Telemedicine Consultation',
+] as const;
+
+const activeStatuses = new Set(['scheduled', 'claimed', 'in_progress']);
 
 export default function Appointments() {
-  const { user } = useAuth(); const navigate = useNavigate();
-  const [patients, setPatients] = useState<Patient[]>([]); const [appts, setAppts] = useState<Appointment[]>([]);
-  const [pid, setPid] = useState(''); const [when, setWhen] = useState(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
-  const [dept, setDept] = useState('General Outpatient'); const [reason, setReason] = useState(''); const [editing, setEditing] = useState<Appointment | null>(null);
-  const [saving, setSaving] = useState(false); const [startingEncounter, setStartingEncounter] = useState<string | null>(null); const [advancing, setAdvancing] = useState<string | null>(null);
-  const role = String(user?.role ?? ''); const isStaff = role !== 'patient' && Boolean(user); const canClaim = clinicalRoles.has(role); const canEdit = editableRoles.has(role); const currentUserId = user?.id ?? '';
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [clinicians, setClinicians] = useState<Clinician[]>([]);
+  const [appts, setAppts] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [startingEncounter, setStartingEncounter] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pid, setPid] = useState('');
+  const [consultationType, setConsultationType] = useState<(typeof consultationTypes)[number]>('General Consultation');
+  const [clinicianId, setClinicianId] = useState('');
+  const [when, setWhen] = useState(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [reason, setReason] = useState('');
 
-  const load = async () => {
-    const [{ data: pts, error: patientError }, { data: aps, error: appointmentError }] = await Promise.all([
+  const role = String(user?.role ?? '');
+  const isStaff = Boolean(user) && role !== 'patient';
+  const canClaim = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'].includes(role);
+  const canSchedule = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'].includes(role);
+  const currentUserId = user?.id ?? '';
+
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    const [{ data: pts, error: patientError }, { data: workspace, error: appointmentError }, { data: staff, error: clinicianError }] = await Promise.all([
       searchPatientDirectory('', 300),
-      (async () => { const { data, error } = await getOperationalWorkspace('appointments', 200); return { data: (data as any)?.appointments ?? [], error }; })(),
+      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never),
+      supabase.rpc('get_appointment_clinicians' as never),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
     if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' });
-    setPatients(pts ?? []); setAppts(aps ?? []);
+    if (clinicianError) toast({ title: 'Unable to load clinicians', description: clinicianError.message, variant: 'destructive' });
+    setPatients((pts ?? []) as Patient[]);
+    setClinicians((staff ?? []) as Clinician[]);
+    setAppts((workspace ?? []) as Appointment[]);
+    setLoading(false);
   };
 
   useEffect(() => {
     void load();
-    const ch = supabase.channel(`appt-page-${user?.id ?? 'anonymous'}`).on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, (payload) => {
-      if (payload.eventType === 'INSERT') playWorkflowSound('info');
-      if (payload.eventType === 'UPDATE' && String((payload.new as { treatment_status?: string }).treatment_status ?? '').toLowerCase() === 'completed') playWorkflowSound('success');
-      void load();
-    }).subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    const channel = supabase
+      .channel(`appointments-worklist-${user?.id ?? 'anonymous'}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointments',
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') playWorkflowSound('info');
+        if (payload.eventType === 'UPDATE' && String((payload.new as { treatment_status?: string }).treatment_status ?? '').toLowerCase() === 'completed') playWorkflowSound('success');
+        void load(true);
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') toast({ title: 'Live appointment updates unavailable', description: 'The list will continue to work with manual refresh.', variant: 'destructive' });
+      });
+    return () => { void supabase.removeChannel(channel); };
   }, [user?.id]);
 
-  const patientName = useMemo(() => new Map(patients.map((p) => [p.id, `${p.first_name} ${p.last_name}`])), [patients]);
-  const todayAppointments = useMemo(() => { const start = new Date(); start.setHours(0, 0, 0, 0); const end = new Date(); end.setHours(23, 59, 59, 999); return appts.filter((a) => { const t = new Date(a.scheduled_at).getTime(); return t >= start.getTime() && t <= end.getTime(); }); }, [appts]);
-  const reviewAppointments = useMemo(() => appts.filter((a) => ['checked_in', 'review'].includes(String(a.status).toLowerCase()) || ['checked_in', 'review'].includes(String(a.treatment_status ?? '').toLowerCase())), [appts]);
-  const activeToday = todayAppointments.filter((a) => !closedStatuses.has(a.treatment_status || a.status || 'scheduled'));
-  const inProgressToday = todayAppointments.filter((a) => ['claimed', 'in_progress'].includes(a.treatment_status || a.status));
-  const completedToday = todayAppointments.filter((a) => (a.treatment_status || a.status) === 'completed');
+  const patientMap = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  const clinicianMap = useMemo(() => new Map(clinicians.map((c) => [c.id, c])), [clinicians]);
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!pid) return toast({ title: 'Select a patient', description: 'Choose the patient for this appointment.', variant: 'destructive' });
-    const { data, error } = await supabase.rpc('create_appointment_workflow' as never, { _patient_id: pid, _scheduled_at: new Date(when).toISOString(), _department: dept, _reason: reason || null } as never);
+  const todayActive = useMemo(() => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    return appts
+      .filter((a) => {
+        const time = new Date(a.scheduled_at).getTime();
+        return time >= start.getTime() && time <= end.getTime() && activeStatuses.has(a.treatment_status || a.status || 'scheduled');
+      })
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+  }, [appts]);
+
+  const claimedToday = todayActive.filter((a) => (a.treatment_status || a.status) === 'claimed').length;
+  const inTreatmentToday = todayActive.filter((a) => (a.treatment_status || a.status) === 'in_progress').length;
+  const unassignedToday = todayActive.filter((a) => !a.attending_officer_id).length;
+
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!pid) return toast({ title: 'Select a patient', description: 'Choose the patient for this appointment.', variant: 'destructive' });
+    if (!clinicianId) return toast({ title: 'Select a physician or specialist', description: 'Choose the clinician responsible for the appointment.', variant: 'destructive' });
+    setSaving(true);
+    const { data, error } = await supabase.rpc('create_appointment_workflow' as never, {
+      _patient_id: pid,
+      _scheduled_at: new Date(when).toISOString(),
+      _department: 'Clinical Consultation',
+      _reason: reason || null,
+      _consultation_type: consultationType,
+      _practitioner_id: clinicianId,
+    } as never);
+    setSaving(false);
     if (error) return toast({ title: 'Failed to schedule appointment', description: error.message, variant: 'destructive' });
-    const created = data as unknown as Appointment; playWorkflowSound('success'); toast({ title: 'Appointment scheduled' }); const p = patients.find((x) => x.id === pid); const name = p ? `${p.first_name} ${p.last_name}` : 'patient';
-    await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], { title: 'New appointment', message: `${name} scheduled for ${dept} on ${new Date(when).toLocaleString()}`, severity: 'info', category: 'appointment', link: '/appointments', relatedPatientId: pid, relatedEntityId: created?.id });
-    // Patient-facing notification is handled by the server-side appointment workflow; this page does not read protected patient identity fields.
-    setReason(''); setPid(''); await load();
+    const created = data as unknown as Appointment;
+    const patient = patientMap.get(pid);
+    const clinician = clinicianMap.get(clinicianId);
+    playWorkflowSound('success');
+    toast({ title: 'Appointment scheduled', description: `${patient?.first_name ?? ''} ${patient?.last_name ?? ''} · ${consultationType}` });
+    await notifyRoles(['practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'], {
+      title: 'New appointment',
+      message: `${patient?.first_name ?? 'Patient'} ${patient?.last_name ?? ''} scheduled with ${clinician ? `${clinician.first_name ?? ''} ${clinician.last_name ?? ''}` : 'a clinician'} on ${new Date(when).toLocaleString()}`,
+      severity: 'info',
+      category: 'appointment',
+      link: '/appointments',
+      relatedPatientId: pid,
+      relatedEntityId: created?.id,
+    });
+    setPid('');
+    setConsultationType('General Consultation');
+    setClinicianId('');
+    setReason('');
+    setShowScheduler(false);
+    await load(true);
   };
 
-  const claim = async (appointmentId: string) => { if (!canClaim) return; const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointmentId } as never); if (error) return toast({ title: 'Could not claim appointment', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Appointment assigned to you', description: 'You can now start treatment and update the care status.' }); await load(); };
-
-  const advanceTreatment = async (appointment: Appointment, treatmentStatus: string) => {
-    if (!canEdit) return; setAdvancing(appointment.id);
-    const { error } = await supabase.rpc('update_appointment_workflow' as never, { _appointment_id: appointment.id, _scheduled_at: appointment.scheduled_at, _department: appointment.department || 'General Outpatient', _reason: appointment.reason || '', _treatment_status: treatmentStatus, _treatment_notes: appointment.treatment_notes || '' } as never);
-    setAdvancing(null);
-    if (error) return toast({ title: 'Could not update treatment', description: error.message, variant: 'destructive' });
-    playWorkflowSound(treatmentStatus === 'completed' ? 'success' : 'info'); toast({ title: treatmentStatus === 'completed' ? 'Appointment completed' : 'Treatment started', description: treatmentStatus === 'completed' ? 'The patient has been removed from the active treatment counter.' : 'The appointment is now in treatment.' }); await load();
+  const claim = async (appointment: Appointment): Promise<boolean> => {
+    if (!canClaim || appointment.attending_officer_id) return Boolean(appointment.attending_officer_id);
+    setClaiming(true);
+    const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointment.id } as never);
+    setClaiming(false);
+    if (error) { toast({ title: 'Could not assign appointment', description: error.message, variant: 'destructive' }); return false; }
+    playWorkflowSound('success');
+    toast({ title: 'Appointment assigned to you', description: 'You can now start the clinical encounter.' });
+    await load(true);
+    setSelected((current) => current?.id === appointment.id ? { ...current, attending_officer_id: currentUserId, treatment_status: 'claimed' } : current);
+    return true;
   };
 
-  const startEncounter = async (appointment: Appointment) => { if (!canClaim) return; setStartingEncounter(appointment.id); const { data, error } = await supabase.rpc('start_appointment_encounter' as never, { _appointment_id: appointment.id, _symptoms: null, _clerking_notes: null } as never); setStartingEncounter(null); if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' }); playWorkflowSound('success'); toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' }); await load(); const encounterId = typeof data === 'string' ? data : String(data ?? ''); navigate(`/encounters?patient=${encodeURIComponent(appointment.patient_id)}${encounterId ? `&encounter=${encodeURIComponent(encounterId)}` : ''}`); };
+  const startEncounter = async (appointment: Appointment) => {
+    if (!canClaim) return;
+    if (appointment.attending_officer_id !== currentUserId) {
+      const claimed = await claim(appointment);
+      if (!claimed) return;
+      appointment = { ...appointment, attending_officer_id: currentUserId, treatment_status: 'claimed' };
+    }
+    setStartingEncounter(true);
+    const { data, error } = await supabase.rpc('start_appointment_encounter' as never, {
+      _appointment_id: appointment.id,
+      _symptoms: null,
+      _clerking_notes: null,
+    } as never);
+    setStartingEncounter(false);
+    if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' });
+    playWorkflowSound('success');
+    toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' });
+    setSelected(null);
+    await load(true);
+    const encounterId = typeof data === 'string' ? data : String(data ?? '');
+    navigate(`/encounters?patient=${encodeURIComponent(appointment.patient_id)}&appointment=${encodeURIComponent(appointment.id)}${encounterId ? `&encounter=${encodeURIComponent(encounterId)}` : ''}`);
+  };
 
-  const saveEdit = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!editing || !canEdit) return; setSaving(true); const form = new FormData(event.currentTarget); const { error } = await supabase.rpc('update_appointment_workflow' as never, { _appointment_id: editing.id, _scheduled_at: new Date(String(form.get('scheduled_at'))).toISOString(), _department: String(form.get('department') ?? ''), _reason: String(form.get('reason') ?? ''), _treatment_status: String(form.get('treatment_status') ?? 'scheduled'), _treatment_notes: String(form.get('treatment_notes') ?? '') } as never); setSaving(false); if (error) return toast({ title: 'Could not save appointment', description: error.message, variant: 'destructive' }); setEditing(null); playWorkflowSound('success'); toast({ title: 'Appointment updated' }); await load(); };
+  const clinicianName = (id?: string | null) => {
+    if (!id) return 'Unassigned';
+    if (id === currentUserId) return 'You';
+    const clinician = clinicianMap.get(id);
+    return clinician ? `${clinician.first_name ?? ''} ${clinician.last_name ?? ''}`.trim() || 'Assigned clinician' : 'Assigned clinician';
+  };
 
-  const renderAppointment = (a: Appointment) => { const assignedToMe = a.attending_officer_id === currentUserId; const treatmentStatus = a.treatment_status || a.status || 'scheduled'; return <div key={a.id} className="rounded-xl border border-border p-4 space-y-3"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><button type="button" onClick={() => navigate(`/patients/${a.patient_id}`)} className="text-left hover:text-primary min-w-0"><p className="font-medium text-sm">{patientName.get(a.patient_id) || 'Unknown patient'}</p><p className="text-xs text-muted-foreground">{new Date(a.scheduled_at).toLocaleString()} · {a.department || 'General'}</p>{a.reason && <p className="text-xs text-muted-foreground mt-0.5">{a.reason}</p>}</button><span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize shrink-0">{treatmentStatus.replaceAll('_', ' ')}</span></div><div className="flex flex-wrap gap-2">
-    {canClaim && !a.attending_officer_id && !closedStatuses.has(treatmentStatus) && <button type="button" onClick={() => void claim(a.id)} className="btn-primary inline-flex items-center gap-1.5 text-xs"><UserCheck className="w-3.5 h-3.5" /> Attend to patient</button>}
-    {canClaim && assignedToMe && treatmentStatus === 'claimed' && <button type="button" disabled={advancing === a.id} onClick={() => void advanceTreatment(a, 'in_progress')} className="btn-primary inline-flex items-center gap-1.5 text-xs"><Play className="w-3.5 h-3.5" />{advancing === a.id ? 'Starting…' : 'Start treatment'}</button>}
-    {canClaim && assignedToMe && ['claimed', 'in_progress'].includes(treatmentStatus) && <button type="button" disabled={startingEncounter === a.id} onClick={() => void startEncounter(a)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><Stethoscope className="w-3.5 h-3.5" />{startingEncounter === a.id ? 'Starting…' : 'Start encounter'}</button>}
-    {canClaim && assignedToMe && treatmentStatus === 'in_progress' && <button type="button" disabled={advancing === a.id} onClick={() => void advanceTreatment(a, 'completed')} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Complete</button>}
-    {canEdit && (assignedToMe || role === 'admin' || role === 'front_desk') && <button type="button" onClick={() => setEditing(a)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><Edit3 className="w-3.5 h-3.5" /> Edit</button>}
-    <button type="button" onClick={() => navigate(`/patients/${a.patient_id}`)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Open patient</button>
-  </div>{a.attending_officer_id && <p className="text-xs text-muted-foreground">Attending officer: {assignedToMe ? 'You' : 'Assigned officer'}</p>}</div>; };
+  const selectedStatus = selected?.treatment_status || selected?.status || 'scheduled';
+  const selectedAssigned = selected?.attending_officer_id === currentUserId;
 
-  return <div className="space-y-6 animate-fade-in">
-    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Calendar className="w-6 h-6 text-primary" /> Appointments</h1><p className="text-muted-foreground">Live appointment worklist with treatment-stage counters, review attention and direct clinical actions.</p></div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Appointment workflow counters">
-      {[['Today active', activeToday.length, 'text-primary', 'bg-primary/5'], ['Needs review', reviewAppointments.length, 'text-warning', 'bg-warning/5'], ['In treatment', inProgressToday.length, 'text-info', 'bg-info/5'], ['Completed today', completedToday.length, 'text-success', 'bg-success/5']].map(([label, value, tone, surface]) => <div key={String(label)} className={`card-medical ${surface} p-4 transition-all duration-300 hover:-translate-y-1 ${Number(value) > 0 && label !== 'Completed today' ? 'animate-pulse' : ''}`}><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{label}</p><Activity className={`w-4 h-4 ${tone}`} /></div><p className={`text-2xl font-bold mt-1 ${tone}`}>{value}</p></div>)}
+  const refresh = async () => {
+    setRefreshing(true);
+    await load(true);
+    setRefreshing(false);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary" />
+            <span className="text-xs font-medium uppercase tracking-wide text-primary">Care coordination</span>
+          </div>
+          <h1 className="text-2xl font-heading font-bold mt-1">Appointments</h1>
+          <p className="text-muted-foreground max-w-2xl">Today’s active appointment queue. Completed, cancelled and no-show appointments leave this worklist automatically.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void refresh()} disabled={loading || refreshing} className="btn-secondary inline-flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+          {canSchedule && <button type="button" onClick={() => setShowScheduler(true)} className="btn-primary inline-flex items-center gap-2">
+            <Plus className="w-4 h-4" /> New appointment
+          </button>}
+        </div>
+      </header>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Today appointment counters">
+        {[
+          ['Active today', todayActive.length, 'text-primary', 'bg-primary/5'],
+          ['Unassigned', unassignedToday, 'text-warning', 'bg-warning/5'],
+          ['Claimed', claimedToday, 'text-info', 'bg-info/5'],
+          ['In treatment', inTreatmentToday, 'text-success', 'bg-success/5'],
+        ].map(([label, value, tone, surface]) => (
+          <div key={String(label)} className={`card-medical ${surface} p-4`}>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className={`text-2xl font-bold mt-1 ${tone}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="card-medical p-0 overflow-hidden" aria-labelledby="today-appointments-heading">
+        <div className="px-5 py-4 border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 id="today-appointments-heading" className="font-semibold">Today’s active appointments</h2>
+            <p className="text-xs text-muted-foreground">Select any row to open the appointment and begin treatment.</p>
+          </div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" /> Live updates enabled</span>
+        </div>
+
+        <div className="hidden md:grid md:grid-cols-[1.1fr_1.5fr_1.35fr_1.5fr_1.35fr] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground bg-muted/30">
+          <span>Hospital ID</span><span>Patient</span><span>Consultation</span><span>Physician / Specialist</span><span>Date & time</span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2 p-4" aria-live="polite">
+            <div className="h-16 rounded-lg bg-muted animate-pulse" />
+            <div className="h-16 rounded-lg bg-muted animate-pulse" />
+          </div>
+        ) : todayActive.length === 0 ? (
+          <div className="py-14 px-5 text-center">
+            <Calendar className="w-9 h-9 mx-auto text-muted-foreground mb-2" />
+            <p className="font-medium">No active appointments today</p>
+            <p className="text-sm text-muted-foreground mt-1">Use New appointment to schedule the next patient.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {todayActive.map((appointment) => {
+              const patient = patientMap.get(appointment.patient_id);
+              return (
+                <button
+                  key={appointment.id}
+                  type="button"
+                  onClick={() => setSelected(appointment)}
+                  className="w-full text-left px-5 py-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary transition-colors"
+                  aria-label={`Open appointment for ${patient ? `${patient.first_name} ${patient.last_name}` : 'patient'}`}
+                >
+                  <div className="grid gap-2 md:grid-cols-[1.1fr_1.5fr_1.35fr_1.5fr_1.35fr] md:items-center">
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Hospital ID</span><p className="font-mono text-sm">{appointment.patient_code ?? patient?.patient_code ?? '—'}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Patient</span><p className="font-medium">{appointment.patient_first_name ? `${appointment.patient_first_name} ${appointment.patient_last_name ?? ''}`.trim() : patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown patient'}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Consultation</span><p className="text-sm">{appointment.consultation_type || 'General Consultation'}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Physician / Specialist</span><p className="text-sm">{appointment.practitioner_name || clinicianName(appointment.practitioner_id || appointment.attending_officer_id)}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Date & time</span><p className="text-sm">{new Date(appointment.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p></div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {showScheduler && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="new-appointment-heading">
+          <form onSubmit={create} className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4">
+              <div><h2 id="new-appointment-heading" className="text-lg font-semibold">New appointment</h2><p className="text-sm text-muted-foreground mt-1">Enter the booking details and save the appointment.</p></div>
+              <button type="button" onClick={() => setShowScheduler(false)} className="btn-secondary" aria-label="Close new appointment form"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-1.5 text-sm sm:col-span-2">
+                <span>Patient name</span>
+                <select required value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full">
+                  <option value="">Select patient…</option>
+                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}
+                </select>
+              </label>
+              <label className="block space-y-1.5 text-sm">
+                <span>Consultation type</span>
+                <select required value={consultationType} onChange={(e) => setConsultationType(e.target.value as (typeof consultationTypes)[number])} className="input-medical w-full">
+                  {consultationTypes.map((type) => <option key={type}>{type}</option>)}
+                </select>
+              </label>
+              <label className="block space-y-1.5 text-sm">
+                <span>Physician / specialist</span>
+                <select required value={clinicianId} onChange={(e) => setClinicianId(e.target.value)} className="input-medical w-full">
+                  <option value="">Select clinician…</option>
+                  {clinicians.map((clinician) => <option key={clinician.id} value={clinician.id}>{`${clinician.first_name ?? ''} ${clinician.last_name ?? ''}`.trim() || 'Unnamed clinician'}{clinician.specialization ? ` · ${clinician.specialization}` : ''}</option>)}
+                </select>
+              </label>
+              <label className="block space-y-1.5 text-sm">
+                <span>Date</span>
+                <input required type="date" value={when.slice(0, 10)} onChange={(e) => setWhen(`${e.target.value}T${when.slice(11, 16)}`)} className="input-medical w-full" />
+              </label>
+              <label className="block space-y-1.5 text-sm">
+                <span>Time</span>
+                <input required type="time" value={when.slice(11, 16)} onChange={(e) => setWhen(`${when.slice(0, 10)}T${e.target.value}`)} className="input-medical w-full" />
+              </label>
+              <label className="block space-y-1.5 text-sm sm:col-span-2">
+                <span>Clinical reason <span className="text-muted-foreground">(optional)</span></span>
+                <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input-medical min-h-24 w-full" placeholder="Optional reason for the consultation" />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setShowScheduler(false)} className="btn-secondary">Cancel</button>
+              <button disabled={saving} type="submit" className="btn-primary">{saving ? 'Saving…' : 'Save appointment'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="appointment-detail-heading">
+          <div className="w-full max-w-xl rounded-2xl bg-card border border-border shadow-xl p-6 space-y-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-primary">Appointment</p>
+                <h2 id="appointment-detail-heading" className="text-xl font-semibold mt-1">{patientMap.get(selected.patient_id) ? `${patientMap.get(selected.patient_id)?.first_name} ${patientMap.get(selected.patient_id)?.last_name}` : 'Patient'}</h2>
+                <p className="text-sm text-muted-foreground">{selected.patient_code || patientMap.get(selected.patient_id)?.patient_code || '—'} · {selected.consultation_type || 'General Consultation'}</p>
+              </div>
+              <button type="button" onClick={() => setSelected(null)} className="btn-secondary" aria-label="Close appointment"><X className="w-4 h-4" /></button>
+            </div>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div><dt className="text-muted-foreground">Physician / Specialist</dt><dd className="font-medium mt-1">{selected.practitioner_name || clinicianName(selected.practitioner_id || selected.attending_officer_id)}</dd></div>
+              <div><dt className="text-muted-foreground">Date & time</dt><dd className="font-medium mt-1">{new Date(selected.scheduled_at).toLocaleString()}</dd></div>
+              <div><dt className="text-muted-foreground">Status</dt><dd className="font-medium mt-1 capitalize">{selectedStatus.replaceAll('_', ' ')}</dd></div>
+              <div><dt className="text-muted-foreground">Clinical reason</dt><dd className="font-medium mt-1">{selected.reason || 'Not provided'}</dd></div>
+            </dl>
+            <div className="rounded-lg border border-border bg-muted/20 p-4">
+              <p className="text-sm font-medium">Treatment ownership</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selected.attending_officer_id ? `Assigned to ${clinicianName(selected.attending_officer_id)}.` : 'No clinician has claimed this appointment yet.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => navigate(`/patients/${selected.patient_id}`)} className="btn-secondary">Open patient</button>
+              {canClaim && !selected.attending_officer_id && activeStatuses.has(selectedStatus) && (
+                <button type="button" disabled={claiming} onClick={() => void claim(selected)} className="btn-secondary inline-flex items-center gap-2">
+                  <UserCheck className="w-4 h-4" /> {claiming ? 'Assigning…' : 'Assign to me'}
+                </button>
+              )}
+              {canClaim && activeStatuses.has(selectedStatus) && (
+                <button type="button" disabled={startingEncounter} onClick={() => void startEncounter(selected)} className="btn-primary inline-flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4" /> {startingEncounter ? 'Starting…' : selectedAssigned ? 'Start encounter' : 'Assign & start encounter'}
+                </button>
+              )}
+              <button type="button" onClick={() => setSelected(null)} className="btn-secondary inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-    {reviewAppointments.length > 0 && <section className="card-medical p-5 border-warning/30"><div className="flex items-center justify-between mb-3"><div><h2 className="font-semibold flex items-center gap-2"><ClipboardCheck className="w-4 h-4 text-warning" /> New reviews / checked-in patients</h2><p className="text-xs text-muted-foreground">Patients requiring clinician attention before the next treatment step.</p></div><span className="text-xs rounded-full bg-warning/10 text-warning px-2 py-1">{reviewAppointments.length} waiting</span></div><div className="space-y-2">{reviewAppointments.slice(0, 8).map((a) => <button key={a.id} type="button" onClick={() => navigate(`/patients/${a.patient_id}`)} className="w-full text-left rounded-lg border border-border p-3 hover:bg-muted/50"><div className="flex items-center justify-between gap-3"><span className="font-medium text-sm">{patientName.get(a.patient_id) || 'Unknown patient'}</span><span className="text-xs text-warning">{new Date(a.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div><p className="text-xs text-muted-foreground">{a.department || 'General'} · {a.reason || 'Clinical review'}</p></button>)}</div></section>}
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      {isStaff && <form onSubmit={create} className="card-medical p-5 space-y-3 h-fit"><h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New Appointment</h2><select required value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select><input required type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="input-medical w-full" /><select value={dept} onChange={(e) => setDept(e.target.value)} className="input-medical w-full"><option>General Outpatient</option><option>Specialist Consultation</option><option>Maternity</option><option>Fertility</option><option>Telemedicine</option></select><input value={reason} onChange={(e) => setReason(e.target.value)} className="input-medical w-full" placeholder="Reason (optional)" /><button type="submit" className="btn-primary w-full">Schedule</button></form>}
-      <div className="card-medical p-5"><div className="flex items-center justify-between mb-3"><div><h2 className="font-semibold">Today's active appointment list</h2><p className="text-xs text-muted-foreground">Counter decreases when treatment is completed or the appointment is closed.</p></div><span className="text-xs text-muted-foreground flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" />{activeToday.length} active</span></div><div className="space-y-3">{todayAppointments.map(renderAppointment)}{todayAppointments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No appointments scheduled for today.</p>}</div></div>
-    </div>
-    <div className="card-medical p-5"><div className="flex items-center justify-between mb-3"><h2 className="font-semibold">Upcoming & recent</h2><span className="text-xs text-muted-foreground">{appts.length} records</span></div><div className="space-y-3">{appts.filter((a) => !todayAppointments.some((t) => t.id === a.id)).map(renderAppointment)}{appts.length === todayAppointments.length && <p className="text-sm text-muted-foreground text-center py-6">No other appointments.</p>}</div></div>
-    {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true"><form onSubmit={saveEdit} className="w-full max-w-xl rounded-2xl bg-card border border-border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Edit appointment</h2><p className="text-sm text-muted-foreground">{patientName.get(editing.patient_id) || 'Patient'}</p></div><button type="button" onClick={() => setEditing(null)} className="btn-secondary">Close</button></div><label className="block space-y-1 text-sm"><span>Scheduled time</span><input name="scheduled_at" required type="datetime-local" defaultValue={new Date(editing.scheduled_at).toISOString().slice(0, 16)} className="input-medical w-full" /></label><label className="block space-y-1 text-sm"><span>Department</span><select name="department" defaultValue={editing.department || 'General Outpatient'} className="input-medical w-full"><option>General Outpatient</option><option>Specialist Consultation</option><option>Maternity</option><option>Fertility</option><option>Telemedicine</option></select></label><label className="block space-y-1 text-sm"><span>Reason</span><input name="reason" defaultValue={editing.reason || ''} className="input-medical w-full" /></label><label className="block space-y-1 text-sm"><span>Treatment status</span><select name="treatment_status" defaultValue={editing.treatment_status || 'scheduled'} className="input-medical w-full">{treatmentStatuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</select></label><label className="block space-y-1 text-sm"><span>Treatment notes</span><textarea name="treatment_notes" defaultValue={editing.treatment_notes || ''} className="input-medical min-h-28 w-full" placeholder="Clinical workflow notes…" /></label><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditing(null)} className="btn-secondary">Cancel</button><button disabled={saving} type="submit" className="btn-primary">{saving ? 'Saving…' : 'Save changes'}</button></div></form></div>}
-  </div>;
+  );
 }
