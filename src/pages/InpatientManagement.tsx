@@ -44,6 +44,7 @@ const sections = [
   { label: 'Ward & Bed Management', description: 'Allocate beds, release beds and monitor ward capacity from one operational view.', href: '/ward-bed-board', icon: BedDouble, tag: 'Capacity' },
   { label: 'Patient Movements', description: 'Coordinate transfers and movement between inpatient locations through the canonical workflow.', href: '/care-transitions', icon: MoveRight, tag: 'Transfers' },
   { label: 'Nursing Handover', description: 'Maintain shift-to-shift inpatient continuity and clinical handover.', href: '/nursing-handover', icon: ClipboardList, tag: 'Continuity' },
+  { label: 'Nursing Notes', description: 'Document routine nursing observations, interventions and patient response.', href: '/nursing-notes', icon: FileText, tag: 'Documentation' },
   { label: 'Inpatient Census', description: 'Open the admissions workspace to review the current admitted-patient population and episodes.', href: '/admissions', icon: Users, tag: 'Census' },
   { label: 'Ward Operations', description: 'Open ward capacity and operational controls from the inpatient workspace.', href: '/ward-bed-board', icon: Activity, tag: 'Operations' },
 ];
