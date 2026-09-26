@@ -31,7 +31,8 @@ for (const [role,component] of expected) {
 }
 if (dashboard.includes("if(user.role === 'it_admin') return <ITSupportWorkspace/>")) throw new Error('IT Admin must use the role dashboard route');
 if (dashboard.includes("case'front_desk':default:")) throw new Error('Dashboard default must not silently absorb unknown roles');
-if (!dashboard.includes("case'front_desk':default:dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk fallback is missing');
+if (!dashboard.includes("case'front_desk':dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk route is missing');
+if (!dashboard.includes('Dashboard unavailable')) throw new Error('Unsupported roles must fail closed');
 for (const role of roles) {
   if (!permissions.includes(`  ${role}:`)) throw new Error(`Frontend fallback permission map missing ${role}`);
 }
