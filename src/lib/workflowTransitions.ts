@@ -1,4 +1,4 @@
-export type WorkflowTransitionKind = 'emergency' | 'theatre' | 'transfusion' | 'insurance' | 'medication';
+export type WorkflowTransitionKind = 'emergency' | 'theatre' | 'transfusion' | 'insurance' | 'medication' | 'fertility';
 
 const transitions: Record<WorkflowTransitionKind, Record<string, readonly string[]>> = {
   emergency: {
@@ -39,6 +39,13 @@ const transitions: Record<WorkflowTransitionKind, Record<string, readonly string
     resubmission_required: ['submitted'],
     paid: [],
     voided: [],
+  },
+  fertility: {
+    active: ['completed', 'successful', 'unsuccessful', 'cancelled'],
+    completed: [],
+    successful: [],
+    unsuccessful: [],
+    cancelled: [],
   },
   medication: {
     scheduled: ['administered', 'held', 'refused', 'omitted', 'not_given', 'cancelled'],
