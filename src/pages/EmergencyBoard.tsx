@@ -3,6 +3,7 @@ import { RefreshCw, Siren } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import { getAllowedWorkflowTransitions, canTransitionWorkflow, normalizeWorkflowStatus } from '@/lib/workflowTransitions';
 
 type Row = { id: string; patient_id: string | null; chief_complaint: string; acuity: string; arrival_mode: string | null; assigned_officer: string | null; status: string; arrival_time: string };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -35,6 +36,12 @@ export default function EmergencyBoard() {
     setForm({ patientId: '', chiefComplaint: '', acuity: 'urgent', arrivalMode: 'walk_in' }); toast({ title: 'Emergency case registered' }); void load();
   };
   const transition = async (id: string, status: string) => {
+    const nextStatus = normalizeWorkflowStatus(status);
+    const current = rows.find((row) => row.id === id)?.status;
+    if (!current || !canTransitionWorkflow('emergency', current, nextStatus)) {
+      toast({ title: 'Invalid workflow transition', description: 'Choose the next permitted emergency status for the current case.', variant: 'destructive' });
+      return;
+    }
     setBusy(true);
     const { error } = await (supabase as any).rpc('transition_emergency_case', { _case_id: id, _status: status, _disposition: status === 'discharged' ? 'Discharged from emergency' : status === 'referred' ? 'Referred for further care' : status === 'admitted' ? 'Admitted for further care' : null });
     setBusy(false);
@@ -89,7 +96,7 @@ export default function EmergencyBoard() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <button type="button" aria-label={`Assign ${patient(r.patient_id)} to me`} disabled={busy || !!r.assigned_officer} onClick={() => void assign(r.id)} className="btn-secondary text-sm disabled:opacity-50">{r.assigned_officer ? "Assigned" : "Assign to me"}</button>
-              <select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ["discharged","referred","left_without_being_seen","cancelled"].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}</select>
+              <select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ["discharged","referred","left_without_being_seen","cancelled"].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Change status…</option>{getAllowedWorkflowTransitions('emergency', r.status).map((s) => <option key={s} value={s}>{s.replaceAll("_", " ")}</option>)}</select>
             </div>
           </div>
         </article>
