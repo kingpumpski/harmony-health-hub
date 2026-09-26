@@ -9,7 +9,7 @@ export type Permission =
   | 'dental' | 'procedures' | 'anesthesia' | 'ophthalmology' | 'ai_clinical' | 'users'
   | 'system_library' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders'
   | 'notifications' | 'outside_lab' | 'financial_reports' | 'inventory' | 'stock_alerts'
-  | 'patient_portal' | 'orders' | 'dietary_plans';
+  | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items';
 
 export const permissionByHref: Record<string, Permission> = {
   '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
@@ -27,7 +27,7 @@ export const permissionByHref: Record<string, Permission> = {
 };
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
-  admin: Object.values(permissionByHref),
+  admin: [...Object.values(permissionByHref), 'create_services','create_items'],
   practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology','radiology_results','laboratory_results','dental','procedures','anesthesia','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
   nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
   specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
@@ -35,12 +35,12 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
   radiology_technician: ['dashboard','radiology','department_queue','patients','notifications'],
   front_desk: ['dashboard','patients','registration','appointments','triage','finance','billing'],
-  accountant: ['dashboard','finance','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports'],
-  lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports'],
-  pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts'],
+  accountant: ['dashboard','finance','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports','create_services'],
+  lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports','create_items','create_services'],
+  pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],
-  it_admin: ['dashboard','it_support','notifications','offline_sync'],
+  it_admin: ['dashboard','it_support','notifications','offline_sync','create_services','create_items'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {

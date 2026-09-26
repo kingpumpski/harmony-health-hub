@@ -7,6 +7,7 @@ import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyho
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
+import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
 interface LabCatalogueItem {
@@ -37,6 +38,8 @@ export default function Laboratory() {
   const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');
   const [encounters, setEncounters] = useState<EncounterOption[]>([]);
   const [catalogueId, setCatalogueId] = useState('');
+  const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [createLabTestName, setCreateLabTestName] = useState('');
   const [testName, setTestName] = useState('');
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState('routine');
@@ -146,6 +149,9 @@ export default function Laboratory() {
     return () => { active = false; };
   }, [pid]);
 
+  const canCreateCatalogue = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_items') || user?.permissions.includes('create_services');
+  const filteredCatalogue = useMemo(() => catalogue.filter((item) => `${item.test_code} ${item.test_name} ${item.category ?? ''}`.toLowerCase().includes(catalogueSearch.toLowerCase())), [catalogue, catalogueSearch]);
+
   const selectTest = (id: string) => {
     setCatalogueId(id);
     const item = catalogue.find((entry) => entry.id === id);
@@ -179,7 +185,7 @@ export default function Laboratory() {
       } as never);
       if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
     }
-    setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
+    setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setCatalogueSearch(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
     playWorkflowSound('success');
     toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
     void loadAll();
@@ -240,7 +246,8 @@ export default function Laboratory() {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <>
+      <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><FlaskConical className="w-6 h-6 text-primary" /> Laboratory</h1><p className="text-muted-foreground">Catalogue → order → payment approval → sample → structured result → approval.</p></div><Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit"><BellRing className="w-4 h-4" /> Notifications</Link></div>
       <div aria-label="Laboratory workflow counters" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {counterCards.map((card) => <div key={card.label} className={`card-medical ${card.surface} p-4 transition-all hover:-translate-y-1 hover:shadow-elevated ${card.urgent ? 'ring-1 ring-primary/15' : ''}`}><p className="text-xs text-muted-foreground">{card.label}</p><p className={`mt-1 text-3xl font-bold tabular-nums ${card.tone} ${card.urgent ? 'animate-pulse' : ''}`}>{card.value}</p></div>)}
@@ -251,7 +258,7 @@ export default function Laboratory() {
           <select value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>
           <select value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}><option value="">Attach to encounter (optional)</option>{encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}</select>
           <p className="text-[11px] text-muted-foreground">Attach the originating encounter when the order is part of a clinical visit. The server verifies the encounter belongs to the selected patient.</p>
-          <select value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full"><option value="">Select catalogue test…</option>{catalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ''}</option>)}</select>
+          <input value={catalogueSearch} onChange={(e) => setCatalogueSearch(e.target.value)} className="input-medical w-full" placeholder="Search laboratory test catalogue" /><select value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full"><option value="">Select catalogue test…</option>{filteredCatalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ""}</option>)}</select>{canCreateCatalogue && catalogueSearch.trim() && filteredCatalogue.length === 0 && <button type="button" onClick={() => setCreateLabTestName(catalogueSearch.trim())} className="btn-secondary w-full">Add {catalogueSearch.trim()}</button>}
           <input value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" />
           <input value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
           <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-medical w-full"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select>
@@ -272,5 +279,7 @@ export default function Laboratory() {
           {orders.length === 0 && <p className="text-sm text-muted-foreground">No lab orders yet.</p>}</div></div>
       </div>
     </div>
+      {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
+    </>
   );
 }
