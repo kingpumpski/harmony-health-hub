@@ -91,7 +91,7 @@ BEGIN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
       SELECT jsonb_build_object('key','dispensing','label','Dispensing queue','value',count(*),'href','/pharmacy','description','Medication plans awaiting preparation or dispensing') x FROM public.pharmacy_dispensing_plans WHERE status IN ('pending','prepared')
       UNION ALL SELECT jsonb_build_object('key','medications','label','Medication administration','value',count(*),'href','/medications','description','Medication workflow requiring attention') FROM public.medication_administrations WHERE status='scheduled'
-      UNION ALL SELECT jsonb_build_object('key','inventory','label','Inventory alerts','value',count(*),'href','/stock-alerts','description','Open stock or reorder alerts') FROM public.stock_alerts WHERE status IN ('open','active')
+      UNION ALL SELECT jsonb_build_object('key','inventory','label','Inventory alerts','value',count(*),'href','/stock-alerts','description','Items at or below reorder level') FROM public.pharmacy_inventory WHERE active AND stock_quantity <= COALESCE(reorder_level,0)
       UNION ALL SELECT jsonb_build_object('key','queue','label','Department queue','value',count(*),'href','/department-queue','description','Pharmacy service orders') FROM public.department_queues WHERE department='pharmacy' AND status IN ('waiting','in_progress')
       UNION ALL SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Unread workflow events') FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
     ) q;
@@ -121,7 +121,7 @@ BEGIN
   ELSIF v_role = 'it_admin' THEN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
       SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Operational alerts awaiting review') x FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
-      UNION ALL SELECT jsonb_build_object('key','offline','label','Offline sync queue','value',count(*),'href','/admin/offline-sync','description','Queued synchronization events') FROM public.offline_sync_queue WHERE status IN ('pending','failed','blocked')
+      UNION ALL SELECT jsonb_build_object('key','offline','label','Offline sync queue','value',count(*),'href','/admin/offline-sync','description','Queued synchronization events') FROM public.sync_queue WHERE NOT synced
       UNION ALL SELECT jsonb_build_object('key','audit','label','Recent audit events','value',count(*),'href','/admin/logs','description','System audit events in the last 24 hours') FROM public.system_audit_log WHERE created_at>=now()-interval '24 hours'
     ) q;
   ELSE
