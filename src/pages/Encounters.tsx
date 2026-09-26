@@ -120,6 +120,7 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   const todayCount = encounters.filter((item) => new Date(item.created_at).toDateString() === new Date().toDateString()).length;
 
   return (
+    <div className="space-y-6 animate-fade-in">
     <OperationalWorklistShell
       icon={Stethoscope}
       eyebrow="Patient Care · Clinical encounters"
