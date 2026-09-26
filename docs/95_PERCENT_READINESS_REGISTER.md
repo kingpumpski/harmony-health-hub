@@ -51,7 +51,8 @@ Updated: 2026-09-26
 
 ### CI / deployment verification
 
-- The latest GitHub `Quality` workflow run for `3118b4614908d67d6dc7aa73301f607130b30624` ended in **`startup_failure` before any job executed**. This is an infrastructure/runner-startup failure, not evidence that TypeScript, lint, contracts or build failed. The quality gates therefore remain unverified until a subsequent run executes them successfully.
+- The latest GitHub `Quality` workflow run **#2454** (run ID `36225807197`) completed successfully after the current security-readiness documentation reconciliation. The executed gates included setup, checkout, Node/dependencies, typecheck, lint, spreadsheet parser regression, operational contract checks, offline replay security contract, and production build.
+- This successful run validates the current repository Quality workflow at the reconciled tip; it does not constitute deployed-browser verification.
 - Vercel deployment remains blocked by the previously observed deployment build-rate limit. A successful repository commit or GitHub workflow must not be treated as proof of deployed-browser verification.
 
 ## Reconciliation decisions recorded in this pass
