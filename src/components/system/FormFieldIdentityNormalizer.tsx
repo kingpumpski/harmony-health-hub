@@ -2,25 +2,39 @@ import { useLayoutEffect } from "react";
 
 const FIELD_SELECTOR = "input, select, textarea, button[type=\"submit\"]";
 
+function nextAvailableId(prefix: string, start: number) {
+  let index = start;
+  while (document.getElementById(`${prefix}-${index}`)) index += 1;
+  return { id: `${prefix}-${index}`, next: index + 1 };
+}
+
 function normalizeFormFieldIds() {
   const forms = Array.from(document.forms);
-  let standaloneFieldIndex = 0;
+  let formIndex = 1;
+  let standaloneFieldIndex = 1;
 
-  forms.forEach((form, formIndex) => {
-    if (!form.id) form.id = `harmony-form-${formIndex + 1}`;
+  forms.forEach((form) => {
+    if (!form.id) {
+      const candidate = nextAvailableId("harmony-form", formIndex);
+      form.id = candidate.id;
+      formIndex = candidate.next;
+    }
 
     const fields = Array.from(form.querySelectorAll<HTMLElement>(FIELD_SELECTOR));
-    fields.forEach((field, fieldIndex) => {
+    fields.forEach((field) => {
       if (field.id || field.getAttribute("name")) return;
-      field.id = `${form.id}-field-${fieldIndex + 1}`;
+      const candidate = nextAvailableId(`${form.id}-field`, 1);
+      field.id = candidate.id;
     });
   });
 
   Array.from(document.querySelectorAll<HTMLElement>(FIELD_SELECTOR)).forEach((field) => {
     if (field.closest("form")) return;
     if (field.id || field.getAttribute("name")) return;
-    standaloneFieldIndex += 1;
-    field.id = `harmony-field-${standaloneFieldIndex}`;
+
+    const candidate = nextAvailableId("harmony-field", standaloneFieldIndex);
+    field.id = candidate.id;
+    standaloneFieldIndex = candidate.next;
   });
 }
 
