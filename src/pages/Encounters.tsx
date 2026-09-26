@@ -282,6 +282,9 @@ export default function Encounters() {
       const found = encounters.find((e) => e.id === id);
       if (found) {
         setSelected(found);
+        setDraftSymptoms(found.symptoms ?? "");
+        setDraftClerking(found.clerking_notes ?? "");
+        setDraftTreatmentPlan(found.treatment_plan ?? "");
         setIsHistoryOpen(false);
       }
     }
