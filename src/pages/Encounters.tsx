@@ -121,102 +121,102 @@ function BMIContextCard({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-    <OperationalWorklistShell
-      icon={Stethoscope}
-      eyebrow="Patient Care · Clinical encounters"
-      title="Encounter Workspace"
-      description="Review recent clinical encounters, start a new draft, and open the complete auditable encounter document without leaving the clinical workflow."
-      actions={(
-        <>
-          <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh encounters">
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" /> Refresh
-          </button>
-          <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-primary inline-flex items-center gap-2">
-            <History className="h-4 w-4" aria-hidden="true" /> Encounter history
-          </button>
-        </>
-      )}
-      counters={[
-        { label: "Recent encounters", value: encounters.length },
-        { label: "Draft / in progress", value: draftCount, tone: "text-warning" },
-        { label: "Submitted", value: completedCount, tone: "text-success" },
-        { label: "Admissions linked", value: admittedCount },
-      ]}
-      beforeList={(
-        <section className="card-medical p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-semibold flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden="true" /> New encounter</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Create a draft first. Final submission remains a separate, auditable clinical action.</p>
+      <OperationalWorklistShell
+        icon={Stethoscope}
+        eyebrow="Patient Care · Clinical encounters"
+        title="Encounter Workspace"
+        description="Review recent clinical encounters, start a new draft, and open the complete auditable encounter document without leaving the clinical workflow."
+        actions={(
+          <>
+            <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh encounters">
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" /> Refresh
+            </button>
+            <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-primary inline-flex items-center gap-2">
+              <History className="h-4 w-4" aria-hidden="true" /> Encounter history
+            </button>
+          </>
+        )}
+        counters={[
+          { label: "Recent encounters", value: encounters.length },
+          { label: "Draft / in progress", value: draftCount, tone: "text-warning" },
+          { label: "Submitted", value: completedCount, tone: "text-success" },
+          { label: "Admissions linked", value: admittedCount },
+        ]}
+        beforeList={(
+          <section className="card-medical p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden="true" /> New encounter</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Create a draft first. Final submission remains a separate, auditable clinical action.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                <span className="rounded-full border border-warning/40 bg-warning/5 px-2.5 py-1 font-semibold text-warning">Draft-first</span>
+                <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 font-medium text-primary">{todayCount} today</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2 text-[10px]">
-              <span className="rounded-full border border-warning/40 bg-warning/5 px-2.5 py-1 font-semibold text-warning">Draft-first</span>
-              <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 font-medium text-primary">{todayCount} today</span>
-            </div>
-          </div>
-          <form onSubmit={createEncounter} className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label htmlFor="encounter-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
-              <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required>
-                <option value="">Select patient…</option>
-                {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="encounter-symptoms" className="mb-1 block text-xs font-semibold">Presenting symptoms / complaints</label>
-              <textarea id="encounter-symptoms" value={symptoms} onChange={(e) => setSymptoms(e.target.value)} className="input-medical w-full" rows={4} placeholder="Document the patient's presenting concerns" />
-            </div>
-            <div>
-              <label htmlFor="encounter-clerking" className="mb-1 block text-xs font-semibold">Clerking / history notes</label>
-              <textarea id="encounter-clerking" value={clerking} onChange={(e) => setClerking(e.target.value)} className="input-medical w-full" rows={4} placeholder="Record relevant history and clinical context" />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-              <button type="submit" className="btn-primary inline-flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" /> Save draft</button>
-            </div>
-          </form>
-        </section>
-      )}
-      listTitle="Recent encounter worklist"
-      listDescription="Select a complete row to open the clinical document. Finalized encounters remain versioned and auditable."
-      listMeta={`${encounters.length} recent record${encounters.length === 1 ? "" : "s"}`}
-      loading={loading}
-      empty={encounters.length === 0}
-      emptyTitle="No recent encounters"
-      emptyDescription="Create a new encounter draft above or use the encounter history action when records become available."
-    >
-      {encounters.map((item) => {
-        const p = patients.find((x) => x.id === item.patient_id);
-        const active = selected?.id === item.id;
-        const creator = item.practitioner_id === user?.id ? "You" : "Clinical staff";
-        return (
-          <button type="button" key={item.id} onClick={() => selectEncounter(item)} className={`w-full p-4 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 ${active ? "bg-primary/5" : ""}`} aria-label={`Open encounter for ${p ? `${p.first_name} ${p.last_name}` : "patient record"}`}>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_auto] md:items-center">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : "Patient record"}</p>
-                  {item.admission_id && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Admitted</span>}
+            <form onSubmit={createEncounter} className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label htmlFor="encounter-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
+                <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required>
+                  <option value="">Select patient…</option>
+                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="encounter-symptoms" className="mb-1 block text-xs font-semibold">Presenting symptoms / complaints</label>
+                <textarea id="encounter-symptoms" value={symptoms} onChange={(e) => setSymptoms(e.target.value)} className="input-medical w-full" rows={4} placeholder="Document the patient's presenting concerns" />
+              </div>
+              <div>
+                <label htmlFor="encounter-clerking" className="mb-1 block text-xs font-semibold">Clerking / history notes</label>
+                <textarea id="encounter-clerking" value={clerking} onChange={(e) => setClerking(e.target.value)} className="input-medical w-full" rows={4} placeholder="Record relevant history and clinical context" />
+              </div>
+              <div className="md:col-span-2 flex justify-end">
+                <button type="submit" className="btn-primary inline-flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" /> Save draft</button>
+              </div>
+            </form>
+          </section>
+        )}
+        listTitle="Recent encounter worklist"
+        listDescription="Select a complete row to open the clinical document. Finalized encounters remain versioned and auditable."
+        listMeta={`${encounters.length} recent record${encounters.length === 1 ? "" : "s"}`}
+        loading={loading}
+        empty={encounters.length === 0}
+        emptyTitle="No recent encounters"
+        emptyDescription="Create a new encounter draft above or use the encounter history action when records become available."
+      >
+        {encounters.map((item) => {
+          const p = patients.find((x) => x.id === item.patient_id);
+          const active = selected?.id === item.id;
+          const creator = item.practitioner_id === user?.id ? "You" : "Clinical staff";
+          return (
+            <button type="button" key={item.id} onClick={() => selectEncounter(item)} className={`w-full p-4 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 ${active ? "bg-primary/5" : ""}`} aria-label={`Open encounter for ${p ? `${p.first_name} ${p.last_name}` : "patient record"}`}>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_auto] md:items-center">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : "Patient record"}</p>
+                    {item.admission_id && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Admitted</span>}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground truncate">{p?.patient_code ?? item.patient_id}</p>
+                  <p className="mt-2 text-xs text-muted-foreground truncate">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground truncate">{p?.patient_code ?? item.patient_id}</p>
-                <p className="mt-2 text-xs text-muted-foreground truncate">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</p>
+                  <p className="text-sm">{new Date(item.created_at).toLocaleDateString()}</p>
+                  <p className="text-[10px] text-muted-foreground">{encounterAge(item.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Created by</p>
+                  <p className="text-sm">{creator}</p>
+                  <p className="text-[10px] text-muted-foreground">Version {item.version_no ?? 1}</p>
+                </div>
+                <div className="flex md:justify-end">
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${item.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{item.status}</span>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</p>
-                <p className="text-sm">{new Date(item.created_at).toLocaleDateString()}</p>
-                <p className="text-[10px] text-muted-foreground">{encounterAge(item.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Created by</p>
-                <p className="text-sm">{creator}</p>
-                <p className="text-[10px] text-muted-foreground">Version {item.version_no ?? 1}</p>
-              </div>
-              <div className="flex md:justify-end">
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${item.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{item.status}</span>
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </OperationalWorklistShell>
+            </button>
+          );
+        })}
+      </OperationalWorklistShell>
 
       {isHistoryOpen && (
         <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-sm p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="encounter-history-title">
