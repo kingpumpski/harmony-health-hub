@@ -4,6 +4,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle, CheckCircle2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 interface ResultRow {
   id: string;
@@ -65,18 +66,72 @@ export default function ClinicalResults() {
   };
 
   if (!user) return null;
-  return <div className="space-y-6 animate-fade-in">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><ImageIcon className="w-6 h-6 text-primary" /> Radiology Results Review</h1><p className="text-muted-foreground">Review completed diagnostic imaging reports assigned to you and acknowledge each result.</p></div>
-      <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" />{loading ? 'Refreshing…' : 'Refresh'}</button>
-    </header>
-    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3"><div className="card-medical bg-warning/5 p-4"><p className="text-xs text-muted-foreground">Results to review</p><p className="mt-1 text-3xl font-bold text-warning">{results.filter((r) => unreadResultIds.has(r.id)).length}</p></div><div className="card-medical bg-success/5 p-4"><p className="text-xs text-muted-foreground">Completed results</p><p className="mt-1 text-3xl font-bold text-success">{results.length}</p></div></section>
-    <div className="card-medical divide-y divide-border overflow-hidden">
-      {results.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">No completed radiology results have been assigned to you.</div>}
-      {results.map((result) => { const unread = unreadResultIds.has(result.id); const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase()); return <article key={result.id} className={`p-5 space-y-4 ${unread ? 'bg-primary/5' : ''}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><h2 className="font-semibold">{result.study_name} · {result.modality}</h2>{urgent && <AlertTriangle className="w-4 h-4 text-critical" />}</div><p className="text-sm text-muted-foreground">{result.patients?.first_name} {result.patients?.last_name} · {result.priority} · Completed {new Date(result.updated_at).toLocaleString()}</p></div>{unread ? <button type="button" onClick={() => void acknowledge(result.id)} className="btn-primary inline-flex items-center gap-2 text-xs"><CheckCircle2 className="w-4 h-4" />Acknowledge result</button> : <span className="badge-success">Acknowledged</span>}</div>
-        <div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-border p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p><p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p></div><div className="rounded-xl border border-primary/20 bg-primary/5 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p><p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p></div></div>
-      </article>; })}
-    </div>
-  </div>;
+  const pendingCount = results.filter((r) => unreadResultIds.has(r.id)).length;
+  const urgentCount = results.filter((r) => ['urgent', 'stat'].includes(r.priority.toLowerCase())).length;
+
+  return (
+    <OperationalWorklistShell
+      icon={ImageIcon}
+      eyebrow="Diagnostics · Results review"
+      title="Radiology Results Review"
+      description="Review completed diagnostic imaging reports assigned to your clinical workflow and acknowledge each result from one auditable worklist."
+      actions={(
+        <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh radiology results">
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      )}
+      counters={[
+        { label: 'Results to review', value: pendingCount, tone: 'text-warning', surface: 'bg-warning/5' },
+        { label: 'Completed results', value: results.length, tone: 'text-success', surface: 'bg-success/5' },
+        { label: 'Urgent / STAT', value: urgentCount, tone: 'text-critical', surface: 'bg-critical/5' },
+      ]}
+      beforeList={pendingCount > 0 ? (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-center gap-2 text-sm" role="status" aria-live="polite">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0" aria-hidden="true" />
+          <span>{pendingCount} diagnostic result{pendingCount === 1 ? '' : 's'} require{pendingCount === 1 ? 's' : ''} clinical acknowledgement.</span>
+        </div>
+      ) : undefined}
+      listTitle="Radiology results worklist"
+      listDescription="Completed reports remain visible with their clinical impression and acknowledgement state."
+      listMeta={`${results.length} result${results.length === 1 ? '' : 's'}`}
+      loading={loading}
+      empty={results.length === 0}
+      emptyTitle="No completed radiology results"
+      emptyDescription="Completed diagnostic imaging assigned to your workflow will appear here."
+    >
+      {results.map((result) => {
+        const unread = unreadResultIds.has(result.id);
+        const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
+        return (
+          <article key={result.id} className={`p-5 space-y-4 ${unread ? 'bg-primary/5' : ''}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-semibold">{result.study_name} · {result.modality}</h2>
+                  {unread && <span className="rounded-full bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning">Needs acknowledgement</span>}
+                  {urgent && <span className="rounded-full bg-critical/10 px-2.5 py-1 text-[10px] font-semibold text-critical">Urgent / STAT</span>}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{result.patients?.first_name} {result.patients?.last_name} · {result.priority} · Completed {new Date(result.updated_at).toLocaleString()}</p>
+              </div>
+              {unread ? (
+                <button type="button" onClick={() => void acknowledge(result.id)} className="btn-primary inline-flex items-center gap-2 text-xs shrink-0">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Acknowledge result
+                </button>
+              ) : <span className="badge-success shrink-0">Acknowledged</span>}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <section className="rounded-xl border border-border p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p>
+              </section>
+              <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p>
+              </section>
+            </div>
+          </article>
+        );
+      })}
+    </OperationalWorklistShell>
+  );
 }
