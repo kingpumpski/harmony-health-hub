@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import { toast } from '@/hooks/use-toast';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { AlertTriangle, CreditCard, Image as ImageIcon, Plus, CheckCircle2, RefreshCw, BellRing } from 'lucide-react';
@@ -95,32 +96,138 @@ export default function Imaging() {
     playWorkflowSound('success'); toast({ title: 'Imaging report saved' }); void load();
   };
 
-  return <div className="space-y-6 animate-fade-in">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><ImageIcon className="w-6 h-6 text-primary" /> Imaging</h1><p className="text-muted-foreground">Request, release, perform and report diagnostic imaging through the central service queue.</p></div><button onClick={() => { playWorkflowSound('info'); void load(); }} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" />{loading ? 'Refreshing...' : 'Refresh'}</button></header>
-    <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-      {[
-        { key: 'awaiting_release' as QueueFilter, label: 'Awaiting Accounts', value: counters.awaiting_release, surface: 'bg-warning/5', tone: 'text-warning' },
-        { key: 'ready' as QueueFilter, label: 'Ready for imaging', value: counters.ready, surface: 'bg-info/5', tone: 'text-info' },
-        { key: 'in_progress' as QueueFilter, label: 'In progress', value: counters.in_progress, surface: 'bg-primary/5', tone: 'text-primary' },
-        { key: 'completed' as QueueFilter, label: 'Completed', value: counters.completed, surface: 'bg-success/5', tone: 'text-success' },
-        { key: 'all' as QueueFilter, label: 'Urgent / STAT', value: counters.urgent, surface: 'bg-critical/5', tone: 'text-critical' },
-      ].map((counter) => <button key={counter.label} type="button" onClick={() => setFilter(counter.key)} className={`card-medical p-4 text-left transition-all hover:-translate-y-1 ${counter.surface} ${filter === counter.key ? 'ring-2 ring-primary/30' : ''}`}><p className="text-xs text-muted-foreground">{counter.label}</p><p className={`text-2xl font-bold ${counter.tone} ${counter.value > 0 && counter.key !== 'completed' ? 'animate-pulse' : ''}`}>{counter.value}</p></button>)}
-    </section>
-    {counters.urgent > 0 && <div className="rounded-xl border border-critical/30 bg-critical/5 p-3 flex items-center gap-2 text-sm"><BellRing className="w-4 h-4 text-critical" /><span className="font-medium">{counters.urgent} urgent/STAT imaging case{counters.urgent === 1 ? '' : 's'} require{counters.urgent === 1 ? 's' : ''} attention.</span></div>}
-    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-sm"><CreditCard className="w-4 h-4 text-primary mt-0.5 shrink-0" /><p className="text-muted-foreground">Chargeable imaging is held until Accounts releases payment or an authorised override is recorded. If a service reaches billing without a tariff, Accounts can resolve it through the Tariff Adjustments worklist before release.</p></div>
-    <form onSubmit={createOrder} className="card-medical p-5 space-y-3">
-      <h2 className="font-semibold">New imaging request</h2>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <select value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select>
-        <select value={modality} onChange={e => setModality(e.target.value)} className="input-medical"><option>X-Ray</option><option>Ultrasound</option><option>CT</option><option>MRI</option><option>Mammography</option><option>Fluoroscopy</option></select>
-        <input value={studyName} onChange={e => setStudyName(e.target.value)} placeholder="Study name" className="input-medical" required />
-        <input value={bodySite} onChange={e => setBodySite(e.target.value)} placeholder="Body site" className="input-medical" />
-        <select value={priority} onChange={e => setPriority(e.target.value)} className="input-medical"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select>
-        <input type="number" min={0} step="0.01" value={amount || ''} onChange={e => setAmount(Number(e.target.value))} placeholder="Charge (GHS) — 0 means billing tariff required" className="input-medical" />
-      </div>
-      <textarea value={indication} onChange={e => setIndication(e.target.value)} placeholder="Clinical indication" className="input-medical w-full" rows={3} />
-      <button className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> {amount > 0 ? 'Request payment approval' : 'Create imaging request'}</button>
-    </form>
-    <div className="card-medical p-5"><div className="flex items-center justify-between mb-3"><div><h2 className="font-semibold">Imaging queue</h2><p className="text-xs text-muted-foreground">{visibleOrders.length} case{visibleOrders.length === 1 ? '' : 's'} shown · filter: {filter.replace('_', ' ')}</p></div></div><div className="space-y-3">{visibleOrders.map(order => { const value = reports[order.id] ?? { report: order.report ?? '', impression: order.impression ?? '' }; const urgent = ['urgent', 'stat'].includes(order.priority) && order.status !== 'completed'; return <div key={order.id} className={`rounded-xl border p-4 space-y-3 ${urgent ? 'border-critical/30 bg-critical/5' : 'border-border'}`}><div className="flex flex-wrap justify-between gap-3"><div><p className="font-medium">{order.study_name} · {order.modality}</p><p className="text-xs text-muted-foreground">{order.patients?.first_name} {order.patients?.last_name} · {order.body_site || '—'} · {order.priority}</p></div><div className="flex items-center gap-2"><span className="text-xs font-semibold px-2 py-1 rounded-full bg-muted">{order.status}</span>{urgent && <AlertTriangle className="w-4 h-4 text-critical" />}</div></div>{order.status === 'released' && <button onClick={() => void start(order)} className="btn-primary text-xs">Start imaging</button>}{['in_progress','completed'].includes(order.status) && <div className="space-y-2"><textarea value={value.report} onChange={e => setReports({ ...reports, [order.id]: { ...value, report: e.target.value } })} placeholder="Radiology report" rows={3} className="input-medical w-full" /><textarea value={value.impression} onChange={e => setReports({ ...reports, [order.id]: { ...value, impression: e.target.value } })} placeholder="Impression" rows={2} className="input-medical w-full" />{order.status !== 'completed' && <button onClick={() => void saveReport(order)} className="btn-primary inline-flex items-center gap-2 text-xs"><CheckCircle2 className="w-4 h-4" /> Save report & complete</button>}</div>}</div>; })}{visibleOrders.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">No imaging orders match this queue.</p>}</div></div>
-  </div>;
+  return (
+    <OperationalWorklistShell
+      icon={ImageIcon}
+      eyebrow="Diagnostics · Imaging"
+      title="Imaging Workspace"
+      description="Request, release, perform and report diagnostic imaging through one central service queue with payment and urgent-case visibility."
+      actions={(
+        <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh imaging workspace">
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      )}
+      counters={[
+        { label: 'Awaiting Accounts', value: counters.awaiting_release, surface: 'bg-warning/5', tone: 'text-warning' },
+        { label: 'Ready for imaging', value: counters.ready, surface: 'bg-info/5', tone: 'text-info' },
+        { label: 'In progress', value: counters.in_progress, surface: 'bg-primary/5', tone: 'text-primary' },
+        { label: 'Completed', value: counters.completed, surface: 'bg-success/5', tone: 'text-success' },
+        { label: 'Urgent / STAT', value: counters.urgent, surface: 'bg-critical/5', tone: 'text-critical' },
+      ]}
+      beforeList={(
+        <>
+          {counters.urgent > 0 && (
+            <div className="rounded-xl border border-critical/30 bg-critical/5 p-3 flex items-center gap-2 text-sm" role="alert">
+              <BellRing className="w-4 h-4 text-critical shrink-0" aria-hidden="true" />
+              <span className="font-medium">{counters.urgent} urgent/STAT imaging case{counters.urgent === 1 ? '' : 's'} require{counters.urgent === 1 ? 's' : ''} attention.</span>
+            </div>
+          )}
+          <section className="card-medical p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> New imaging request</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Chargeable imaging remains held until Accounts releases payment or an authorised override is recorded.</p>
+              </div>
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">Diagnostic workflow</span>
+            </div>
+            <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs">
+              <CreditCard className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-muted-foreground">If a service reaches billing without a tariff, Accounts can resolve it through the Tariff Adjustments worklist before release.</p>
+            </div>
+            <form onSubmit={createOrder} className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label htmlFor="imaging-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
+                <select id="imaging-patient" value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical w-full" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select>
+              </div>
+              <div>
+                <label htmlFor="imaging-modality" className="mb-1 block text-xs font-semibold">Modality</label>
+                <select id="imaging-modality" value={modality} onChange={e => setModality(e.target.value)} className="input-medical w-full"><option>X-Ray</option><option>Ultrasound</option><option>CT</option><option>MRI</option><option>Mammography</option><option>Fluoroscopy</option></select>
+              </div>
+              <div>
+                <label htmlFor="imaging-study" className="mb-1 block text-xs font-semibold">Study name <span className="text-critical">*</span></label>
+                <input id="imaging-study" value={studyName} onChange={e => setStudyName(e.target.value)} placeholder="Study name" className="input-medical w-full" required />
+              </div>
+              <div>
+                <label htmlFor="imaging-body-site" className="mb-1 block text-xs font-semibold">Body site</label>
+                <input id="imaging-body-site" value={bodySite} onChange={e => setBodySite(e.target.value)} placeholder="Body site" className="input-medical w-full" />
+              </div>
+              <div>
+                <label htmlFor="imaging-priority" className="mb-1 block text-xs font-semibold">Priority</label>
+                <select id="imaging-priority" value={priority} onChange={e => setPriority(e.target.value)} className="input-medical w-full"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select>
+              </div>
+              <div>
+                <label htmlFor="imaging-amount" className="mb-1 block text-xs font-semibold">Charge (GHS)</label>
+                <input id="imaging-amount" type="number" min={0} step="0.01" value={amount || ''} onChange={e => setAmount(Number(e.target.value))} placeholder="0 means billing tariff required" className="input-medical w-full" />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label htmlFor="imaging-indication" className="mb-1 block text-xs font-semibold">Clinical indication</label>
+                <textarea id="imaging-indication" value={indication} onChange={e => setIndication(e.target.value)} placeholder="Clinical indication" className="input-medical w-full" rows={3} />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3 flex justify-end">
+                <button type="submit" className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> {amount > 0 ? 'Request payment approval' : 'Create imaging request'}</button>
+              </div>
+            </form>
+          </section>
+          <section className="card-medical p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-semibold">Queue filter</h2>
+                <p className="text-xs text-muted-foreground">Choose the operational stage to focus the worklist.</p>
+              </div>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Imaging queue filters">
+                {[
+                  { key: 'all' as QueueFilter, label: 'All' },
+                  { key: 'awaiting_release' as QueueFilter, label: 'Awaiting Accounts' },
+                  { key: 'ready' as QueueFilter, label: 'Ready' },
+                  { key: 'in_progress' as QueueFilter, label: 'In progress' },
+                  { key: 'completed' as QueueFilter, label: 'Completed' },
+                ].map((option) => (
+                  <button type="button" key={option.key} onClick={() => setFilter(option.key)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${filter === option.key ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted/50'}`} aria-pressed={filter === option.key}>{option.label}</button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+      listTitle="Imaging worklist"
+      listDescription="Review patient, study, priority, payment state and reporting progress without leaving the central queue."
+      listMeta={`${visibleOrders.length} case${visibleOrders.length === 1 ? '' : 's'} shown · ${filter.replace('_', ' ')}`}
+      loading={loading}
+      empty={visibleOrders.length === 0}
+      emptyTitle="No imaging orders match this queue"
+      emptyDescription="Create a new imaging request above or change the queue filter."
+    >
+      {visibleOrders.map(order => {
+        const value = reports[order.id] ?? { report: order.report ?? '', impression: order.impression ?? '' };
+        const urgent = ['urgent', 'stat'].includes(order.priority) && order.status !== 'completed';
+        return (
+          <div key={order.id} className={`p-4 transition-colors ${urgent ? 'bg-critical/5' : ''}`}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{order.study_name} · {order.modality}</p>
+                  {urgent && <span className="rounded-full bg-critical/10 px-2 py-0.5 text-[10px] font-semibold text-critical">Urgent attention</span>}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{order.patients?.first_name} {order.patients?.last_name} · {order.body_site || '—'} · {new Date(order.created_at).toLocaleString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted capitalize">{order.status.replace('_', ' ')}</span>
+                {urgent && <AlertTriangle className="w-4 h-4 text-critical" aria-hidden="true" />}
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {order.status === 'released' && <button type="button" onClick={() => void start(order)} className="btn-primary text-xs">Start imaging</button>}
+              {['in_progress','completed'].includes(order.status) && <div className="w-full space-y-2">
+                <label htmlFor={`imaging-report-${order.id}`} className="sr-only">Radiology report</label>
+                <textarea id={`imaging-report-${order.id}`} value={value.report} onChange={e => setReports({ ...reports, [order.id]: { ...value, report: e.target.value } })} placeholder="Radiology report" rows={3} className="input-medical w-full" />
+                <label htmlFor={`imaging-impression-${order.id}`} className="sr-only">Impression</label>
+                <textarea id={`imaging-impression-${order.id}`} value={value.impression} onChange={e => setReports({ ...reports, [order.id]: { ...value, impression: e.target.value } })} placeholder="Impression" rows={2} className="input-medical w-full" />
+                {order.status !== 'completed' && <button type="button" onClick={() => void saveReport(order)} className="btn-primary inline-flex items-center gap-2 text-xs"><CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Save report & complete</button>}
+              </div>}
+            </div>
+          </div>
+        );
+      })}
+    </OperationalWorklistShell>
+  );
 }
