@@ -167,22 +167,25 @@ export default function Appointments() {
     await load(true);
   };
 
-  const claim = async (appointment: Appointment) => {
-    if (!canClaim || appointment.attending_officer_id) return;
+  const claim = async (appointment: Appointment): Promise<boolean> => {
+    if (!canClaim || appointment.attending_officer_id) return Boolean(appointment.attending_officer_id);
     setClaiming(true);
     const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointment.id } as never);
     setClaiming(false);
-    if (error) return toast({ title: 'Could not assign appointment', description: error.message, variant: 'destructive' });
+    if (error) { toast({ title: 'Could not assign appointment', description: error.message, variant: 'destructive' }); return false; }
     playWorkflowSound('success');
     toast({ title: 'Appointment assigned to you', description: 'You can now start the clinical encounter.' });
     await load(true);
     setSelected((current) => current?.id === appointment.id ? { ...current, attending_officer_id: currentUserId, treatment_status: 'claimed' } : current);
+    return true;
   };
 
   const startEncounter = async (appointment: Appointment) => {
     if (!canClaim) return;
     if (appointment.attending_officer_id !== currentUserId) {
-      await claim(appointment);
+      const claimed = await claim(appointment);
+      if (!claimed) return;
+      appointment = { ...appointment, attending_officer_id: currentUserId, treatment_status: 'claimed' };
     }
     setStartingEncounter(true);
     const { data, error } = await supabase.rpc('start_appointment_encounter' as never, {
