@@ -18,7 +18,24 @@ BEGIN
   SELECT ur.role::text INTO v_role
   FROM public.user_roles ur
   WHERE ur.user_id = v_uid
-  ORDER BY ur.created_at DESC
+    AND ur.role IN ('admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin')
+  ORDER BY CASE ur.role
+    WHEN 'admin' THEN 140
+    WHEN 'it_admin' THEN 130
+    WHEN 'practitioner' THEN 120
+    WHEN 'radiologist' THEN 110
+    WHEN 'lab_technician' THEN 100
+    WHEN 'radiology_technician' THEN 90
+    WHEN 'pharmacist' THEN 80
+    WHEN 'accountant' THEN 70
+    WHEN 'nurse' THEN 60
+    WHEN 'midwife' THEN 50
+    WHEN 'specialist_nurse' THEN 40
+    WHEN 'front_desk' THEN 30
+    WHEN 'canteen' THEN 20
+    WHEN 'patient' THEN 10
+    ELSE 0
+  END DESC, ur.created_at DESC
   LIMIT 1;
 
   IF v_role IS NULL THEN RAISE EXCEPTION 'Staff profile required'; END IF;
