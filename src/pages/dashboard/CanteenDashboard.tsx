@@ -1,50 +1,18 @@
+import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, ClipboardList, RefreshCw, Utensils } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, BedDouble, ClipboardList, Utensils } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Catering role compatibility surface.
- *
- * The repository does not currently expose a server-backed canteen/menu/order
- * domain. Do not present fabricated patients, meals, staff orders or counts.
- * This surface therefore provides safe operational entry points until that
- * domain is introduced with authoritative tables and workflow RPCs.
- */
-export default function CanteenDashboard() {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Support Services</p>
-        <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Utensils className="w-6 h-6 text-primary" /> Dietary & Kitchen Operations</h1>
-        <p className="text-muted-foreground mt-1">Catering workspace entry points without synthetic patient or order data.</p>
-      </div>
+type Card={key:string;label:string;value:number;href:string;description:string};
 
-      <section className="rounded-xl border border-warning/30 bg-warning/5 p-5 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-warning mt-0.5 shrink-0" />
-        <div>
-          <h2 className="font-semibold">Catering data workflow not yet connected</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            The current database and application architecture do not expose authoritative meal plans, dietary orders or kitchen-status records. The dashboard will not invent those records. Connect the catering domain before enabling transactional kitchen actions.
-          </p>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link to="/admissions" className="card-medical p-5 hover:border-primary/40 transition-colors">
-          <BedDouble className="w-5 h-5 text-primary mb-3" />
-          <p className="font-semibold">Inpatient census</p>
-          <p className="text-sm text-muted-foreground mt-1">Review current admissions from the authoritative inpatient workflow.</p>
-        </Link>
-        <Link to="/reports" className="card-medical p-5 hover:border-primary/40 transition-colors">
-          <ClipboardList className="w-5 h-5 text-info mb-3" />
-          <p className="font-semibold">Operational reports</p>
-          <p className="text-sm text-muted-foreground mt-1">Use the reporting center for currently supported facility data.</p>
-        </Link>
-        <Link to="/admin/settings" className="card-medical p-5 hover:border-primary/40 transition-colors">
-          <Utensils className="w-5 h-5 text-warning mb-3" />
-          <p className="font-semibold">Facility configuration</p>
-          <p className="text-sm text-muted-foreground mt-1">Review facility workflow configuration before introducing a catering module.</p>
-        </Link>
-      </div>
-    </div>
-  );
+export default function CanteenDashboard(){
+  const [cards,setCards]=useState<Card[]>([]); const [loading,setLoading]=useState(true);
+  const load=useCallback(async()=>{setLoading(true);const {data}=await (supabase as any).rpc('get_role_dashboard_summary');setCards((data?.cards??[]) as Card[]);setLoading(false)},[]);
+  useEffect(()=>{void load()},[load]);
+  const icons:Record<string,typeof Utensils>={meals_due:Utensils,pending:Utensils,plans:ClipboardList,restrictions:AlertTriangle};
+  return <div className="space-y-6 animate-fade-in">
+    <header className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Support Services</p><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Utensils className="h-6 w-6 text-primary"/>Dietary & Kitchen Operations</h1><p className="text-sm text-muted-foreground mt-1">Live meal delivery and dietary-plan workload from the authoritative meal workflows.</p></div><button type="button" onClick={()=>void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4"/>{loading?'Refreshing…':'Refresh'}</button></header>
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">{cards.map(c=>{const Icon=icons[c.key]??Utensils;return <Link key={c.key} to={c.href} className="card-medical p-4 hover:-translate-y-0.5 transition-all"><div className="flex justify-between"><p className="text-xs text-muted-foreground">{c.label}</p><Icon className="h-4 w-4 text-primary"/></div><p className="mt-2 text-3xl font-bold tabular-nums">{c.value}</p><p className="mt-1 text-xs text-muted-foreground">{c.description}</p></Link>})}</section>
+    <section className="grid gap-3 sm:grid-cols-3"><Link to="/orders" className="card-medical p-5"><p className="font-semibold">Meal orders</p><p className="mt-1 text-sm text-muted-foreground">Review scheduled meals and complete delivery using the protected workflow.</p></Link><Link to="/dietary-plans" className="card-medical p-5"><p className="font-semibold">Dietary plans</p><p className="mt-1 text-sm text-muted-foreground">Review active patient diet plans and restrictions.</p></Link><Link to="/menu" className="card-medical p-5"><p className="font-semibold">Canteen workspace</p><p className="mt-1 text-sm text-muted-foreground">Open the operational meal-management workspace.</p></Link></section>
+  </div>;
 }
