@@ -1,0 +1,13 @@
+import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, BellRing, Clock3, Image as ImageIcon, Loader2, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+
+type Card={key:string;label:string;value:number;href:string;description:string};
+export default function RadiologyTechnicianDashboard(){
+  const [cards,setCards]=useState<Card[]>([]); const [loading,setLoading]=useState(true);
+  const load=useCallback(async()=>{setLoading(true);const {data}=await (supabase as any).rpc('get_role_dashboard_summary');setCards((data?.cards??[]) as Card[]);setLoading(false)},[]);
+  useEffect(()=>{void load()},[load]);
+  const icons:Record<string,typeof Clock3>={awaiting:Clock3,ready:ImageIcon,progress:Loader2,urgent:AlertTriangle,notifications:BellRing};
+  return <div className="space-y-6 animate-fade-in"><header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Imaging Operations</p><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><ImageIcon className="h-6 w-6 text-primary"/>Radiology Technician Dashboard</h1><p className="text-sm text-muted-foreground mt-1">Payment release, imaging readiness, active studies and urgent work.</p></div><button type="button" onClick={()=>void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4"/>{loading?'Refreshing…':'Refresh'}</button></header><section className="grid grid-cols-2 gap-3 lg:grid-cols-5">{cards.map(c=>{const Icon=icons[c.key]??ImageIcon;return <Link key={c.key} to={c.href} className="card-medical p-4 hover:-translate-y-0.5 transition-all"><div className="flex justify-between gap-2"><p className="text-xs text-muted-foreground">{c.label}</p><Icon className="h-4 w-4 text-primary"/></div><p className="mt-2 text-3xl font-bold tabular-nums">{c.value}</p><p className="mt-1 text-xs text-muted-foreground">{c.description}</p></Link>})}</section><div className="grid gap-3 sm:grid-cols-3"><Link to="/radiology" className="card-medical p-5"><p className="font-semibold">Imaging worklist</p><p className="mt-1 text-sm text-muted-foreground">Process released studies and update imaging status.</p></Link><Link to="/department-queue" className="card-medical p-5"><p className="font-semibold">Department queue</p><p className="mt-1 text-sm text-muted-foreground">Coordinate imaging service flow.</p></Link><Link to="/notifications" className="card-medical p-5"><p className="font-semibold">Notifications</p><p className="mt-1 text-sm text-muted-foreground">Review operational and critical alerts.</p></Link></div></div>;
+}
