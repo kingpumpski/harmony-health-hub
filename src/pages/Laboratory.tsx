@@ -246,7 +246,7 @@ export default function Laboratory() {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <>\n      <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><FlaskConical className="w-6 h-6 text-primary" /> Laboratory</h1><p className="text-muted-foreground">Catalogue → order → payment approval → sample → structured result → approval.</p></div><Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit"><BellRing className="w-4 h-4" /> Notifications</Link></div>
       <div aria-label="Laboratory workflow counters" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {counterCards.map((card) => <div key={card.label} className={`card-medical ${card.surface} p-4 transition-all hover:-translate-y-1 hover:shadow-elevated ${card.urgent ? 'ring-1 ring-primary/15' : ''}`}><p className="text-xs text-muted-foreground">{card.label}</p><p className={`mt-1 text-3xl font-bold tabular-nums ${card.tone} ${card.urgent ? 'animate-pulse' : ''}`}>{card.value}</p></div>)}
@@ -278,6 +278,8 @@ export default function Laboratory() {
           {orders.length === 0 && <p className="text-sm text-muted-foreground">No lab orders yet.</p>}</div></div>
       </div>
     </div>
+      </div>
       {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
   );
+    </>
 }
