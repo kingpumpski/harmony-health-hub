@@ -23,7 +23,7 @@ interface LabOrder {
 }
 interface LabResult {
   id: string; lab_order_id: string; result_data: { value?: string } | null; interpretation: string | null;
-  is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
+  is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null; approved_by: string | null;
   numeric_value: number | null; unit: string | null; reference_low: number | null; reference_high: number | null; abnormal_flag: string | null;
 }
 interface CreateLabOrderResponse { lab_order_id: string; service_order_id: string; status: string }
@@ -247,18 +247,18 @@ export default function Laboratory() {
     }
     const escapeHtml = (value: unknown) => String(value ?? '—').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
     let signature: string | null = null;
-    if (result.approvedBy) {
+    if (result.approved_by) {
       const { data, error } = await supabase.rpc('get_staff_signature_for_report', { _user_id: result.approvedBy });
       if (!error) signature = data as string | null;
     }
-    const resultValue = result.numericValue !== null ? `${result.numericValue}${result.unit ? ` ${result.unit}` : ''}` : (result.resultData?.value ?? '—');
+    const resultValue = result.numeric_value !== null ? `${result.numericValue}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—');
     printWindow.document.write(`<!doctype html><html><head><title>Laboratory Report · ${escapeHtml(patient ? `${patient.first_name} ${patient.last_name}` : 'Patient')}</title><style>
       body{font-family:Arial,sans-serif;margin:40px;color:#111827}header{border-bottom:2px solid #111827;padding-bottom:16px;margin-bottom:24px}h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:22px 0 8px}.muted{color:#6b7280;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{border:1px solid #d1d5db;border-radius:8px;padding:12px}.result{font-size:18px;font-weight:700}.signature{max-height:90px;max-width:240px;object-fit:contain}.footer{margin-top:40px;border-top:1px solid #d1d5db;padding-top:12px;font-size:11px;color:#6b7280}@media print{body{margin:20mm}.no-print{display:none}}
     </style></head><body>
       <header><h1>${escapeHtml(facility?.facility_name ?? 'Healthcare Facility')}</h1><div class="muted">${escapeHtml(facility?.facility_code ? `Facility code: ${facility.facility_code} · ` : '')}${escapeHtml([facility?.district, facility?.region].filter(Boolean).join(' · '))}</div><h2>Laboratory Report</h2></header>
       <div class="grid"><div class="box"><strong>Patient</strong><div>${escapeHtml(patient ? `${patient.first_name} ${patient.last_name}` : 'Patient')}</div><div class="muted">${escapeHtml(patient?.patient_code ?? '')}</div></div><div class="box"><strong>Test</strong><div>${escapeHtml(order.test_name)}</div><div class="muted">${escapeHtml(order.test_category ?? '')}</div></div></div>
-      <h2>Result</h2><div class="box"><div class="result">${escapeHtml(resultValue)}</div>${result.referenceLow !== null || result.referenceHigh !== null ? `<div class="muted">Reference: ${escapeHtml(result.referenceLow ?? '—')} – ${escapeHtml(result.referenceHigh ?? '—')}${escapeHtml(result.unit ? ` ${result.unit}` : '')}</div>` : ''}<p>${escapeHtml(result.interpretation ?? '')}</p></div>
-      <h2>Authorization</h2><div class="box"><div>Approved: ${escapeHtml(result.approvedAt ? new Date(result.approvedAt).toLocaleString() : '—')}</div>${signature ? `<div style="margin-top:14px"><img class="signature" src="${signature}" alt="Authorized laboratory signature"/></div>` : '<div class="muted" style="margin-top:14px">Authorized signature is not on file.</div>'}</div>
+      <h2>Result</h2><div class="box"><div class="result">${escapeHtml(resultValue)}</div>${result.reference_low !== null || result.reference_high !== null ? `<div class="muted">Reference: ${escapeHtml(result.referenceLow ?? '—')} – ${escapeHtml(result.referenceHigh ?? '—')}${escapeHtml(result.unit ? ` ${result.unit}` : '')}</div>` : ''}<p>${escapeHtml(result.interpretation ?? '')}</p></div>
+      <h2>Authorization</h2><div class="box"><div>Approved: ${escapeHtml(result.approved_at ? new Date(result.approvedAt).toLocaleString() : '—')}</div>${signature ? `<div style="margin-top:14px"><img class="signature" src="${signature}" alt="Authorized laboratory signature"/></div>` : '<div class="muted" style="margin-top:14px">Authorized signature is not on file.</div>'}</div>
       <div class="footer">Generated from Harmony Health Hub · ${escapeHtml(new Date().toLocaleString())}</div>
       <button class="no-print" onclick="window.print()" style="margin-top:24px;padding:10px 16px">Print / Save as PDF</button>
     </body></html>`);
