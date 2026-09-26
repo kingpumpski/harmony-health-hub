@@ -2,7 +2,7 @@
 -- Missing measurements remain valid; clinical users are prompted by the UI before saving incomplete assessments.
 
 ALTER TABLE public.triage_assessments
-  ADD COLUMN IF NOT EXISTS bmi NUMERIC(5,2);
+  ADD COLUMN IF NOT EXISTS bmi NUMERIC(7,2);
 
 ALTER TABLE public.triage_assessments
   ALTER COLUMN temperature TYPE NUMERIC(5,2),
@@ -33,7 +33,7 @@ SET search_path = public
 AS $function$
 DECLARE
   v_id UUID;
-  v_bmi NUMERIC(5,2);
+  v_bmi NUMERIC(7,2);
   v_priority TEXT := lower(trim(coalesce(_priority, 'routine')));
 BEGIN
   IF auth.uid() IS NULL OR NOT (
