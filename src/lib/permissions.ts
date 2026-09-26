@@ -1,7 +1,7 @@
 import type { UserRole } from '@/types';
 
 export type Permission =
-  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'it_support' | 'registration' | 'appointments' | 'triage' | 'encounters'
+  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'it_support' | 'registration' | 'appointments' | 'triage' | 'encounters' | 'encounters_amend'
   | 'clinical_operations' | 'inpatient' | 'ward' | 'handover' | 'emergency' | 'theatre' | 'transfusion'
   | 'claims' | 'reports' | 'report_submissions' | 'accounts_approvals' | 'tariff_adjustments'
   | 'department_queue' | 'laboratory' | 'laboratory_results' | 'radiology' | 'radiology_results' | 'pharmacy'
@@ -27,20 +27,20 @@ export const permissionByHref: Record<string, Permission> = {
 };
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
-  admin: [...Object.values(permissionByHref), 'create_services','create_items'],
-  practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology','radiology_results','laboratory_results','dental','procedures','anesthesia','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
-  nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
-  specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
-  midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','handover','emergency','theatre','transfusion','triage','medication_administration'],
+  admin: [...Object.values(permissionByHref), 'encounters_amend','create_services','create_items'],
+  practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology','radiology_results','laboratory','laboratory_results','reports','dental','procedures','anesthesia','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
+  nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders'],
+  specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical'],
+  midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','emergency','theatre','transfusion','triage','medication_administration'],
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical'],
   radiology_technician: ['dashboard','radiology','department_queue','patients','notifications'],
   front_desk: ['dashboard','patients','registration','appointments','triage','finance','billing'],
-  accountant: ['dashboard','finance','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','reports','create_services'],
+  accountant: ['dashboard','finance','clinical_operations','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','create_services'],
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports','create_items','create_services'],
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],
-  it_admin: ['dashboard','it_support','notifications','offline_sync','create_services','create_items'],
+  it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {
