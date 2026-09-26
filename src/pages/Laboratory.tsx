@@ -279,7 +279,6 @@ export default function Laboratory() {
           {orders.length === 0 && <p className="text-sm text-muted-foreground">No lab orders yet.</p>}</div></div>
       </div>
     </div>
-      </div>
       {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
     </>
   );
