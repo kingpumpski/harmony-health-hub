@@ -40,12 +40,11 @@ export default function Triage() {
   ].filter(([value]) => value === null).map(([, label]) => label as string), [weight, height]);
   const bmi = useMemo(() => { const w = numeric(weight); const h = numeric(height); return w && h && w > 0 && h > 0 ? Number((w / (h * h)).toFixed(2)) : null; }, [weight, height]);
   const evaluate = () => {
-    if (missingVitalLabels.length) {
-      toast({ title: 'Evaluation is partial', description: 'Missing ' + missingVitalLabels.join(', ') + '. Complete the missing values for a full priority assessment.' });
-      return;
+    if (!missingVitalLabels.length) {
+      setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic: values.systolic!, diastolic: values.diastolic! }, heartRate: values.heartRate!, temperature: values.temperature!, respiratoryRate: values.respiratoryRate!, oxygenSaturation: values.oxygenSaturation!, weight: numeric(weight) ?? 0, height: numeric(height) ?? 0, notes, isCritical: alerts.length > 0 }) as Priority);
     }
-    setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic: values.systolic!, diastolic: values.diastolic! }, heartRate: values.heartRate!, temperature: values.temperature!, respiratoryRate: values.respiratoryRate!, oxygenSaturation: values.oxygenSaturation!, weight: numeric(weight) ?? 0, height: numeric(height) ?? 0, notes, isCritical: alerts.length > 0 }) as Priority);
-    toast({ title: 'Triage evaluated', description: bmi ? 'Calculated BMI: ' + bmi + ' kg/m².' : 'BMI cannot be calculated until both weight and height are entered.' });
+    const details = missingVitalLabels.length ? 'Priority evaluation is partial because ' + missingVitalLabels.join(', ') + ' is missing. ' : '';
+    toast({ title: 'Triage evaluated', description: details + (bmi ? 'Calculated BMI: ' + bmi + ' kg/m².' : 'BMI cannot be calculated until both weight and height are entered.') });
   };
   const save = async (event: React.FormEvent, allowMissing = false) => {
     event.preventDefault();
