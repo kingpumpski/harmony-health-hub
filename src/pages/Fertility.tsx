@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Baby, Plus, Activity, Calendar } from 'lucide-react';
-import { canTransitionWorkflow, getAllowedWorkflowTransitions, normalizeWorkflowStatus } from '@/lib/workflowTransitions';
+import { canTransitionWorkflow, normalizeWorkflowStatus } from '@/lib/workflowTransitions';
 
 interface Patient { id: string; first_name: string; last_name: string }
 interface Cycle { id: string; patient_id: string; partner_name: string | null; cycle_type: string; cycle_number: number; start_date: string; expected_retrieval_date: string | null; expected_transfer_date: string | null; protocol: string | null; status: string; outcome: string | null; notes: string | null }
