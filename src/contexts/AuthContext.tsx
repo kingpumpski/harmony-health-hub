@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { UserRole } from '@/types';
-import { getDefaultPermissions, permissionByHref, type Permission } from '@/lib/permissions';
+import { getDefaultPermissions, permissionByHref, rolePermissions, type Permission } from '@/lib/permissions';
 
 interface AppUser {
   id: string;
@@ -30,7 +30,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const knownPermissions = new Set(Object.values(permissionByHref) as Permission[]);
+const knownPermissions = new Set([...Object.values(permissionByHref), ...Object.values(rolePermissions).flat()] as Permission[]);
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const [{ data: profile, error: profileError }, { data: roleRows, error: roleError }] = await Promise.all([
