@@ -239,7 +239,17 @@ BEGIN
         WHEN NOT v_insured THEN 0
         ELSE LEAST(
           ii.amount,
-          GREATEST(COALESCE(ist.insurance_charge,0) * GREATEST(ii.quantity,1),0)
+          GREATEST(COALESCE((
+            SELECT t.insurance_charge
+            FROM public.insurance_service_tariffs t
+            WHERE lower(t.payer_name) = lower(v_insurer)
+              AND t.service_code = ii.service_code
+              AND t.active
+              AND t.effective_from <= _at::date
+              AND (t.effective_to IS NULL OR t.effective_to >= _at::date)
+            ORDER BY t.effective_from DESC
+            LIMIT 1
+          ),0) * GREATEST(ii.quantity,1),0)
         )
       END,
       top_up = CASE
@@ -249,24 +259,22 @@ BEGIN
         ELSE GREATEST(
           ii.amount - LEAST(
             ii.amount,
-            GREATEST(COALESCE(ist.insurance_charge,0) * GREATEST(ii.quantity,1),0)
+            GREATEST(COALESCE((
+              SELECT t.insurance_charge
+              FROM public.insurance_service_tariffs t
+              WHERE lower(t.payer_name) = lower(v_insurer)
+                AND t.service_code = ii.service_code
+                AND t.active
+                AND t.effective_from <= _at::date
+                AND (t.effective_to IS NULL OR t.effective_to >= _at::date)
+              ORDER BY t.effective_from DESC
+              LIMIT 1
+            ),0) * GREATEST(ii.quantity,1),0)
           ),
           0
         )
       END,
       updated_at = now()
-  FROM LATERAL (
-    SELECT t.insurance_charge
-    FROM public.insurance_service_tariffs t
-    WHERE v_insured
-      AND lower(t.payer_name) = lower(v_insurer)
-      AND t.service_code = ii.service_code
-      AND t.active
-      AND t.effective_from <= _at::date
-      AND (t.effective_to IS NULL OR t.effective_to >= _at::date)
-    ORDER BY t.effective_from DESC
-    LIMIT 1
-  ) ist
   WHERE ii.invoice_id = v_invoice;
 
   SELECT
