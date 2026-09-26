@@ -100,7 +100,6 @@ export default function Appointments() {
         event: '*',
         schema: 'public',
         table: 'appointments',
-        select: ['id', 'patient_id', 'scheduled_at', 'reason', 'status', 'department', 'practitioner_id', 'attending_officer_id', 'treatment_status', 'treatment_notes', 'consultation_type'],
       }, (payload) => {
         if (payload.eventType === 'INSERT') playWorkflowSound('info');
         if (payload.eventType === 'UPDATE' && String((payload.new as { treatment_status?: string }).treatment_status ?? '').toLowerCase() === 'completed') playWorkflowSound('success');
