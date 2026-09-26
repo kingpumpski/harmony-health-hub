@@ -85,6 +85,7 @@ export default function Laboratory() {
     } else if (requestedResultId) {
       const matchingResult = (workspace.results ?? []).find((result) => result.id === requestedResultId);
       if (matchingResult) setAttentionOrderId(matchingResult.lab_order_id);
+    }
     } finally {
       setLoading(false);
     }
