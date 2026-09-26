@@ -100,7 +100,8 @@ export default function Pharmacy() {
   ];
 
   return (
-    <OperationalWorklistShell
+    <>
+      <OperationalWorklistShell
       icon={Pill}
       eyebrow="Diagnostics & Medicines · Pharmacy"
       title="Pharmacy Workspace"
@@ -261,6 +262,8 @@ export default function Pharmacy() {
           ))}
         </>
       )}
-    </OperationalWorklistShell>
+      </OperationalWorklistShell>
+      {createMedicationName && <CatalogueCreateModal kind="pharmacy" initialName={createMedicationName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => void load()} onClose={() => setCreateMedicationName('')} />}
+    </>
   );
 }
