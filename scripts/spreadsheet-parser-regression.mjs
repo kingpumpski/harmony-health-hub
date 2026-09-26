@@ -1,3 +1,4 @@
+// Regression coverage for the production workbook parser contract.
 import assert from 'node:assert/strict';
 import XLSX from 'xlsx';
 import {
