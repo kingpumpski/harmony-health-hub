@@ -84,3 +84,4 @@ export default function Triage() {
     </div>)}
     <div className="border-t border-border p-4"><div className="rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground flex gap-2"><AlertTriangle className="w-4 h-4 text-warning shrink-0" /> Normal ranges are reference ranges for adult clinical screening and do not replace clinician interpretation, age-specific ranges or facility escalation protocols.</div></div>
   </OperationalWorklistShell>;
+}
