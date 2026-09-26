@@ -1,6 +1,6 @@
 # 95% Readiness Register
 
-Updated: 2026-09-17
+Updated: 2026-09-26
 
 ## Canonical state
 
@@ -46,8 +46,8 @@ Updated: 2026-09-17
 
 ### Security
 
-- The current Supabase security advisor reports **84 authenticated-executable SECURITY DEFINER findings** after the audit-helper execute-boundary hardening. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate. The latest classification pass verified that `set_facility_routing_mode` is administrator-gated and that `recover_stale_report_run` is facility-scoped; neither was revoked merely to reduce the advisor count.
-- Supabase Auth leaked-password protection remains disabled. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
+- The current Supabase security advisor reports **180 authenticated-executable SECURITY DEFINER findings** after the current execute-boundary hardening pass. The remaining functions are being treated as a function-by-function classification set: intentional server-authoritative clinical/financial/reporting workflows remain callable where their internal authorization contracts are required, while internal-only helpers and maintenance functions are removed from the exposed API surface where appropriate. The latest classification pass verified that `set_facility_routing_mode` is administrator-gated and that `recover_stale_report_run` is facility-scoped; neither was revoked merely to reduce the advisor count.
+- Supabase Auth leaked-password protection remains disabled as of the current project check. This is an Auth project setting rather than a database migration and must be enabled through Supabase Auth configuration before final deployment hardening.
 
 ### CI / deployment verification
 
