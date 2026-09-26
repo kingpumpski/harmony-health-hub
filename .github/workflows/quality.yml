@@ -43,6 +43,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Spreadsheet parser regression
+        run: npm run test:spreadsheet-parser
+
       - name: Operational contract checks
         run: npm run test:contracts
 
