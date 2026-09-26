@@ -114,7 +114,312 @@ function BMIContextCard({ patientId }: { patientId: string }) {
       setBmi((data?.[0] ?? null) as BMIContext | null);
     };
     void load();
-    const draftCount = encounters.filter((item) => item.status !== "completed").length;
+    return () => {
+      active = false;
+    };
+  }, [patientId]);
+  return (
+    <section className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-primary" /> BMI clinical context</h4>
+          <p className="text-[11px] text-muted-foreground mt-1">Latest server-calculated measurement</p>
+        </div>
+        <span className="text-2xl font-bold">{bmi?.bmi ?? "—"}</span>
+      </div>
+      {bmi && (
+        <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+          <span>Category: <b>{bmi.category}</b></span>
+          <span>Weight: <b>{bmi.weight_kg ?? "—"} kg</b></span>
+          <span>Height: <b>{bmi.height_m ?? "—"} m</b></span>
+          <span>Recorded: <b>{bmi.recorded_at ? new Date(bmi.recorded_at).toLocaleDateString() : "—"}</b></span>
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground mt-3">BMI is one clinical input alongside age, pregnancy status, diagnoses, examination findings, renal/hepatic function, allergies and medication-specific guidance. It does not automatically determine a prescription or dose.</p>
+    </section>
+  );
+}
+
+function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; encounterId?: string }) {
+  const [context, setContext] = useState<ClinicalContext | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      const { data, error } = await db.rpc("get_encounter_clinical_context", { _patient_id: patientId, _encounter_id: encounterId ?? null });
+      if (!active) return;
+      if (error) toast({ title: "Clinical history unavailable", description: error.message, variant: "destructive" });
+      setContext((data ?? null) as ClinicalContext | null);
+      setLoading(false);
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [patientId, encounterId]);
+  const patient = context?.patient;
+  const conditions = useMemo(() => {
+    const historical = (context?.previous_encounters ?? []).flatMap((e) => [e.principal_diagnosis, ...e.diagnoses]).filter((v): v is string => Boolean(v));
+    const chronic = patient?.chronic_conditions?.split(/[,;\n]+/) ?? [];
+    return Array.from(new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean))).slice(0, 12);
+  }, [context, patient]);
+  return (
+    <aside className="card-medical p-5 space-y-4 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+      <div className="flex items-start justify-between gap-3">
+        <div><h3 className="font-semibold flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety context</h3><p className="text-xs text-muted-foreground mt-1">High-value history stays beside the active encounter.</p></div>
+        {loading && <span className="text-xs text-muted-foreground">Loading…</span>}
+      </div>
+      {patient && (
+        <section className="rounded-xl border border-border p-3">
+          <p className="font-medium text-sm">{patient.name}</p>
+          <p className="text-xs text-muted-foreground">{patient.patient_code}</p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div>Blood group<p className="font-medium">{patient.blood_group || "Not recorded"}</p></div>
+            <div>Genotype<p className="font-medium">{patient.genotype || "Not recorded"}</p></div>
+          </div>
+        </section>
+      )}
+      <BMIContextCard patientId={patientId} />
+      {patient?.allergies && <section className="rounded-xl border border-critical/40 bg-critical/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm text-critical"><AlertTriangle className="w-4 h-4" /> Allergies / alerts</div><p className="text-sm mt-2 whitespace-pre-wrap">{patient.allergies}</p></section>}
+      {conditions.length > 0 && <section className="rounded-xl border border-warning/40 bg-warning/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm mb-2"><AlertTriangle className="w-4 h-4" /> Conditions to notice</div><div className="flex flex-wrap gap-2">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium">{condition}</span>)}</div></section>}
+      {context?.recent_vitals?.[0] && (
+        <section className="rounded-xl border border-border p-4">
+          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4" /> Latest recorded vitals</h4>
+          <p className="text-[11px] text-muted-foreground mt-1">{new Date(context.recent_vitals[0].recorded_at).toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <span>BP: <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span>
+            <span>Pulse: <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span>
+            <span>Temp: <b>{context.recent_vitals[0].temperature ?? "—"}</b></span>
+            <span>SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span>
+          </div>
+        </section>
+      )}
+      <section>
+        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Previous encounters</h4>
+        {!context?.previous_encounters?.length ? <p className="text-sm text-muted-foreground">No previous encounters recorded.</p> : <div className="space-y-3">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-xl border border-border p-3 bg-background/70"><div className="flex justify-between gap-2"><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span><span className="text-xs rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-sm font-semibold mt-2">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p>{item.symptoms && <p className="text-xs mt-2"><b>Presentation:</b> {item.symptoms}</p>}{item.treatment_plan && <p className="text-xs text-muted-foreground mt-1"><b className="text-foreground">Previous plan:</b> {item.treatment_plan}</p>}</article>)}</div>}
+      </section>
+    </aside>
+  );
+}
+
+function encounterAge(createdAt: string) {
+  const ageMs = Math.max(0, Date.now() - new Date(createdAt).getTime());
+  const minutes = Math.floor(ageMs / 60000);
+  if (minutes < 60) return `${minutes}m old`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h old`;
+  return `${Math.floor(hours / 24)}d old`;
+}
+
+export default function Encounters() {
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [selected, setSelected] = useState<Encounter | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [admitting, setAdmitting] = useState(false);
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
+  const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
+  const [symptoms, setSymptoms] = useState("");
+  const [clerking, setClerking] = useState("");
+  const [newDx, setNewDx] = useState("");
+  const [med, setMed] = useState("");
+  const [dose, setDose] = useState("");
+  const [freq, setFreq] = useState("");
+  const [duration, setDuration] = useState("");
+  const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
+  const [amending, setAmending] = useState(false);
+  const [amendmentReason, setAmendmentReason] = useState("");
+  const [amendmentBusy, setAmendmentBusy] = useState(false);
+  const [amendmentSymptoms, setAmendmentSymptoms] = useState("");
+  const [amendmentClerking, setAmendmentClerking] = useState("");
+  const [amendmentPrincipal, setAmendmentPrincipal] = useState("");
+  const [amendmentPlan, setAmendmentPlan] = useState("");
+  const [versionHistory, setVersionHistory] = useState<any[]>([]);
+  const [auditHistory, setAuditHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const activePatientId = selected?.patient_id || patientId;
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [{ data: pts }, { data: encs }] = await Promise.all([
+      supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
+      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, admission_id, created_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+    ]);
+      setPatients((pts ?? []) as Patient[]);
+      setEncounters((encs ?? []) as Encounter[]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDetails = async (id: string) => {
+    const [{ data: dx }, { data: rx }, { data: labs }, { data: imaging }, { data: services }] = await Promise.all([
+      supabase.from("diagnoses").select("id, encounter_id, diagnosis, is_principal").eq("encounter_id", id),
+      supabase.from("prescriptions").select("id, encounter_id, medication, dosage, frequency, duration, status, diagnosis_id").eq("encounter_id", id).order("created_at", { ascending: false }),
+      supabase.from("lab_orders").select("id,test_name,status,priority,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("imaging_orders").select("id,modality,study_name,status,priority,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("service_orders").select("id,service_name,department,status,payment_required,created_at").eq("encounter_id", id).order("created_at", { ascending: false }).limit(30),
+    ]);
+    setDiagnoses((dx ?? []) as Diagnosis[]);
+    setPrescriptions((rx ?? []) as Prescription[]);
+    setLabOrders((labs ?? []) as LabOrder[]);
+    setImagingOrders((imaging ?? []) as ImagingOrder[]);
+    setServiceOrders((services ?? []) as ServiceOrder[]);
+  };
+
+  useEffect(() => { void loadAll(); }, []);
+  useEffect(() => {
+    const id = searchParams.get("encounter");
+    const p = searchParams.get("patient");
+    if (p) setPatientId(p);
+    if (id) {
+      const found = encounters.find((e) => e.id === id);
+      if (found) {
+        setSelected(found);
+        setIsHistoryOpen(false);
+      }
+    }
+  }, [searchParams, encounters]);
+  useEffect(() => {
+    if (selected) void loadDetails(selected.id);
+  }, [selected]);
+
+  const loadHistory = async (encounterId: string) => {
+    setHistoryLoading(true);
+    const [{ data: versions, error: versionError }, auditResult] = await Promise.all([
+      supabase.from("document_versions").select("id,entity_type,entity_id,version_no,action,snapshot,changed_by,changed_at").eq("entity_type", "encounter").eq("entity_id", encounterId).order("version_no", { ascending: false }),
+      user?.roles?.includes("admin")
+        ? supabase.from("system_audit_log").select("id,actor_id,action,module,entity_type,entity_id,severity,metadata,created_at").eq("entity_type", "encounter").eq("entity_id", encounterId).order("created_at", { ascending: false }).limit(50)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    const audits = auditResult.data;
+    const auditError = auditResult.error;
+    setHistoryLoading(false);
+    if (versionError || auditError) {
+      toast({ title: "History unavailable", description: versionError?.message ?? auditError?.message, variant: "destructive" });
+      return;
+    }
+    setVersionHistory(versions ?? []);
+    setAuditHistory(audits ?? []);
+    setShowVersionHistory(true);
+  };
+
+  const createEncounter = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!patientId) return toast({ title: "Select a patient", variant: "destructive" });
+    const { data, error } = await db.rpc("create_encounter_workflow", { _patient_id: patientId, _symptoms: symptoms || null, _clerking_notes: clerking || null });
+    if (error) return toast({ title: "Encounter creation failed", description: error.message, variant: "destructive" });
+    setSymptoms("");
+    setClerking("");
+    setSelected(data as Encounter);
+    setIsHistoryOpen(false);
+    void loadAll();
+  };
+
+  const addDiagnosis = async () => {
+    if (!selected || !newDx.trim()) return toast({ title: "Enter a diagnosis", description: "Document a provisional diagnosis before adding it.", variant: "destructive" });
+    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim() });
+    if (error) return toast({ title: "Diagnosis failed", description: error.message, variant: "destructive" });
+    setNewDx("");
+    void loadDetails(selected.id);
+  };
+
+  const setPrincipal = async (dx: Diagnosis) => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("set_principal_diagnosis", { _encounter_id: selected.id, _diagnosis_id: dx.id });
+    if (error) return toast({ title: "Principal diagnosis failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, principal_diagnosis: data?.diagnosis ?? dx.diagnosis });
+    void loadDetails(selected.id);
+  };
+
+  const removeDiagnosis = async (id: string) => {
+    if (!selected) return;
+    const { error } = await db.rpc("remove_encounter_diagnosis", { _diagnosis_id: id });
+    if (error) return toast({ title: "Diagnosis removal failed", description: error.message, variant: "destructive" });
+    void loadDetails(selected.id);
+  };
+
+  const addPrescription = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selected || !med.trim()) return;
+    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: selectedDiagnosisId || null });
+    if (error) return toast({ title: "Prescription failed", description: error.message, variant: "destructive" });
+    setMed("");
+    setDose("");
+    setFreq("");
+    setDuration("");
+    setSelectedDiagnosisId("");
+    void loadDetails(selected.id);
+  };
+
+  const admitEncounter = async () => {
+    if (!selected || admitting) return;
+    const reason = window.prompt("Admission reason", selected.principal_diagnosis || "Clinical admission");
+    if (reason === null) return;
+    const ward = window.prompt("Ward (optional)", "") ?? "";
+    setAdmitting(true);
+    const { data, error } = await db.rpc("admit_encounter_workflow", { _encounter_id: selected.id, _reason: reason.trim() || "Clinical admission", _ward: ward.trim() || null, _emergency_override: true });
+    setAdmitting(false);
+    if (error) return toast({ title: "Admission failed", description: error.message, variant: "destructive" });
+    toast({ title: data?.override ? "Emergency admission activated" : "Patient admitted", description: data?.override ? "Eligible pending services were released for emergency treatment before deposit." : "The admission has been recorded." });
+    setSelected({ ...selected, admission_id: data?.admission_id ?? selected.admission_id });
+    void loadAll();
+  };
+
+  const submitEncounter = async () => {
+    if (!selected) return;
+    const { data, error } = await db.rpc("submit_encounter_workflow", { _encounter_id: selected.id, _specialty: null, _appointment_date: null, _referral_reason: null });
+    if (error) return toast({ title: "Encounter submission failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, status: "completed", submitted_at: new Date().toISOString(), version_no: data?.version_no ?? selected.version_no ?? 1 });
+    toast({ title: "Encounter submitted", description: "The final clinical document has been locked and versioned." });
+    void loadAll();
+  };
+
+  const beginAmendment = () => {
+    if (!selected || selected.status !== "completed") return;
+    setAmendmentSymptoms(selected.symptoms ?? "");
+    setAmendmentClerking(selected.clerking_notes ?? "");
+    setAmendmentPrincipal(selected.principal_diagnosis ?? "");
+    setAmendmentPlan(selected.treatment_plan ?? "");
+    setAmendmentReason("");
+    setAmending(true);
+  };
+
+  const saveAmendment = async () => {
+    if (!selected || !amendmentReason.trim() || amendmentBusy) return;
+    setAmendmentBusy(true);
+    const { data, error } = await db.rpc("amend_encounter_workflow", {
+      _encounter_id: selected.id,
+      _symptoms: amendmentSymptoms || null,
+      _clerking_notes: amendmentClerking || null,
+      _principal_diagnosis: amendmentPrincipal || null,
+      _treatment_plan: amendmentPlan || null,
+      _reason: amendmentReason.trim(),
+    });
+    setAmendmentBusy(false);
+    if (error) return toast({ title: "Amendment failed", description: error.message, variant: "destructive" });
+    setSelected({ ...selected, symptoms: amendmentSymptoms || null, clerking_notes: amendmentClerking || null, principal_diagnosis: amendmentPrincipal || null, treatment_plan: amendmentPlan || null, version_no: data?.version_no ?? (selected.version_no ?? 1) + 1 });
+    setAmending(false);
+    toast({ title: "Encounter amended", description: "The previous finalized version remains preserved in the audit history." });
+    void loadAll();
+  };
+
+  const selectEncounter = (item: Encounter) => {
+    setSelected(item);
+    setIsHistoryOpen(false);
+  };
+
+  const draftCount = encounters.filter((item) => item.status !== "completed").length;
   const completedCount = encounters.filter((item) => item.status === "completed").length;
   const admittedCount = encounters.filter((item) => Boolean(item.admission_id)).length;
   const todayCount = encounters.filter((item) => new Date(item.created_at).toDateString() === new Date().toDateString()).length;
