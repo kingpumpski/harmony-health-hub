@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
@@ -265,6 +266,231 @@ export default function Pharmacy() {
       )}
       </OperationalWorklistShell>
       {createMedicationName && <CatalogueCreateModal kind="pharmacy" initialName={createMedicationName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => void load()} onClose={() => setCreateMedicationName('')} />}
+    </>
+  );
+}  const tabTitle = tab === 'dispense' ? 'Prescription dispensing' : tab === 'pos' ? 'Walk-in POS' : 'Pharmacy store';
+  const tabDescription = tab === 'dispense'
+    ? 'Prepare prescriptions, monitor payment release, and dispense only after the authoritative service order is released.'
+    : tab === 'pos'
+      ? 'Create walk-in medication sales and complete dispensing after payment release.'
+      : 'Review stock, reorder thresholds and product details while maintaining the existing pharmacy inventory controls.';
+
+  return (
+    <OperationalWorklistShell
+      icon={Pill}
+      eyebrow="Diagnostics & Medicines · Pharmacy"
+      title="Pharmacy & Dispensing"
+      description="Coordinate prescription dispensing, walk-in sales and pharmacy inventory from one operational workspace."
+      actions={(
+        <>
+          <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2">
+            <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
+          </Link>
+          <button type="button" onClick={() => void load()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh pharmacy workspace">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </>
+      )}
+      counters={[
+        { label: 'Prescriptions waiting', value: counters.awaitingPreparation, surface: 'bg-primary/5', tone: 'text-primary' },
+        { label: 'Awaiting Accounts release', value: counters.awaitingRelease, surface: 'bg-warning/5', tone: 'text-warning' },
+        { label: 'Ready to dispense', value: counters.readyToDispense, surface: 'bg-success/5', tone: 'text-success' },
+        { label: 'POS payment queue', value: counters.posAwaitingRelease, surface: 'bg-info/5', tone: 'text-info' },
+        { label: 'Low-stock products', value: counters.lowStock, surface: 'bg-critical/5', tone: 'text-critical' },
+      ]}
+      beforeList={(
+        <>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex gap-2 text-sm" role="note">
+            <CreditCard className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+            <p className="text-muted-foreground">Preparation never reduces stock. Stock is committed only after Accounts releases the service order and the pharmacist confirms dispensing.</p>
+          </div>
+          {counters.lowStock > 0 && (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 flex gap-2 text-sm" role="status" aria-live="polite">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-muted-foreground">{counters.lowStock} product{counters.lowStock === 1 ? '' : 's'} are at or below reorder level. Review the pharmacy store.</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pharmacy workspaces">
+            {(['dispense', 'pos', 'inventory'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${tab === value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50'}`}
+              >
+                {value === 'pos' ? 'Walk-in POS' : value === 'inventory' ? 'Pharmacy store' : 'Prescription dispensing'}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      listTitle={tabTitle}
+      listDescription={tabDescription}
+      listMeta={tab === 'dispense' ? `${visiblePrescriptions.length + plans.length} active workflow item${visiblePrescriptions.length + plans.length === 1 ? '' : 's'}` : tab === 'pos' ? `${posSales.length} POS sale${posSales.length === 1 ? '' : 's'}` : `${visibleInventory.length} product${visibleInventory.length === 1 ? '' : 's'} shown`}
+      loading={loading}
+      empty={false}
+      emptyTitle={tab === 'dispense' ? 'No dispensing work' : tab === 'pos' ? 'No POS activity' : 'No inventory items'}
+      emptyDescription={tabDescription}
+    >
+      <div className="space-y-6 p-4 sm:p-5">
+        
+      </div>
+    </OperationalWorklistShell>
+  );
+}  return (
+    <OperationalWorklistShell
+      icon={Pill}
+      eyebrow="Diagnostics & Medicines · Pharmacy"
+      title="Pharmacy & Dispensing"
+      description="Coordinate prescription preparation, payment release, dispensing, walk-in sales and pharmacy inventory without crossing their existing server-authoritative boundaries."
+      actions={(
+        <>
+          <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2">
+            <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
+          </Link>
+          <button type="button" onClick={() => void load()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh pharmacy workspace">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </>
+      )}
+      counters={counterCards.map((card) => ({
+        label: card.label,
+        value: card.value,
+        surface: card.surface,
+        tone: card.tone,
+      }))}
+      beforeList={(
+        <>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex gap-2 text-sm">
+            <CreditCard className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+            <p className="text-muted-foreground">Preparation never reduces stock. Stock is committed only after Accounts releases the service order and the pharmacist confirms dispensing.</p>
+          </div>
+          {counters.lowStock > 0 && (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 flex gap-2 text-sm" role="status">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-muted-foreground">{counters.lowStock} product{counters.lowStock === 1 ? '' : 's'} are at or below reorder level. Review the pharmacy store.</p>
+            </div>
+          )}
+          <nav className="flex flex-wrap gap-2" aria-label="Pharmacy workspaces">
+            {(['dispense', 'pos', 'inventory'] as const).map((value) => (
+              <button type="button" key={value} onClick={() => setTab(value)} aria-pressed={tab === value} className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${tab === value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50'}`}>
+                {value === 'pos' ? 'Walk-in POS' : value === 'inventory' ? 'Pharmacy store' : 'Prescription dispensing'}
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
+      listTitle={tab === 'dispense' ? 'Prescription dispensing worklist' : tab === 'pos' ? 'Walk-in POS worklist' : 'Pharmacy store worklist'}
+      listDescription={tab === 'dispense' ? 'Prepare prescribed medicines, then dispense only after the applicable payment release.' : tab === 'pos' ? 'Walk-in sales remain separate from prescription dispensing and require payment release before dispensing.' : 'Review stock, reorder levels, supplier information and catalogue actions in the pharmacy store.'}
+      listMeta={tab === 'dispense' ? `${visiblePrescriptions.length + plans.length} active item${visiblePrescriptions.length + plans.length === 1 ? '' : 's'}` : tab === 'pos' ? `${posSales.length} sale${posSales.length === 1 ? '' : 's'}` : `${visibleInventory.length} product${visibleInventory.length === 1 ? '' : 's'}`}
+      loading={loading}
+      empty={
+        tab === 'dispense'
+          ? visiblePrescriptions.length === 0 && plans.length === 0
+          : tab === 'pos'
+            ? posSales.length === 0
+            : visibleInventory.length === 0
+      }
+      emptyIcon={tab === 'inventory' ? Package : tab === 'pos' ? ShoppingCart : Pill}
+      emptyTitle={tab === 'dispense' ? 'No active dispensing items' : tab === 'pos' ? 'No walk-in sales' : 'No pharmacy products'}
+      emptyDescription={tab === 'dispense' ? 'Prescriptions and prepared orders will appear here when available.' : tab === 'pos' ? 'Create a walk-in sale to send a product for payment release.' : 'Add a store item or adjust the search to view pharmacy stock.'}
+    >
+      {tab === 'dispense' && (
+        <>
+          <div className="border-b border-border bg-muted/20 p-4">
+            <label htmlFor="pharmacy-patient-filter" className="text-sm space-y-1 block max-w-xl">
+              <span className="font-medium">Filter by patient</span>
+              <select id="pharmacy-patient-filter" value={patientId} onChange={(event) => setPatientId(event.target.value)} className="input-medical w-full">
+                <option value="">All active prescriptions</option>
+                {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name} · {patient.patient_code}</option>)}
+              </select>
+            </label>
+          </div>
+          {visiblePrescriptions.map((prescription) => {
+            const choices = alternatives[prescription.id] ?? [];
+            return (
+              <article key={prescription.id} className="p-5 space-y-3">
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">{prescription.medication}</h2>
+                    <p className="text-sm text-muted-foreground">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'} · {prescription.dosage ?? 'Dose not specified'} · {prescription.frequency ?? 'Frequency not specified'} · {prescription.status}</p>
+                  </div>
+                  <button type="button" onClick={() => void findAlternatives(prescription)} className="btn-secondary text-sm">Find alternatives</button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-[1fr_120px_auto]">
+                  <label className="sr-only" htmlFor={`pharmacy-product-${prescription.id}`}>Product or supplier</label>
+                  <select id={`pharmacy-product-${prescription.id}`} value={matches[prescription.id] ?? ''} onChange={(event) => setMatches((current) => ({ ...current, [prescription.id]: event.target.value }))} className="input-medical">
+                    <option value="">Select product / supplier</option>
+                    {choices.map((item) => <option key={item.id} value={item.id}>{item.drug_name} · {item.supplier ?? 'In store'} · {item.stock_quantity} in stock</option>)}
+                    {inventory.filter((item) => item.stock_quantity > 0 && item.drug_name.toLowerCase().includes(prescription.medication.toLowerCase())).map((item) => <option key={item.id} value={item.id}>{item.drug_name} · {item.supplier ?? 'In store'} · {item.stock_quantity} in stock</option>)}
+                  </select>
+                  <label className="sr-only" htmlFor={`pharmacy-quantity-${prescription.id}`}>Quantity</label>
+                  <input id={`pharmacy-quantity-${prescription.id}`} type="number" min="1" value={quantities[prescription.id] ?? prescription.computed_quantity ?? 1} onChange={(event) => setQuantities((current) => ({ ...current, [prescription.id]: Number(event.target.value) }))} className="input-medical" />
+                  <button type="button" onClick={() => void prepare(prescription)} className="btn-primary">Prepare</button>
+                </div>
+                {choices.length > 0 && <p className="text-xs text-success">Available alternatives are shown by brand, supplier and current stock.</p>}
+                {canCreateItems && inventory.filter((item) => item.drug_name.toLowerCase().includes(prescription.medication.toLowerCase())).length === 0 && <button type="button" onClick={() => setCreateMedicationName(prescription.medication)} className="btn-secondary text-sm">Add {prescription.medication}</button>}
+              </article>
+            );
+          })}
+          {plans.map((plan) => (
+            <article key={plan.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div><p className="font-medium">{plan.medication_name} · {plan.prepared_quantity}</p><p className="text-xs text-muted-foreground">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'} · {plan.service_order_status ?? 'awaiting release'}</p></div>
+              <button type="button" disabled={!['released', 'in_progress'].includes(plan.service_order_status ?? '')} onClick={() => void dispense(plan)} className="btn-primary disabled:opacity-50">Dispense</button>
+            </article>
+          ))}
+        </>
+      )}
+      {tab === 'pos' && (
+        <>
+          <div className="p-5 border-b border-border">
+            <form onSubmit={createPosSale} className="space-y-4">
+              <h2 className="font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4" aria-hidden="true" /> Create walk-in sale</h2>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div><label htmlFor="pos-patient" className="mb-1 block text-xs font-semibold">Patient record</label><select id="pos-patient" value={posPatient} onChange={(event) => setPosPatient(event.target.value)} className="input-medical w-full"><option value="">Walk-in / no patient record</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name} · {patient.patient_code}</option>)}</select></div>
+                <div><label htmlFor="pos-item" className="mb-1 block text-xs font-semibold">Medication <span className="text-critical">*</span></label><select id="pos-item" value={posItem} onChange={(event) => setPosItem(event.target.value)} className="input-medical w-full" required><option value="">Select in-stock medication</option>{inventory.filter((item) => item.stock_quantity > 0).map((item) => <option key={item.id} value={item.id}>{item.drug_name} · {item.stock_quantity} in stock · GHS {item.unit_price}</option>)}</select></div>
+                <div><label htmlFor="pos-quantity" className="mb-1 block text-xs font-semibold">Quantity <span className="text-critical">*</span></label><input id="pos-quantity" type="number" min="1" value={posQuantity} onChange={(event) => setPosQuantity(Number(event.target.value))} className="input-medical w-full" required /></div>
+              </div>
+              <button type="submit" className="btn-primary inline-flex items-center gap-2"><ShoppingCart className="w-4 h-4" aria-hidden="true" /> Create payment order</button>
+            </form>
+          </div>
+          {posSales.map((sale) => (
+            <article key={sale.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div><p className="font-medium">{sale.medication} · {sale.quantity}</p><p className="text-xs text-muted-foreground">GHS {sale.total_amount} · {sale.status}</p></div>
+              <button type="button" disabled={!['released', 'in_progress'].includes(sale.status)} onClick={async () => { const { error } = await db.rpc('confirm_pharmacy_pos_sale', { _sale_id: sale.id }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success('Walk-in medication dispensed.'); void load(); }} className="btn-primary disabled:opacity-50">Dispense</button>
+            </article>
+          ))}
+        </>
+      )}
+      {tab === 'inventory' && (
+        <>
+          <div className="p-5 border-b border-border">
+            <form onSubmit={addInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <h2 className="md:col-span-2 lg:col-span-4 font-semibold flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> Add store item</h2>
+              {(['drug_name', 'brand_name', 'generic_name', 'strength', 'form', 'supplier', 'batch_number', 'expiry_date'] as const).map((field) => <div key={field}><label htmlFor={`inventory-${field}`} className="sr-only">{field.replace('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} placeholder={field.replace('_', ' ')} className="input-medical w-full" /></div>)}
+              <div><label htmlFor="inventory-stock" className="sr-only">Stock quantity</label><input id="inventory-stock" type="number" min="0" value={inventoryForm.stock_quantity} onChange={(event) => setInventoryForm((current) => ({ ...current, stock_quantity: Number(event.target.value) }))} placeholder="stock quantity" className="input-medical w-full" /></div>
+              <div><label htmlFor="inventory-reorder" className="sr-only">Reorder level</label><input id="inventory-reorder" type="number" min="0" value={inventoryForm.reorder_level} onChange={(event) => setInventoryForm((current) => ({ ...current, reorder_level: Number(event.target.value) }))} placeholder="reorder level" className="input-medical w-full" /></div>
+              <div><label htmlFor="inventory-price" className="sr-only">Unit price</label><input id="inventory-price" type="number" min="0" step="0.01" value={inventoryForm.unit_price} onChange={(event) => setInventoryForm((current) => ({ ...current, unit_price: Number(event.target.value) }))} placeholder="unit price" className="input-medical w-full" /></div>
+              <div className="md:col-span-2 lg:col-span-4"><button type="submit" className="btn-primary inline-flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> Add to store</button></div>
+            </form>
+          </div>
+          <div className="p-4 border-b border-border">
+            <label htmlFor="pharmacy-inventory-search" className="sr-only">Search product, brand or supplier</label>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" /><input id="pharmacy-inventory-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product, brand or supplier" className="input-medical pl-9 w-full" /></div>
+          </div>
+          {visibleInventory.map((item) => (
+            <article key={item.id} className={`p-4 flex flex-wrap justify-between gap-3 ${item.stock_quantity <= item.reorder_level ? 'bg-warning/5' : ''}`}>
+              <div><p className="font-medium">{item.drug_name}{item.brand_name ? ` · ${item.brand_name}` : ''}</p><p className="text-xs text-muted-foreground">{item.generic_name ?? 'Generic not recorded'} · {item.strength ?? 'Strength not recorded'} · {item.supplier ?? 'Supplier not recorded'}</p></div>
+              <div className="text-right text-sm"><p>{item.stock_quantity} in stock</p><p className="text-xs text-muted-foreground">GHS {item.unit_price} · reorder {item.reorder_level}</p></div>
+            </article>
+          ))}
+        </>
+      )}
+    </OperationalWorklistShell>
+  );
+  {createMedicationName && <CatalogueCreateModal kind="pharmacy" initialName={createMedicationName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => void load()} onClose={() => setCreateMedicationName('')} />}
     </>
   );
 }  const tabTitle = tab === 'dispense' ? 'Prescription dispensing' : tab === 'pos' ? 'Walk-in POS' : 'Pharmacy store';
