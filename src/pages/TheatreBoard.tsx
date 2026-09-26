@@ -4,6 +4,7 @@ import { CalendarClock, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 type Row = { id: string; patient_id: string; procedure_name: string; theatre_name: string | null; scheduled_start: string | null; urgency: string; status: string; anesthetist_id: string | null };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -43,17 +44,55 @@ export default function TheatreBoard() {
   const officer = (id: string | null) => officers.find((x) => x.id === id);
   const anesthesiaOfficers = officers.filter((o) => /anesth|anaesth/i.test(`${o.specialization || ''}`));
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><CalendarClock className="h-6 w-6" />Theatre Board</h1><p className="text-sm text-muted-foreground">Theatre intake, scheduling, anesthetist assignment and controlled clinical transitions.</p></div><button type="button" onClick={() => void load()} className="self-start rounded-md border p-2" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></header>
-      <form onSubmit={createCase} className="rounded-xl border bg-card p-4 grid gap-3 lg:grid-cols-[1.3fr_1.5fr_1.2fr_1fr_1fr_auto]">
-        <select aria-label="Patient for theatre case" required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="w-full rounded-md border bg-background p-2 text-sm"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select>
-        <input aria-label="Procedure name" required value={form.procedureName} onChange={(e) => setForm({ ...form, procedureName: e.target.value })} placeholder="Procedure" className="w-full rounded-md border bg-background p-2 text-sm" />
-        <input aria-label="Scheduled start" required type="datetime-local" value={form.scheduledStart} onChange={(e) => setForm({ ...form, scheduledStart: e.target.value })} className="w-full rounded-md border bg-background p-2 text-sm" />
-        <input aria-label="Theatre name" value={form.theatreName} onChange={(e) => setForm({ ...form, theatreName: e.target.value })} placeholder="Theatre" className="w-full rounded-md border bg-background p-2 text-sm" />
-        <select aria-label="Theatre case urgency" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="w-full rounded-md border bg-background p-2 text-sm"><option value="elective">Elective</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select>
-        <button type="submit" disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{busy ? 'Saving…' : 'Schedule case'}</button>
-      </form>
-      <div className="grid gap-3">{rows.map((r) => { const a = officer(r.anesthetist_id); return <article key={r.id} className="rounded-xl border bg-card p-4"><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold break-words">{patient(r.patient_id)}</h2><p className="text-sm break-words">{r.procedure_name} · {r.theatre_name || 'Theatre not recorded'}</p><p className="text-xs text-muted-foreground">{r.scheduled_start ? new Date(r.scheduled_start).toLocaleString() : 'Time not recorded'} · {r.urgency} · {r.status}</p><p className="text-xs text-muted-foreground mt-1">Anesthetist: {a?.full_name || a?.specialization || 'Not assigned'}</p></div><div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto"><select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ['completed', 'cancelled'].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="w-full sm:w-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s}>{s}</option>)}</select><select aria-label={`Assign anesthetist for ${patient(r.patient_id)}`} disabled={busy || ['completed', 'cancelled'].includes(r.status) || anesthesiaOfficers.length === 0} value="" onChange={(e) => { if (e.target.value) void assignAnesthetist(r.id, e.target.value); }} className="w-full sm:w-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="">Assign anesthetist…</option>{anesthesiaOfficers.map((o) => <option key={o.id} value={o.id}>{o.full_name || o.specialization || o.id}</option>)}</select></div></div></article>; })}{!rows.length && <p className="text-sm text-muted-foreground">No theatre cases found.</p>}</div>
-    </div>
+    <OperationalWorklistShell
+      icon={CalendarClock}
+      eyebrow="Surgical services"
+      title="Theatre"
+      description="Theatre intake, scheduling, anesthetist assignment and controlled clinical transitions."
+      actions={<button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>}
+      counters={[
+        { label: "Active cases", value: rows.filter((r) => !["completed","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
+        { label: "Scheduled", value: rows.filter((r) => r.status === "scheduled").length, tone: "text-info", surface: "bg-info/5" },
+        { label: "In progress", value: rows.filter((r) => r.status === "in_progress").length, tone: "text-success", surface: "bg-success/5" },
+        { label: "Urgent", value: rows.filter((r) => ["urgent","emergency"].includes(r.urgency)).length, tone: "text-warning", surface: "bg-warning/5" },
+      ]}
+      beforeList={
+        <form onSubmit={createCase} className="card-medical p-5 sm:p-6 grid gap-4 lg:grid-cols-[1.3fr_1.5fr_1.2fr_1fr_1fr_auto]">
+          <label className="space-y-1 text-sm"><span className="font-medium">Patient</span><select aria-label="Patient for theatre case" required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="input-medical w-full"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select></label>
+          <label className="space-y-1 text-sm"><span className="font-medium">Procedure</span><input aria-label="Procedure name" required value={form.procedureName} onChange={(e) => setForm({ ...form, procedureName: e.target.value })} placeholder="Procedure" className="input-medical w-full" /></label>
+          <label className="space-y-1 text-sm"><span className="font-medium">Scheduled start</span><input aria-label="Scheduled start" required type="datetime-local" value={form.scheduledStart} onChange={(e) => setForm({ ...form, scheduledStart: e.target.value })} className="input-medical w-full" /></label>
+          <label className="space-y-1 text-sm"><span className="font-medium">Theatre</span><input aria-label="Theatre name" value={form.theatreName} onChange={(e) => setForm({ ...form, theatreName: e.target.value })} placeholder="Theatre" className="input-medical w-full" /></label>
+          <label className="space-y-1 text-sm"><span className="font-medium">Urgency</span><select aria-label="Theatre case urgency" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="input-medical w-full"><option value="elective">Elective</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
+          <button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Schedule case"}</button>
+        </form>
+      }
+      listTitle="Theatre case worklist"
+      listDescription="Review scheduled procedures, clinical urgency and anaesthesia assignment."
+      listMeta={`${rows.length} case${rows.length === 1 ? "" : "s"}`}
+      empty={!rows.length}
+      emptyTitle="No theatre cases found"
+      emptyDescription="Schedule a theatre case above to begin the surgical workflow."
+    >
+      {rows.map((r) => { const a = officer(r.anesthetist_id); return (
+        <article key={r.id} className="px-5 py-4 transition-colors hover:bg-muted/30">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="font-medium break-words">{patient(r.patient_id)}</p>
+              <p className="mt-1 text-sm break-words">{r.procedure_name} · {r.theatre_name || "Theatre not recorded"}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span>{r.scheduled_start ? new Date(r.scheduled_start).toLocaleString() : "Time not recorded"}</span>
+                <span className="rounded-full bg-muted px-2 py-1 capitalize">{r.urgency}</span>
+                <span className="rounded-full bg-primary/10 px-2 py-1 text-primary capitalize">{r.status.replaceAll("_"," ")}</span>
+                <span>Anesthetist: {a?.full_name || a?.specialization || "Not assigned"}</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ["completed","cancelled"].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s}>{s}</option>)}</select>
+              <select aria-label={`Assign anesthetist for ${patient(r.patient_id)}`} disabled={busy || ["completed","cancelled"].includes(r.status) || anesthesiaOfficers.length === 0} value="" onChange={(e) => { if (e.target.value) void assignAnesthetist(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Assign anesthetist…</option>{anesthesiaOfficers.map((o) => <option key={o.id} value={o.id}>{o.full_name || o.specialization || o.id}</option>)}</select>
+            </div>
+          </div>
+        </article>
+      ); })}
+    </OperationalWorklistShell>
   );
 }
