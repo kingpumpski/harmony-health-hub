@@ -108,3 +108,28 @@ END; $$;
 GRANT EXECUTE ON FUNCTION public.create_appointment_workflow(UUID,TIMESTAMPTZ,TEXT,TEXT,TEXT,UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_appointment_workflow(UUID,TIMESTAMPTZ,TEXT,TEXT,TEXT,TEXT,TEXT,UUID) TO authenticated;
 NOTIFY pgrst, 'reload schema';
+
+
+CREATE OR REPLACE FUNCTION public.get_appointment_clinicians()
+RETURNS TABLE(id UUID, first_name TEXT, last_name TEXT, department TEXT, specialization TEXT, clinician_role TEXT)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(),'nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'midwife'::public.app_role)
+    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
+  ) THEN RAISE EXCEPTION 'Appointment clinician directory access denied'; END IF;
+  RETURN QUERY
+  SELECT DISTINCT p.id,p.first_name,p.last_name,p.department,p.specialization,ur.role::text
+  FROM public.profiles p
+  JOIN public.user_roles ur ON ur.user_id=p.id
+  WHERE ur.role IN ('practitioner'::public.app_role,'radiologist'::public.app_role)
+  ORDER BY p.last_name,p.first_name;
+END; $$;
+REVOKE ALL ON FUNCTION public.get_appointment_clinicians() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_appointment_clinicians() TO authenticated;
+NOTIFY pgrst, 'reload schema';
