@@ -14,7 +14,7 @@ export type Permission =
 export const permissionByHref: Record<string, Permission> = {
   '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
-  '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
+  '/nursing-handover':'handover','/nursing-notes':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
   '/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/lab-results':'laboratory',
   '/radiology':'radiology','/clinical-results':'radiology_results','/pharmacy':'pharmacy','/medications':'medication_administration',

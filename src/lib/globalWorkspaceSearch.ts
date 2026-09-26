@@ -16,6 +16,7 @@ const MODULES: SearchModule[] = [
   { title:'Clinical Operations', description:'Permission-aware clinical workflow hub', href:'/clinical-operations', keywords:['clinical operations','workflow','theatre','maternity','transfusion','procedures','anaesthesia'] },
   { title:'Inpatient', description:'Admissions, movements, ward and bed management', href:'/inpatient', keywords:['inpatient','admission','ward','bed','movement','transfer','discharge'] },
   { title:'Nursing Handover', description:'Shift handover and inpatient nursing workflow', href:'/nursing-handover', keywords:['nursing','handover','shift','care plan'], roles:['admin','nurse','midwife','specialist_nurse'] },
+  { title:'Nursing Notes', description:'Routine nursing observations, interventions and evaluations', href:'/nursing-notes', keywords:['nursing','notes','progress note','assessment','intervention'], roles:['admin','nurse','midwife','specialist_nurse'] },
   { title:'Laboratory', description:'Lab orders, samples and results', href:'/laboratory', keywords:['laboratory','lab','test','sample','result','pathology'], roles:['admin',...CLINICAL_ROLES,'front_desk'] },
   { title:'Radiology', description:'Imaging orders and radiology workspace', href:'/radiology', keywords:['radiology','imaging','xray','x-ray','ultrasound','ct','mri'], roles:['admin',...CLINICAL_ROLES] },
   { title:'Clinical Results', description:'Review diagnostic results', href:'/clinical-results', keywords:['results','diagnostic results','lab results','imaging results'], roles:['admin',...CLINICAL_ROLES] },

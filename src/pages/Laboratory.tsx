@@ -2,8 +2,9 @@ import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFacilityContext } from '@/contexts/FacilityContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing } from 'lucide-react';
+import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing, Printer } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
@@ -22,13 +23,14 @@ interface LabOrder {
 }
 interface LabResult {
   id: string; lab_order_id: string; result_data: { value?: string } | null; interpretation: string | null;
-  is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
+  is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null; approved_by: string | null;
   numeric_value: number | null; unit: string | null; reference_low: number | null; reference_high: number | null; abnormal_flag: string | null;
 }
 interface CreateLabOrderResponse { lab_order_id: string; service_order_id: string; status: string }
 
 export default function Laboratory() {
   const { user } = useAuth();
+  const { facility } = useFacilityContext();
   const [searchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [catalogue, setCatalogue] = useState<LabCatalogueItem[]>([]);
@@ -237,6 +239,32 @@ export default function Laboratory() {
     void loadAll();
   };
 
+  const printLabReport = async (order: LabOrder, result: LabResult, patient: Patient | undefined) => {
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=900');
+    if (!printWindow) {
+      toast({ title: 'Print window blocked', description: 'Allow pop-ups for Harmony Health Hub and try again.', variant: 'destructive' });
+      return;
+    }
+    const escapeHtml = (value: unknown) => String(value ?? '—').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
+    let signature: string | null = null;
+    if (result.approved_by) {
+      const { data, error } = await supabase.rpc('get_staff_signature_for_report', { _user_id: result.approvedBy });
+      if (!error) signature = data as string | null;
+    }
+    const resultValue = result.numeric_value !== null ? `${result.numericValue}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—');
+    printWindow.document.write(`<!doctype html><html><head><title>Laboratory Report · ${escapeHtml(patient ? `${patient.first_name} ${patient.last_name}` : 'Patient')}</title><style>
+      body{font-family:Arial,sans-serif;margin:40px;color:#111827}header{border-bottom:2px solid #111827;padding-bottom:16px;margin-bottom:24px}h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:22px 0 8px}.muted{color:#6b7280;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{border:1px solid #d1d5db;border-radius:8px;padding:12px}.result{font-size:18px;font-weight:700}.signature{max-height:90px;max-width:240px;object-fit:contain}.footer{margin-top:40px;border-top:1px solid #d1d5db;padding-top:12px;font-size:11px;color:#6b7280}@media print{body{margin:20mm}.no-print{display:none}}
+    </style></head><body>
+      <header><h1>${escapeHtml(facility?.facility_name ?? 'Healthcare Facility')}</h1><div class="muted">${escapeHtml(facility?.facility_code ? `Facility code: ${facility.facility_code} · ` : '')}${escapeHtml([facility?.district, facility?.region].filter(Boolean).join(' · '))}</div><h2>Laboratory Report</h2></header>
+      <div class="grid"><div class="box"><strong>Patient</strong><div>${escapeHtml(patient ? `${patient.first_name} ${patient.last_name}` : 'Patient')}</div><div class="muted">${escapeHtml(patient?.patient_code ?? '')}</div></div><div class="box"><strong>Test</strong><div>${escapeHtml(order.test_name)}</div><div class="muted">${escapeHtml(order.test_category ?? '')}</div></div></div>
+      <h2>Result</h2><div class="box"><div class="result">${escapeHtml(resultValue)}</div>${result.reference_low !== null || result.reference_high !== null ? `<div class="muted">Reference: ${escapeHtml(result.referenceLow ?? '—')} – ${escapeHtml(result.referenceHigh ?? '—')}${escapeHtml(result.unit ? ` ${result.unit}` : '')}</div>` : ''}<p>${escapeHtml(result.interpretation ?? '')}</p></div>
+      <h2>Authorization</h2><div class="box"><div>Approved: ${escapeHtml(result.approved_at ? new Date(result.approvedAt).toLocaleString() : '—')}</div>${signature ? `<div style="margin-top:14px"><img class="signature" src="${signature}" alt="Authorized laboratory signature"/></div>` : '<div class="muted" style="margin-top:14px">Authorized signature is not on file.</div>'}</div>
+      <div class="footer">Generated from Harmony Health Hub · ${escapeHtml(new Date().toLocaleString())}</div>
+      <button class="no-print" onclick="window.print()" style="margin-top:24px;padding:10px 16px">Print / Save as PDF</button>
+    </body></html>`);
+    printWindow.document.close();
+  };
+
   const counterCards = [
     { label: 'Active patients', value: counters.active, surface: 'bg-primary/5', tone: 'text-primary', urgent: counters.active > 0 },
     { label: 'Awaiting sample', value: counters.awaitingSample, surface: 'bg-warning/5', tone: 'text-warning', urgent: counters.awaitingSample > 0 },
@@ -272,7 +300,7 @@ export default function Laboratory() {
             <div id={`lab-order-${o.id}`} key={o.id} className={`rounded-xl border border-border p-4 transition-all ${attentionOrderId === o.id ? 'ring-2 ring-primary/40 bg-primary/5 shadow-elevated' : o.status === 'completed' ? 'ring-1 ring-critical/15' : ''}`}><div className="flex justify-between items-start gap-3"><div><p className="font-medium flex items-center gap-2">{o.test_name}{attentionOrderId === o.id && <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/10 px-2 py-0.5 text-primary">Clinical attention</span>}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
               {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" /> Abnormal result flagged — clinical attention required</div>}
               {attentionResultId === result?.id && <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">Opened from a clinical result notification. Review this laboratory result and acknowledge the attention item when your review is complete.</div>}
-              <div className="mt-3 flex flex-wrap gap-2">{o.status === 'ordered' && <button onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}{o.status === 'sample_collected' && <button onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}{o.status === 'completed' && result && <button onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Approve & notify</button>}{o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Approved</span>}</div>
+              <div className="mt-3 flex flex-wrap gap-2">{o.status === 'ordered' && <button onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}{o.status === 'sample_collected' && <button onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}{o.status === 'completed' && result && <button onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Approve & notify</button>}{o.status === 'approved' && <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Approved</span>{result && <button type="button" onClick={() => void printLabReport(o, result, p)} className="btn-secondary text-xs inline-flex items-center gap-1"><Printer className="w-3 h-3" /> Print / PDF</button>}</div>}</div>
               {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3"><div className="grid gap-2 sm:grid-cols-2"><input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} />{item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}</div><textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" /><input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label><div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div></div>}
               {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2"><p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>{result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}{result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}</div>}
             </div>); })}

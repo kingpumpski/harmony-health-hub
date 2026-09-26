@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFacilityContext } from "@/contexts/FacilityContext";
 import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types";
@@ -22,6 +23,7 @@ const sevIcon = (s: string) => s === "critical" ? <AlertTriangle className="h-4 
 export default function Header({ onMenu }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { facility, facilities, switchFacility } = useFacilityContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");

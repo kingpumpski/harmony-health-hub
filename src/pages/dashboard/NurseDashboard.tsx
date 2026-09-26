@@ -79,7 +79,7 @@ export default function NurseDashboard() {
           <p className="text-muted-foreground">Live inpatient care, medication administration, handover and escalation workspace.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/nursing-handover" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Handover</Link>
+          <Link to="/nursing-handover" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Handover</Link><Link to="/nursing-notes" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Notes</Link>
           <Link to="/vitals" className="btn-primary"><HeartPulse className="w-4 h-4" /> Record Vitals</Link>
           <button onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
         </div>

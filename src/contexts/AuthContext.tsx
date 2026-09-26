@@ -53,8 +53,10 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
       const resolved = permissionRows
         .map((row: unknown) => typeof row === 'string' ? row : (row as { permission_key?: unknown })?.permission_key)
         .filter((value): value is Permission => typeof value === 'string' && knownPermissions.has(value as Permission));
-      // An empty catalog/mapping must never blank the navigation. Defaults are the compatibility floor.
-      if (resolved.length > 0) permissions = resolved;
+      // Administrators are the technical control-plane role: their UI permission surface is
+      // intentionally unrestricted, while database/RLS remains the final authorization boundary.
+      if (roles.includes('admin')) permissions = Array.from(knownPermissions);
+      else if (resolved.length > 0) permissions = resolved;
     }
   } catch (error) {
     console.warn('Database permission profile unavailable; using role defaults.', error);
