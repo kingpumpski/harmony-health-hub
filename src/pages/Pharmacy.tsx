@@ -7,6 +7,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { useAuth } from '@/contexts/AuthContext';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
@@ -265,5 +266,76 @@ export default function Pharmacy() {
       </OperationalWorklistShell>
       {createMedicationName && <CatalogueCreateModal kind="pharmacy" initialName={createMedicationName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => void load()} onClose={() => setCreateMedicationName('')} />}
     </>
+  );
+}  const tabTitle = tab === 'dispense' ? 'Prescription dispensing' : tab === 'pos' ? 'Walk-in POS' : 'Pharmacy store';
+  const tabDescription = tab === 'dispense'
+    ? 'Prepare prescriptions, monitor payment release, and dispense only after the authoritative service order is released.'
+    : tab === 'pos'
+      ? 'Create walk-in medication sales and complete dispensing after payment release.'
+      : 'Review stock, reorder thresholds and product details while maintaining the existing pharmacy inventory controls.';
+
+  return (
+    <OperationalWorklistShell
+      icon={Pill}
+      eyebrow="Diagnostics & Medicines · Pharmacy"
+      title="Pharmacy & Dispensing"
+      description="Coordinate prescription dispensing, walk-in sales and pharmacy inventory from one operational workspace."
+      actions={(
+        <>
+          <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2">
+            <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
+          </Link>
+          <button type="button" onClick={() => void load()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh pharmacy workspace">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </>
+      )}
+      counters={[
+        { label: 'Prescriptions waiting', value: counters.awaitingPreparation, surface: 'bg-primary/5', tone: 'text-primary' },
+        { label: 'Awaiting Accounts release', value: counters.awaitingRelease, surface: 'bg-warning/5', tone: 'text-warning' },
+        { label: 'Ready to dispense', value: counters.readyToDispense, surface: 'bg-success/5', tone: 'text-success' },
+        { label: 'POS payment queue', value: counters.posAwaitingRelease, surface: 'bg-info/5', tone: 'text-info' },
+        { label: 'Low-stock products', value: counters.lowStock, surface: 'bg-critical/5', tone: 'text-critical' },
+      ]}
+      beforeList={(
+        <>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex gap-2 text-sm" role="note">
+            <CreditCard className="w-4 h-4 text-primary mt-0.5 shrink-0" aria-hidden="true" />
+            <p className="text-muted-foreground">Preparation never reduces stock. Stock is committed only after Accounts releases the service order and the pharmacist confirms dispensing.</p>
+          </div>
+          {counters.lowStock > 0 && (
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 flex gap-2 text-sm" role="status" aria-live="polite">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-muted-foreground">{counters.lowStock} product{counters.lowStock === 1 ? '' : 's'} are at or below reorder level. Review the pharmacy store.</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pharmacy workspaces">
+            {(['dispense', 'pos', 'inventory'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${tab === value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50'}`}
+              >
+                {value === 'pos' ? 'Walk-in POS' : value === 'inventory' ? 'Pharmacy store' : 'Prescription dispensing'}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      listTitle={tabTitle}
+      listDescription={tabDescription}
+      listMeta={tab === 'dispense' ? `${visiblePrescriptions.length + plans.length} active workflow item${visiblePrescriptions.length + plans.length === 1 ? '' : 's'}` : tab === 'pos' ? `${posSales.length} POS sale${posSales.length === 1 ? '' : 's'}` : `${visibleInventory.length} product${visibleInventory.length === 1 ? '' : 's'} shown`}
+      loading={loading}
+      empty={false}
+      emptyTitle={tab === 'dispense' ? 'No dispensing work' : tab === 'pos' ? 'No POS activity' : 'No inventory items'}
+      emptyDescription={tabDescription}
+    >
+      <div className="space-y-6 p-4 sm:p-5">
+        
+      </div>
+    </OperationalWorklistShell>
   );
 }
