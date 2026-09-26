@@ -19,6 +19,7 @@ assert('medication lifecycle only transitions from scheduled', source.includes("
 assert('emergency board consumes centralized guard', fs.readFileSync(path.join(process.cwd(), 'src/pages/EmergencyBoard.tsx'), 'utf8').includes("canTransitionWorkflow('emergency'"));
 assert('clinical operations consumes centralized guard', fs.readFileSync(path.join(process.cwd(), 'src/pages/ClinicalOperations.tsx'), 'utf8').includes('canTransitionWorkflow(tab'));
 assert('insurance claims consumes centralized guard', fs.readFileSync(path.join(process.cwd(), 'src/pages/InsuranceClaims.tsx'), 'utf8').includes("canTransitionWorkflow('insurance'"));
+assert('medication administration consumes centralized guard', fs.readFileSync(path.join(process.cwd(), 'src/pages/MedicationAdministration.tsx'), 'utf8').includes("canTransitionWorkflow('medication'"));
 assert('clinical operations only renders permitted next statuses', fs.readFileSync(path.join(process.cwd(), 'src/pages/ClinicalOperations.tsx'), 'utf8').includes('getAllowedWorkflowTransitions('));
 assert('emergency board only renders permitted next statuses', fs.readFileSync(path.join(process.cwd(), 'src/pages/EmergencyBoard.tsx'), 'utf8').includes("getAllowedWorkflowTransitions('emergency'"));
 assert('insurance claims only renders permitted next statuses', fs.readFileSync(path.join(process.cwd(), 'src/pages/InsuranceClaims.tsx'), 'utf8').includes("getAllowedWorkflowTransitions('insurance'"));
