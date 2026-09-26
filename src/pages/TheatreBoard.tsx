@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import { canTransitionWorkflow, getAllowedWorkflowTransitions, normalizeWorkflowStatus } from '@/lib/workflowTransitions';
 
 type Row = { id: string; patient_id: string; procedure_name: string; theatre_name: string | null; scheduled_start: string | null; urgency: string; status: string; anesthetist_id: string | null };
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
@@ -33,7 +34,10 @@ export default function TheatreBoard() {
     setForm({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' }); toast({ title: 'Theatre case registered' }); void load();
   };
   const transition = async (id: string, status: string) => {
-    setBusy(true); const { error } = await (supabase as any).rpc('transition_theatre_case', { _case_id: id, _status: status, _cancellation_reason: status === 'cancelled' || status === 'postponed' ? 'Status changed from theatre board' : null }); setBusy(false);
+    const nextStatus = normalizeWorkflowStatus(status);
+    const current = rows.find((row) => row.id === id)?.status;
+    if (!current || !canTransitionWorkflow('theatre', current, nextStatus)) { toast({ title: 'Invalid workflow transition', description: 'Choose the next permitted theatre status.', variant: 'destructive' }); return; }
+    setBusy(true); const { error } = await (supabase as any).rpc('transition_theatre_case', { _case_id: id, _status: nextStatus, _cancellation_reason: nextStatus === 'cancelled' || nextStatus === 'postponed' ? 'Status changed from theatre board' : null }); setBusy(false);
     if (error) toast({ title: 'Transition failed', description: error.message, variant: 'destructive' }); else { toast({ title: 'Theatre status updated' }); void load(); }
   };
   const assignAnesthetist = async (id: string, officerId: string) => {
@@ -87,7 +91,7 @@ export default function TheatreBoard() {
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ["completed","cancelled"].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Change status…</option>{statuses.filter((s) => s !== r.status).map((s) => <option key={s}>{s}</option>)}</select>
+              <select aria-label={`Change status for ${patient(r.patient_id)}`} disabled={busy || ["completed","cancelled"].includes(r.status)} value="" onChange={(e) => { if (e.target.value) void transition(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Change status…</option>{getAllowedWorkflowTransitions('theatre', r.status).map((s) => <option key={s}>{s}</option>)}</select>
               <select aria-label={`Assign anesthetist for ${patient(r.patient_id)}`} disabled={busy || ["completed","cancelled"].includes(r.status) || anesthesiaOfficers.length === 0} value="" onChange={(e) => { if (e.target.value) void assignAnesthetist(r.id, e.target.value); }} className="input-medical text-sm sm:w-52"><option value="">Assign anesthetist…</option>{anesthesiaOfficers.map((o) => <option key={o.id} value={o.id}>{o.full_name || o.specialization || o.id}</option>)}</select>
             </div>
           </div>
