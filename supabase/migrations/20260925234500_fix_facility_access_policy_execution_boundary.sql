@@ -16,8 +16,8 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND (
-        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\\('
-        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\\('
+        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
       AND coalesce(qual, '') !~* 'current_user_has_facility_access'
       AND coalesce(with_check, '') !~* 'current_user_has_facility_access';
@@ -30,14 +30,14 @@ BEGIN
 
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\\(\\s*\\(\\s*SELECT\\s+auth\\.uid\\(\\)\\s+AS\\s+uid\\s*\\)\\s*,\\s*([A-Za-z_][A-Za-z0-9_.]*)\\s*\\)',
-      'current_user_has_facility_access(\\1)',
+      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\\(\\s*\\(\\s*SELECT\\s+auth\\.uid\\(\\)\\s+AS\\s+uid\\s*\\)\\s*,\\s*([A-Za-z_][A-Za-z0-9_.]*)\\s*\\)',
-      'current_user_has_facility_access(\\1)',
+      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'current_user_has_facility_access(\1)',
       'gi'
     );
 
@@ -80,8 +80,8 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND (
-        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\\('
-        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\\('
+        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
       AND coalesce(qual, '') !~* 'current_user_has_facility_access'
       AND coalesce(with_check, '') !~* 'current_user_has_facility_access'
