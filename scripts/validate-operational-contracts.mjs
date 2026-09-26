@@ -416,3 +416,19 @@ const notificationProviderPriorityMigration = read('supabase/migrations/20260925
 assert('notification provider priority control is versioned', notificationProviderPriorityMigration.includes('priority integer not null default 100') && notificationProviderPriorityMigration.includes('is_primary boolean not null default false') && notificationProviderPriorityMigration.includes('facility_notification_provider_primary_uq'), 'notification provider routing must have deterministic priority and single-primary controls');
 const notificationSettingsSource = read('src/pages/admin/Settings.tsx');
 assert('admin email provider form persists routing controls', notificationSettingsSource.includes('priority:Number(emailDraft.priority||100)') && notificationSettingsSource.includes('isPrimary:emailDraft.isPrimary'), 'the email provider UI must send priority and primary-provider state to the server control plane');
+
+
+const cataloguePermissions = read('src/lib/permissions.ts');
+const catalogueModal = read('src/components/catalogue/CatalogueCreateModal.tsx');
+const pharmacyCatalogueSource = read('src/pages/Pharmacy.tsx');
+const laboratoryCatalogueSource = read('src/pages/Laboratory.tsx');
+const billingCatalogueSource = read('src/pages/Billing.tsx');
+const catalogueMigration = read('supabase/migrations/20260926012000_governed_catalogue_creation_privileges.sql');
+assert('catalogue creation permissions exist in the application contract', cataloguePermissions.includes("'create_services'") && cataloguePermissions.includes("'create_items'"), 'catalogue creation privileges must be represented in the application permission type');
+assert('catalogue creation modal is shared', catalogueModal.includes('create_service_catalogue_item') && catalogueModal.includes('create_pharmacy_inventory_item') && catalogueModal.includes('create_lab_test_catalogue_item'), 'service, pharmacy and laboratory creation must share the governed creation surface');
+assert('pharmacy missing-item flow offers Add action', pharmacyCatalogueSource.includes('Add {prescription.medication}') && pharmacyCatalogueSource.includes('kind="pharmacy"'), 'pharmacy must offer an Add medication action when the requested product is unavailable');
+assert('laboratory missing-test flow offers Add action', laboratoryCatalogueSource.includes('Search laboratory test catalogue') && laboratoryCatalogueSource.includes('Add {catalogueSearch.trim()}') && laboratoryCatalogueSource.includes('kind="lab"'), 'laboratory must offer an Add test action when the search has no catalogue match');
+assert('accounts service search offers Add action', billingCatalogueSource.includes('Search service or service code') && billingCatalogueSource.includes('Add {walkInSearch.trim()}') && billingCatalogueSource.includes('kind="service"'), 'accounts billing service search must offer an Add service action when no tariff matches');
+assert('catalogue mutations are server-authoritative', catalogueMigration.includes('current_user_has_catalogue_create_permission') && catalogueMigration.includes('create_service_catalogue_item') && catalogueMigration.includes('create_lab_test_catalogue_item') && catalogueMigration.includes('create_pharmacy_inventory_item'), 'catalogue creation must be enforced through database RPCs rather than direct client inserts');
+assert('service creation is department-scoped', catalogueMigration.includes('You may create services only for your department') && catalogueMigration.includes("p.department"), 'non-admin service creation must remain restricted to the creator department');
+assert('admin and IT admin can create catalogue entries', catalogueMigration.includes("has_role(auth.uid(),'admin')") && catalogueMigration.includes("has_role(auth.uid(),'it_admin')"), 'administrator and IT administrator catalogue creation must bypass departmental creation restrictions');
