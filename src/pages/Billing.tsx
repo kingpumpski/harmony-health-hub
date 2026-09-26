@@ -136,8 +136,6 @@ export default function Billing() {
     </>}
     <p className="text-xs text-muted-foreground">Billing operator: {user?.email ?? 'authenticated user'} · Invoice: {invoiceId || 'not prepared'}</p>
     {createServiceName && <CatalogueCreateModal kind="service" initialName={createServiceName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => { void loadPatients(); setWalkInSearch(createServiceName); }} onClose={() => setCreateServiceName('')} />}
-  </div>;
     </OperationalWorklistShell>
   );
-}  </div>;
 }
