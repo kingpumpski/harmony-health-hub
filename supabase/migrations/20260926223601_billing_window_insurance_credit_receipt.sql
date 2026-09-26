@@ -178,6 +178,7 @@ DECLARE
   v_insurance numeric := 0;
   v_topup numeric := 0;
   v_items jsonb;
+  v_account_id text;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
     public.has_role(auth.uid(),'admin')
@@ -321,9 +322,13 @@ BEGIN
   ) so ON true
   WHERE ii.invoice_id = v_invoice;
 
+  SELECT i.invoice_number INTO v_account_id
+  FROM public.invoices i
+  WHERE i.id = v_invoice;
+
   RETURN jsonb_build_object(
     'invoice_id',v_invoice,
-    'account_id',i.invoice_number,
+    'account_id',v_account_id,
     'records_folder_id',v_patient.patient_code,
     'patient_name',concat_ws(' ',v_patient.first_name,v_patient.last_name),
     'patient_type',CASE WHEN v_insured THEN 'Insured' ELSE 'Cash / Non-Insured' END,
@@ -336,9 +341,7 @@ BEGIN
     'credit_balance',round(v_credit,2),
     'amount_due',round(v_topup-v_credit,2),
     'items',v_items
-  )
-  FROM public.invoices i
-  WHERE i.id = v_invoice;
+  );
 END;
 $$;
 
