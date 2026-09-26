@@ -1,17 +1,14 @@
 export const MAX_SPREADSHEET_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_SPREADSHEET_ROWS = 10_000;
-export const SUPPORTED_SPREADSHEET_EXTENSIONS = ['.xlsx', '.xls'] as const;
+export const SUPPORTED_SPREADSHEET_EXTENSIONS = ['.xlsx', '.xls'];
 
-export type SpreadsheetCell = string | number | boolean | null;
-export type SpreadsheetRow = Record<string, SpreadsheetCell>;
-
-export const normalizeSpreadsheetCell = (value: unknown): SpreadsheetCell => {
+export const normalizeSpreadsheetCell = (value) => {
   if (value === undefined || value === null || String(value).trim() === '') return null;
   if (typeof value === 'boolean' || typeof value === 'number') return value;
   return String(value).trim();
 };
 
-export const normalizeSpreadsheetRows = (data: Array<Record<string, unknown>>): SpreadsheetRow[] =>
+export const normalizeSpreadsheetRows = (data) =>
   data.map((row) =>
     Object.fromEntries(
       Object.entries(row).map(([key, value]) => [
@@ -21,7 +18,7 @@ export const normalizeSpreadsheetRows = (data: Array<Record<string, unknown>>): 
     ),
   );
 
-export const assertSupportedSpreadsheetFile = (fileName: string, byteLength: number): void => {
+export const assertSupportedSpreadsheetFile = (fileName, byteLength) => {
   if (byteLength > MAX_SPREADSHEET_FILE_BYTES) {
     throw new Error(`Imports are limited to ${MAX_SPREADSHEET_FILE_BYTES / 1024 / 1024} MB.`);
   }
@@ -32,10 +29,7 @@ export const assertSupportedSpreadsheetFile = (fileName: string, byteLength: num
   }
 };
 
-export const parseSpreadsheetBuffer = async (
-  buffer: ArrayBuffer,
-  fileName: string,
-): Promise<SpreadsheetRow[]> => {
+export const parseSpreadsheetBuffer = async (buffer, fileName) => {
   assertSupportedSpreadsheetFile(fileName, buffer.byteLength);
 
   const XLSX = await import('xlsx');
@@ -49,7 +43,7 @@ export const parseSpreadsheetBuffer = async (
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) throw new Error('The workbook contains no worksheets.');
 
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], {
+  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
     defval: null,
     raw: true,
   });
