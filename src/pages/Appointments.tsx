@@ -1,4 +1,3 @@
-import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +26,10 @@ interface Appointment {
   treatment_status?: string | null;
   treatment_notes?: string | null;
   consultation_type?: string | null;
+  patient_code?: string | null;
+  patient_first_name?: string | null;
+  patient_last_name?: string | null;
+  practitioner_name?: string | null;
 }
 interface Clinician {
   id: string;
@@ -77,7 +80,7 @@ export default function Appointments() {
     if (!silent) setLoading(true);
     const [{ data: pts, error: patientError }, { data: workspace, error: appointmentError }, { data: staff, error: clinicianError }] = await Promise.all([
       searchPatientDirectory('', 300),
-      getOperationalWorkspace('appointments', 300),
+      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never),
       supabase.rpc('get_appointment_clinicians' as never),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
@@ -85,7 +88,7 @@ export default function Appointments() {
     if (clinicianError) toast({ title: 'Unable to load clinicians', description: clinicianError.message, variant: 'destructive' });
     setPatients((pts ?? []) as Patient[]);
     setClinicians((staff ?? []) as Clinician[]);
-    setAppts(((workspace as any)?.appointments ?? []) as Appointment[]);
+    setAppts((workspace ?? []) as Appointment[]);
     setLoading(false);
   };
 
@@ -285,10 +288,10 @@ export default function Appointments() {
                   aria-label={`Open appointment for ${patient ? `${patient.first_name} ${patient.last_name}` : 'patient'}`}
                 >
                   <div className="grid gap-2 md:grid-cols-[1.1fr_1.5fr_1.35fr_1.5fr_1.35fr] md:items-center">
-                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Hospital ID</span><p className="font-mono text-sm">{patient?.patient_code ?? '—'}</p></div>
-                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Patient</span><p className="font-medium">{patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown patient'}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Hospital ID</span><p className="font-mono text-sm">{appointment.patient_code ?? patient?.patient_code ?? '—'}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Patient</span><p className="font-medium">{appointment.patient_first_name ? `${appointment.patient_first_name} ${appointment.patient_last_name ?? ''}`.trim() : patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown patient'}</p></div>
                     <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Consultation</span><p className="text-sm">{appointment.consultation_type || 'General Consultation'}</p></div>
-                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Physician / Specialist</span><p className="text-sm">{clinicianName(appointment.practitioner_id || appointment.attending_officer_id)}</p></div>
+                    <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Physician / Specialist</span><p className="text-sm">{appointment.practitioner_name || clinicianName(appointment.practitioner_id || appointment.attending_officer_id)}</p></div>
                     <div><span className="md:hidden text-[11px] uppercase text-muted-foreground">Date & time</span><p className="text-sm">{new Date(appointment.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p></div>
                   </div>
                 </button>
@@ -354,12 +357,12 @@ export default function Appointments() {
               <div>
                 <p className="text-xs uppercase tracking-wide text-primary">Appointment</p>
                 <h2 id="appointment-detail-heading" className="text-xl font-semibold mt-1">{patientMap.get(selected.patient_id) ? `${patientMap.get(selected.patient_id)?.first_name} ${patientMap.get(selected.patient_id)?.last_name}` : 'Patient'}</h2>
-                <p className="text-sm text-muted-foreground">{patientMap.get(selected.patient_id)?.patient_code ?? '—'} · {selected.consultation_type || 'General Consultation'}</p>
+                <p className="text-sm text-muted-foreground">{selected.patient_code || patientMap.get(selected.patient_id)?.patient_code || '—'} · {selected.consultation_type || 'General Consultation'}</p>
               </div>
               <button type="button" onClick={() => setSelected(null)} className="btn-secondary" aria-label="Close appointment"><X className="w-4 h-4" /></button>
             </div>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div><dt className="text-muted-foreground">Physician / Specialist</dt><dd className="font-medium mt-1">{clinicianName(selected.practitioner_id || selected.attending_officer_id)}</dd></div>
+              <div><dt className="text-muted-foreground">Physician / Specialist</dt><dd className="font-medium mt-1">{selected.practitioner_name || clinicianName(selected.practitioner_id || selected.attending_officer_id)}</dd></div>
               <div><dt className="text-muted-foreground">Date & time</dt><dd className="font-medium mt-1">{new Date(selected.scheduled_at).toLocaleString()}</dd></div>
               <div><dt className="text-muted-foreground">Status</dt><dd className="font-medium mt-1 capitalize">{selectedStatus.replaceAll('_', ' ')}</dd></div>
               <div><dt className="text-muted-foreground">Clinical reason</dt><dd className="font-medium mt-1">{selected.reason || 'Not provided'}</dd></div>
