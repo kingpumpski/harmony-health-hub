@@ -3,7 +3,6 @@ import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import { toast } from '@/hooks/use-toast';
 
