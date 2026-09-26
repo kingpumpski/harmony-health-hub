@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, CreditCard, Loader2, Plus, RefreshCw, ShieldCheck, Wallet, ReceiptText, Activity, CircleDollarSign } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CreditCard, FileText, Loader2, Plus, Printer, RefreshCw, ShieldCheck, Wallet, ReceiptText, Activity, CircleDollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -8,12 +8,30 @@ import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
-interface Patient { id: string; first_name: string; last_name: string; patient_code: string; membership_type?: string; membership_expires_at?: string | null; insurance_provider: string | null; insurance_number: string | null }
+interface Patient { id: string; first_name: string; last_name: string; patient_code: string; membership_type?: string; membership_expires_at?: string | null; insurance_provider: string | null; insurance_number: string | null; insurance_expiry?: string | null }
 interface BillableItem { invoice_id: string; invoice_item_id: string; source_type: string | null; source_id: string | null; description: string; category: string | null; department: string | null; quantity: number; unit_price: number; amount: number; paid_amount: number; outstanding_amount: number; service_order_id: string | null; service_order_status: string | null }
 interface BillingWindow { invoice_id: string; account_id: string; records_folder_id: string; patient_name: string; patient_type: 'Insured' | 'Cash / Non-Insured'; insurance_name: string | null; encounter_id: string | null; date_time: string; total_amount: number; insurance_total: number; top_up_total: number; credit_balance: number; amount_due: number; items: Array<BillableItem & { charge: number; insurance_charge: number; top_up: number; billed_at: string | null }> }
 interface Tariff { id: string; service_code: string; service_name: string; department: string; unit: string; amount: number; active: boolean }
 const db = supabase as any;
 const money = (v: number) => `₵${Number(v || 0).toFixed(2)}`;
+const smallNumberWords = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const tensWords = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const integerToWords = (value: number): string => {
+  const n = Math.floor(Math.max(0, value));
+  if (n < 20) return smallNumberWords[n];
+  if (n < 100) return tensWords[Math.floor(n / 10)] + (n % 10 ? '-' + smallNumberWords[n % 10] : '');
+  if (n < 1000) return smallNumberWords[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' and ' + integerToWords(n % 100) : '');
+  if (n < 1000000) return integerToWords(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + integerToWords(n % 1000) : '');
+  if (n < 1000000000) return integerToWords(Math.floor(n / 1000000)) + ' million' + (n % 1000000 ? ' ' + integerToWords(n % 1000000) : '');
+  return integerToWords(Math.floor(n / 1000000000)) + ' billion' + (n % 1000000000 ? ' ' + integerToWords(n % 1000000000) : '');
+};
+const amountInWords = (value: number): string => {
+  const cents = Math.round(Math.max(0, Number(value || 0)) * 100);
+  const major = Math.floor(cents / 100);
+  const minor = cents % 100;
+  const cedi = major === 1 ? 'cedi' : 'cedis';
+  return integerToWords(major) + ' Ghana ' + cedi + ' ' + integerToWords(minor) + ' pesewas';
+};
 const categoryLabel: Record<string, string> = { consultation: 'Consultation', lab: 'Laboratory', imaging: 'Diagnostic imaging', pharmacy: 'Pharmacy / drugs', ward: 'Accommodation', feeding: 'Feeding', procedure: 'Medical service' };
 const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
@@ -24,7 +42,6 @@ export default function Billing() {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [patientId, setPatientId] = useState('');
   const [from, setFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [items, setItems] = useState<BillableItem[]>([]);
   const [billingWindow, setBillingWindow] = useState<BillingWindow | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -75,7 +92,7 @@ export default function Billing() {
     setItems((prepared?.items ?? []) as BillableItem[]);
     setInvoiceId(prepared?.invoice_id ?? '');
     setSelected([]);
-  }, [canPrepareBill, from, patientId, to]);
+  }, [canPrepareBill, from, patientId]);
 
   useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
   useEffect(() => { void loadBillable(); }, [loadBillable]);
@@ -99,7 +116,7 @@ export default function Billing() {
   }, { gross: 0, insurance: 0, topUp: 0, paid: 0, outstanding: 0, released: 0 }), [billingWindow, items]);
   const finalStatus = totals.outstanding <= 0 && items.length > 0 ? 'Fully settled' : totals.paid > 0 ? 'Partially settled' : 'Open account';
   const selectedTotal = useMemo(() => items.filter((i) => selected.includes(i.invoice_item_id)).reduce((s, i) => s + Number((billingWindow?.patient_type === 'Insured' ? (i as any).top_up : i.outstanding_amount) || 0), 0), [billingWindow, items, selected]);
-  const selectable = items.filter((i) => Number(i.outstanding_amount) > 0 && !(i as any).billed_at);
+  const selectable = items.filter((i) => Number(i.outstanding_amount) > 0);
   const toggle = (id: string) => setSelected((v) => v.includes(id) ? v.filter((x) => x !== id) : [...v, id]);
   const selectAll = () => setSelected(selected.length === selectable.length ? [] : selectable.map((i) => i.invoice_item_id));
 
@@ -116,9 +133,12 @@ export default function Billing() {
     setPaying(true);
     if (method === 'insurance') {
       if (!selectedPatient?.insurance_provider || !selectedPatient.insurance_number) { setPaying(false); return toast.error('The patient must have an insurer and member number before an insurance claim can be created.'); }
-      const { error } = await db.rpc('create_insurance_claim_draft', { _patient_id: patientId, _payer_name: selectedPatient.insurance_provider, _member_number: selectedPatient.insurance_number, _amount_claimed: selectedTotal, _invoice_id: invoiceId });
-      setPaying(false); if (error) { playWorkflowSound('critical'); return toast.error(`Unable to create insurance claim: ${error.message}`); }
-      playWorkflowSound('success'); toast.success(`${money(selectedTotal)} submitted to the insurance claims queue. No cash payment was recorded.`); setSelected([]); setReference(''); return;
+      const insuranceTotal = items.filter((item) => selected.includes(item.invoice_item_id)).reduce((sum, item) => sum + Number((item as any).insurance_charge || 0), 0);
+      const { error } = await db.rpc('create_insurance_claim_draft', { _patient_id: patientId, _payer_name: billingWindow?.insurance_name ?? selectedPatient.insurance_provider, _member_number: selectedPatient.insurance_number, _amount_claimed: insuranceTotal, _invoice_id: invoiceId });
+      setPaying(false); if (error) { playWorkflowSound('critical'); return toast.error('Unable to create insurance claim: ' + error.message); }
+      const { error: billedError } = await db.rpc('mark_billing_items_billed', { _invoice_id: invoiceId, _item_ids: selected });
+      if (billedError) { playWorkflowSound('critical'); return toast.error('Claim created, but billing finalization failed: ' + billedError.message); }
+      playWorkflowSound('success'); toast.success(money(insuranceTotal) + ' submitted to the insurance claims queue. No cash payment was recorded.'); setSelected([]); setReference(''); await loadBillable(); return;
     }
     const { error } = await db.rpc('pay_selected_invoice_items', { _invoice_id: invoiceId, _item_ids: selected, _method: method, _reference: reference || null });
     setPaying(false);
@@ -239,7 +259,7 @@ export default function Billing() {
             <div className="card-medical p-5"><p className="text-xs uppercase tracking-[0.14em] text-primary font-semibold">Payment</p><div className="grid gap-2 mt-3"><select value={method} onChange={(e) => setMethod(e.target.value)} className="input-medical" aria-label="Payment method"><option value="cash">Cash</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="insurance">Insurance claim</option></select><input value={reference} onChange={(e) => setReference(e.target.value)} className="input-medical" placeholder="Payment / claim reference" aria-label="Payment reference" /><button type="button" onClick={() => void paySelected()} disabled={paying || !selected.length} className="btn-primary">{paying ? 'Processing…' : method === 'insurance' ? 'Submit insurance claim' : 'Record payment'}{selected.length ? ' · ' + money(selectedTotal) : ''}</button></div></div>
           </section>
 
-          <section className="card-medical p-5 bg-muted/30"><div className="flex items-start gap-3"><FileText className="w-5 h-5 text-primary mt-0.5" aria-hidden="true" /><div><h2 className="font-semibold">Amount in words</h2><p className="text-sm mt-1">({billingWindow.amount_due < 0 ? amountInWords(0) : amountInWords(billingWindow.patient_type === 'Insured' ? billingWindow.top_up_total : billingWindow.total_amount)}) being payment of medical bill</p></div></div></section>
+          <section className="card-medical p-5 bg-muted/30"><div className="flex items-start gap-3"><FileText className="w-5 h-5 text-primary mt-0.5" aria-hidden="true" /><div><h2 className="font-semibold">Amount in words</h2><p className="text-sm mt-1">({billingWindow.amount_due < 0 ? amountInWords(0) : amountInWords(billingWindow.total_amount)}) being payment of medical bill</p></div></div></section>
 
           <section id="billing-print-area" className="card-medical p-6 print:shadow-none print:border-0 print:p-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between border-b border-border pb-4"><div><p className="text-xs uppercase tracking-[0.16em] text-primary font-semibold">Harmony Health Hub</p><h2 className="text-2xl font-bold">Medical Billing Receipt</h2></div><div className="text-sm sm:text-right"><p>Account ID: <strong>{billingWindow.account_id}</strong></p><p>Records/Folder ID: <strong>{billingWindow.records_folder_id}</strong></p><p>Date and Time: <strong>{new Date(billingWindow.date_time).toLocaleString('en-GH')}</strong></p></div></div>
