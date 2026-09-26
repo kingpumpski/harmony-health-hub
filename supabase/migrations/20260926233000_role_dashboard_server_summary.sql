@@ -2,7 +2,7 @@
 CREATE OR REPLACE FUNCTION public.get_role_dashboard_summary()
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
