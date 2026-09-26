@@ -3,11 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing } from 'lucide-react';
+import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing, RefreshCw } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
+import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
 interface LabCatalogueItem {
@@ -47,6 +48,7 @@ export default function Laboratory() {
   const [amount, setAmount] = useState('');
   const [attentionOrderId, setAttentionOrderId] = useState(searchParams.get('order') || '');
   const [attentionResultId, setAttentionResultId] = useState(searchParams.get('result') || '');
+  const [loading, setLoading] = useState(false);
   const [resultFor, setResultFor] = useState<string | null>(null);
   const [resultText, setResultText] = useState('');
   const [numericValue, setNumericValue] = useState('');
@@ -56,11 +58,13 @@ export default function Laboratory() {
   const hasLoadedQueue = useRef(false);
 
   const loadAll = async () => {
-    const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
-    if (error) {
-      toast({ title: 'Laboratory workspace unavailable', description: error.message, variant: 'destructive' });
-      return;
-    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
+      if (error) {
+        toast({ title: 'Laboratory workspace unavailable', description: error.message, variant: 'destructive' });
+        return;
+      }
     const workspace = (data ?? {}) as {
       patients?: Patient[];
       catalogue?: LabCatalogueItem[];
@@ -81,6 +85,8 @@ export default function Laboratory() {
     } else if (requestedResultId) {
       const matchingResult = (workspace.results ?? []).find((result) => result.id === requestedResultId);
       if (matchingResult) setAttentionOrderId(matchingResult.lab_order_id);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -237,48 +243,148 @@ export default function Laboratory() {
     void loadAll();
   };
 
-  const counterCards = [
-    { label: 'Active patients', value: counters.active, surface: 'bg-primary/5', tone: 'text-primary', urgent: counters.active > 0 },
-    { label: 'Awaiting sample', value: counters.awaitingSample, surface: 'bg-warning/5', tone: 'text-warning', urgent: counters.awaitingSample > 0 },
-    { label: 'Processing', value: counters.processing, surface: 'bg-info/5', tone: 'text-info', urgent: counters.processing > 0 },
-    { label: 'Results to approve', value: counters.awaitingApproval, surface: 'bg-critical/5', tone: 'text-critical', urgent: counters.awaitingApproval > 0 },
-    { label: 'Approved today / recent', value: counters.approved, surface: 'bg-success/5', tone: 'text-success', urgent: false },
-  ];
-
   return (
     <>
-      <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><FlaskConical className="w-6 h-6 text-primary" /> Laboratory</h1><p className="text-muted-foreground">Catalogue → order → payment approval → sample → structured result → approval.</p></div><Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit"><BellRing className="w-4 h-4" /> Notifications</Link></div>
-      <div aria-label="Laboratory workflow counters" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        {counterCards.map((card) => <div key={card.label} className={`card-medical ${card.surface} p-4 transition-all hover:-translate-y-1 hover:shadow-elevated ${card.urgent ? 'ring-1 ring-primary/15' : ''}`}><p className="text-xs text-muted-foreground">{card.label}</p><p className={`mt-1 text-3xl font-bold tabular-nums ${card.tone} ${card.urgent ? 'animate-pulse' : ''}`}>{card.value}</p></div>)}
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        <form onSubmit={createOrder} className="card-medical p-5 space-y-3 h-fit">
-          <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New Lab Order</h2>
-          <select value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select>
-          <select value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}><option value="">Attach to encounter (optional)</option>{encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}</select>
-          <p className="text-[11px] text-muted-foreground">Attach the originating encounter when the order is part of a clinical visit. The server verifies the encounter belongs to the selected patient.</p>
-          <input value={catalogueSearch} onChange={(e) => setCatalogueSearch(e.target.value)} className="input-medical w-full" placeholder="Search laboratory test catalogue" /><select value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full"><option value="">Select catalogue test…</option>{filteredCatalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ""}</option>)}</select>{canCreateCatalogue && catalogueSearch.trim() && filteredCatalogue.length === 0 && <button type="button" onClick={() => setCreateLabTestName(catalogueSearch.trim())} className="btn-secondary w-full">Add {catalogueSearch.trim()}</button>}
-          <input value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" />
-          <input value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
-          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-medical w-full"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select>
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} className="input-medical w-full" inputMode="decimal" min="0" step="0.01" type="number" placeholder="Charge (GHS)" />
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input-medical w-full" rows={2} placeholder="Clinical notes" />
-          <button className="btn-primary w-full">Order Test</button>
-          <p className="text-xs text-muted-foreground flex items-start gap-2"><LockKeyhole className="w-3.5 h-3.5 mt-0.5" /> Chargeable tests are blocked until Accounts releases them.</p>
-        </form>
-        <div className="card-medical p-5"><h2 className="font-semibold mb-3">Lab Queue</h2><div className="space-y-3">
-          {orders.map((o) => { const p = patients.find((x) => x.id === o.patient_id); const result = resultsByOrder[o.id]; const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id); return (
-            <div id={`lab-order-${o.id}`} key={o.id} className={`rounded-xl border border-border p-4 transition-all ${attentionOrderId === o.id ? 'ring-2 ring-primary/40 bg-primary/5 shadow-elevated' : o.status === 'completed' ? 'ring-1 ring-critical/15' : ''}`}><div className="flex justify-between items-start gap-3"><div><p className="font-medium flex items-center gap-2">{o.test_name}{attentionOrderId === o.id && <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/10 px-2 py-0.5 text-primary">Clinical attention</span>}</p><p className="text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : '—'} · {o.test_category ?? '—'} · {o.priority.toUpperCase()}</p>{item?.specimen_type && <p className="text-xs text-muted-foreground mt-1">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}</div><span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span></div>
-              {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" /> Abnormal result flagged — clinical attention required</div>}
+      <OperationalWorklistShell
+        icon={FlaskConical}
+        eyebrow="Diagnostics · Laboratory"
+        title="Laboratory Workspace"
+        description="Manage laboratory orders from catalogue selection through payment release, specimen collection, structured results, approval and clinical notification."
+        actions={(
+          <>
+            <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit">
+              <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
+            </Link>
+            <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh laboratory workspace">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Refresh
+            </button>
+          </>
+        )}
+        counters={[
+          { label: 'Active orders', value: counters.active, tone: 'text-primary', surface: 'bg-primary/5' },
+          { label: 'Awaiting sample', value: counters.awaitingSample, tone: 'text-warning', surface: 'bg-warning/5' },
+          { label: 'Processing', value: counters.processing, tone: 'text-info', surface: 'bg-info/5' },
+          { label: 'Results to approve', value: counters.awaitingApproval, tone: 'text-critical', surface: 'bg-critical/5' },
+          { label: 'Approved / recent', value: counters.approved, tone: 'text-success', surface: 'bg-success/5' },
+        ]}
+        beforeList={(
+          <section className="card-medical p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> New laboratory order</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Attach the originating encounter when applicable. Server-side validation remains authoritative for patient, encounter and payment boundaries.</p>
+              </div>
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">Diagnostic workflow</span>
+            </div>
+            <form onSubmit={createOrder} className="mt-4 grid gap-3 lg:grid-cols-3">
+              <div>
+                <label htmlFor="lab-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
+                <select id="lab-patient" value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full" required>
+                  <option value="">Select patient…</option>
+                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="lab-encounter" className="mb-1 block text-xs font-semibold">Originating encounter</label>
+                <select id="lab-encounter" value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}>
+                  <option value="">Attach to encounter (optional)</option>
+                  {encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="lab-catalogue-search" className="mb-1 block text-xs font-semibold">Test catalogue search</label>
+                <input id="lab-catalogue-search" value={catalogueSearch} onChange={(e) => setCatalogueSearch(e.target.value)} className="input-medical w-full" placeholder="Search laboratory test catalogue" />
+              </div>
+              <div>
+                <label htmlFor="lab-catalogue" className="mb-1 block text-xs font-semibold">Catalogue test</label>
+                <select id="lab-catalogue" value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full">
+                  <option value="">Select catalogue test…</option>
+                  {filteredCatalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ""}</option>)}
+                </select>
+                {canCreateCatalogue && catalogueSearch.trim() && filteredCatalogue.length === 0 && <button type="button" onClick={() => setCreateLabTestName(catalogueSearch.trim())} className="btn-secondary mt-2 w-full">Add {catalogueSearch.trim()}</button>}
+              </div>
+              <div>
+                <label htmlFor="lab-test-name" className="mb-1 block text-xs font-semibold">Test name <span className="text-critical">*</span></label>
+                <input id="lab-test-name" value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" required />
+              </div>
+              <div>
+                <label htmlFor="lab-category" className="mb-1 block text-xs font-semibold">Category</label>
+                <input id="lab-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
+              </div>
+              <div>
+                <label htmlFor="lab-priority" className="mb-1 block text-xs font-semibold">Priority</label>
+                <select id="lab-priority" value={priority} onChange={(e) => setPriority(e.target.value)} className="input-medical w-full">
+                  <option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="lab-amount" className="mb-1 block text-xs font-semibold">Charge (GHS) <span className="text-critical">*</span></label>
+                <input id="lab-amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="input-medical w-full" inputMode="decimal" min="0" step="0.01" type="number" placeholder="Charge (GHS)" required />
+              </div>
+              <div>
+                <label htmlFor="lab-notes" className="mb-1 block text-xs font-semibold">Clinical notes</label>
+                <textarea id="lab-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="input-medical w-full" rows={2} placeholder="Clinical notes" />
+              </div>
+              <div className="lg:col-span-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground flex items-start gap-2"><LockKeyhole className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" /> Chargeable tests remain blocked until Accounts releases them.</p>
+                <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Order test</button>
+              </div>
+            </form>
+          </section>
+        )}
+        listTitle="Laboratory worklist"
+        listDescription="Orders remain in one operational queue with payment state, specimen progress, results and clinical-attention context visible."
+        listMeta={`${orders.length} order${orders.length === 1 ? '' : 's'}`}
+        loading={loading}
+        empty={orders.length === 0}
+        emptyTitle="No laboratory orders"
+        emptyDescription="Create a laboratory order above or open the workspace from an encounter when diagnostic testing is required."
+      >
+        {orders.map((o) => {
+          const p = patients.find((x) => x.id === o.patient_id);
+          const result = resultsByOrder[o.id];
+          const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id);
+          return (
+            <div id={`lab-order-${o.id}`} key={o.id} className={`p-4 transition-colors ${attentionOrderId === o.id ? 'bg-primary/5' : ''}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{o.test_name}</p>
+                    {attentionOrderId === o.id && <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/10 px-2 py-0.5 text-primary">Clinical attention</span>}
+                    {o.priority !== 'routine' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">{o.priority.toUpperCase()}</span>}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'} · {o.test_category ?? 'Uncategorised'} · {new Date(o.created_at).toLocaleString()}</p>
+                  {item?.specimen_type && <p className="mt-1 text-xs text-muted-foreground">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span>
+              </div>
+              {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" aria-hidden="true" /> Abnormal result flagged — clinical attention required</div>}
               {attentionResultId === result?.id && <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">Opened from a clinical result notification. Review this laboratory result and acknowledge the attention item when your review is complete.</div>}
-              <div className="mt-3 flex flex-wrap gap-2">{o.status === 'ordered' && <button onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}{o.status === 'sample_collected' && <button onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}{o.status === 'completed' && result && <button onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Approve & notify</button>}{o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Approved</span>}</div>
-              {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3"><div className="grid gap-2 sm:grid-cols-2"><input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} />{item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}</div><textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" /><input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label><div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div></div>}
-              {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2"><p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>{result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}{result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}</div>}
-            </div>); })}
-          {orders.length === 0 && <p className="text-sm text-muted-foreground">No lab orders yet.</p>}</div></div>
-      </div>
-    </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {o.status === 'ordered' && <button type="button" onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}
+                {o.status === 'sample_collected' && <button type="button" onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}
+                {o.status === 'completed' && result && <button type="button" onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" aria-hidden="true" /> Approve & notify</button>}
+                {o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Approved</span>}
+              </div>
+              {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} aria-label="Numeric result" />
+                  {item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}
+                </div>
+                <textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" aria-label="Result values or narrative" />
+                <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
+                <div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div>
+              </div>}
+              {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2">
+                <p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>
+                {result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}
+                {result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}
+              </div>}
+            </div>
+          );
+        })}
+      </OperationalWorklistShell>
       {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
     </>
   );
