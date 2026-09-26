@@ -226,6 +226,10 @@ export default function Encounters() {
   const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
   const [symptoms, setSymptoms] = useState("");
   const [clerking, setClerking] = useState("");
+  const [draftSymptoms, setDraftSymptoms] = useState("");
+  const [draftClerking, setDraftClerking] = useState("");
+  const [draftTreatmentPlan, setDraftTreatmentPlan] = useState("");
+  const [draftSaving, setDraftSaving] = useState(false);
   const [newDx, setNewDx] = useState("");
   const [med, setMed] = useState("");
   const [dose, setDose] = useState("");
@@ -315,6 +319,22 @@ export default function Encounters() {
     setClerking("");
     setSelected(data as Encounter);
     setIsHistoryOpen(false);
+    void loadAll();
+  };
+
+  const saveDraft = async () => {
+    if (!selected || selected.status !== "draft" || draftSaving) return;
+    setDraftSaving(true);
+    const { data, error } = await db.rpc("save_encounter_draft", {
+      _encounter_id: selected.id,
+      _symptoms: draftSymptoms || null,
+      _clerking_notes: draftClerking || null,
+      _treatment_plan: draftTreatmentPlan || null,
+    });
+    setDraftSaving(false);
+    if (error) return toast({ title: "Draft save failed", description: error.message, variant: "destructive" });
+    setSelected(data as Encounter);
+    toast({ title: "Encounter draft saved", description: "The clinician's clerking documentation has been saved." });
     void loadAll();
   };
 
@@ -408,6 +428,9 @@ export default function Encounters() {
 
   const selectEncounter = (item: Encounter) => {
     setSelected(item);
+    setDraftSymptoms(item.symptoms ?? "");
+    setDraftClerking(item.clerking_notes ?? "");
+    setDraftTreatmentPlan(item.treatment_plan ?? "");
     setIsHistoryOpen(false);
   };
 
@@ -477,6 +500,7 @@ export default function Encounters() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? `Submitted · v${selected.version_no ?? 1}` : "Draft"}</span>
+                {selected.status === "draft" && <button type="button" onClick={() => void saveDraft()} disabled={draftSaving} className="btn-secondary inline-flex items-center gap-2"><Save className="w-4 h-4" /> {draftSaving ? "Saving…" : "Save draft"}</button>}
                 {selected.status === "completed" && <button type="button" onClick={beginAmendment} className="btn-secondary inline-flex items-center gap-2"><Pencil className="w-4 h-4" /> Amend</button>}
                 <button type="button" onClick={() => void loadHistory(selected.id)} className="btn-secondary inline-flex items-center gap-2"><History className="w-4 h-4" /> Version history</button>
                 {selected.status === "completed" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
@@ -497,7 +521,12 @@ export default function Encounters() {
                 <div className="space-y-5">
                   <section className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3><p className="text-xs text-muted-foreground mt-1">History, examination context and treatment plan remain part of the auditable encounter document.</p></div><span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span></div>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div><div className="md:col-span-2"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Treatment plan</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.treatment_plan || "Not yet documented"}</p></div></div>
+                    {selected.status === "draft" ? <div className="mt-4 space-y-3">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation<textarea value={draftSymptoms} onChange={(e) => setDraftSymptoms(e.target.value)} className="input-medical mt-1 w-full" rows={3} placeholder="Chief complaint, presenting symptoms and relevant context" /></label>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clinician's clerking / history<textarea value={draftClerking} onChange={(e) => setDraftClerking(e.target.value)} className="input-medical mt-1 w-full" rows={7} placeholder="History of presenting complaint, relevant history, examination findings and clinical observations" /></label>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Treatment plan<textarea value={draftTreatmentPlan} onChange={(e) => setDraftTreatmentPlan(e.target.value)} className="input-medical mt-1 w-full" rows={4} placeholder="Assessment, investigations, treatment and follow-up plan" /></label>
+                      <div className="flex justify-end"><button type="button" onClick={() => void saveDraft()} disabled={draftSaving} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{draftSaving ? "Saving…" : "Save clerking"}</button></div>
+                    </div> : <div className="mt-4 grid gap-4 md:grid-cols-2"><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div><div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div><div className="md:col-span-2"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Treatment plan</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.treatment_plan || "Not yet documented"}</p></div></div>}
                   </section>
                   <section className="rounded-2xl border border-border bg-card p-5">
                     <section className="rounded-2xl border border-border bg-card p-5">
