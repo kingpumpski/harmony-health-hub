@@ -26,6 +26,9 @@ export default function PractitionerDashboard() {
       supabase.from('admissions').select('id', { count: 'exact', head: true }).eq('status', 'admitted').ilike('ward', '%icu%'),
       supabase.from('vital_alerts').select('id', { count: 'exact', head: true }).is('acknowledged_at', null),
       (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
+      supabase.from('lab_orders').select('id,status,priority').in('status', ['ordered','collected','in_progress']),
+      supabase.from('imaging_orders').select('id,status,priority').neq('status', 'completed'),
+      supabase.from('service_orders').select('id,status').in('status', ['released','in_progress']),
     ]);
     if (appointments.error) toast({ title: 'Appointment counters unavailable', description: appointments.error.message, variant: 'destructive' });
     if (emergency.error) toast({ title: 'Emergency counters unavailable', description: emergency.error.message, variant: 'destructive' });
