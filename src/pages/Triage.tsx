@@ -43,8 +43,6 @@ export default function Triage() {
   const field = (label: string, value: string, setter: (value: string) => void, placeholder: string, step = '1') => <label className="text-xs">{label}<input type="number" step={step} value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} className="input-medical mt-1 w-full" /></label>;
   const criticalCount = history.filter((row) => row.priority.toLowerCase() === 'critical').length;
   const urgentCount = history.filter((row) => row.priority.toLowerCase() === 'urgent').length;
-  const criticalCount = history.filter((row) => row.priority.toLowerCase() === 'critical').length;
-  const urgentCount = history.filter((row) => row.priority.toLowerCase() === 'urgent').length;
   return <OperationalWorklistShell
     icon={HeartPulse}
     eyebrow="Clinical assessment"
