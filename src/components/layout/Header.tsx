@@ -128,7 +128,7 @@ export default function Header({ onMenu }: HeaderProps) {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <span className="hidden xl:inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-success" />{roleLabels[user.role]}</span>
           <div ref={notificationContainerRef} className="relative">
-            <button type="button" onClick={() => { setShowNotifications(v => { const next = !v; if (next) setNotificationAttention(false); return next; }); setShowAccount(false); }} className={cn("relative rounded-xl p-2 hover:bg-muted", notificationAttention && "animate-pulse")} aria-label="Notifications">
+            <button type="button" onClick={() => { setShowNotifications(v => { const next = !v; if (next) setNotificationAttention(false); return next; }); setShowAccount(false); }} className={cn("relative rounded-xl p-2 hover:bg-muted", notificationAttention && "notification-bell-attention")} aria-label="Notifications">
               <Bell className={cn("h-5 w-5", notificationAttention || hasCritical ? "text-critical" : "text-muted-foreground")} />
               {unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold text-critical-foreground">{unread > 9 ? "9+" : unread}</span>}
             </button>
