@@ -6,14 +6,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
+import { MAX_SPREADSHEET_FILE_BYTES, MAX_SPREADSHEET_ROWS, normalizeSpreadsheetRows, parseSpreadsheetBuffer } from '@/lib/spreadsheetImport.mjs';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'stg_diagnoses' | 'service_tariffs' | 'legacy_clinical_records';
 type Row = Record<string, string | number | boolean | null>;
 type MigrationBatch = { id: string; entity_type: string; source_system: string; source_version: string | null; file_name: string | null; total_rows: number; staged_rows: number; accepted_rows: number; rejected_rows: number; status: string; created_at: string; approved_at: string | null; completed_at: string | null };
 type MigrationRow = { id: string; source_row_number: number; source_key: string | null; raw_data: Record<string, unknown>; row_status: string; patient_id: string | null; match_confidence: number | null; match_method: string | null; validation_errors: string[]; rejection_reason: string | null };
 type PatientCandidate = { patient_id: string; patient_code: string; first_name: string; last_name: string; date_of_birth: string | null; phone: string | null; email: string | null; method: string; confidence: number };
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const MAX_ROWS = 10_000;
 const PREVIEW_ROWS = 10;
 
 const schemas: Record<Entity, { label: string; required: string[]; description: string }> = {
@@ -77,25 +76,21 @@ export default function DataImport() {
 
   const parse = async (file: File) => {
     setFileName(''); setRows([]); setErrors([]);
-    if (file.size > MAX_FILE_BYTES) return toast({ title: 'File too large', description: `Imports are limited to ${MAX_FILE_BYTES / 1024 / 1024} MB.`, variant: 'destructive' });
+    if (file.size > MAX_SPREADSHEET_FILE_BYTES) return toast({ title: 'File too large', description: `Imports are limited to ${MAX_SPREADSHEET_FILE_BYTES / 1024 / 1024} MB.`, variant: 'destructive' });
     const lowerName = file.name.toLowerCase();
     if (!lowerName.endsWith('.csv') && !lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) return toast({ title: 'Unsupported file', description: 'Choose CSV, XLSX or XLS.', variant: 'destructive' });
     setFileName(file.name);
     if (lowerName.endsWith('.csv')) {
       Papa.parse<Record<string, unknown>>(file, { header: true, skipEmptyLines: true, transformHeader: (header) => header.trim().toLowerCase(), complete: (result) => {
         if (result.errors.length) { setFileName(''); return toast({ title: 'CSV parse failed', description: result.errors[0].message, variant: 'destructive' }); }
-        if (result.data.length > MAX_ROWS) { setFileName(''); return toast({ title: 'Too many rows', description: `Imports are limited to ${MAX_ROWS.toLocaleString()} rows.`, variant: 'destructive' }); }
-        setRows(normalizeRows(result.data));
+        if (result.data.length > MAX_SPREADSHEET_ROWS) { setFileName(''); return toast({ title: 'Too many rows', description: `Imports are limited to ${MAX_SPREADSHEET_ROWS.toLocaleString()} rows.`, variant: 'destructive' }); }
+        setRows(normalizeSpreadsheetRows(result.data) as Row[]);
       }, error: (error) => { setFileName(''); toast({ title: 'CSV parse failed', description: error.message, variant: 'destructive' }); } });
       return;
     }
     try {
-      const XLSX = await import('xlsx');
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', dense: true, cellFormula: false });
-      const sheetName = workbook.SheetNames[0]; if (!sheetName) throw new Error('The workbook contains no worksheets.');
-      const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], { defval: null, raw: true });
-      if (data.length > MAX_ROWS) throw new Error(`Imports are limited to ${MAX_ROWS.toLocaleString()} rows.`);
-      setRows(normalizeRows(data));
+      const data = await parseSpreadsheetBuffer(await file.arrayBuffer(), file.name);
+      setRows(data as Row[]);
     } catch (error) { setFileName(''); toast({ title: 'Spreadsheet parse failed', description: error instanceof Error ? error.message : 'Invalid workbook.', variant: 'destructive' }); }
   };
 
