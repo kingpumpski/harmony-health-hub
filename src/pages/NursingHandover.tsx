@@ -5,6 +5,7 @@ import { ClipboardCheck, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Patient={id:string;patient_code:string;first_name:string;last_name:string};
 type Handover={id:string;patient_id:string;shift_label:string;clinical_summary:string;pending_tasks:string|null;safety_concerns:string|null;escalation_required:boolean;acknowledged_at:string|null;created_at:string};
