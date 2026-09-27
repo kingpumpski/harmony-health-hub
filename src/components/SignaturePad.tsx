@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Eraser, Save, PenLine } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignaturePad() {
+  const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
@@ -11,16 +13,12 @@ export default function SignaturePad() {
 
   useEffect(() => {
     const load = async () => {
-      const { data, error } = await supabase
-        .from('staff_signatures')
-        .select('signature_data')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!error && data?.signature_data) setSavedSignature(data.signature_data);
+      if (!user?.id) return;
+      const { data, error } = await supabase.rpc('get_staff_signature_for_report', { _user_id: user.id });
+      if (!error && data) setSavedSignature(data as string);
     };
     void load();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
