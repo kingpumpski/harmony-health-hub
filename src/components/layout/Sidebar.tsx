@@ -27,34 +27,35 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   nurse: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
-    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory')] },
+    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory_results')] },
   ],
   specialist_nurse: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
-    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory')] },
+    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory_results')] },
   ],
   midwife: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
+    { label: 'Maternal Care', icon: HeartPulse, items: [item(HeartPulse, 'Maternity', '/maternity', 'maternity'), item(HeartPulse, 'Fertility', '/fertility', 'fertility')] },
   ],
   front_desk: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Patient Services', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance')] },
+    { label: 'Patient Services', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(FileText, 'Registration', '/registration', 'registration'), item(Calendar, 'Appointments', '/appointments', 'appointments')] },
+    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Billing', '/billing', 'billing')] },
   ],
   pharmacist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
+    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy'), item(Pill, 'Inventory', '/inventory', 'inventory'), item(Bell, 'Stock Alerts', '/stock-alerts', 'stock_alerts')] },
   ],
   lab_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory')] },
+    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(FlaskConical, 'Outside Lab', '/outside-lab', 'outside_lab')] },
     { label: 'Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports')] },
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance')] },
+    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims'), item(CreditCard, 'Financial Reports', '/financial-reports', 'financial_reports')] },
     { label: 'Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports')] },
   ],
   radiology_technician: [
@@ -63,17 +64,17 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   radiologist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology')] },
+    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Technology', icon: ShieldCheck, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support')] },
+    { label: 'Technology', icon: ShieldCheck, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Meal Services', icon: Users, items: [item(FileText, 'Meal Orders', '/orders', 'orders'), item(FileText, 'Dietary Plans', '/dietary-plans', 'dietary_plans'), item(Calendar, 'Menu', '/menu', 'meal_orders')] },
   ],
-  patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments')] }],
+  patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Telemedicine', '/telemedicine', 'telemedicine'), item(CreditCard, 'Billing', '/billing', 'billing')] }],
 };
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
