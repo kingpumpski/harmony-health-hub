@@ -5,7 +5,7 @@ AS $$
 DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist') OR public.has_role(auth.uid(),'radiology_technician') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients p WHERE p.id=_patient_id AND p.status <> 'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.scheduled_at DESC) FROM (
   SELECT a.id,a.patient_id,a.scheduled_at,a.reason,a.status,a.department,a.attending_officer_id,a.treatment_status,a.treatment_notes
