@@ -47,3 +47,34 @@ for (const [role, href] of forbiddenLinks) {
 }
 
 console.log(`Sidebar role contract passed for ${roles.length} roles`);
+
+
+const capabilityLinks = [
+  ["nurse", "/lab-results", "laboratory_results"],
+  ["specialist_nurse", "/lab-results", "laboratory_results"],
+  ["midwife", "/maternity", "maternity"],
+  ["midwife", "/fertility", "fertility"],
+  ["front_desk", "/registration", "registration"],
+  ["front_desk", "/billing", "billing"],
+  ["pharmacist", "/inventory", "inventory"],
+  ["pharmacist", "/stock-alerts", "stock_alerts"],
+  ["lab_technician", "/outside-lab", "outside_lab"],
+  ["accountant", "/accounts-approvals", "accounts_approvals"],
+  ["accountant", "/insurance-claims", "claims"],
+  ["accountant", "/financial-reports", "financial_reports"],
+  ["radiologist", "/notifications", "notifications"],
+  ["it_admin", "/notifications", "notifications"],
+  ["patient", "/telemedicine", "telemedicine"],
+  ["patient", "/billing", "billing"],
+];
+
+for (const [role, href, permission] of capabilityLinks) {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
+  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
+    throw new Error(`Sidebar capability missing ${role} link ${href} with permission ${permission}`);
+  }
+}
+
+console.log('Sidebar capability alignment passed');
