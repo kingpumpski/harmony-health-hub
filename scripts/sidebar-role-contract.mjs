@@ -78,3 +78,51 @@ for (const [role, href, permission] of capabilityLinks) {
 }
 
 console.log('Sidebar capability alignment passed');
+
+
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const guardedRoutes = [
+  ['/registration', 'registrationRoles'],
+  ['/patients', 'patientRecordsRoles'],
+  ['/patient-portal', 'patientPortalRoles'],
+  ['/appointments', 'appointmentRoles'],
+  ['/inpatient', 'inpatientRoles'],
+  ['/billing', 'billingRoles'],
+  ['/financial-reports', 'financialReportRoles'],
+  ['/telemedicine', 'telemedicineRoles'],
+  ['/fertility', 'fertilityRoles'],
+  ['/outside-lab', 'outsideLabRoles'],
+  ['/stock-alerts', 'pharmacyInventoryRoles'],
+  ['/menu', 'canteenRoles'],
+  ['/orders', 'canteenRoles'],
+  ['/dietary-plans', 'canteenRoles'],
+  ['/notifications', 'notificationRoles'],
+  ['/notification-preferences', 'notificationRoles'],
+];
+
+for (const [href, roles] of guardedRoutes) {
+  const marker = `<Route path="${href}" element={<RoleGuard allowedRoles={${roles}}}`;
+  if (!app.includes(marker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+}
+
+const roleArrays = {
+  registrationRoles: ['admin','front_desk'],
+  patientPortalRoles: ['patient'],
+  appointmentRoles: ['admin','practitioner','nurse','specialist_nurse','midwife','front_desk','patient'],
+  telemedicineRoles: ['admin','practitioner','patient'],
+  fertilityRoles: ['admin','practitioner','midwife'],
+  outsideLabRoles: ['admin','lab_technician'],
+  pharmacyInventoryRoles: ['admin','pharmacist'],
+  canteenRoles: ['admin','canteen'],
+  financialReportRoles: ['admin','accountant'],
+  notificationRoles: ['admin','radiologist','radiology_technician','it_admin'],
+};
+
+for (const [name, roles] of Object.entries(roleArrays)) {
+  const declaration = new RegExp(`const ${name} = \\[([^\\]]+)\\]`);
+  const match = app.match(declaration);
+  if (!match) throw new Error(`Missing route role array: ${name}`);
+  for (const role of roles) if (!match[1].includes(`'${role}'`)) throw new Error(`Route role array ${name} missing ${role}`);
+}
+
+console.log('Sidebar-reachable route authorization contract passed');
