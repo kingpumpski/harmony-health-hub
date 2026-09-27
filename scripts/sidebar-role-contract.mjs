@@ -101,8 +101,8 @@ const guardedRoutes = [
 ];
 
 for (const [href, roles] of guardedRoutes) {
-  const pattern = new RegExp(`<Route path="\\${href.replace(/[.*+?^$()|[\\]\\\\]/g, '\\\\$&')}" element={<RoleGuard allowedRoles={\\${roles}}>`);
-  if (!pattern.test(app)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  const marker = `<Route path="${href}" element={<RoleGuard allowedRoles={${roles}}}`;
+  if (!app.includes(marker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
 }
 
 const roleArrays = {
