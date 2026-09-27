@@ -12,4 +12,38 @@ if (sidebar.includes('roleNavGroups[user.role] ?? roleNavGroups.patient')) {
 if (!sidebar.includes('const unsupportedRole = !roleGroups;')) throw new Error('Sidebar must explicitly detect unsupported roles');
 if (!sidebar.includes('Navigation is intentionally restricted')) throw new Error('Unsupported-role navigation must fail closed with an explicit message');
 if (!sidebar.includes('roleNavGroups[user.role]')) throw new Error('Sidebar must resolve navigation from the assigned role');
+
+const requiredLinks = [
+  ["canteen", "/orders", "orders"],
+  ["canteen", "/dietary-plans", "dietary_plans"],
+  ["canteen", "/menu", "meal_orders"],
+  ["radiology_technician", "/radiology", "radiology"],
+  ["radiologist", "/radiology", "radiology"],
+  ["pharmacist", "/pharmacy", "pharmacy"],
+  ["lab_technician", "/laboratory", "laboratory"],
+  ["it_admin", "/it-support", "it_support"],
+];
+
+for (const [role, href, permission] of requiredLinks) {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
+  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
+    throw new Error(`Sidebar role contract missing ${role} link ${href} with permission ${permission}`);
+  }
+}
+
+const forbiddenLinks = [
+  ["radiology_technician", "/clinical-results"],
+  ["radiologist", "/clinical-results"],
+  ["radiologist", "/lab-results"],
+];
+
+for (const [role, href] of forbiddenLinks) {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
+  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  if (block.includes(`'${href}'`)) throw new Error(`Sidebar exposes unauthorized/unsupported link ${href} for ${role}`);
+}
+
 console.log(`Sidebar role contract passed for ${roles.length} roles`);
