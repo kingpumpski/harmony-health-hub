@@ -17,8 +17,17 @@ if (!app.includes('<Route path="/patients/:patientId/continuity" element={<RoleG
 if (!directory.includes("OR has_role(auth.uid(), 'radiology_technician'::app_role)")) {
   throw new Error('radiology technician patient-directory access is missing');
 }
-if (!snapshot.includes("public.has_role(uid,'radiology_technician')")) {
-  throw new Error('radiology technician patient clinical read access is missing');
+if (!snapshot.includes("is_lab := public.has_role(uid,'lab_technician')")) {
+  throw new Error('laboratory role boundary is missing from the patient clinical snapshot');
+}
+if (!snapshot.includes("is_pharmacy := public.has_role(uid,'pharmacist')")) {
+  throw new Error('pharmacy role boundary is missing from the patient clinical snapshot');
+}
+if (snapshot.includes("public.has_role(uid,'accountant')") || snapshot.includes("public.has_role(uid,'front_desk')") || snapshot.includes("public.has_role(uid,'radiology_technician')") || snapshot.includes("public.has_role(uid,'radiologist')")) {
+  throw new Error('patient clinical snapshot must not grant broad or radiology-only roles longitudinal clinical history access');
+}
+if (!snapshot.includes('revoke all on function public.get_patient_hub_clinical_snapshot(uuid) from public, anon;')) {
+  throw new Error('patient clinical snapshot must remain non-public and non-anonymous');
 }
 if (!history.includes("public.has_role(auth.uid(),'radiology_technician')")) {
   throw new Error('radiology technician appointment read access is missing');
@@ -42,7 +51,7 @@ if (!patientSearch.includes('{canChat && <Link')) {
 }
 
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
-if (!patientHub.includes("const clinicalHistoryRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician', 'lab_technician', 'pharmacist']);")) {
+if (!patientHub.includes("const clinicalHistoryRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);")) {
   throw new Error('patient hub clinical history role boundary must remain explicit');
 }
 if (!patientHub.includes("...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot'")) {
