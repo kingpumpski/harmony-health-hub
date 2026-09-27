@@ -41,4 +41,12 @@ if (!patientSearch.includes('{canChat && <Link')) {
   throw new Error('patient search must not expose patient chat navigation to unauthorized roles');
 }
 
+const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
+if (!patientHub.includes("const clinicalHistoryRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician', 'lab_technician', 'pharmacist']);")) {
+  throw new Error('patient hub clinical history role boundary must remain explicit');
+}
+if (!patientHub.includes("...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot'")) {
+  throw new Error('patient hub must not request clinical snapshot data for non-clinical-history roles');
+}
+
 console.log('Patient care domain role parity contract passed');
