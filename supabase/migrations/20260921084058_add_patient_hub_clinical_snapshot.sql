@@ -13,7 +13,7 @@ begin
   if not (
     public.has_role(uid,'admin') or public.has_role(uid,'practitioner') or
     public.has_role(uid,'nurse') or public.has_role(uid,'midwife') or
-    public.has_role(uid,'specialist_nurse') or public.has_role(uid,'lab_technician') or
+    public.has_role(uid,'specialist_nurse') or public.has_role(uid,'radiology_technician') or public.has_role(uid,'lab_technician') or
     public.has_role(uid,'radiologist') or public.has_role(uid,'pharmacist') or
     public.has_role(uid,'accountant') or public.has_role(uid,'front_desk')
   ) then raise exception 'Not authorized to access patient clinical history'; end if;
