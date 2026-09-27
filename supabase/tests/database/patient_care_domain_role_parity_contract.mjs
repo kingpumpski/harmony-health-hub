@@ -27,4 +27,18 @@ if (app.includes('PatientCareContinuity /></RoleGuard>}') && app.includes('allow
   throw new Error('continuity route regressed to the broad patient-record role set');
 }
 
+const patientSearch = fs.readFileSync('src/pages/patients/PatientSearch.tsx', 'utf8');
+if (!patientSearch.includes("const canRegister = roleSet.has('admin') || roleSet.has('front_desk');")) {
+  throw new Error('patient search registration action must follow the registration route role boundary');
+}
+if (!patientSearch.includes("const canChat = roleSet.has('admin') || roleSet.has('practitioner') || roleSet.has('nurse') || roleSet.has('specialist_nurse') || roleSet.has('midwife') || roleSet.has('patient');")) {
+  throw new Error('patient search chat action must follow the patient-chat route role boundary');
+}
+if (!patientSearch.includes('{canRegister && <Link to="/registration"')) {
+  throw new Error('patient search must not expose registration navigation to unauthorized roles');
+}
+if (!patientSearch.includes('{canChat && <Link')) {
+  throw new Error('patient search must not expose patient chat navigation to unauthorized roles');
+}
+
 console.log('Patient care domain role parity contract passed');
