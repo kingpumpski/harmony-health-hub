@@ -110,6 +110,7 @@ BEGIN
     OR has_role(auth.uid(), 'midwife'::app_role)
     OR has_role(auth.uid(), 'specialist_nurse'::app_role)
     OR has_role(auth.uid(), 'lab_technician'::app_role)
+    OR has_role(auth.uid(), 'radiology_technician'::app_role)
     OR has_role(auth.uid(), 'radiologist'::app_role)
     OR has_role(auth.uid(), 'pharmacist'::app_role)
     OR has_role(auth.uid(), 'accountant'::app_role)
