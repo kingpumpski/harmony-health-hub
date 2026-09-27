@@ -3,11 +3,7 @@ DO $migration$
 DECLARE
   v_definition text;
   v_old text := $old$
-  SELECT ur.role::text INTO v_role
-  FROM public.user_roles ur
-  WHERE ur.user_id = v_uid
-  ORDER BY ur.created_at DESC
-  LIMIT 1;
+  SELECT ur.role::text INTO v_role FROM public.user_roles ur WHERE ur.user_id=v_uid ORDER BY ur.created_at DESC LIMIT 1;
 $old$;
   v_new text := $new$
   SELECT ur.role::text INTO v_role
