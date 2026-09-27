@@ -11,11 +11,12 @@
     "typecheck": "tsc --noEmit",
     "test:contracts": "node scripts/validate-operational-contracts.mjs",
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
-    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:role-dashboards",
+    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:role-dashboards && npm run test:sidebar-roles",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
-    "test:role-dashboards": "node scripts/role-dashboard-contract.mjs"
+    "test:role-dashboards": "node scripts/role-dashboard-contract.mjs",
+    "test:sidebar-roles": "node scripts/sidebar-role-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

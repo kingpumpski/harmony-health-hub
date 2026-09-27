@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Bell, BedDouble, Calendar, ChevronLeft, ChevronRight, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, LogOut, Menu, Pill, Settings, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
+import { Activity, BarChart3, Bell, BedDouble, Calendar, ChevronLeft, ChevronRight, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, LogOut, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
@@ -78,8 +78,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const location = useLocation();
   if (!user) return null;
 
+  const roleGroups = roleNavGroups[user.role];
+  const unsupportedRole = !roleGroups;
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
-  const groups = (roleNavGroups[user.role] ?? roleNavGroups.patient)
+  const groups = (roleGroups ?? [])
     .map(group => ({ ...group, items: group.items.filter(nav => permissions.has(nav.permission)) }))
     .filter(group => group.items.length > 0);
 
@@ -104,22 +106,31 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </div>
 
         <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-5">
-            {groups.map(group => {
-              const GroupIcon = group.icon;
-              return <section key={group.label}>
-                {!collapsed && <div className="mb-2 flex items-center gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40"><GroupIcon className="h-3.5 w-3.5" /><span>{group.label}</span></div>}
-                <ul className="space-y-1">{group.items.map(nav => {
-                  const NavIcon = nav.icon;
-                  const active = location.pathname === nav.href || location.pathname.startsWith(nav.href + '/');
-                  return <li key={nav.href}><Link to={nav.href} onClick={onMobileClose} title={collapsed ? nav.label : undefined} aria-current={active ? 'page' : undefined} className={cn('nav-link group relative', active && 'nav-link-active', collapsed && 'justify-center px-2')}>
-                    {active && <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary-foreground/80" />}
-                    <NavIcon className="h-[18px] w-[18px] shrink-0" />{!collapsed && <span className="min-w-0 flex-1 truncate">{nav.label}</span>}{!collapsed && active && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
-                  </Link></li>;
-                })}</ul>
-              </section>;
-            })}
-          </div>
+          {unsupportedRole ? (
+            <div role="alert" className="rounded-xl border border-sidebar-border bg-sidebar-accent/60 p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sidebar-primary" />
+                {!collapsed && <div><p className="font-semibold">Workspace unavailable</p><p className="mt-1 text-xs text-sidebar-foreground/60">Your assigned role is not configured for this workspace. Navigation is intentionally restricted until an administrator assigns a supported role.</p></div>}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {groups.map(group => {
+                const GroupIcon = group.icon;
+                return <section key={group.label}>
+                  {!collapsed && <div className="mb-2 flex items-center gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40"><GroupIcon className="h-3.5 w-3.5" /><span>{group.label}</span></div>}
+                  <ul className="space-y-1">{group.items.map(nav => {
+                    const NavIcon = nav.icon;
+                    const active = location.pathname === nav.href || location.pathname.startsWith(nav.href + '/');
+                    return <li key={nav.href}><Link to={nav.href} onClick={onMobileClose} title={collapsed ? nav.label : undefined} aria-current={active ? 'page' : undefined} className={cn('nav-link group relative', active && 'nav-link-active', collapsed && 'justify-center px-2')}>
+                      {active && <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary-foreground/80" />}
+                      <NavIcon className="h-[18px] w-[18px] shrink-0" />{!collapsed && <span className="min-w-0 flex-1 truncate">{nav.label}</span>}{!collapsed && active && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+                    </Link></li>;
+                  })}</ul>
+                </section>;
+              })}
+            </div>
+          )}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
