@@ -1,5 +1,7 @@
 -- Production reconciliation for partial triage saves.
 -- All physiological measurements may be absent while the assessment remains a valid draft/incomplete clinical record.
+DROP TRIGGER IF EXISTS trg_calculate_triage_bmi ON public.triage_assessments;
+
 ALTER TABLE public.triage_assessments
   ALTER COLUMN systolic DROP NOT NULL,
   ALTER COLUMN diastolic DROP NOT NULL,
@@ -112,3 +114,6 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.record_triage_assessment(UUID, INTEGER, INTEGER, INTEGER, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, INTEGER, TEXT, TEXT, TEXT, TEXT, BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_triage_assessment(UUID, INTEGER, INTEGER, INTEGER, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, INTEGER, TEXT, TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
+
+CREATE TRIGGER trg_calculate_triage_bmi BEFORE INSERT OR UPDATE OF weight_kg, height_m ON public.triage_assessments FOR EACH ROW EXECUTE FUNCTION public.calculate_triage_bmi();
+NOTIFY pgrst,'reload schema';
