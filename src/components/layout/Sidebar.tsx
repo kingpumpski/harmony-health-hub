@@ -59,17 +59,20 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   radiology_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results'), item(Users, 'Patients', '/patients', 'patients'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Users, 'Patients', '/patients', 'patients'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
   ],
   radiologist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results'), item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory')] },
+    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology')] },
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Technology', icon: ShieldCheck, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support')] },
   ],
-  canteen: [{ label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] }],
+  canteen: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Meal Services', icon: Users, items: [item(FileText, 'Meal Orders', '/orders', 'orders'), item(FileText, 'Dietary Plans', '/dietary-plans', 'dietary_plans'), item(Calendar, 'Menu', '/menu', 'meal_orders')] },
+  ],
   patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments')] }],
 };
 
