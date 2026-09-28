@@ -102,12 +102,12 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       const urgent = !critical && ((temp !== null && temp >= 38) || (spo2 !== null && spo2 <= 94) || (hr !== null && hr >= 100) || (sbp !== null && sbp >= 160));
       const values = {
         _patient_id: form.patientId,
-        _systolic: Number(form.systolic),
-        _diastolic: Number(form.diastolic),
-        _heart_rate: Number(form.heartRate),
-        _temperature: Number(form.temperature),
-        _respiratory_rate: Number(form.respiratoryRate),
-        _oxygen_saturation: Number(form.oxygenSaturation),
+        _systolic: sbp,
+        _diastolic: numberOrNull(form.diastolic),
+        _heart_rate: hr,
+        _temperature: temp,
+        _respiratory_rate: numberOrNull(form.respiratoryRate),
+        _oxygen_saturation: spo2,
         _weight_kg: numberOrNull(form.weightKg),
         _height_m: numberOrNull(form.heightM),
         _pain_score: form.painScore ? Number(form.painScore) : null,
