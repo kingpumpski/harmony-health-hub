@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExternalLink, RefreshCw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +23,7 @@ export default function ClinicalReferences() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('clinical_reference_values')
@@ -32,9 +32,9 @@ export default function ClinicalReferences() {
     if (error) toast.error(error.message);
     else setReferences((data ?? []) as ClinicalReference[]);
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const canEdit = user?.role === 'admin';
   const sorted = useMemo(() => [...references].sort((a, b) => a.parameter.localeCompare(b.parameter)), [references]);
@@ -63,8 +63,8 @@ export default function ClinicalReferences() {
       source_url: draft.source_url.trim(),
       source_is_ghana_specific: Boolean(draft.source_is_ghana_specific),
       effective_date: draft.effective_date,
-      normal_min: draft.normal_min === null || draft.normal_min === undefined || draft.normal_min === '' ? null : Number(draft.normal_min),
-      normal_max: draft.normal_max === null || draft.normal_max === undefined || draft.normal_max === '' ? null : Number(draft.normal_max),
+      normal_min: draft.normal_min === null || draft.normal_min === undefined ? null : Number(draft.normal_min),
+      normal_max: draft.normal_max === null || draft.normal_max === undefined ? null : Number(draft.normal_max),
       thresholds: draft.thresholds ?? {},
       display_text: draft.display_text.trim(),
       last_reviewed_at: draft.last_reviewed_at || new Date().toISOString(),
@@ -127,7 +127,7 @@ export default function ClinicalReferences() {
               <label className="space-y-1 text-sm"><span className="font-medium">Normal/reference min</span><input type="number" value={draft.normal_min ?? ''} onChange={e=>setDraft(current=>({...current,normal_min:e.target.value===''?null:Number(e.target.value)}))} className="input-medical w-full" /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Normal/reference max</span><input type="number" value={draft.normal_max ?? ''} onChange={e=>setDraft(current=>({...current,normal_max:e.target.value===''?null:Number(e.target.value)}))} className="input-medical w-full" /></label>
             </div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(draft.source_is_ghana_specific)} onChange={e=>setDraft(current=>({...current,source_is_ghana_specific:e.target.checked}))} /> Ghana-specific source</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(draft.source_is_ghana_specific)} onChange={e=>setDraft(current=>({...current,source_is_ghana_specific:e.target.checked}))} /> Ghana-specific source</label>\n            <label className="block space-y-1 text-sm"><span className="font-medium">Thresholds (JSON)</span><textarea value={JSON.stringify(draft.thresholds ?? {}, null, 2)} onChange={e=>{try{setDraft(current=>({...current,thresholds:JSON.parse(e.target.value)}));}catch{ /* keep last valid value until JSON is complete */ }}} rows={5} className="input-medical w-full font-mono text-xs" /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">Last reviewed</span><input type="date" value={draft.last_reviewed_at ? new Date(draft.last_reviewed_at).toISOString().slice(0,10) : ''} onChange={e=>setDraft(current=>({...current,last_reviewed_at:e.target.value}))} className="input-medical w-full" /></label>
             {selected && <div className="rounded-xl border border-muted p-3 text-xs text-muted-foreground"><p>Review due: {new Date(selected.review_due_at).toLocaleDateString()}</p><p className="mt-1">A review flag is shown here to administrators only.</p></div>}
             {draft.source_url && <a href={draft.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline"><ExternalLink className="h-3 w-3" />Open source</a>}
