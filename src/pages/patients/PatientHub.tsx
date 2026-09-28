@@ -12,6 +12,7 @@ const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
 ];
 const editRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'front_desk']);
 const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife']);
+const clinicalHistoryRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);
 const billingRoles = new Set(['admin', 'accountant', 'front_desk']);
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'; }
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) { return <section className="card-medical p-5 space-y-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-lg font-semibold">{title}</h2>{action}</div>{children}</section>; }
@@ -20,21 +21,21 @@ function EmptyState({ label }: { label: string }) { return <div className="round
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const { user } = useAuth();
   const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
-  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
+  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canClinicalHistory = [...roleSet].some((role) => clinicalHistoryRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any; setHistoryLoading(true); setHistoryError('');
     const specs = [
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
-      ['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })],
-      ['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })],
+      ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })]] : []),
+      ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]] : []),
       ...([...roleSet].some((role) => clinicalRoles.has(role)) ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
     const failed: string[] = [];
     settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; next.vitals = snapshot.vitals ?? []; next.encounters = snapshot.encounters ?? []; next.labs = snapshot.labs ?? []; next.prescriptions = snapshot.prescriptions ?? []; next.documents = snapshot.documents ?? []; } else next[key] = response.data ?? []; } else failed.push(key); });
     setRows(next); if (failed.length) { const message = `Some sections could not be loaded: ${failed.join(', ')}.`; setHistoryError(message); toast.warning(`${message} Other sections remain available.`); } setHistoryLoading(false);
-  }, [patientId, roleSet]);
+  }, [patientId, roleSet, canClinicalHistory]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const refresh = () => setRefreshKey((v) => v + 1);
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading patient record…</div>;

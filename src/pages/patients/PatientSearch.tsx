@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Loader2, UserPlus, MessageSquare, ArrowRight, XCircle } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PatientSearchResult {
   id: string;
@@ -16,6 +17,10 @@ interface PatientSearchResult {
 }
 
 export default function PatientSearch() {
+  const { user } = useAuth();
+  const roleSet = new Set(user?.roles ?? (user ? [user.role] : []));
+  const canRegister = roleSet.has('admin') || roleSet.has('front_desk');
+  const canChat = roleSet.has('admin') || roleSet.has('practitioner') || roleSet.has('nurse') || roleSet.has('specialist_nurse') || roleSet.has('midwife') || roleSet.has('patient');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PatientSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,10 +62,10 @@ export default function PatientSearch() {
           <h1 className="text-2xl font-heading font-bold">Patient Search</h1>
           <p className="text-muted-foreground">Open the complete patient hub without leaving the search workflow.</p>
         </div>
-        <Link to="/registration" className="btn-primary inline-flex items-center justify-center gap-2">
+        {canRegister && <Link to="/registration" className="btn-primary inline-flex items-center justify-center gap-2">
           <UserPlus className="w-4 h-4" />
           Register Patient
-        </Link>
+        </Link>}
       </div>
 
       <form onSubmit={handleSearch} className="card-medical p-5 sm:p-6 space-y-4">
@@ -124,18 +129,18 @@ export default function PatientSearch() {
                 Open Patient Hub
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
+              {canChat && <Link
                 to={`/patients/${patient.id}/chat`}
                 className="btn-secondary inline-flex items-center gap-2"
               >
                 <MessageSquare className="w-4 h-4" />
                 Patient Chat
-              </Link>
+              </Link>}
             </div>
           </div>
         ))}
       </div>}
-      {!isLoading && hasSearched && query.trim() && !results.length && !error && <div className="card-medical p-8 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">No patient found</h2><p className="mt-1 text-sm text-muted-foreground">Check the identifier or search using the patient’s full name.</p><Link to="/registration" className="btn-secondary mt-4 inline-flex">Register a new patient</Link></div>}
+      {!isLoading && hasSearched && query.trim() && !results.length && !error && <div className="card-medical p-8 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h2 className="mt-3 font-semibold">No patient found</h2><p className="mt-1 text-sm text-muted-foreground">Check the identifier or search using the patient’s full name.</p>{canRegister && <Link to="/registration" className="btn-secondary mt-4 inline-flex">Register a new patient</Link>}</div>}
     </div>
   );
 }

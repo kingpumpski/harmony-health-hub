@@ -9,7 +9,7 @@ const lock = fs.readFileSync(
   'utf8'
 );
 
-for (const role of ['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','pharmacist','accountant','front_desk']) {
+for (const role of ['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk']) {
   if (!migration.includes(`public.has_role(uid,'${role}')`)) {
     throw new Error(`clinical snapshot role authorization missing: ${role}`);
   }

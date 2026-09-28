@@ -18,7 +18,9 @@ const required = [
   "public.has_role(auth.uid(),'midwife')",
   "public.has_role(auth.uid(),'specialist_nurse')",
   "public.has_role(auth.uid(),'front_desk')",
-  "public.has_role(auth.uid(),'accountant')"
+  "public.has_role(auth.uid(),'accountant')",
+  "public.has_role(auth.uid(),'radiologist')",
+  "public.has_role(auth.uid(),'radiology_technician')"
 ];
 
 for (const marker of required) {
