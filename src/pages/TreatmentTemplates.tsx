@@ -96,7 +96,6 @@ export default function TreatmentTemplates() {
             emptyState={{ title: 'No treatment templates', description: 'Create a standardized care plan using the form.' }}
           />
         </div>
-        </div>
       </div>
     </div>
   );
