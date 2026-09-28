@@ -18,6 +18,7 @@ import {
   type TriageHistoryRecord,
   type TriageParameter,
 } from '@/lib/triagePresentation';
+import { useClinicalReferences, type ClinicalReference } from '@/lib/clinicalReferences';
 
 type Props = {
   records: TriageHistoryRecord[];
@@ -43,6 +44,14 @@ export default function TriageHistoryChart({ records, parameter }: Props) {
   const bpValues = data.flatMap((r) => [r.systolic, r.diastolic].filter((v): v is number => v !== null));
   const bmiValues = data.flatMap((r) => r.bmi === null ? [] : [r.bmi]);
   const spo2Values = data.flatMap((r) => r.oxygen_saturation === null ? [] : [r.oxygen_saturation]);
+  const { byParameter: referenceByParameter } = useClinicalReferences(['body_mass_index', 'spo2']);
+  const bmiReference = referenceByParameter.get('body_mass_index');
+  const spo2Reference = referenceByParameter.get('spo2');
+  const bmiConfig = computeAxisConfig(bmiValues, 'bmi');
+  const bmiUnderweightMax = Number(bmiReference?.thresholds?.underweight_max ?? bmiReference?.normal_min);
+  const bmiOverweightMin = Number(bmiReference?.thresholds?.overweight_min ?? bmiReference?.normal_max);
+  const bmiObesityMin = Number(bmiReference?.thresholds?.obesity_min ?? NaN);
+  const spo2Threshold = Number(String(spo2Reference?.thresholds?.oxygen_therapy_threshold_percent ?? '').replace(/[^0-9.]/g, ''));
 
   const tempAxis = parameter === 'temp';
   const bpAxis = parameter === 'bp';
@@ -70,8 +79,8 @@ export default function TriageHistoryChart({ records, parameter }: Props) {
             <ParameterYAxis parameter={parameter} axisId={parameter} values={parameter === 'temp' ? tempValues : parameter === 'bp' ? bpValues : parameter === 'bmi' ? bmiValues : spo2Values} />
           )}
 
-          {bmiAxis && <><ReferenceArea yAxisId="bmi" y1={0} y2={18.5} fill="currentColor" fillOpacity={0.04} /><ReferenceArea yAxisId="bmi" y1={18.5} y2={25} fill="currentColor" fillOpacity={0.08} /><ReferenceArea yAxisId="bmi" y1={25} y2={30} fill="currentColor" fillOpacity={0.05} /><ReferenceArea yAxisId="bmi" y1={30} y2={60} fill="currentColor" fillOpacity={0.04} /></>}
-          {spo2Axis && <ReferenceArea yAxisId="spo2" y1={0} y2={90} fill="currentColor" fillOpacity={0.08} />}
+          {bmiAxis && Number.isFinite(bmiUnderweightMax) && Number.isFinite(bmiOverweightMin) && Number.isFinite(bmiObesityMin) && <><ReferenceArea yAxisId="bmi" y1={0} y2={bmiUnderweightMax} fill="currentColor" fillOpacity={0.04} /><ReferenceArea yAxisId="bmi" y1={bmiUnderweightMax} y2={bmiOverweightMin} fill="currentColor" fillOpacity={0.08} /><ReferenceArea yAxisId="bmi" y1={bmiOverweightMin} y2={bmiObesityMin} fill="currentColor" fillOpacity={0.05} /><ReferenceArea yAxisId="bmi" y1={bmiObesityMin} y2={bmiConfig.domain[1]} fill="currentColor" fillOpacity={0.04} /></>}
+          {spo2Axis && Number.isFinite(spo2Threshold) && <ReferenceArea yAxisId="spo2" y1={0} y2={spo2Threshold} fill="currentColor" fillOpacity={0.08} />}
           {bpAxis && <><Area yAxisId="bp" type="monotone" dataKey="diastolic" stackId="bpBand" stroke="none" fill="transparent" fillOpacity={0} connectNulls /><Area yAxisId="bp" type="monotone" dataKey={(entry: any) => Math.max((entry.systolic ?? 0) - (entry.diastolic ?? 0), 0)} name="Pulse pressure" stackId="bpBand" stroke="none" fill="hsl(var(--primary))" fillOpacity={0.10} connectNulls /></>}
           
           {(parameter === 'all' || tempAxis) && <Line yAxisId="temp" type="monotone" dataKey="temperature" name="Temp" stroke="hsl(var(--warning))" strokeWidth={2.5} dot={false} connectNulls />}
@@ -81,7 +90,7 @@ export default function TriageHistoryChart({ records, parameter }: Props) {
           </>}
           {(parameter === 'all' || bmiAxis) && <Line yAxisId="bmi" type="monotone" dataKey="bmi" name="BMI" stroke="hsl(var(--success))" strokeWidth={2.5} dot={false} connectNulls />}
           {(parameter === 'all' || spo2Axis) && <Line yAxisId="spo2" type="monotone" dataKey="oxygen_saturation" name="SpO₂" stroke="hsl(var(--info))" strokeWidth={2.5} dot={false} connectNulls />}
-          {spo2Axis && <ReferenceLine yAxisId="spo2" y={90} stroke="hsl(var(--destructive))" strokeDasharray="4 4" />}
+          {spo2Axis && Number.isFinite(spo2Threshold) && <ReferenceLine yAxisId="spo2" y={spo2Threshold} stroke="hsl(var(--destructive))" strokeDasharray="4 4" />}
           <Tooltip
             labelFormatter={(value) => new Date(Number(value)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
             formatter={(value: number, name: string) => [value, name]}
@@ -89,6 +98,12 @@ export default function TriageHistoryChart({ records, parameter }: Props) {
           />
         </LineChart>
       </ResponsiveContainer>
+      {(bmiAxis || spo2Axis) && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          {bmiAxis && bmiReference && <>BMI reference bands: {bmiReference.display_text} Source: <a href={bmiReference.source_url} target="_blank" rel="noreferrer" className="underline">{bmiReference.source_name}</a>.</>}
+          {spo2Axis && spo2Reference && <>SpO₂ threshold band: {spo2Reference.display_text} Source: <a href={spo2Reference.source_url} target="_blank" rel="noreferrer" className="underline">{spo2Reference.source_name}</a>.</>}
+        </div>
+      )}
     </div>
   );
 }
