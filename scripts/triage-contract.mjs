@@ -20,6 +20,12 @@ assert.match(hub, /No triage records yet for this patient/, 'Patient Hub must ex
 assert.match(hub, /Unable to load triage history\. Retry\./, 'Patient Hub must expose a retryable error state');
 assert.match(hub, /aria-label="Loading triage history"/, 'Patient Hub must expose a loading state');
 assert.match(hub, /\['all', 'temp', 'bp', 'bmi', 'spo2'\]/, 'Patient Hub must expose All + required parameter filters');
+assert.match(hub, /<nav aria-label="Triage parameter filters" className="mt-2 border-t pt-3">/, 'triage filters must sit directly beneath the graph as a dedicated legend row');
+assert.match(hub, /Select a parameter to isolate its trend; the markers match the plotted series\./, 'triage filter labels must explain that their visual markers match the graph series');
+assert.match(hub, /bg-\[hsl\(var\(--warning\)\)\]/, 'temperature filter must use the graph temperature color');
+assert.match(hub, /bg-\[hsl\(var\(--destructive\)\)\]/, 'BP systolic filter marker must use the graph systolic color');
+assert.match(hub, /bg-\[hsl\(var\(--success\)\)\]/, 'BMI filter must use the graph BMI color');
+assert.match(hub, /bg-\[hsl\(var\(--info\)\)\]/, 'SpO2 filter must use the graph SpO2 color');
 
 assert.match(chart, /dataKey="systolic"/, 'BP must render systolic');
 assert.match(chart, /dataKey="diastolic"/, 'BP must render diastolic');

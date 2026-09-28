@@ -108,11 +108,47 @@ function VitalsTab({ patientId, canWrite, onSaved }: any) {
       {!loading && !error && records.length === 0 && <div className="rounded-2xl border border-dashed border-border p-8 text-center" role="status"><Activity className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 font-medium">No triage records yet for this patient</p><p className="mt-1 text-sm text-muted-foreground">Add a record when the patient's measured vital signs are available.</p></div>}
       {!loading && !error && records.length > 0 && <>
         <TriageHistoryChart records={visible} parameter={filter} />
-        <nav aria-label="Triage parameter filters" className="mt-4 flex flex-wrap items-center gap-4 border-t pt-4">
-          {(['all', 'temp', 'bp', 'bmi', 'spo2'] as TriageParameter[]).map((item) => {
-            const label = item === 'all' ? 'All' : item === 'temp' ? 'Temp' : item === 'bp' ? 'BP' : item === 'bmi' ? 'BMI' : 'SpO2';
-            return <button key={item} type="button" onClick={() => setFilter(item)} aria-pressed={filter === item} className={`text-sm underline-offset-4 hover:underline ${filter === item ? 'font-semibold text-primary underline' : 'text-muted-foreground'}`}>{label}</button>;
-          })}
+        <nav aria-label="Triage parameter filters" className="mt-2 border-t pt-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2" role="list">
+            {(['all', 'temp', 'bp', 'bmi', 'spo2'] as TriageParameter[]).map((item) => {
+              const label = item === 'all' ? 'All' : item === 'temp' ? 'Temp' : item === 'bp' ? 'BP' : item === 'bmi' ? 'BMI' : 'SpO2';
+              const selected = filter === item;
+              const marker = item === 'all' ? (
+                <span className="flex items-center gap-0.5" aria-hidden="true">
+                  <span className="h-2 w-2 rounded-full bg-[hsl(var(--warning))]" />
+                  <span className="h-2 w-2 rounded-full bg-[hsl(var(--destructive))]" />
+                  <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
+                  <span className="h-2 w-2 rounded-full bg-[hsl(var(--info))]" />
+                </span>
+              ) : item === 'temp' ? (
+                <span className="h-0.5 w-5 rounded-full bg-[hsl(var(--warning))]" aria-hidden="true" />
+              ) : item === 'bp' ? (
+                <span className="flex items-center gap-0.5" aria-hidden="true">
+                  <span className="h-0.5 w-4 rounded-full bg-[hsl(var(--destructive))]" />
+                  <span className="h-0.5 w-4 rounded-full bg-[hsl(var(--primary))]" />
+                </span>
+              ) : item === 'bmi' ? (
+                <span className="h-0.5 w-5 rounded-full bg-[hsl(var(--success))]" aria-hidden="true" />
+              ) : (
+                <span className="h-0.5 w-5 rounded-full bg-[hsl(var(--info))]" aria-hidden="true" />
+              );
+              return (
+                <span key={item} role="listitem" className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setFilter(item)}
+                    aria-pressed={selected}
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}
+                  >
+                    {marker}
+                    <span>{label}</span>
+                  </button>
+                  {item !== 'spo2' && <span className="mx-1 text-border" aria-hidden="true">|</span>}
+                </span>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-center text-xs text-muted-foreground">Select a parameter to isolate its trend; the markers match the plotted series.</p>
         </nav>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
