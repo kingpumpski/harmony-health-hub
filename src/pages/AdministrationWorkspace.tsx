@@ -8,6 +8,7 @@ const items = [
   { label: 'Notifications', href: '/notifications', icon: Bell, description: 'Review alerts, notification history and actionable clinical or operational messages.' },
   { label: 'Notification Delivery', href: '/admin/settings', icon: Bell, description: 'Configure facility email, SMS, WhatsApp and other delivery providers from secure settings.' },
   { label: 'System Library', href: '/admin/system', icon: Database, description: 'Maintain shared system configuration and reference data.' },
+    { label: 'Clinical References', href: '/admin/clinical-references', icon: Database, description: 'Maintain sourced, effective-dated clinical reference values used by the clinical UI.' },
   { label: 'Audit Logs', href: '/admin/logs', icon: FileClock, description: 'Review administrative and operational audit activity.' },
   { label: 'Data Import & Sync', href: '/admin/data-import', icon: Upload, description: 'Controlled imports and offline synchronization administration.' },
 ];

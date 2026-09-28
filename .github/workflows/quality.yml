@@ -52,5 +52,8 @@ jobs:
       - name: Offline replay security contract
         run: npm run test:offline-replay
 
+      - name: Clinical reference contract checks
+        run: npm run test:clinical-references
+
       - name: Production build
         run: npm run build
