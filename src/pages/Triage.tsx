@@ -1,85 +1,105 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, HeartPulse, ListChecks, ShieldAlert } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Activity, AlertTriangle, ListChecks, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import { evaluateTriagePriority } from '@/lib/healthApi';
-import { queueOfflineTriageAssessment } from '@/lib/offlineTriage';
-import { notifyRoles } from '@/lib/notifications';
-import { playWorkflowSound } from '@/lib/workflowFeedback';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import TriageRecordForm from '@/components/triage/TriageRecordForm';
 
-type Priority = 'Critical' | 'Urgent' | 'Moderate' | 'Routine';
-interface Patient { id: string; patient_code: string | null; first_name: string; last_name: string }
-interface TriageRow { id: string; patient_id: string; priority: string; systolic: number; diastolic: number; heart_rate: number; temperature: number; oxygen_saturation: number; weight_kg: number | null; height_m: number | null; bmi: number | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
-const NORMAL = { systolic: { label: 'Systolic BP', unit: 'mmHg', low: 90, high: 120 }, diastolic: { label: 'Diastolic BP', unit: 'mmHg', low: 60, high: 80 }, heartRate: { label: 'Heart rate', unit: 'bpm', low: 60, high: 100 }, temperature: { label: 'Temperature', unit: '°C', low: 36.1, high: 37.2 }, respiratoryRate: { label: 'Respiratory rate', unit: '/min', low: 12, high: 20 }, oxygenSaturation: { label: 'Oxygen saturation', unit: '%', low: 95, high: 100 } };
-const priorityLabel = (value: string): Priority => { const n = value.toLowerCase(); if (n === 'critical') return 'Critical'; if (n === 'urgent') return 'Urgent'; if (n === 'moderate') return 'Moderate'; return 'Routine'; };
-const bmiCategory = (value: number) => { if (!value || value <= 0) return 'Unavailable'; if (value < 18.5) return 'Underweight'; if (value < 25) return 'Healthy range'; if (value < 30) return 'Overweight'; return 'Obesity range'; };
-const numeric = (value: string) => value === '' ? null : Number(value);
+type Patient = { id: string; patient_code: string | null; first_name: string; last_name: string };
+type TriageRow = {
+  id: string;
+  patient_id: string;
+  priority: string;
+  systolic: number | null;
+  diastolic: number | null;
+  temperature: number | null;
+  oxygen_saturation: number | null;
+  bmi: number | null;
+  created_at: string;
+  patients?: { first_name: string; last_name: string } | null;
+};
 
 export default function Triage() {
-  const { user } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]); const [history, setHistory] = useState<TriageRow[]>([]);
-  const [patientId, setPatientId] = useState(''); const [systolic, setSystolic] = useState(''); const [diastolic, setDiastolic] = useState(''); const [heartRate, setHeartRate] = useState(''); const [temperature, setTemperature] = useState(''); const [respiratoryRate, setRespiratoryRate] = useState(''); const [oxygenSaturation, setOxygenSaturation] = useState('');
-  const [weight, setWeight] = useState(''); const [height, setHeight] = useState(''); const [pain, setPain] = useState('0'); const [consciousness, setConsciousness] = useState('Alert'); const [complaint, setComplaint] = useState(''); const [notes, setNotes] = useState(''); const [priority, setPriority] = useState<Priority>('Routine'); const [saving, setSaving] = useState(false); const [offlineQueued, setOfflineQueued] = useState(false);
-  const values = useMemo(() => ({ systolic: numeric(systolic), diastolic: numeric(diastolic), heartRate: numeric(heartRate), temperature: numeric(temperature), respiratoryRate: numeric(respiratoryRate), oxygenSaturation: numeric(oxygenSaturation) }), [systolic, diastolic, heartRate, temperature, respiratoryRate, oxygenSaturation]);
-  const alerts = useMemo(() => Object.entries(values).flatMap(([key, value]) => { if (value === null || !NORMAL[key as keyof typeof NORMAL]) return []; const range = NORMAL[key as keyof typeof NORMAL]; if (value > range.high) return [`${range.label} ${value} ${range.unit} is above the normal upper limit of ${range.high} ${range.unit}.`]; if (value < range.low) return [`${range.label} ${value} ${range.unit} is below the normal lower limit of ${range.low} ${range.unit}.`]; return []; }), [values]);
-  const bmi = useMemo(() => { const w = numeric(weight); const h = numeric(height); return w && h && h > 0 ? Number((w / (h * h)).toFixed(2)) : 0; }, [weight, height]);
-  const load = async () => { const [{ data: pts }, { data: rows }] = await Promise.all([supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(300), supabase.from('triage_assessments' as never).select('id, patient_id, priority, systolic, diastolic, heart_rate, temperature, oxygen_saturation, weight_kg, height_m, bmi, created_at, patients(first_name,last_name)').order('created_at', { ascending: false }).limit(50)]); setPatients((pts ?? []) as Patient[]); setHistory((rows ?? []) as unknown as TriageRow[]); };
-  useEffect(() => { void load(); }, []);
-  useEffect(() => { if (alerts.length) toast({ title: 'Immediate clinical attention required', description: alerts.join(' '), variant: 'destructive' }); }, [alerts]);
-  const evaluate = () => { if (Object.values(values).some((value) => value === null)) return toast({ title: 'Complete vital signs first', description: 'Enter all required vital-sign values before evaluation.', variant: 'destructive' }); setPriority(evaluateTriagePriority({ id: 'preview', patientId, recordedBy: user?.id ?? '', recordedAt: new Date().toISOString(), bloodPressure: { systolic: values.systolic!, diastolic: values.diastolic! }, heartRate: values.heartRate!, temperature: values.temperature!, respiratoryRate: values.respiratoryRate!, oxygenSaturation: values.oxygenSaturation!, weight: numeric(weight) ?? 0, height: numeric(height) ?? 0, notes, isCritical: alerts.length > 0 }) as Priority); };
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault(); if (!patientId || !user?.id) return toast({ title: 'Select a patient', variant: 'destructive' }); if (Object.values(values).some((value) => value === null)) return toast({ title: 'Required vitals missing', description: 'Complete SBP, DBP, heart rate, temperature, respiratory rate and SpO₂.', variant: 'destructive' });
-    setSaving(true); setOfflineQueued(false); const normalized = priority.toLowerCase(); const isCritical = normalized === 'critical' || alerts.length > 0;
-    const row = { id: crypto.randomUUID(), patient_id: patientId, recorded_by: user.id, systolic: values.systolic!, diastolic: values.diastolic!, heart_rate: values.heartRate!, temperature: values.temperature!, respiratory_rate: values.respiratoryRate!, oxygen_saturation: values.oxygenSaturation!, weight_kg: numeric(weight), height_m: numeric(height), pain_score: Number(pain), consciousness, presenting_complaint: complaint || null, clinical_notes: notes || null, priority: normalized, is_critical: isCritical };
-    if (!navigator.onLine) { try { await queueOfflineTriageAssessment(row); setSaving(false); setOfflineQueued(true); playWorkflowSound(isCritical ? 'critical' : 'success'); toast({ title: 'Triage saved offline', description: `${priority} assessment queued for synchronization.` }); return; } catch (error) { setSaving(false); return toast({ title: 'Offline triage unavailable', description: error instanceof Error ? error.message : 'Unable to queue this assessment.', variant: 'destructive' }); } }
-    const { error } = await supabase.rpc('record_triage_assessment' as never, { _patient_id: patientId, _systolic: values.systolic, _diastolic: values.diastolic, _heart_rate: values.heartRate, _temperature: values.temperature, _respiratory_rate: values.respiratoryRate, _oxygen_saturation: values.oxygenSaturation, _weight_kg: numeric(weight), _height_m: numeric(height), _pain_score: Number(pain), _consciousness: consciousness, _presenting_complaint: complaint || null, _clinical_notes: notes || null, _priority: normalized } as never);
-    setSaving(false); if (error) return toast({ title: 'Triage save failed', description: error.message, variant: 'destructive' });
-    playWorkflowSound(isCritical ? 'critical' : 'success');
-    if (isCritical || normalized === 'urgent') await notifyRoles(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'], { title: isCritical ? 'Critical vital-sign alert' : 'Urgent triage alert', message: `${priority} triage requires attention. ${alerts.join(' ') || 'Review the recorded vital signs.'}`, severity: isCritical ? 'critical' : 'warning', category: 'triage', link: '/vitals', relatedPatientId: patientId, metadata: { priority: normalized, alerts } });
-    toast({ title: 'Triage recorded', description: `${priority} priority saved with BMI ${bmi || 'not available'}.` }); setPatientId(''); setComplaint(''); setNotes(''); setPain('0'); setSystolic(''); setDiastolic(''); setHeartRate(''); setTemperature(''); setRespiratoryRate(''); setOxygenSaturation(''); setWeight(''); setHeight(''); setPriority('Routine'); void load();
-  };
-  const field = (label: string, value: string, setter: (value: string) => void, placeholder: string, step = '1') => <label className="text-xs">{label}<input type="number" step={step} value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} className="input-medical mt-1 w-full" /></label>;
-  const criticalCount = history.filter((row) => row.priority.toLowerCase() === 'critical').length;
-  const urgentCount = history.filter((row) => row.priority.toLowerCase() === 'urgent').length;
-  return <OperationalWorklistShell
-    icon={HeartPulse}
-    eyebrow="Clinical assessment"
-    title="Triage & Vital Signs"
-    description="Capture measured observations, surface abnormal readings immediately, and keep recent triage assessments visible to the care team."
-    counters={[
-      { label: 'Recent assessments', value: history.length },
-      { label: 'Critical', value: criticalCount, tone: 'text-critical' },
-      { label: 'Urgent', value: urgentCount, tone: 'text-warning' },
-      { label: 'Routine / moderate', value: Math.max(0, history.length - criticalCount - urgentCount) },
-    ]}
-    beforeList={
-      <>
-        {offlineQueued && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">This assessment is saved locally and queued for synchronization. It is not yet server-confirmed.</div>}
-        {alerts.length > 0 && <div role="alert" className="rounded-xl border-2 border-critical/60 bg-critical/10 p-4 flex gap-3"><ShieldAlert className="w-6 h-6 text-critical shrink-0" /><div><strong className="text-critical">Immediate clinical attention required</strong><ul className="text-sm mt-1 list-disc pl-5">{alerts.map((alert) => <li key={alert}>{alert}</li>)}</ul><p className="text-xs mt-2 text-muted-foreground">Recheck the measurement and follow the facility's escalation protocol.</p></div></div>}
-        <form onSubmit={save} className="card-medical p-5 space-y-5">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Record triage assessment</h2><p className="text-xs text-muted-foreground">Measured vital signs remain the source data; decision-support priority does not replace clinical judgement.</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{priority}</span></div>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"><select value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code ?? 'No code'}</option>)}</select><input value={complaint} onChange={e => setComplaint(e.target.value)} placeholder="Presenting complaint" className="input-medical" /><select value={consciousness} onChange={e => setConsciousness(e.target.value)} className="input-medical"><option>Alert</option><option>Confused</option><option>Drowsy</option><option>Unresponsive</option></select></div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">{field('SBP', systolic, setSystolic, '90–120 mmHg')} {field('DBP', diastolic, setDiastolic, '60–80 mmHg')} {field('Heart rate', heartRate, setHeartRate, '60–100 bpm')} {field('Temperature °C', temperature, setTemperature, '36.1–37.2 °C', '0.1')} {field('Respiratory rate', respiratoryRate, setRespiratoryRate, '12–20 /min')} {field('SpO₂ %', oxygenSaturation, setOxygenSaturation, '95–100 %')}</div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{field('Weight kg', weight, setWeight, 'Measured weight', '0.1')} {field('Height m', height, setHeight, 'Measured height', '0.01')}<label className="text-xs">Pain score (0–10)<input type="number" min="0" max="10" value={pain} onChange={e => setPain(e.target.value)} className="input-medical mt-1 w-full" /></label><div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"><span className="text-muted-foreground">Calculated BMI</span><strong className="block text-xl">{bmi || '—'}</strong>{bmi > 0 && <span className="text-xs text-muted-foreground">{bmiCategory(bmi)} · kg/m²</span>}</div></div>
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]"><div className="rounded-xl border border-primary/20 bg-primary/5 p-3"><span className="text-xs text-muted-foreground">Normal reference</span><p className="text-xs mt-1">SBP 90–120 · DBP 60–80 · HR 60–100 · Temp 36.1–37.2°C · RR 12–20 · SpO₂ 95–100%</p></div><div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"><span className="text-xs text-muted-foreground">Decision-support priority</span><strong className="block text-lg">{priority}</strong></div><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Clinical notes" className="input-medical w-full" /></div>
-          <div className="flex justify-end gap-2"><button type="button" onClick={evaluate} className="btn-ghost">Evaluate</button><button type="submit" disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save triage'}</button></div>
-        </form>
-      </>
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [history, setHistory] = useState<TriageRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showForm, setShowForm] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    const [patientResponse, triageResponse] = await Promise.all([
+      supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(500),
+      (supabase as any).from('triage_assessments')
+        .select('id, patient_id, priority, systolic, diastolic, temperature, oxygen_saturation, bmi, created_at, patients(first_name,last_name)')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ]);
+    if (patientResponse.error || triageResponse.error) {
+      setError('Unable to load triage records. Retry.');
+      setPatients([]);
+      setHistory([]);
+    } else {
+      setPatients((patientResponse.data ?? []) as Patient[]);
+      setHistory((triageResponse.data ?? []) as TriageRow[]);
     }
-    listTitle="Recent triage assessments"
-    listDescription="Most recent assessments are shown first; priority and vital-sign context remain visible for rapid review."
-    listMeta={`${history.length} assessment${history.length === 1 ? '' : 's'}`}
-    empty={history.length === 0}
-    emptyIcon={ListChecks}
-    emptyTitle="No triage assessments yet"
-    emptyDescription="Saved triage assessments will appear here after the first completed assessment."
-  >
-    {history.map((row) => <div key={row.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0"><p className="font-medium truncate">{row.patients?.first_name} {row.patients?.last_name}</p><p className="mt-1 text-xs text-muted-foreground">BP {row.systolic}/{row.diastolic} · SpO₂ {row.oxygen_saturation}% {row.bmi ? `· BMI ${row.bmi}` : ''}</p></div>
-      <div className="flex flex-wrap items-center gap-2 text-xs"><span className={`rounded-full px-2.5 py-1 font-semibold ${row.priority === 'critical' ? 'bg-critical/10 text-critical' : row.priority === 'urgent' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>{priorityLabel(row.priority)}</span><span className="text-muted-foreground">{new Date(row.created_at).toLocaleString()}</span></div>
-    </div>)}
-    <div className="border-t border-border p-4"><div className="rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground flex gap-2"><AlertTriangle className="w-4 h-4 text-warning shrink-0" /> Normal ranges are reference ranges for adult clinical screening and do not replace clinician interpretation, age-specific ranges or facility escalation protocols.</div></div>
-  </OperationalWorklistShell>;
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const criticalCount = history.filter((row) => row.priority === 'critical').length;
+  const urgentCount = history.filter((row) => row.priority === 'urgent').length;
+
+  return (
+    <OperationalWorklistShell
+      icon={Activity}
+      eyebrow="Clinical assessment"
+      title="Triage & Vital Signs"
+      description="Review recent triage records and add a new patient assessment."
+      counters={[
+        { label: 'Recent assessments', value: history.length },
+        { label: 'Critical', value: criticalCount, tone: 'text-critical' },
+        { label: 'Urgent', value: urgentCount, tone: 'text-warning' },
+        { label: 'Routine', value: Math.max(0, history.length - criticalCount - urgentCount) },
+      ]}
+      beforeList={
+        <section className="card-medical p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Triage records</h2>
+              <p className="text-xs text-muted-foreground">Select a patient from the list or open a patient chart for the full graphical history.</p>
+            </div>
+            <button type="button" onClick={() => setShowForm((value) => !value)} className="btn-primary inline-flex items-center justify-center gap-2">
+              <Plus className="h-4 w-4" /> {showForm ? 'Close form' : 'Add Record'}
+            </button>
+          </div>
+          {showForm && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4"><TriageRecordForm patients={patients} onSaved={() => { setShowForm(false); void load(); }} onCancel={() => setShowForm(false)} /></div>}
+        </section>
+      }
+      listTitle="Recent patient triage"
+      listDescription="Patient name, measured observations, priority and recording time are shown without internal identifiers."
+      listMeta={loading ? 'Loading…' : `${history.length} record${history.length === 1 ? '' : 's'}`}
+      empty={!loading && !error && history.length === 0}
+      emptyIcon={ListChecks}
+      emptyTitle="No triage records yet"
+      emptyDescription="Use Add Record to enter the first triage assessment."
+    >
+      {loading && <div className="space-y-3 p-4" role="status" aria-label="Loading triage records"><div className="h-5 w-48 animate-pulse rounded bg-muted" /><div className="h-16 animate-pulse rounded-xl bg-muted" /><div className="h-16 animate-pulse rounded-xl bg-muted" /></div>}
+      {!loading && error && <div className="m-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert"><p className="text-sm font-medium">{error}</p><button type="button" onClick={() => void load()} className="btn-secondary mt-3 inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" />Retry</button></div>}
+      {!loading && !error && history.map((row) => (
+        <div key={row.id} className="flex flex-col gap-3 border-b p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="truncate font-medium">{row.patients?.first_name ?? 'Patient'} {row.patients?.last_name ?? ''}</p>
+            <p className="mt-1 text-xs text-muted-foreground">BP {row.systolic ?? '—'}/{row.diastolic ?? '—'} · Temp {row.temperature ?? '—'}°C · SpO₂ {row.oxygen_saturation ?? '—'}% · BMI {row.bmi ?? '—'}</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className={`rounded-full px-2.5 py-1 font-semibold ${row.priority === 'critical' ? 'bg-critical/10 text-critical' : row.priority === 'urgent' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>{row.priority}</span>
+            <span className="text-muted-foreground">{new Date(row.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+      ))}
+      {!loading && !error && history.length > 0 && <div className="border-t p-4"><div className="flex gap-2 rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4 shrink-0 text-warning" /> Reference ranges are contextual clinical aids and do not replace clinician interpretation.</div></div>}
+    </OperationalWorklistShell>
+  );
 }
