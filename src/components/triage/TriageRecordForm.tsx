@@ -50,9 +50,10 @@ function numberOrNull(value: string) {
   return value.trim() === '' ? null : Number(value);
 }
 
-function ReferenceHelper({ reference, id }: { reference?: ClinicalReference; id: string }) {
+function ReferenceHelper({ reference, id, loading }: { reference?: ClinicalReference; id: string; loading?: boolean }) {
+  if (loading) return <span id={id} className="block text-xs text-muted-foreground">Loading clinical reference…</span>;
   if (!reference) {
-    return <span id={id} className="block text-xs text-muted-foreground">Clinical reference not configured; contact an administrator.</span>;
+    return <span id={id} className="block text-xs text-muted-foreground">No active clinical reference is configured for this field; contact an administrator.</span>;
   }
   return (
     <span id={id} className="block text-xs leading-5 text-muted-foreground">
