@@ -3,6 +3,8 @@ import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const migration = read('supabase/migrations/20260928170000_clinical_reference_values.sql');
+const coverageMigration = read('supabase/migrations/20260928183400_harden_clinical_reference_coverage.sql');
+const chart = read('src/components/triage/TriageHistoryChart.tsx');
 const form = read('src/components/triage/TriageRecordForm.tsx');
 const helper = read('src/lib/clinicalReferences.ts');
 const admin = read('src/pages/admin/ClinicalReferences.tsx');
@@ -20,12 +22,18 @@ assert.match(migration, /clinical_reference_admin_update/);
 for (const parameter of ['blood_pressure_systolic','blood_pressure_diastolic','blood_pressure_combined','body_temperature','spo2','heart_rate','respiratory_rate','pain_score']) {
   assert.match(migration, new RegExp(`'${parameter}'`), `missing seeded reference: ${parameter}`);
 }
+for (const parameter of ['body_mass_index','weight_measurement','height_measurement']) {
+  assert.match(coverageMigration, new RegExp(`'${parameter}'`), `missing coverage reference: ${parameter}`);
+}
+assert.match(chart, /useClinicalReferences/);
+assert.doesNotMatch(chart, /y2=\{18\.5\}|y2=\{25\}|y2=\{30\}|y2=\{90\}|y=\{90\}/);
 assert.match(helper, /clinical_reference_values/);
 assert.match(form, /useClinicalReferences/);
 assert.match(form, /aria-describedby/);
 assert.doesNotMatch(form, /90–120 mmHg|60–80 mmHg|36\.1–37\.2 °C|95–100%|60–100 bpm/);
 assert.match(admin, /source_url/);
 assert.match(admin, /reviewRequired/);
+assert.match(admin, /Mark reviewed today/);
 assert.match(app, /\/admin\/clinical-references/);
 assert.match(permissions, /clinical_references/);
 assert.match(sidebar, /Clinical References/);
