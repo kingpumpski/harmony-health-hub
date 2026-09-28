@@ -3,6 +3,7 @@ import { BarChart3, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, 
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { RecordList, type RecordColumn } from '@/components/records/RecordList';
 import {
   createFacility, downloadManifestCsv, downloadRunWorkbook, generateRun, getRunItems, listDefinitions, listFacilities, listFacilityConfigs, setReportEnabled,
   type FacilityReportConfig, type HealthcareFacility, type ReportDefinition, type ReportRun, type ReportRunItem, type FacilityNotificationConfig, type NotificationProviderSecretRequirement, getFacilityNotificationConfig, initializeFacilityNotificationOnboarding, configureFacilityNotificationProvider, listNotificationProviderSecretRequirements,
@@ -67,6 +68,12 @@ export default function ReportsCenter() {
     setRun(null); setRunItems([]);
     Promise.all([listFacilityConfigs(selectedFacilityId), getFacilityNotificationConfig(selectedFacilityId), listNotificationProviderSecretRequirements()]).then(([nextConfigs, nextNotificationConfig, nextRequirements]) => { setConfigs(nextConfigs); setNotificationConfig(nextNotificationConfig); setNotificationSecretRequirements(nextRequirements); }).catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load facility configuration.'));
   }, [selectedFacilityId]);
+
+  const reportColumns: RecordColumn<FacilityReportConfig>[] = [
+    { key: 'report', header: 'Report', sortable: true, render: (config) => { const report = config.report!; return <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{report.report_code}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{report.frequency}</span>{report.implementation_status === 'seeded' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Validation pending</span>}</div><p className="mt-1 font-medium">{report.report_name}</p><p className="text-xs text-muted-foreground">{report.description}</p></div>; } },
+    { key: 'category', header: 'Category', sortable: true, hideBelow: 'md', render: (config) => config.report?.category?.name ?? '—' },
+    { key: 'is_enabled', header: 'Status', sortable: true, render: (config) => isAdmin ? <button type="button" aria-pressed={config.is_enabled} className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors', config.is_enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')} onClick={(event) => { event.stopPropagation(); void toggle(config); }}>{config.is_enabled ? 'Activated' : 'Activate'}</button> : <span className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium', config.is_enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{config.is_enabled ? 'Activated' : 'Not activated'}</span> },
+  ];
 
   async function toggle(config: FacilityReportConfig) {
     if (!isAdmin) return;
@@ -207,8 +214,16 @@ export default function ReportsCenter() {
         </section>}
 
         <section className="card-medical p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-lg font-semibold">Activated report library</h2><p className="text-sm text-muted-foreground">Only reports activated for the selected facility are eligible for bulk generation.</p></div><div className="flex flex-col gap-2 sm:flex-row"><input className="input" placeholder="Search reports" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input" value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div></div>
-          <div className="mt-5 grid gap-3">{visibleConfigs.map((config) => { const report = config.report!; return <div key={config.id} className={cn('flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between', config.is_enabled ? 'border-primary/30 bg-primary/5' : 'border-border')}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-mono text-muted-foreground">{report.report_code}</span><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide">{report.frequency}</span>{report.implementation_status === 'seeded' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Validation pending</span>}</div><p className="mt-1 font-medium">{report.report_name}</p><p className="text-xs text-muted-foreground">{report.description}</p></div>{isAdmin ? <button className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition-colors', config.is_enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')} onClick={() => void toggle(config)}>{config.is_enabled ? 'Activated' : 'Activate'}</button> : <span className={cn('inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium', config.is_enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{config.is_enabled ? 'Activated' : 'Not activated'}</span>}</div>; })}</div>
+          <RecordList
+            title="Activated report library"
+            description="Only reports activated for the selected facility are eligible for bulk generation."
+            data={visibleConfigs}
+            columns={reportColumns}
+            rowKey={(config) => config.id}
+            filterSlot={<div className="flex flex-col gap-2 sm:flex-row"><input className="input" placeholder="Search reports" aria-label="Search reports" value={search} onChange={(e) => setSearch(e.target.value)} /><select className="input" aria-label="Filter report category" value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>}
+            onRefresh={() => void load()}
+            emptyState={{ title: 'No reports match this filter', description: 'Try another report name or category.' }}
+          />
         </section>
 
         <section className="card-medical p-5"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-primary" /><div><h2 className="text-lg font-semibold">Compliance dashboard foundation</h2><p className="text-sm text-muted-foreground">Submission records are stored per facility, report and period so submission readiness can be reconciled before external reporting.</p></div></div></section>
