@@ -1,10 +1,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, RefreshCw, UserRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getPatientById, searchPatients, updatePatient } from '@/lib/healthApi';
 import { useAuth } from '@/contexts/AuthContext';
+import TriageHistoryChart from '@/components/triage/TriageHistoryChart';
+import TriageRecordForm from '@/components/triage/TriageRecordForm';
+import { normalizePatientId, selectTriageParameter, type TriageHistoryRecord, type TriageParameter } from '@/lib/triagePresentation';
 
 type TabKey = 'profile' | 'appointments' | 'vitals' | 'encounters' | 'labs' | 'prescriptions' | 'billing' | 'documents' | 'admission';
 const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
@@ -19,8 +22,8 @@ function Section({ title, children, action }: { title: string; children: React.R
 function EmptyState({ label }: { label: string }) { return <div className="rounded-2xl border border-dashed border-border p-8 text-center"><FileText className="mx-auto h-7 w-7 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No {label} recorded yet</p><p className="mt-1 text-xs text-muted-foreground">When this information becomes available, it will appear here.</p></div>; }
 
 export default function PatientHub() {
-  const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const { user } = useAuth();
-  const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>('profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
+  const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const [searchParams] = useSearchParams(); const { user } = useAuth();
+  const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>(() => searchParams.get('vitals') === '1' ? 'vitals' : 'profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
   const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canClinicalHistory = [...roleSet].some((role) => clinicalHistoryRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
@@ -59,7 +62,68 @@ function ProfileTab({ patient, canEdit, onSaved }: { patient: any; canEdit: bool
 
 function AppointmentsTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({scheduled_at:'',department:'',reason:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {error}=await(supabase as any).rpc('create_patient_appointment',{_patient_id:patientId,_scheduled_at:form.scheduled_at,_department:form.department||null,_reason:form.reason||null});if(error)return toast.error(error.message);setForm({scheduled_at:'',department:'',reason:''});toast.success('Appointment added');onSaved();};return <div className="space-y-5"><Section title="Appointment history">{rows.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Scheduled</th><th className="p-2">Department</th><th className="p-2">Reason</th><th className="p-2">Status</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id} className="border-b"><td className="p-2">{formatDate(r.scheduled_at)}</td><td className="p-2">{r.department||'—'}</td><td className="p-2">{r.reason||'—'}</td><td className="p-2 capitalize">{r.status}</td></tr>)}</tbody></table></div>:<EmptyState label="appointments"/>}</Section>{canWrite&&<Section title="Add appointment"><form onSubmit={submit} className="grid gap-4 sm:grid-cols-3"><input required type="datetime-local" value={form.scheduled_at} onChange={e=>setForm({...form,scheduled_at:e.target.value})} className="input-medical"/><input placeholder="Department" value={form.department} onChange={e=>setForm({...form,department:e.target.value})} className="input-medical"/><input placeholder="Reason" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="input-medical"/><button className="btn-primary sm:col-span-3">Create appointment</button></form></Section>}</div>; }
 
-function VitalsTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({temperature:'',pulse:'',systolic:'',diastolic:'',respiratory_rate:'',oxygen_saturation:'',weight_kg:'',height_cm:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {error}=await(supabase as any).rpc('record_patient_vitals',{_patient_id:patientId,_temperature:form.temperature?Number(form.temperature):null,_pulse:form.pulse?Number(form.pulse):null,_systolic:form.systolic?Number(form.systolic):null,_diastolic:form.diastolic?Number(form.diastolic):null,_respiratory_rate:form.respiratory_rate?Number(form.respiratory_rate):null,_oxygen_saturation:form.oxygen_saturation?Number(form.oxygen_saturation):null,_weight_kg:form.weight_kg?Number(form.weight_kg):null,_height_cm:form.height_cm?Number(form.height_cm):null});if(error)return toast.error(error.message);setForm({temperature:'',pulse:'',systolic:'',diastolic:'',respiratory_rate:'',oxygen_saturation:'',weight_kg:'',height_cm:''});toast.success('Vitals recorded');onSaved();};return <div className="space-y-5"><Section title="Vitals / triage history">{rows.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Recorded</th><th className="p-2">BP</th><th className="p-2">Pulse</th><th className="p-2">Temp</th><th className="p-2">SpO₂</th><th className="p-2">Weight</th><th className="p-2">Height</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id} className="border-b"><td className="p-2">{formatDate(r.recorded_at)}</td><td className="p-2">{r.systolic&&r.diastolic?`${r.systolic}/${r.diastolic}`:'—'}</td><td className="p-2">{r.pulse??'—'}</td><td className="p-2">{r.temperature??'—'}</td><td className="p-2">{r.oxygen_saturation??'—'}</td><td className="p-2">{r.weight_kg??'—'}</td><td className="p-2">{r.height_cm??'—'}</td></tr>)}</tbody></table></div>:<EmptyState label="vitals"/>}</Section>{canWrite&&<Section title="Record vitals"><form onSubmit={submit} className="grid gap-4 grid-cols-2 md:grid-cols-4">{[['temperature','Temperature'],['pulse','Pulse'],['systolic','Systolic BP'],['diastolic','Diastolic BP'],['respiratory_rate','Respiratory rate'],['oxygen_saturation','SpO₂'],['weight_kg','Weight (kg)'],['height_cm','Height (cm)']].map(([k,l])=><label key={k} className="space-y-1 text-sm"><span>{l}</span><input required={k==='weight_kg'||k==='height_cm'?false:true} type="number" step="any" value={form[k as keyof typeof form]} onChange={e=>setForm({...form,[k]:e.target.value})} className="input-medical w-full"/></label>)}<button className="btn-primary col-span-2 md:col-span-4">Record vitals</button></form></Section>}</div>; }
+function VitalsTab({ patientId, canWrite, onSaved }: any) {
+  const scopedPatientId = normalizePatientId(patientId);
+  const [records, setRecords] = useState<TriageHistoryRecord[]>([]);
+  const [loading, setLoading] = useState(Boolean(scopedPatientId));
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState<TriageParameter>('all');
+  const [showForm, setShowForm] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!scopedPatientId) {
+      setRecords([]);
+      setLoading(false);
+      setError('');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { data, error: requestError } = await (supabase as any).rpc('get_patient_triage_history', {
+      _patient_id: scopedPatientId,
+      _limit: 200,
+    });
+    if (requestError) {
+      setRecords([]);
+      setError('Unable to load triage history. Retry.');
+    } else {
+      setRecords((data ?? []) as TriageHistoryRecord[]);
+    }
+    setLoading(false);
+  }, [scopedPatientId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const visible = useMemo(() => selectTriageParameter(records, filter), [records, filter]);
+
+  if (!scopedPatientId) {
+    return <Section title="Vitals / Triage"><div className="rounded-2xl border border-dashed border-border p-8 text-center" role="status"><Activity className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 font-medium">No patient selected</p><p className="mt-1 text-sm text-muted-foreground">Open a patient record before viewing triage history.</p></div></Section>;
+  }
+
+  return <div className="space-y-5">
+    <Section title="Vitals / Triage history" action={canWrite ? <button type="button" onClick={() => setShowForm((value) => !value)} className="btn-primary">{showForm ? 'Close form' : 'Add Record'}</button> : undefined}>
+      {showForm && canWrite && <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4"><TriageRecordForm patientId={scopedPatientId} onSaved={() => { setShowForm(false); onSaved?.(); void load(); }} onCancel={() => setShowForm(false)} /></div>}
+      {loading && <div className="space-y-3" role="status" aria-label="Loading triage history"><div className="h-5 w-40 animate-pulse rounded bg-muted" /><div className="h-80 animate-pulse rounded-xl bg-muted" /><div className="h-20 animate-pulse rounded-xl bg-muted" /></div>}
+      {!loading && error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert"><p className="font-medium">{error}</p><button type="button" onClick={() => void load()} className="btn-secondary mt-3">Retry</button></div>}
+      {!loading && !error && records.length === 0 && <div className="rounded-2xl border border-dashed border-border p-8 text-center" role="status"><Activity className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 font-medium">No triage records yet for this patient</p><p className="mt-1 text-sm text-muted-foreground">Add a record when the patient's measured vital signs are available.</p></div>}
+      {!loading && !error && records.length > 0 && <>
+        <TriageHistoryChart records={visible} parameter={filter} />
+        <nav aria-label="Triage parameter filters" className="mt-4 flex flex-wrap items-center gap-4 border-t pt-4">
+          {(['all', 'temp', 'bp', 'bmi', 'spo2'] as TriageParameter[]).map((item) => {
+            const label = item === 'all' ? 'All' : item === 'temp' ? 'Temp' : item === 'bp' ? 'BP' : item === 'bmi' ? 'BMI' : 'SpO2';
+            return <button key={item} type="button" onClick={() => setFilter(item)} aria-pressed={filter === item} className={`text-sm underline-offset-4 hover:underline ${filter === item ? 'font-semibold text-primary underline' : 'text-muted-foreground'}`}>{label}</button>;
+          })}
+        </nav>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left"><th className="p-2">Recorded</th><th className="p-2">BP</th><th className="p-2">Temp</th><th className="p-2">BMI</th><th className="p-2">SpO₂</th></tr></thead>
+            <tbody>{records.map((record) => <tr key={record.id} className="border-b last:border-0"><td className="p-2">{formatDate(record.recorded_at)}</td><td className="p-2">{record.systolic !== null || record.diastolic !== null ? `${record.systolic ?? '—'}/${record.diastolic ?? '—'}` : '—'}</td><td className="p-2">{record.temperature ?? '—'}</td><td className="p-2">{record.bmi ?? '—'}</td><td className="p-2">{record.oxygen_saturation ?? '—'}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </>}
+    </Section>
+  </div>;
+}
 
 function EncountersTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({chief_complaint:'',notes:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {data,error}=await(supabase as any).rpc('create_encounter_workflow',{_patient_id:patientId,_symptoms:form.chief_complaint,_clerking_notes:form.notes||null});if(error)return toast.error(error.message);setForm({chief_complaint:'',notes:''});toast.success(`Encounter ${data?.encounter_id??''} created`);onSaved();};return <div className="space-y-5"><Section title="Encounter history">{rows.length?<div className="space-y-2">{rows.map((r:any)=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-2"><strong>{r.chief_complaint||'Clinical encounter'}</strong><span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span></div><p className="mt-2 text-sm text-muted-foreground">{r.notes||'No notes recorded.'}</p></div>)}</div>:<EmptyState label="encounters"/>}</Section>{canWrite&&<Section title="Start encounter"><form onSubmit={submit} className="space-y-4"><input required placeholder="Chief complaint" value={form.chief_complaint} onChange={e=>setForm({...form,chief_complaint:e.target.value})} className="input-medical w-full"/><textarea placeholder="Initial clinical notes" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className="input-medical min-h-24 w-full"/><button className="btn-primary">Start encounter</button></form></Section>}</div>; }
 
