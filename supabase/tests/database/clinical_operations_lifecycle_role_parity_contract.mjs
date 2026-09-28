@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const migration = fs.readFileSync(
-  'supabase/migrations/20260928190000_clinical_operations_lifecycle_role_parity.sql',
+  'supabase/migrations/20260928185147_clinical_operations_lifecycle_role_parity.sql',
   'utf8',
 );
 const page = fs.readFileSync('src/pages/ClinicalOperations.tsx', 'utf8');
