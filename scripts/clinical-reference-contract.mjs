@@ -39,6 +39,9 @@ for (const parameter of [
 }
 
 assert.match(helper, /clinical_reference_values/);
+assert.match(helper, /\['adult', 'all_ages'\]/);
+assert.match(helper, /population_scope === 'all_ages'/);
+assert.match(form, /bmiReference/);
 assert.match(form, /useClinicalReferences/);
 assert.match(form, /aria-describedby/);
 assert.doesNotMatch(form, /90–120 mmHg|60–80 mmHg|36\.1–37\.2 °C|95–100%|60–100 bpm/);

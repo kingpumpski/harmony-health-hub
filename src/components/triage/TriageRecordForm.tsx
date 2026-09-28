@@ -75,6 +75,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
   const normalReference = (parameter: string) => byParameter.get(parameter);
+  const bmiReference = normalReference('weight_measurement');
 
   const alerts = useMemo(() => {
     const checks: Array<[keyof FormState, string]> = [
@@ -237,6 +238,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
           <span className="text-muted-foreground">Calculated BMI</span>
           <strong className="block text-xl">{bmi ?? '—'}</strong>
           <span className="text-xs text-muted-foreground">{bmi ? 'kg/m² · calculated from measured height and weight' : 'Enter weight and height to calculate BMI'}</span>
+          {referencesLoading && !bmiReference ? <span className="mt-1 block text-xs text-muted-foreground">Loading clinical reference…</span> : bmiReference ? <span className="mt-1 block text-xs leading-5 text-muted-foreground">{bmiReference.display_text} Source: <a href={bmiReference.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{bmiReference.source_name}</a>.</span> : <span className="mt-1 block text-xs text-muted-foreground">No active BMI reference is configured; contact an administrator.</span>}
         </div>
       </div>
 
