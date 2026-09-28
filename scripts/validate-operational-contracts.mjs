@@ -41,6 +41,10 @@ const anestheticAssessmentPage = read('src/pages/AnestheticAssessment.tsx');
 const criticalAlertOverlay = read('src/components/CriticalAlertOverlay.tsx');
 const aiClinicalHub = read('src/pages/AIClinicalHub.tsx');
 const careTransitions = read('src/pages/CareTransitions.tsx');
+const clinicalOperations = read('src/pages/ClinicalOperations.tsx');
+const clinicalOperationsLifecycle = read('supabase/migrations/20260923170000_lifecycle_patient_context_hardening.sql');
+const clinicalOperationsWorkspace = read('supabase/migrations/20260921121000_post_merge_runtime_role_lookup_fix.sql');
+
 const admissionManagement = read('src/pages/AdmissionManagement.tsx');
 const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
 
@@ -50,6 +54,14 @@ assert('permissions RLS uses current-user role wrapper', reportAccessScopeMigrat
 assert('role permissions RLS uses current-user role wrapper', reportAccessScopeMigration.includes('create policy role_permissions_read_own') && reportAccessScopeMigration.includes('create policy role_permissions_admin_update') && reportAccessScopeMigration.includes("public.current_user_has_role('admin'::public.app_role)"), 'role_permissions policies must evaluate the authenticated session through the scoped role wrapper');
 assert('report generation run RLS uses current-user facility wrapper', reportGenerationScopeMigration.includes('create policy report_generation_runs_access') && reportGenerationScopeMigration.includes('public.current_user_has_facility_access(facility_id)'), 'report generation runs must use the current-user facility wrapper for authenticated reads');
 assert('report generation item RLS uses current-user facility wrapper', reportGenerationScopeMigration.includes('create policy report_generation_items_access') && reportGenerationScopeMigration.includes('public.current_user_has_facility_access(r.facility_id)'), 'report generation items must use the current-user facility wrapper for authenticated reads');
+
+assert('Clinical Operations does not expose the front-desk emergency workspace without matching protected read authorization', !clinicalOperations.includes("front_desk: ['emergency']") && clinicalOperationsWorkspace.includes("public.has_role(auth.uid(),'front_desk')") === false, 'Clinical Operations must not mount an emergency workspace that the protected read bridge does not authorize for front desk');
+assert('Clinical Operations transition roles include specialist nurse parity', clinicalOperations.includes("['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse']") && clinicalOperationsLifecycle.includes("public.has_role(uid,'specialist_nurse')"), 'specialist nurses must retain lifecycle transition parity where the server authorizes it');
+assert('Clinical Operations uses server-aligned emergency lifecycle transitions', clinicalOperations.includes("if (currentStatus === 'waiting') return ['triage', 'cancelled', 'left_without_being_seen']") && clinicalOperationsLifecycle.includes("Emergency case must be triaged before treatment"), 'emergency transition controls must not advertise impossible waiting-state transitions');
+assert('Clinical Operations uses server-aligned theatre lifecycle transitions', clinicalOperations.includes("requested: ['approved', 'cancelled']") && clinicalOperationsLifecycle.includes("Invalid theatre lifecycle transition"), 'theatre transition controls must follow the authoritative lifecycle');
+assert('Clinical Operations uses server-aligned transfusion lifecycle transitions', clinicalOperations.includes("issued: ['running', 'cancelled']") && clinicalOperationsLifecycle.includes("Invalid transfusion lifecycle transition"), 'transfusion transition controls must follow the authoritative lifecycle');
+assert('Clinical Operations avoids unsafe insurance financial transitions without adjudication inputs', clinicalOperations.includes("under_review: ['rejected', 'resubmission_required']") && clinicalOperationsLifecycle.includes('Approved amount is required for adjudication') && clinicalOperationsLifecycle.includes('Paid amount is required before marking claim paid'), 'claims queue must not advertise approval/payment transitions that require missing financial inputs');
+assert('Clinical Operations supplies an emergency cancellation disposition', clinicalOperations.includes("status === 'cancelled' ? 'Cancelled in clinical operations'"), 'emergency cancellation must satisfy the server disposition requirement');
 
 assert('admission workspace array response is handled by admission management', admissionManagement.includes('Array.isArray(workspace) ? workspace : (workspace?.admissions ?? [])'), 'admission management must tolerate the canonical array response from get_admission_workspace');
 assert('admission workspace array response is handled by care transitions', careTransitions.includes('Array.isArray(a) ? a : (a?.admissions ?? [])'), 'care transitions must tolerate the canonical array response from get_admission_workspace');
