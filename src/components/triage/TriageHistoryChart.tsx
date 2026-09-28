@@ -72,7 +72,7 @@ export default function TriageHistoryChart({ records, parameter }: Props) {
 
           {bmiAxis && <><ReferenceArea yAxisId="bmi" y1={0} y2={18.5} fill="currentColor" fillOpacity={0.04} /><ReferenceArea yAxisId="bmi" y1={18.5} y2={25} fill="currentColor" fillOpacity={0.08} /><ReferenceArea yAxisId="bmi" y1={25} y2={30} fill="currentColor" fillOpacity={0.05} /><ReferenceArea yAxisId="bmi" y1={30} y2={60} fill="currentColor" fillOpacity={0.04} /></>}
           {spo2Axis && <ReferenceArea yAxisId="spo2" y1={0} y2={90} fill="currentColor" fillOpacity={0.08} />}
-          {bpAxis && <Area yAxisId="bp" type="monotone" dataKey="systolic" stroke="none" fill="currentColor" fillOpacity={0.08} baseValue="dataMin" connectNulls />}
+          {bpAxis && <><Area yAxisId="bp" type="monotone" dataKey="diastolic" stackId="bpBand" stroke="none" fill="transparent" fillOpacity={0} connectNulls /><Area yAxisId="bp" type="monotone" dataKey={(entry: any) => Math.max((entry.systolic ?? 0) - (entry.diastolic ?? 0), 0)} name="Pulse pressure" stackId="bpBand" stroke="none" fill="hsl(var(--primary))" fillOpacity={0.10} connectNulls /></>}
           
           {(parameter === 'all' || tempAxis) && <Line yAxisId="temp" type="monotone" dataKey="temperature" name="Temp" stroke="hsl(var(--warning))" strokeWidth={2.5} dot={false} connectNulls />}
           {(parameter === 'all' || bpAxis) && <>
