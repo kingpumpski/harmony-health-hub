@@ -4,6 +4,7 @@ import MedicalTermInput from '@/components/MedicalTermInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Layers, Plus, Sparkles } from 'lucide-react';
+import { RecordList, type RecordColumn } from '@/components/records/RecordList';
 
 interface Template { id: string; name: string; diagnosis: string; description: string; prescriptions: any; is_ai_generated: boolean; created_at: string }
 
@@ -38,6 +39,13 @@ export default function TreatmentTemplates() {
     setName(''); setDiagnosis(''); setDescription(''); setRxText('');
     load();
   };
+
+  const columns: RecordColumn<Template>[] = [
+    { key: 'name', header: 'Template', sortable: true, render: (t) => <div><p className="font-medium">{t.name} {t.is_ai_generated && <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent">AI</span>}</p><p className="text-xs text-muted-foreground">{t.description || 'No description recorded.'}</p></div> },
+    { key: 'diagnosis', header: 'Diagnosis', sortable: true, hideBelow: 'md', render: (t) => t.diagnosis || '—' },
+    { key: 'prescriptions', header: 'Protocol', hideBelow: 'lg', render: (t) => Array.isArray(t.prescriptions) && t.prescriptions.length > 0 ? <details onClick={(e) => e.stopPropagation()}><summary className="cursor-pointer text-sm text-primary">{t.prescriptions.length} medication{t.prescriptions.length === 1 ? '' : 's'}</summary><ul className="mt-2 space-y-1 text-xs">{t.prescriptions.map((p: any, i: number) => <li key={i}>• {p.medication} — {p.dosage} {p.frequency} × {p.duration}</li>)}</ul></details> : <span className="text-muted-foreground">No medications</span> },
+    { key: 'created_at', header: 'Created', sortable: true, hideBelow: 'lg', render: (t) => <time dateTime={t.created_at} title={new Date(t.created_at).toLocaleString()}>{new Date(t.created_at).toLocaleDateString()}</time> },
+  ];
 
   const synthesize = async () => {
     if (!synthDx) return;
@@ -78,31 +86,16 @@ export default function TreatmentTemplates() {
         </div>
 
         <div className="card-medical p-5">
-          <h2 className="font-semibold mb-3">Library</h2>
-          <div className="space-y-3">
-            {templates.map((t) => (
-              <div key={t.id} className="rounded-xl border border-border p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium flex items-center gap-2">
-                      {t.name}
-                      {t.is_ai_generated && <span className="text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent">AI</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t.diagnosis}</p>
-                  </div>
-                </div>
-                {t.description && <p className="text-sm mt-2">{t.description}</p>}
-                {Array.isArray(t.prescriptions) && t.prescriptions.length > 0 && (
-                  <ul className="mt-2 text-xs space-y-1">
-                    {t.prescriptions.map((p: any, i: number) => (
-                      <li key={i}>• {p.medication} — {p.dosage} {p.frequency} × {p.duration}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-            {templates.length === 0 && <p className="text-sm text-muted-foreground">No templates yet.</p>}
-          </div>
+          <RecordList
+            title="Template library"
+            description={templates.length + " saved care plan" + (templates.length === 1 ? "" : "s")}
+            data={templates}
+            columns={columns}
+            rowKey={(t) => t.id}
+            onRefresh={load}
+            emptyState={{ title: 'No treatment templates', description: 'Create a standardized care plan using the form.' }}
+          />
+        </div>
         </div>
       </div>
     </div>
