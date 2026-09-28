@@ -172,15 +172,15 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
     }
   };
 
-  const input = (key: keyof FormState, label: string, placeholder: string, parameter: string, options?: { step?: string; type?: string }) => {
+  const input = (key: keyof FormState, label: string, placeholder: string, parameter?: string, options?: { step?: string; type?: string }) => {
     const helperId = `clinical-reference-${key}`;
-    const reference = normalReference(parameter);
+    const reference = parameter ? normalReference(parameter) : undefined;
     return (
       <label className="space-y-1 text-sm">
         <span className="font-medium">{label}</span>
         <input
           aria-label={label}
-          aria-describedby={helperId}
+          {...(parameter ? { 'aria-describedby': helperId } : {})}
           type={options?.type ?? 'number'}
           step={options?.step ?? 'any'}
           value={form[key]}
@@ -188,9 +188,9 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
           placeholder={placeholder}
           className={`input-medical w-full ${errors[key] ? 'border-destructive' : ''}`}
         />
-        {referencesLoading && !reference
+        {parameter && (referencesLoading && !reference
           ? <span id={helperId} className="block text-xs text-muted-foreground">Loading clinical reference…</span>
-          : <ReferenceHelper reference={reference} id={helperId} />}
+          : <ReferenceHelper reference={reference} id={helperId} />)}
         {errors[key] && <span className="text-xs text-destructive">{errors[key]}</span>}
       </label>
     );
