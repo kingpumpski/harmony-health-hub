@@ -161,7 +161,6 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
         _presenting_complaint: form.complaint.trim() || null,
         _clinical_notes: form.notes.trim() || null,
         _priority: critical ? 'critical' : urgent ? 'urgent' : 'routine',
-        _is_critical: critical,
       };
       const { error } = await (supabase as any).rpc('record_triage_assessment', values);
       if (error) throw error;
