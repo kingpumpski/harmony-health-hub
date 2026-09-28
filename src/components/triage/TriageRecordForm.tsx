@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useClinicalReferences, type ClinicalReference } from '@/lib/clinicalReferences';
 
 type PatientOption = { id: string; first_name: string; last_name: string; patient_code?: string | null };
 
@@ -28,14 +29,16 @@ type FormState = {
   notes: string;
 };
 
-const NORMAL = {
-  systolic: { label: 'Systolic BP', low: 90, high: 120, unit: 'mmHg' },
-  diastolic: { label: 'Diastolic BP', low: 60, high: 80, unit: 'mmHg' },
-  heartRate: { label: 'Heart rate', low: 60, high: 100, unit: 'bpm' },
-  temperature: { label: 'Temperature', low: 36.1, high: 37.2, unit: '°C' },
-  respiratoryRate: { label: 'Respiratory rate', low: 12, high: 20, unit: '/min' },
-  oxygenSaturation: { label: 'SpO₂', low: 95, high: 100, unit: '%' },
-};
+const REFERENCE_PARAMETERS = [
+  'blood_pressure_systolic',
+  'blood_pressure_diastolic',
+  'blood_pressure_combined',
+  'body_temperature',
+  'heart_rate',
+  'respiratory_rate',
+  'spo2',
+  'pain_score',
+] as const;
 
 const emptyForm: FormState = {
   patientId: '', systolic: '', diastolic: '', heartRate: '', temperature: '',
@@ -47,13 +50,52 @@ function numberOrNull(value: string) {
   return value.trim() === '' ? null : Number(value);
 }
 
+function ReferenceHelper({ reference, id }: { reference?: ClinicalReference; id: string }) {
+  if (!reference) {
+    return <span id={id} className="block text-xs text-muted-foreground">Clinical reference not configured; contact an administrator.</span>;
+  }
+  return (
+    <span id={id} className="block text-xs leading-5 text-muted-foreground">
+      {reference.display_text}{' '}
+      <span className="whitespace-normal">
+        Source: <a href={reference.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{reference.source_name}</a>.
+      </span>
+    </span>
+  );
+}
+
 export default function TriageRecordForm({ patients = [], patientId, onSaved, onCancel }: Props) {
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>({ ...emptyForm, patientId: patientId ?? '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
-  const alerts = useMemo(() => Object.entries(NORMAL).flatMap(([key, range]) => { const value = numberOrNull(form[key as keyof FormState]); if (value === null || !Number.isFinite(value)) return []; if (value > range.high) return [`${range.label} ${value} ${range.unit} is above the normal upper limit of ${range.high} ${range.unit}.`]; if (value < range.low) return [`${range.label} ${value} ${range.unit} is below the normal lower limit of ${range.low} ${range.unit}.`]; return []; }), [form]);
+  const normalReference = (parameter: string) => byParameter.get(parameter);
+
+  const alerts = useMemo(() => {
+    const checks: Array<[keyof FormState, string]> = [
+      ['systolic', 'blood_pressure_systolic'],
+      ['diastolic', 'blood_pressure_diastolic'],
+      ['heartRate', 'heart_rate'],
+      ['temperature', 'body_temperature'],
+      ['respiratoryRate', 'respiratory_rate'],
+      ['oxygenSaturation', 'spo2'],
+      ['painScore', 'pain_score'],
+    ];
+    return checks.flatMap(([key, parameter]) => {
+      const reference = normalReference(parameter);
+      const value = numberOrNull(form[key]);
+      if (!reference || value === null || !Number.isFinite(value)) return [];
+      if (reference.normal_max !== null && value > reference.normal_max) {
+        return [`${parameter} ${value} is above the sourced upper reference limit of ${reference.normal_max}.`];
+      }
+      if (reference.normal_min !== null && value < reference.normal_min) {
+        return [`${parameter} ${value} is below the sourced lower reference limit of ${reference.normal_min}.`];
+      }
+      return [];
+    });
+  }, [form, byParameter]);
 
   const bmi = useMemo(() => {
     const weight = numberOrNull(form.weightKg);
@@ -130,21 +172,29 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
     }
   };
 
-  const input = (key: keyof FormState, label: string, placeholder: string, options?: { step?: string; type?: string }) => (
-    <label className="space-y-1 text-sm">
-      <span className="font-medium">{label}</span>
-      <input
-        aria-label={label}
-        type={options?.type ?? 'number'}
-        step={options?.step ?? 'any'}
-        value={form[key]}
-        onChange={(event) => set(key, event.target.value)}
-        placeholder={placeholder}
-        className={`input-medical w-full ${errors[key] ? 'border-destructive' : ''}`}
-      />
-      {errors[key] && <span className="text-xs text-destructive">{errors[key]}</span>}
-    </label>
-  );
+  const input = (key: keyof FormState, label: string, placeholder: string, parameter: string, options?: { step?: string; type?: string }) => {
+    const helperId = `clinical-reference-${key}`;
+    const reference = normalReference(parameter);
+    return (
+      <label className="space-y-1 text-sm">
+        <span className="font-medium">{label}</span>
+        <input
+          aria-label={label}
+          aria-describedby={helperId}
+          type={options?.type ?? 'number'}
+          step={options?.step ?? 'any'}
+          value={form[key]}
+          onChange={(event) => set(key, event.target.value)}
+          placeholder={placeholder}
+          className={`input-medical w-full ${errors[key] ? 'border-destructive' : ''}`}
+        />
+        {referencesLoading && !reference
+          ? <span id={helperId} className="block text-xs text-muted-foreground">Loading clinical reference…</span>
+          : <ReferenceHelper reference={reference} id={helperId} />}
+        {errors[key] && <span className="text-xs text-destructive">{errors[key]}</span>}
+      </label>
+    );
+  };
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
@@ -158,18 +208,18 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       </label>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {input('systolic', 'Systolic BP', '90–120 mmHg · e.g. 120', { step: '1' })}
-        {input('diastolic', 'Diastolic BP', '60–80 mmHg · e.g. 80', { step: '1' })}
-        {input('heartRate', 'Heart rate', '60–100 bpm · e.g. 72', { step: '1' })}
-        {input('temperature', 'Temperature °C', '36.1–37.2 °C · e.g. 36.8', { step: '0.1' })}
-        {input('respiratoryRate', 'Respiratory rate', '12–20 /min · e.g. 16', { step: '1' })}
-        {input('oxygenSaturation', 'SpO₂ %', '95–100% · e.g. 98', { step: '0.1' })}
-        {input('weightKg', 'Weight (kg)', 'e.g. 70.5 kg', { step: '0.1' })}
-        {input('heightM', 'Height (m)', 'e.g. 1.75 m', { step: '0.01' })}
-        {input('painScore', 'Pain score (0–10)', 'e.g. 3', { step: '1' })}
+        {input('systolic', 'Systolic BP', 'Enter systolic blood pressure', 'blood_pressure_systolic', { step: '1' })}
+        {input('diastolic', 'Diastolic BP', 'Enter diastolic blood pressure', 'blood_pressure_diastolic', { step: '1' })}
+        {input('heartRate', 'Heart rate', 'Enter pulse rate', 'heart_rate', { step: '1' })}
+        {input('temperature', 'Temperature °C', 'Enter measured temperature', 'body_temperature', { step: '0.1' })}
+        {input('respiratoryRate', 'Respiratory rate', 'Enter breaths per minute', 'respiratory_rate', { step: '1' })}
+        {input('oxygenSaturation', 'SpO₂ %', 'Enter oxygen saturation', 'spo2', { step: '0.1' })}
+        {input('weightKg', 'Weight (kg)', 'Enter measured weight', 'weight_measurement', { step: '0.1' })}
+        {input('heightM', 'Height (m)', 'Enter measured height', 'height_measurement', { step: '0.01' })}
+        {input('painScore', 'Pain score (0–10)', 'Enter pain score', 'pain_score', { step: '1' })}
       </div>
 
-      {alerts.length > 0 && <div className="rounded-xl border-2 border-critical/60 bg-critical/10 p-4" role="alert"><p className="font-semibold text-critical">Immediate clinical attention required</p><ul className="mt-1 list-disc pl-5 text-sm">{alerts.map((alert) => <li key={alert}>{alert}</li>)}</ul><p className="mt-2 text-xs text-muted-foreground">Recheck the measurement and follow the facility escalation protocol.</p></div>}
+      {alerts.length > 0 && <div className="rounded-xl border-2 border-critical/60 bg-critical/10 p-4" role="alert"><p className="font-semibold text-critical">Reference-range attention</p><ul className="mt-1 list-disc pl-5 text-sm">{alerts.map((alert) => <li key={alert}>{alert}</li>)}</ul><p className="mt-2 text-xs text-muted-foreground">Recheck the measurement and follow the facility escalation protocol.</p></div>}
 
       {errors.measurement && <p className="text-sm text-destructive" role="alert">{errors.measurement}</p>}
 
