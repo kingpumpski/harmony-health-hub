@@ -38,6 +38,9 @@ const REFERENCE_PARAMETERS = [
   'respiratory_rate',
   'spo2',
   'pain_score',
+  'weight_measurement',
+  'height_measurement',
+  'body_mass_index',
 ] as const;
 
 const emptyForm: FormState = {
