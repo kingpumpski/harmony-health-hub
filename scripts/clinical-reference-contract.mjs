@@ -1,3 +1,4 @@
+// Runtime safety contract: priority is clinician-selected; server derives is_critical.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
