@@ -21,6 +21,7 @@ export type ClinicalReference = {
 export function useClinicalReferences(parameters: string[]) {
   const [references, setReferences] = useState<ClinicalReference[]>([]);
   const [loading, setLoading] = useState(true);
+  const parameterKey = parameters.join('|');
 
   useEffect(() => {
     let active = true;
@@ -39,7 +40,7 @@ export function useClinicalReferences(parameters: string[]) {
     };
     void load();
     return () => { active = false; };
-  }, [parameters.join('|')]);
+  }, [parameterKey]);
 
   const byParameter = useMemo(
     () => new Map(references.map((reference) => [reference.parameter, reference])),
