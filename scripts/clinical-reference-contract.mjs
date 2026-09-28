@@ -17,13 +17,13 @@ assert.match(migration, /review_due_at timestamptz (?:GENERATED ALWAYS AS \(last
 assert.match(migration, /ALTER TABLE public\.clinical_reference_values ENABLE ROW LEVEL SECURITY/);
 assert.match(migration, /clinical_reference_admin_insert/);
 assert.match(migration, /clinical_reference_admin_update/);
-for (const parameter of ['blood_pressure_systolic','blood_pressure_diastolic','blood_pressure_combined','body_temperature','spo2','heart_rate','respiratory_rate','pain_score']) {
+for (const parameter of ['blood_pressure_systolic','blood_pressure_diastolic','blood_pressure_combined','body_temperature','spo2','heart_rate','respiratory_rate','pain_score','weight_measurement','height_measurement']) {
   assert.match(migration, new RegExp(`'${parameter}'`), `missing seeded reference: ${parameter}`);
 }
 assert.match(helper, /clinical_reference_values/);
 assert.match(form, /useClinicalReferences/);
 assert.match(form, /aria-describedby/);
-assert.doesNotMatch(form, /90–120 mmHg|60–80 mmHg|36\.1–37\.2 °C|95–100%|60–100 bpm/);
+assert.doesNotMatch(form, /90–120 mmHg|60–80 mmHg|36\.1–37\.2 °C|95–100%|60–100 bpm/);\nassert.match(form, /input\\('weightKg'.*'weight_measurement'/);\nassert.match(form, /input\\('heightM'.*'height_measurement'/);
 assert.match(admin, /source_url/);
 assert.match(admin, /reviewRequired/);
 assert.match(app, /\/admin\/clinical-references/);
