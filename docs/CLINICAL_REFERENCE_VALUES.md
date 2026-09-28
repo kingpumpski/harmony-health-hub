@@ -55,3 +55,10 @@ The vital-sign helper component:
 - preserves the existing form layout and write workflow
 
 A browser screenshot/visual acceptance capture should be recorded during the manual browser acceptance pass after the PR is deployed; no visual result is claimed by the implementation-only test suite.
+
+
+## Hardening extension
+
+The reference layer now also covers adult BMI, weight and height inputs so the triage form does not fall back to unsourced helper text for anthropometric measurements. BMI chart bands and the SpO₂ threshold band are derived from the active reference records rather than fixed clinical cut-offs in the chart component. The administrator catalogue now supports an explicit “Mark reviewed today” workflow; the database trigger recalculates the 24-month review due date from the review timestamp.
+
+Reference-range alerts remain advisory. Existing triage acuity thresholds and write semantics are unchanged by this extension.
