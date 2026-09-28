@@ -49,18 +49,41 @@ export default function ClinicalReferences() {
     setDraft({ ...blank, last_reviewed_at: new Date().toISOString().slice(0, 10) });
   };
 
+  const review = async (reference: ClinicalReference) => {
+    if (!canEdit) return;
+    setReviewing(true);
+    const { error } = await (supabase as any)
+      .from('clinical_reference_values')
+      .update({ last_reviewed_at: new Date().toISOString(), updated_by: user.id })
+      .eq('id', reference.id);
+    setReviewing(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Clinical reference review date updated.');
+    await load();
+    setSelected(null);
+  };
+
   const save = async () => {
     if (!canEdit || !draft.parameter || !draft.source_name || !draft.source_reference || !draft.source_url || !draft.effective_date || !draft.display_text) {
       toast.error('Parameter, source name/reference/URL, effective date and display text are required.');
       return;
     }
     setSaving(true);
+    let sourceUrl: URL;
+    try {
+      sourceUrl = new URL(draft.source_url.trim());
+      if (!['http:', 'https:'].includes(sourceUrl.protocol)) throw new Error('Source URL must use HTTP or HTTPS.');
+    } catch {
+      toast.error('Enter a valid HTTP(S) source URL.');
+      setSaving(false);
+      return;
+    }
     const payload = {
       parameter: draft.parameter.trim(),
       population_scope: draft.population_scope || 'adult',
       source_name: draft.source_name.trim(),
       source_reference: draft.source_reference.trim(),
-      source_url: draft.source_url.trim(),
+      source_url: sourceUrl.toString(),
       source_is_ghana_specific: Boolean(draft.source_is_ghana_specific),
       effective_date: draft.effective_date,
       normal_min: draft.normal_min === null || draft.normal_min === undefined ? null : Number(draft.normal_min),
@@ -106,7 +129,7 @@ export default function ClinicalReferences() {
               {sorted.map((reference) => <button key={reference.id} type="button" onClick={() => edit(reference)} className="w-full p-4 text-left hover:bg-muted/40">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{reference.parameter}</span>{reviewRequired(reference) && <span className="text-xs font-semibold text-warning">Review required</span>}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{reference.display_text}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Source: {reference.source_name} · {reference.source_is_ghana_specific ? 'Ghana-specific' : 'International/supplemental'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Source: {reference.source_name} · {reference.source_is_ghana_specific ? 'Ghana-specific' : 'International/supplemental'} · Review due {new Date(reference.review_due_at).toLocaleDateString()}</p>
               </button>)}
             </div>
           )}
@@ -129,7 +152,7 @@ export default function ClinicalReferences() {
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(draft.source_is_ghana_specific)} onChange={e=>setDraft(current=>({...current,source_is_ghana_specific:e.target.checked}))} /> Ghana-specific source</label>\n            <label className="block space-y-1 text-sm"><span className="font-medium">Thresholds (JSON)</span><textarea value={JSON.stringify(draft.thresholds ?? {}, null, 2)} onChange={e=>{try{setDraft(current=>({...current,thresholds:JSON.parse(e.target.value)}));}catch{ /* keep last valid value until JSON is complete */ }}} rows={5} className="input-medical w-full font-mono text-xs" /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">Last reviewed</span><input type="date" value={draft.last_reviewed_at ? new Date(draft.last_reviewed_at).toISOString().slice(0,10) : ''} onChange={e=>setDraft(current=>({...current,last_reviewed_at:e.target.value}))} className="input-medical w-full" /></label>
-            {selected && <div className="rounded-xl border border-muted p-3 text-xs text-muted-foreground"><p>Review due: {new Date(selected.review_due_at).toLocaleDateString()}</p><p className="mt-1">A review flag is shown here to administrators only.</p></div>}
+            {selected && <div className="rounded-xl border border-muted p-3 text-xs text-muted-foreground"><p>Review due: {new Date(selected.review_due_at).toLocaleDateString()}</p><p className="mt-1">A review flag is shown here to administrators only.</p><button type="button" onClick={() => void review(selected)} disabled={reviewing} className="btn-secondary mt-2">{reviewing ? 'Recording review…' : 'Mark reviewed today'}</button></div>}
             {draft.source_url && <a href={draft.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline"><ExternalLink className="h-3 w-3" />Open source</a>}
             <button type="button" onClick={() => void save()} disabled={saving} className="btn-primary inline-flex items-center gap-2"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save reference'}</button>
           </div>
