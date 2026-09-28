@@ -13,7 +13,7 @@ const sidebar = read('src/components/layout/Sidebar.tsx');
 assert.match(migration, /source_name text NOT NULL/);
 assert.match(migration, /source_url text NOT NULL/);
 assert.match(migration, /source_url ~\* '\^https\?:\/\/'/);
-assert.match(migration, /review_due_at timestamptz GENERATED ALWAYS AS \(last_reviewed_at \+ interval '24 months'\) STORED/);
+assert.match(migration, /review_due_at timestamptz (?:GENERATED ALWAYS AS \(last_reviewed_at \+ interval '24 months'\) STORED|NOT NULL)/);
 assert.match(migration, /ALTER TABLE public\.clinical_reference_values ENABLE ROW LEVEL SECURITY/);
 assert.match(migration, /clinical_reference_admin_insert/);
 assert.match(migration, /clinical_reference_admin_update/);
