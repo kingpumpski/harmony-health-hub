@@ -15,7 +15,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('Supabase client configuration is missing. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
-const OFFLINE_CONTINUITY_TABLES = new Set(['patients', 'triage_assessments']);
+const OFFLINE_CONTINUITY_TABLES = new Set(['patients']);
 
 /**
  * Keep direct PostgREST continuity writes POST-only. Existing online PATCH/
