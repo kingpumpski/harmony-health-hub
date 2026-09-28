@@ -29,9 +29,10 @@ export function useClinicalReferences(parameters: string[]) {
     let active = true;
     const load = async () => {
       setLoading(true);
+      setError(null);
       const { data, error } = await (supabase as any)
         .from('clinical_reference_values')
-        .select('id,parameter,population_scope,source_name,source_reference,source_url,source_is_ghana_specific,effective_date,normal_min,normal_max,thresholds,display_text,last_reviewed_at,review_due_at')
+        .select('id,parameter,population_scope,source_name,source_reference,source_url,source_is_ghana_specific,effective_date,normal_min,normal_max,thresholds,display_text,last_reviewed_at,review_due_at,is_active')
         .in('parameter', parameters)
         .eq('is_active', true)
          .eq('population_scope', 'adult');
