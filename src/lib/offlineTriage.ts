@@ -1,10 +1,4 @@
-import { enqueueOfflineMutation, upsertOfflineReadModel } from '@/lib/offlineSync';
 import { supabase } from '@/integrations/supabase/client';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ygqoptvezotdqhtimdkr.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
-  'sb_publishable_OWOl70nV57PKXtYPEtOvKg_mpTloQrH';
 
 export type OfflineTriageAssessment = {
   id: string;
@@ -13,48 +7,36 @@ export type OfflineTriageAssessment = {
 };
 
 /**
- * Explicit offline triage command.
- *
- * Triage uses a stable client UUID and PostgREST's primary-key conflict-safe
- * insert semantics. If synchronization reaches the server but its response
- * is lost, replaying the same assessment is therefore a no-op.
+ * Queue triage through the authenticated triage RPC.
+ * offlineAwareFetch converts that RPC to the explicit idempotent offline RPC
+ * when connectivity is unavailable; triage never falls back to direct table DML.
  */
 export async function queueOfflineTriageAssessment(
   row: Record<string, unknown>,
 ): Promise<OfflineTriageAssessment> {
-  const patientId = String(row.patient_id || '');
+  const patientId = String(row.patient_id || row._patient_id || '');
   if (!patientId) throw new Error('A patient is required for offline triage.');
 
-  const id = String(row.id || crypto.randomUUID());
-  const stableRow = {
-    ...row,
-    id,
-    patient_id: patientId,
+  const payload = {
+    _patient_id: patientId,
+    _systolic: row.systolic ?? row._systolic ?? null,
+    _diastolic: row.diastolic ?? row._diastolic ?? null,
+    _heart_rate: row.heart_rate ?? row._heart_rate ?? null,
+    _temperature: row.temperature ?? row._temperature ?? null,
+    _respiratory_rate: row.respiratory_rate ?? row._respiratory_rate ?? null,
+    _oxygen_saturation: row.oxygen_saturation ?? row._oxygen_saturation ?? null,
+    _weight_kg: row.weight_kg ?? row._weight_kg ?? null,
+    _height_m: row.height_m ?? row._height_m ?? null,
+    _pain_score: row.pain_score ?? row._pain_score ?? null,
+    _consciousness: row.consciousness ?? row._consciousness ?? null,
+    _presenting_complaint: row.presenting_complaint ?? row._presenting_complaint ?? null,
+    _clinical_notes: row.clinical_notes ?? row._clinical_notes ?? null,
+    _priority: row.priority ?? row._priority ?? 'routine',
   };
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error || !data.session?.access_token) {
-    throw new Error('You must be signed in to save an offline triage assessment.');
-  }
+  const { data, error } = await (supabase as any).rpc('record_triage_assessment', payload);
+  if (error) throw error;
 
-  const queued = await enqueueOfflineMutation({
-    url: `${SUPABASE_URL}/rest/v1/triage_assessments?on_conflict=id`,
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      authorization: `Bearer ${data.session.access_token}`,
-      'content-type': 'application/json',
-      prefer: 'resolution=ignore-duplicates,return=minimal',
-    },
-    body: JSON.stringify(stableRow),
-  });
-
-  await upsertOfflineReadModel({
-    id,
-    mutationId: queued.id,
-    kind: 'triage',
-    data: stableRow,
-  });
-
-  return { id, patientId, row: stableRow };
+  const id = String(data || crypto.randomUUID());
+  return { id, patientId, row: { id, patient_id: patientId, ...payload } };
 }
