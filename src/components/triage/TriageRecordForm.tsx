@@ -56,7 +56,7 @@ function ReferenceHelper({ reference, id }: { reference?: ClinicalReference; id:
   }
   return (
     <span id={id} className="block text-xs leading-5 text-muted-foreground">
-      {reference.display_text}{' '}
+      {reference.population_scope === 'adult' ? 'Adult reference. ' : ''}{reference.display_text}{' '}
       <span className="whitespace-normal">
         Source: <a href={reference.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{reference.source_name}</a>.
       </span>
