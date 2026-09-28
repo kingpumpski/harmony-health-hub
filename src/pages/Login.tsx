@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { HeartPulse, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 
 export default function Login() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -12,37 +12,40 @@ export default function Login() {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [submitLocked, setSubmitLocked] = useState(false);
   const { login, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) navigate('/dashboard', { replace: true });
+    if (!loading && isAuthenticated) {
+      toast.success('Welcome back');
+      navigate('/dashboard', { replace: true });
+    }
   }, [isAuthenticated, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLocked) return;
+    setSubmitLocked(true);
     setIsLoading(true);
     try {
       if (mode === 'signin') {
         await login(email, password);
-        toast({ title: 'Welcome back', description: 'Signed in successfully.' });
+        // Navigation is owned by the auth-ready effect above; do not navigate twice.
       } else {
         if (!firstName.trim() || !lastName.trim()) {
-          toast({ title: 'Missing details', description: 'Please enter your first and last name.', variant: 'destructive' });
+          toast.error('Please enter your first and last name.');
           return;
         }
         await signUp(email, password, firstName.trim(), lastName.trim());
-        toast({ title: 'Account created', description: 'You are now signed in as a patient.' });
+        toast.success('Account created');
       }
-      navigate('/dashboard');
+      // Auth state owns the protected-route transition.
     } catch (err: any) {
-      toast({
-        title: mode === 'signin' ? 'Sign in failed' : 'Sign up failed',
-        description: err?.message ?? 'Please try again.',
-        variant: 'destructive',
-      });
+      toast.error(err?.message ?? (mode === 'signin' ? 'Sign in failed.' : 'Sign up failed.'));
     } finally {
       setIsLoading(false);
+      setSubmitLocked(false);
     }
   };
 
