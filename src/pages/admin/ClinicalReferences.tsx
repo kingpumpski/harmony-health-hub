@@ -22,6 +22,7 @@ export default function ClinicalReferences() {
   const [draft, setDraft] = useState<Partial<ClinicalReference>>(blank);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,7 +122,7 @@ export default function ClinicalReferences() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr]">
         <section className="card-medical overflow-hidden">
           <div className="flex items-center justify-between border-b p-4">
-            <div><h2 className="font-semibold">Reference catalogue</h2><p className="text-xs text-muted-foreground">{references.length} active record{references.length === 1 ? '' : 's'}</p></div>
+            <div><h2 className="font-semibold">Reference catalogue</h2><p className="text-xs text-muted-foreground">{references.length} record{references.length === 1 ? '' : 's'}</p></div>
             <div className="flex gap-2"><button type="button" onClick={() => void load()} className="btn-secondary" title="Refresh"><RefreshCw className="h-4 w-4" /></button><button type="button" onClick={startNew} className="btn-primary">Add reference</button></div>
           </div>
           {loading ? <div className="p-5 text-sm text-muted-foreground">Loading references…</div> : (
@@ -129,7 +130,7 @@ export default function ClinicalReferences() {
               {sorted.map((reference) => <button key={reference.id} type="button" onClick={() => edit(reference)} className="w-full p-4 text-left hover:bg-muted/40">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{reference.parameter}</span>{reviewRequired(reference) && <span className="text-xs font-semibold text-warning">Review required</span>}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{reference.display_text}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Source: {reference.source_name} · {reference.source_is_ghana_specific ? 'Ghana-specific' : 'International/supplemental'} · Review due {new Date(reference.review_due_at).toLocaleDateString()}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Source: {reference.source_name} · {reference.source_is_ghana_specific ? 'Ghana-specific' : 'International/supplemental'} · Review due {new Date(reference.review_due_at).toLocaleDateString()} · {reference.is_active ? 'Active' : 'Inactive'}</p>
               </button>)}
             </div>
           )}
@@ -150,7 +151,8 @@ export default function ClinicalReferences() {
               <label className="space-y-1 text-sm"><span className="font-medium">Normal/reference min</span><input type="number" value={draft.normal_min ?? ''} onChange={e=>setDraft(current=>({...current,normal_min:e.target.value===''?null:Number(e.target.value)}))} className="input-medical w-full" /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Normal/reference max</span><input type="number" value={draft.normal_max ?? ''} onChange={e=>setDraft(current=>({...current,normal_max:e.target.value===''?null:Number(e.target.value)}))} className="input-medical w-full" /></label>
             </div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(draft.source_is_ghana_specific)} onChange={e=>setDraft(current=>({...current,source_is_ghana_specific:e.target.checked}))} /> Ghana-specific source</label>\n            <label className="block space-y-1 text-sm"><span className="font-medium">Thresholds (JSON)</span><textarea value={JSON.stringify(draft.thresholds ?? {}, null, 2)} onChange={e=>{try{setDraft(current=>({...current,thresholds:JSON.parse(e.target.value)}));}catch{ /* keep last valid value until JSON is complete */ }}} rows={5} className="input-medical w-full font-mono text-xs" /></label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(draft.source_is_ghana_specific)} onChange={e=>setDraft(current=>({...current,source_is_ghana_specific:e.target.checked}))} /> Ghana-specific source</label>
+            <label className="block space-y-1 text-sm"><span className="font-medium">Thresholds (JSON)</span><textarea value={JSON.stringify(draft.thresholds ?? {}, null, 2)} onChange={e=>{try{setDraft(current=>({...current,thresholds:JSON.parse(e.target.value)}));}catch{ /* keep last valid value until JSON is complete */ }}} rows={5} className="input-medical w-full font-mono text-xs" /></label>
             <label className="block space-y-1 text-sm"><span className="font-medium">Last reviewed</span><input type="date" value={draft.last_reviewed_at ? new Date(draft.last_reviewed_at).toISOString().slice(0,10) : ''} onChange={e=>setDraft(current=>({...current,last_reviewed_at:e.target.value}))} className="input-medical w-full" /></label>
             {selected && <div className="rounded-xl border border-muted p-3 text-xs text-muted-foreground"><p>Review due: {new Date(selected.review_due_at).toLocaleDateString()}</p><p className="mt-1">A review flag is shown here to administrators only.</p><button type="button" onClick={() => void review(selected)} disabled={reviewing} className="btn-secondary mt-2">{reviewing ? 'Recording review…' : 'Mark reviewed today'}</button></div>}
             {draft.source_url && <a href={draft.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline"><ExternalLink className="h-3 w-3" />Open source</a>}
