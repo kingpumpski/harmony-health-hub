@@ -20,12 +20,29 @@ export default function AdminUsers() {
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
   const [createPhone, setCreatePhone] = useState(''); const [createDepartment, setCreateDepartment] = useState(''); const [createSpecialization, setCreateSpecialization] = useState('');
   const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false);
+  const getFunctionError = async (error: unknown, data: unknown, fallback: string) => {
+    if (data && typeof data === 'object' && data !== null && 'error' in data) {
+      const message = (data as { error?: unknown }).error;
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+    const context = (error as { context?: Response } | null)?.context;
+    if (context) {
+      try {
+        const body = await context.clone().json() as { error?: unknown; message?: unknown };
+        if (typeof body?.error === 'string' && body.error.trim()) return body.error;
+        if (typeof body?.message === 'string' && body.message.trim()) return body.message;
+      } catch {
+        // The response may not contain JSON; keep the generic SDK message.
+      }
+    }
+    return fallback;
+  };
   const loadDirectory = async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { action: 'list_users' } });
     if (error || data?.error) {
       setLoading(false);
-      toast({ title: 'Directory unavailable', description: data?.error ?? error?.message ?? 'Unable to load user directory', variant: 'destructive' });
+      toast({ title: 'Directory unavailable', description: await getFunctionError(error, data, 'Unable to load user directory'), variant: 'destructive' });
       return;
     }
     setUsers(Array.isArray(data?.users) ? data.users : []);
@@ -36,7 +53,7 @@ export default function AdminUsers() {
     e.preventDefault(); setCreating(true);
     const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { email: createEmail, firstName: createFirstName, lastName: createLastName, phone: createPhone, department: createDepartment, specialization: createSpecialization, role: createRole, onboarding, ...(onboarding === 'password' ? { password: createPassword } : {}) } });
     setCreating(false);
-    if (error || data?.error) return toast({ title: 'User creation failed', description: data?.error ?? error?.message ?? 'Unable to create user', variant: 'destructive' });
+    if (error || data?.error) return toast({ title: 'User creation failed', description: await getFunctionError(error, data, 'Unable to create user'), variant: 'destructive' });
     toast({ title: onboarding === 'invite' ? 'Invitation sent' : 'User created', description: createFirstName + ' ' + createLastName + ' was added as ' + createRole + '.' });
     setCreateEmail(''); setCreateFirstName(''); setCreateLastName(''); setCreatePhone(''); setCreateDepartment(''); setCreateSpecialization(''); setCreatePassword(''); setCreateRole('patient'); setOnboarding('invite');
     void loadDirectory();
@@ -45,7 +62,7 @@ export default function AdminUsers() {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
       body: { action: 'update_role', userId, role },
     });
-    if (error || data?.error) return toast({ title: 'Failed', description: data?.error ?? error?.message ?? 'Unable to update role', variant: 'destructive' });
+    if (error || data?.error) return toast({ title: 'Role update failed', description: await getFunctionError(error, data, 'Unable to update role'), variant: 'destructive' });
     setUsers(current => current.map(row => row.id === userId ? { ...row, role } : row));
     toast({ title: 'Role updated', description: 'Set to ' + role });
     void loadDirectory();
