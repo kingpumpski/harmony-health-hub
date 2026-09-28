@@ -16,24 +16,27 @@ export type ClinicalReference = {
   display_text: string;
   last_reviewed_at: string;
   review_due_at: string;
+  is_active: boolean;
 };
 
 export function useClinicalReferences(parameters: string[]) {
   const [references, setReferences] = useState<ClinicalReference[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const parameterKey = parameters.join('|');
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       setLoading(true);
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('clinical_reference_values')
         .select('id,parameter,population_scope,source_name,source_reference,source_url,source_is_ghana_specific,effective_date,normal_min,normal_max,thresholds,display_text,last_reviewed_at,review_due_at')
         .in('parameter', parameters)
         .eq('is_active', true)
-        .eq('population_scope', 'adult');
+         .eq('population_scope', 'adult');
       if (active) {
+        if (error) setError(error.message);
         setReferences((data ?? []) as ClinicalReference[]);
         setLoading(false);
       }
@@ -47,7 +50,7 @@ export function useClinicalReferences(parameters: string[]) {
     [references],
   );
 
-  return { references, byParameter, loading };
+  return { references, byParameter, loading, error };
 }
 
 export function formatReferenceHelper(reference: ClinicalReference | undefined) {
