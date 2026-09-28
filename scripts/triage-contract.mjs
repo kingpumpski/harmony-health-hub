@@ -28,10 +28,10 @@ assert.match(chart, /ReferenceArea yAxisId="bmi"/, 'BMI must render reference zo
 assert.match(chart, /ReferenceArea yAxisId="spo2"/, 'SpO2 must render a clinical threshold zone');
 assert.match(chart, /minTickGap=\{28\}/, 'time-axis labels must avoid overlap');
 
-assert.match(form, /input\\('systolic', 'Systolic BP', '90–120 mmHg · e\\.g\\. 120'/, 'SBP field must guide data entry');
-assert.match(form, /input\\('diastolic', 'Diastolic BP', '60–80 mmHg · e\\.g\\. 80'/, 'DBP field must guide data entry');
-assert.match(form, /input\\('temperature', 'Temperature °C', '36\\.1–37\\.2 °C · e\\.g\\. 36\\.8'/, 'temperature field must guide data entry');
-assert.match(form, /input\\('oxygenSaturation', 'SpO₂ %', '95–100% · e\\.g\\. 98'/, 'SpO2 field must guide data entry');
+assert.match(form, /input\('systolic', 'Systolic BP', '90–120 mmHg · e\.g\. 120'/, 'SBP field must guide data entry');
+assert.match(form, /input\('diastolic', 'Diastolic BP', '60–80 mmHg · e\.g\. 80'/, 'DBP field must guide data entry');
+assert.match(form, /input\('temperature', 'Temperature °C', '36\.1–37\.2 °C · e\.g\. 36\.8'/, 'temperature field must guide data entry');
+assert.match(form, /input\('oxygenSaturation', 'SpO₂ %', '95–100% · e\.g\. 98'/, 'SpO2 field must guide data entry');
 assert.match(form, /Enter at least one measured vital sign\./, 'partial-measurement validation must be explicit');
 
 assert.match(page, /Add Record/, 'Triage landing view must expose Add Record');
