@@ -40,6 +40,7 @@ const REFERENCE_PARAMETERS = [
   'pain_score',
   'weight_measurement',
   'height_measurement',
+  'bmi_adult_interpretation',
 ] as const;
 
 const emptyForm: FormState = {
