@@ -22,6 +22,27 @@ Deno.serve(async (req) => {
     const caller = await requireAdmin(service, token);
     const body = await req.json();
 
+    // This function is called with the service-role client, so auth.uid() is NULL.
+    // record_system_audit() intentionally rejects that context. Write the audit
+    // row directly with the already-authorized service client while preserving the
+    // real administrator as actor_id.
+    const writeAdminAudit = async (input: {
+      action: string;
+      entityId: string;
+      metadata: Record<string, unknown>;
+    }) => {
+      const { error } = await service.from('system_audit_log').insert({
+        actor_id: caller.id,
+        action: input.action,
+        module: 'administration',
+        entity_type: 'user',
+        entity_id: input.entityId,
+        severity: 'info',
+        metadata: input.metadata,
+      });
+      if (error) throw new Error('Audit recording failed: ' + error.message);
+    };
+
     if (body?.action === 'list_users') {
       const { data: profiles, error: profileError } = await service
         .from('profiles')
@@ -78,16 +99,18 @@ Deno.serve(async (req) => {
         return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);
       }
 
-      const { error: auditError } = await service.rpc('record_system_audit', {
-        _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',
-        _entity_id: userId, _severity: 'info',
-        _metadata: { target_user_id: userId, role: nextRole, previous_role: previousRole, changed_by: caller.id },
-      });
-      if (auditError) {
+      try {
+        await writeAdminAudit({
+          action: 'admin_update_user_role',
+          entityId: userId,
+          metadata: { target_user_id: userId, role: nextRole, previous_role: previousRole, changed_by: caller.id },
+        });
+      } catch (auditError) {
         await service.from('user_roles').delete().eq('user_id', userId);
         if (previousRole) await service.from('user_roles').insert({ user_id: userId, role: previousRole });
-        return json({ error: 'Role update was rolled back because audit recording failed' }, 500);
+        throw auditError;
       }
+
       return json({ ok: true, user: { id: userId, role: nextRole } });
     }
 
@@ -104,12 +127,17 @@ Deno.serve(async (req) => {
       password: String(body?.password ?? ''),
     });
 
-    const { error: auditError } = await service.rpc('record_system_audit', {
-      _action: 'admin_create_user', _module: 'administration', _entity_type: 'user',
-      _entity_id: user.id, _severity: 'info',
-      _metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
-    });
-    if (auditError) return json({ error: 'User created but audit recording failed' }, 500);
+    try {
+      await writeAdminAudit({
+        action: 'admin_create_user',
+        entityId: user.id,
+        metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
+      });
+    } catch (auditError) {
+      // Do not leave an account behind after a failed completion step.
+      await service.auth.admin.deleteUser(user.id);
+      throw auditError;
+    }
 
     return json({ ok: true, user, onboarding });
   } catch (error) {
