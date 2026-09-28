@@ -47,6 +47,7 @@ export default function Login() {
       }
       // Auth state owns the protected-route transition.
     } catch (err: any) {
+      loginIntent.current = false;
       toast.error(err?.message ?? (mode === 'signin' ? 'Sign in failed.' : 'Sign up failed.'));
     } finally {
       setIsLoading(false);
