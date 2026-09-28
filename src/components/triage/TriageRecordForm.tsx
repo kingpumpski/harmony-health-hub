@@ -37,7 +37,7 @@ const NORMAL = {
   oxygenSaturation: { label: 'SpO₂', low: 95, high: 100, unit: '%' },
 };
 
-const emptyForm: FormState =>
+const emptyForm: FormState = {
   patientId: '', systolic: '', diastolic: '', heartRate: '', temperature: '',
   respiratoryRate: '', oxygenSaturation: '', weightKg: '', heightM: '',
   painScore: '', consciousness: 'Alert', complaint: '', notes: '',
