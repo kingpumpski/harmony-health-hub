@@ -13,7 +13,6 @@ const sourceRequired = [
   'RETRY_MAX_DELAY_MS',
   "['record_triage_assessment', 'record_triage_assessment_offline', 'triage'",
   "const OFFLINE_POSTGREST_TABLES = new Set(['patients']);",
-  "supabase as any).rpc('record_triage_assessment', payload)",
 ];
 
 const migrationRequired = [
@@ -35,8 +34,11 @@ const failures = [
   ...migrationRequired.filter((fragment) => !migration.includes(fragment)),
 ];
 
+if (!triageSource.includes("rpc('record_triage_assessment', payload)")) {
+  failures.push('Offline triage must use the authenticated record_triage_assessment RPC.');
+}
 if (!triageSource.includes('offlineAwareFetch converts that RPC to the explicit idempotent offline RPC')) {
-  failures.push('Offline triage must route through the authenticated RPC path.');
+  failures.push('Offline triage must document the explicit idempotent offline RPC replay path.');
 }
 
 const normalizedReplay = replaySection.replace(/\/\/[^\n]*\n/g, '').replace(/\s+/g, ' ');
