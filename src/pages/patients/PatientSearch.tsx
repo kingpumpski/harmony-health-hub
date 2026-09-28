@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Loader2, UserPlus, MessageSquare, ArrowRight, XCircle } from 'lucide-react';
+import { Search, Loader2, UserPlus, MessageSquare, ArrowRight, XCircle, Activity } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -128,6 +128,10 @@ export default function PatientSearch() {
               >
                 Open Patient Hub
                 <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link to={`/patients/${patient.id}?vitals=1`} className="btn-secondary inline-flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                View Vitals
               </Link>
               {canChat && <Link
                 to={`/patients/${patient.id}/chat`}
