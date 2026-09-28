@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus, Pencil, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { RecordList, type RecordColumn, StatusBadge } from '@/components/records/RecordList';
 
 const availableRoles = [
   { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
@@ -81,12 +82,63 @@ export default function AdminUsers() {
     if (!profile) return toast({ title: 'User not found', description: 'Ask the user to sign up first, then assign the role.', variant: 'destructive' });
     await assignRole(profile.id, newRole); setSearchEmail('');
   };
+  const directoryColumns: RecordColumn<DirectoryRow>[] = [
+    {
+      key: 'name',
+      header: 'User',
+      render: (row) => <div className="min-w-0"><p className="font-medium truncate">{row.first_name || row.last_name ? (row.first_name ?? '') + ' ' + (row.last_name ?? '') : 'Unnamed'}</p><p className="text-xs text-muted-foreground truncate">{row.email ?? 'No email'}</p></div>,
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      hideBelow: 'md',
+      render: (row) => <div><p className="text-sm">{row.department || 'No department'}</p><p className="text-xs text-muted-foreground">{row.specialization || 'No specialization'}</p></div>,
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (row) => <StatusBadge status={availableRoles.find((role) => role.value === row.role)?.label ?? row.role} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (row) => <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+        <button type="button" onClick={() => setEditingUser({ id: row.id, email: row.email, first_name: row.first_name, last_name: row.last_name, phone: row.phone, department: row.department, specialization: row.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button>
+        <select aria-label={`Change role for ${row.first_name || row.last_name || row.email || 'user'}`} value={row.role} onChange={e => void assignRole(row.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">
+          {availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+      </div>,
+    },
+  ];
   if (!user) return null;
   return <div className="space-y-6 animate-fade-in">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">Admin User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
     {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an admin to manage users.</div>}
     {canManage && <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-      <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Staff & Patient Directory</h2><p className="text-sm text-muted-foreground">Assign or change the application role for existing accounts.</p></div><UserPlus className="w-5 h-5 text-primary" /></div><div className="space-y-3">{loading && <p className="text-sm text-muted-foreground">Loading…</p>}{users.map(u => <div key={u.id} className="rounded-2xl border border-border p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">{u.first_name || u.last_name ? (u.first_name ?? '') + ' ' + (u.last_name ?? '') : 'Unnamed'}</p><p className="text-xs text-muted-foreground">{u.email}</p><p className="text-xs text-muted-foreground">{u.department || 'No department'}{u.specialization ? ' · ' + u.specialization : ''}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setEditingUser({ id:u.id,email:u.email,first_name:u.first_name,last_name:u.last_name,phone:u.phone,department:u.department,specialization:u.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button><select value={u.role} onChange={e => void assignRole(u.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div></div>{editingUser?.id === u.id && <form onSubmit={saveUserProfile} className="mt-3 grid gap-2 border-t border-border pt-3 md:grid-cols-2"><input value={editingUser.first_name ?? ''} onChange={e=>setEditingUser({...editingUser,first_name:e.target.value})} className="input-medical" placeholder="First name" required/><input value={editingUser.last_name ?? ''} onChange={e=>setEditingUser({...editingUser,last_name:e.target.value})} className="input-medical" placeholder="Last name" required/><input type="email" value={editingUser.email ?? ''} onChange={e=>setEditingUser({...editingUser,email:e.target.value})} className="input-medical md:col-span-2" placeholder="Email address" required/><input value={editingUser.phone ?? ''} onChange={e=>setEditingUser({...editingUser,phone:e.target.value})} className="input-medical" placeholder="Phone"/><input value={editingUser.department ?? ''} onChange={e=>setEditingUser({...editingUser,department:e.target.value})} className="input-medical" placeholder="Department"/><input value={editingUser.specialization ?? ''} onChange={e=>setEditingUser({...editingUser,specialization:e.target.value})} className="input-medical md:col-span-2" placeholder="Specialization"/><div className="flex gap-2 md:col-span-2"><button type="submit" disabled={savingUser} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>{savingUser?'Saving…':'Save corrections'}</button><button type="button" disabled={savingUser} onClick={()=>setEditingUser(null)} className="btn-secondary inline-flex items-center gap-2"><X className="w-4 h-4"/>Cancel</button></div></form>}</div>)}{!loading && users.length === 0 && <p className="text-sm text-muted-foreground">No users yet.</p>}</div></div>
+      <div className="min-w-0">
+        <RecordList
+          title="Staff & Patient Directory"
+          description="Assign or change the application role for existing accounts."
+          data={users}
+          columns={directoryColumns}
+          isLoading={loading}
+          rowKey={(row) => row.id}
+          onRefresh={() => void loadDirectory()}
+          isRefreshing={loading}
+          emptyState={{ title: 'No users yet.', description: 'No staff or patient accounts are available in the administrative directory.' }}
+        />
+        {editingUser && <form onSubmit={saveUserProfile} className="card-medical mt-4 grid gap-2 border-t border-border p-5 md:grid-cols-2" aria-label="Edit user account">
+          <div className="md:col-span-2 flex items-center justify-between gap-3"><div><h2 className="font-semibold">Edit account information</h2><p className="text-xs text-muted-foreground">Changes are saved through the existing server-authorized account workflow.</p></div><button type="button" disabled={savingUser} onClick={() => setEditingUser(null)} className="btn-secondary inline-flex items-center gap-1 text-xs"><X className="w-3 h-3" />Cancel</button></div>
+          <input value={editingUser.first_name ?? ''} onChange={e=>setEditingUser({...editingUser,first_name:e.target.value})} className="input-medical" placeholder="First name" required/>
+          <input value={editingUser.last_name ?? ''} onChange={e=>setEditingUser({...editingUser,last_name:e.target.value})} className="input-medical" placeholder="Last name" required/>
+          <input type="email" value={editingUser.email ?? ''} onChange={e=>setEditingUser({...editingUser,email:e.target.value})} className="input-medical md:col-span-2" placeholder="Email address" required/>
+          <input value={editingUser.phone ?? ''} onChange={e=>setEditingUser({...editingUser,phone:e.target.value})} className="input-medical" placeholder="Phone"/>
+          <input value={editingUser.department ?? ''} onChange={e=>setEditingUser({...editingUser,department:e.target.value})} className="input-medical" placeholder="Department"/>
+          <input value={editingUser.specialization ?? ''} onChange={e=>setEditingUser({...editingUser,specialization:e.target.value})} className="input-medical md:col-span-2" placeholder="Specialization"/>
+          <div className="flex gap-2 md:col-span-2"><button type="submit" disabled={savingUser} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>{savingUser?'Saving…':'Save corrections'}</button></div>
+        </form>}
+      </div>
       <div className="space-y-6">
         <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Create / Invite User</h2><p className="text-sm text-muted-foreground">Admin-created onboarding. Invitation sends the user their account setup email.</p></div><MailPlus className="w-5 h-5 text-primary" /></div>
           <form onSubmit={createUser} className="space-y-3">
@@ -98,7 +150,8 @@ export default function AdminUsers() {
             <select value={onboarding} onChange={e => setOnboarding(e.target.value as 'invite' | 'password')} className="input-medical w-full"><option value="invite">Email invitation</option><option value="password">Create with password</option></select>
             {onboarding === 'password' && <input type="password" minLength={8} value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="input-medical w-full" placeholder="Initial password (8+ characters)" required />}
             <button type="submit" disabled={creating} className="btn-primary w-full"><UserPlus className="w-4 h-4" />{creating ? 'Creating…' : onboarding === 'invite' ? 'Create & Send Invitation' : 'Create User'}</button>
-          </form></div>
+          </form>
+        </div>
         <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Promote Existing Account</h2><p className="text-sm text-muted-foreground">Self-registered users can still be assigned a facility role here.</p></div><Settings className="w-5 h-5 text-warning" /></div><form onSubmit={promoteByEmail} className="space-y-4"><input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="input-medical w-full" placeholder="user@example.com" required /><select value={newRole} onChange={e => setNewRole(e.target.value)} className="input-medical w-full">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select><button type="submit" className="btn-secondary w-full">Assign Role</button></form></div>
       </div>
     </div>}
