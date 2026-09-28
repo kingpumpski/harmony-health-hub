@@ -22,10 +22,31 @@ Deno.serve(async (req) => {
     const caller = await requireAdmin(service, token);
     const body = await req.json();
 
+    // This function is called with the service-role client, so auth.uid() is NULL.
+    // record_system_audit() intentionally rejects that context. Write the audit
+    // row directly with the already-authorized service client while preserving the
+    // real administrator as actor_id.
+    const writeAdminAudit = async (input: {
+      action: string;
+      entityId: string;
+      metadata: Record<string, unknown>;
+    }) => {
+      const { error } = await service.from('system_audit_log').insert({
+        actor_id: caller.id,
+        action: input.action,
+        module: 'administration',
+        entity_type: 'user',
+        entity_id: input.entityId,
+        severity: 'info',
+        metadata: input.metadata,
+      });
+      if (error) throw new Error('Audit recording failed: ' + error.message);
+    };
+
     if (body?.action === 'list_users') {
       const { data: profiles, error: profileError } = await service
         .from('profiles')
-        .select('id, email, first_name, last_name, created_at')
+        .select('id, email, first_name, last_name, phone, department, specialization, created_at')
         .order('created_at', { ascending: false })
         .limit(200);
       if (profileError) return json({ error: 'User directory lookup failed: ' + profileError.message }, 500);
@@ -43,9 +64,44 @@ Deno.serve(async (req) => {
           email: profile.email,
           first_name: profile.first_name,
           last_name: profile.last_name,
+          phone: profile.phone,
+          department: profile.department,
+          specialization: profile.specialization,
           role: roleMap.get(profile.id) ?? 'patient',
         })),
       });
+    }
+
+    if (body?.action === 'update_profile') {
+      const userId = String(body?.userId ?? '').trim();
+      const email = String(body?.email ?? '').trim().toLowerCase();
+      const firstName = String(body?.firstName ?? '').trim();
+      const lastName = String(body?.lastName ?? '').trim();
+      const phone = String(body?.phone ?? '').trim();
+      const department = String(body?.department ?? '').trim();
+      const specialization = String(body?.specialization ?? '').trim();
+      if (!userId || !email.includes('@') || !firstName || !lastName) return json({ error: 'userId, valid email, first name and last name are required' }, 400);
+      const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);
+      if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);
+      const { data: previousProfile, error: previousProfileError } = await service.from('profiles').select('email, first_name, last_name, phone, department, specialization').eq('id', userId).maybeSingle();
+      if (previousProfileError) return json({ error: 'Unable to read current profile: ' + previousProfileError.message }, 500);
+      const previousAuth = { email: target.user.email ?? '', user_metadata: target.user.user_metadata ?? {} };
+      const nextMetadata = { ...previousAuth.user_metadata, first_name: firstName, last_name: lastName, phone, department, specialization };
+      const authUpdate = await service.auth.admin.updateUserById(userId, { email, user_metadata: nextMetadata });
+      if (authUpdate.error) return json({ error: 'Account identity update failed: ' + authUpdate.error.message }, 400);
+      const profileUpdate = await service.from('profiles').update({ email, first_name: firstName, last_name: lastName, phone: phone || null, department: department || null, specialization: specialization || null, updated_at: new Date().toISOString() }).eq('id', userId);
+      if (profileUpdate.error) {
+        await service.auth.admin.updateUserById(userId, { email: previousAuth.email || undefined, user_metadata: previousAuth.user_metadata });
+        return json({ error: 'Profile update failed: ' + profileUpdate.error.message }, 500);
+      }
+      try {
+        await writeAdminAudit({ action: 'admin_update_user_profile', entityId: userId, metadata: { target_user_id: userId, previous_profile: previousProfile, next_profile: { email, first_name: firstName, last_name: lastName, phone, department, specialization }, changed_by: caller.id } });
+      } catch (auditError) {
+        await service.from('profiles').update({ email: previousProfile?.email ?? null, first_name: previousProfile?.first_name ?? null, last_name: previousProfile?.last_name ?? null, phone: previousProfile?.phone ?? null, department: previousProfile?.department ?? null, specialization: previousProfile?.specialization ?? null, updated_at: new Date().toISOString() }).eq('id', userId);
+        await service.auth.admin.updateUserById(userId, { email: previousAuth.email || undefined, user_metadata: previousAuth.user_metadata });
+        throw auditError;
+      }
+      return json({ ok: true, user: { id: userId, email, first_name: firstName, last_name: lastName, phone: phone || null, department: department || null, specialization: specialization || null } });
     }
 
     if (body?.action === 'update_role') {
@@ -78,16 +134,18 @@ Deno.serve(async (req) => {
         return json({ error: 'Role update failed: ' + roleInsert.error.message }, 500);
       }
 
-      const { error: auditError } = await service.rpc('record_system_audit', {
-        _action: 'admin_update_user_role', _module: 'administration', _entity_type: 'user',
-        _entity_id: userId, _severity: 'info',
-        _metadata: { target_user_id: userId, role: nextRole, previous_role: previousRole, changed_by: caller.id },
-      });
-      if (auditError) {
+      try {
+        await writeAdminAudit({
+          action: 'admin_update_user_role',
+          entityId: userId,
+          metadata: { target_user_id: userId, role: nextRole, previous_role: previousRole, changed_by: caller.id },
+        });
+      } catch (auditError) {
         await service.from('user_roles').delete().eq('user_id', userId);
         if (previousRole) await service.from('user_roles').insert({ user_id: userId, role: previousRole });
-        return json({ error: 'Role update was rolled back because audit recording failed' }, 500);
+        throw auditError;
       }
+
       return json({ ok: true, user: { id: userId, role: nextRole } });
     }
 
@@ -104,12 +162,17 @@ Deno.serve(async (req) => {
       password: String(body?.password ?? ''),
     });
 
-    const { error: auditError } = await service.rpc('record_system_audit', {
-      _action: 'admin_create_user', _module: 'administration', _entity_type: 'user',
-      _entity_id: user.id, _severity: 'info',
-      _metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
-    });
-    if (auditError) return json({ error: 'User created but audit recording failed' }, 500);
+    try {
+      await writeAdminAudit({
+        action: 'admin_create_user',
+        entityId: user.id,
+        metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
+      });
+    } catch (auditError) {
+      // Do not leave an account behind after a failed completion step.
+      await service.auth.admin.deleteUser(user.id);
+      throw auditError;
+    }
 
     return json({ ok: true, user, onboarding });
   } catch (error) {

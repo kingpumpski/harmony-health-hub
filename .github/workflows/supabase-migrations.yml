@@ -246,6 +246,8 @@ jobs:
         run: node supabase/tests/database/inpatient_bidirectional_link_integrity_contract.mjs
       - name: Verify inpatient bed transfer workflow contract
         run: node supabase/tests/database/inpatient_bed_transfer_workflow_contract.mjs
+      - name: Verify admin user-management Edge contract
+        run: node supabase/tests/database/admin_user_management_edge_contract.mjs
       - name: Verify notification module database contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/notification_module_contract.sql
