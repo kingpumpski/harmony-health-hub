@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { HeartPulse, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -13,12 +13,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitLocked, setSubmitLocked] = useState(false);
+  const loginIntent = useRef(false);
   const { login, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      toast.success('Welcome back');
+      if (loginIntent.current) {
+        loginIntent.current = false;
+        toast.success('Welcome back');
+      }
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
@@ -30,6 +34,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       if (mode === 'signin') {
+        loginIntent.current = true;
         await login(email, password);
         // Navigation is owned by the auth-ready effect above; do not navigate twice.
       } else {
