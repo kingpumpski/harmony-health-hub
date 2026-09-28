@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users } from 'lucide-react';
+import { AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -87,6 +87,8 @@ export default function NurseDashboard() {
         <div className="flex flex-wrap gap-2">
           <Link to="/nursing-handover" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Handover</Link>
           <Link to="/vitals" className="btn-primary"><HeartPulse className="w-4 h-4" /> Record Vitals</Link>
+          <Link to="/ward-bed-board" className="btn-secondary"><BedDouble className="w-4 h-4" /> Ward & Beds</Link>
+          <Link to="/department-queue" className="btn-ghost"><Users className="w-4 h-4" /> Nursing Queue</Link>
           <button onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
         </div>
       </div>
@@ -107,13 +109,6 @@ export default function NurseDashboard() {
         <StatCard title="Vitals / Escalations" value={criticalPatients.length} change="Critical or urgent" changeType={criticalPatients.length ? 'negative' : 'neutral'} icon={HeartPulse} iconColor="text-critical" />
         <StatCard title="Unacknowledged Handovers" value={pendingHandovers.length} change="Continuity actions" changeType="neutral" icon={ClipboardList} iconColor="text-info" />
         <StatCard title="Nursing Queue" value={queue.length} change="Waiting / claimed" changeType="neutral" icon={Users} iconColor="text-primary" />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link to="/nursing-handover" className="card-medical p-4 bg-info/5 hover:bg-info/10 transition-all hover:-translate-y-0.5"><BellRing className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Handover</p><p className="text-2xl font-bold tabular-nums">{pendingHandovers.length}</p></Link>
-        <Link to="/medications" className="card-medical p-4 bg-warning/5 hover:bg-warning/10 transition-all hover:-translate-y-0.5"><Syringe className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Medication due</p><p className="text-2xl font-bold tabular-nums">{dueMeds.length}</p></Link>
-        <Link to="/vitals" className="card-medical p-4 bg-critical/5 hover:bg-critical/10 transition-all hover:-translate-y-0.5"><Activity className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Critical review</p><p className="text-2xl font-bold tabular-nums">{criticalPatients.length}</p></Link>
-        <Link to="/ward-bed-board" className="card-medical p-4 bg-primary/5 hover:bg-primary/10 transition-all hover:-translate-y-0.5"><BedDouble className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Ward / beds</p><p className="text-sm font-semibold mt-1">Open bed board →</p></Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -144,10 +139,6 @@ export default function NurseDashboard() {
         </section>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Handover & continuity</h2><p className="text-sm text-muted-foreground">Unacknowledged handovers remain visible until acknowledged.</p></div><Link to="/nursing-handover" className="text-sm text-primary">Open</Link></div><p className="text-3xl font-bold tabular-nums">{pendingHandovers.length}</p><p className="text-xs text-muted-foreground mt-1">pending acknowledgement</p></section>
-        <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Nursing service queue</h2><p className="text-sm text-muted-foreground">Patients awaiting or already claimed by nursing.</p></div><Link to="/department-queue" className="text-sm text-primary">Open queue</Link></div><p className="text-3xl font-bold tabular-nums">{queue.length}</p><p className="text-xs text-muted-foreground mt-1">active queue items</p></section>
-      </div>
     </div>
   );
 }
