@@ -15,3 +15,10 @@ assert.match(ui, /User creation failed/);
 assert.match(ui, /Role update failed/);
 
 console.log('Admin user-management Edge audit/error contract passed');
+
+assert.match(edge, /body\?\.action === 'update_profile'/);
+assert.match(edge, /auth\.admin\.updateUserById\(userId/);
+assert.match(edge, /admin_update_user_profile/);
+assert.match(ui, /Profile correction failed/);
+assert.match(ui, /action: 'update_profile'/);
+console.log('Account correction contract passed');
