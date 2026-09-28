@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.clinical_reference_values (
   thresholds jsonb NOT NULL DEFAULT '{}'::jsonb,
   display_text text NOT NULL,
   last_reviewed_at timestamptz NOT NULL DEFAULT now(),
-  review_due_at timestamptz GENERATED ALWAYS AS (last_reviewed_at + interval '24 months') STORED,
+  review_due_at timestamptz NOT NULL,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -89,6 +89,7 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     NEW.created_by = COALESCE(NEW.created_by, (select auth.uid()));
   END IF;
+  NEW.review_due_at = NEW.last_reviewed_at + interval '24 months';
   NEW.updated_at = now();
   NEW.updated_by = (select auth.uid());
   RETURN NEW;
