@@ -18,7 +18,7 @@ import {
   type TriageHistoryRecord,
   type TriageParameter,
 } from '@/lib/triagePresentation';
-import { useClinicalReferences, type ClinicalReference } from '@/lib/clinicalReferences';
+import { useClinicalReferences } from '@/lib/clinicalReferences';
 
 type Props = {
   records: TriageHistoryRecord[];
