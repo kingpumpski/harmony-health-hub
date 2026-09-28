@@ -27,6 +27,7 @@ type FormState = {
   consciousness: string;
   complaint: string;
   notes: string;
+  priority: 'routine' | 'moderate' | 'urgent' | 'critical';
 };
 
 const REFERENCE_PARAMETERS = [
@@ -40,12 +41,13 @@ const REFERENCE_PARAMETERS = [
   'pain_score',
   'weight_measurement',
   'height_measurement',
+  'bmi_adult_interpretation',
 ] as const;
 
 const emptyForm: FormState = {
   patientId: '', systolic: '', diastolic: '', heartRate: '', temperature: '',
   respiratoryRate: '', oxygenSaturation: '', weightKg: '', heightM: '',
-  painScore: '', consciousness: 'Alert', complaint: '', notes: '',
+  painScore: '', consciousness: 'Alert', complaint: '', notes: '', priority: 'routine',
 };
 
 function numberOrNull(value: string) {
@@ -75,7 +77,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
   const normalReference = (parameter: string) => byParameter.get(parameter);
-  const bmiReference = normalReference('weight_measurement');
+  const bmiReference = normalReference('bmi_adult_interpretation');
 
   const alerts = useMemo(() => {
     const checks: Array<[keyof FormState, string]> = [
@@ -128,12 +130,28 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
     });
     const hasCoreMeasurement = ['systolic','diastolic','temperature','oxygenSaturation','heartRate','respiratoryRate','weightKg','heightM'].some((key) => form[key as keyof FormState].trim() !== '');
     if (!hasCoreMeasurement) next.measurement = 'Enter at least one measured vital sign.';
-    if (form.painScore && (Number(form.painScore) < 0 || Number(form.painScore) > 10)) next.painScore = 'Pain score must be 0–10.';
-    if (form.weightKg && Number(form.weightKg) <= 0) next.weightKg = 'Enter a measured weight greater than 0.';
-    if (form.heightM && Number(form.heightM) <= 0) next.heightM = 'Enter a measured height in metres.';
+    const optionalMeasurements: Array<[keyof FormState, string, number, number]> = [
+      ['painScore', 'Pain score', 0, 10],
+      ['weightKg', 'Weight (kg)', Number.EPSILON, 500],
+      ['heightM', 'Height (m)', Number.EPSILON, 3],
+    ];
+    optionalMeasurements.forEach(([key, label, min, max]) => {
+      const raw = form[key].trim();
+      if (!raw) return;
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < min || value > max) next[key] = label + ' is outside the accepted input range.';
+    });
     setErrors(next);
     return Object.keys(next).length === 0;
   };
+
+  const escalationSignal = useMemo(() => {
+    const temp = numberOrNull(form.temperature);
+    const spo2 = numberOrNull(form.oxygenSaturation);
+    const hr = numberOrNull(form.heartRate);
+    const sbp = numberOrNull(form.systolic);
+    return (temp !== null && temp >= 39) || (spo2 !== null && spo2 <= 92) || (hr !== null && hr >= 120) || (sbp !== null && sbp >= 180);
+  }, [form.temperature, form.oxygenSaturation, form.heartRate, form.systolic]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -144,8 +162,6 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       const temp = numberOrNull(form.temperature);
       const spo2 = numberOrNull(form.oxygenSaturation);
       const hr = numberOrNull(form.heartRate);
-      const critical = (temp !== null && temp >= 39) || (spo2 !== null && spo2 <= 92) || (hr !== null && hr >= 120) || (sbp !== null && sbp >= 180);
-      const urgent = !critical && ((temp !== null && temp >= 38) || (spo2 !== null && spo2 <= 94) || (hr !== null && hr >= 100) || (sbp !== null && sbp >= 160));
       const values = {
         _patient_id: form.patientId,
         _systolic: sbp,
@@ -160,7 +176,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
         _consciousness: form.consciousness || null,
         _presenting_complaint: form.complaint.trim() || null,
         _clinical_notes: form.notes.trim() || null,
-        _priority: critical ? 'critical' : urgent ? 'urgent' : 'routine',
+        _priority: form.priority,
       };
       const { error } = await (supabase as any).rpc('record_triage_assessment', values);
       if (error) throw error;
@@ -227,6 +243,13 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       {errors.measurement && <p className="text-sm text-destructive" role="alert">{errors.measurement}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <label className="space-y-1 text-sm">
+          <span className="font-medium">Triage priority</span>
+          <select aria-label="Triage priority" value={form.priority} onChange={(event) => set('priority', event.target.value as FormState['priority'])} className="input-medical w-full">
+            <option value="routine">Routine</option><option value="moderate">Moderate</option><option value="urgent">Urgent</option><option value="critical">Critical</option>
+          </select>
+          {escalationSignal && <span className="block text-xs leading-5 text-critical">Vital signs meet a configured escalation signal. Confirm the appropriate priority using clinical assessment and facility protocol; the system does not auto-assign priority.</span>}
+        </label>
         <label className="space-y-1 text-sm">
           <span className="font-medium">Level of consciousness</span>
           <select aria-label="Level of consciousness" value={form.consciousness} onChange={(event) => set('consciousness', event.target.value)} className="input-medical w-full">
