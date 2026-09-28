@@ -50,10 +50,10 @@ function numberOrNull(value: string) {
   return value.trim() === '' ? null : Number(value);
 }
 
-function ReferenceHelper({ reference, id, loading }: { reference?: ClinicalReference; id: string; loading?: boolean }) {
+function ReferenceHelper({ reference, id, loading, error }: { reference?: ClinicalReference; id: string; loading?: boolean; error?: string | null }) {
   if (loading) return <span id={id} className="block text-xs text-muted-foreground">Loading clinical reference…</span>;
   if (!reference) {
-    return <span id={id} className="block text-xs text-muted-foreground">No active clinical reference is configured for this field; contact an administrator.</span>;
+    return <span id={id} className="block text-xs text-muted-foreground">{error ? 'Clinical reference could not be loaded; contact an administrator.' : 'No active clinical reference is configured for this field; contact an administrator.'}</span>;
   }
   return (
     <span id={id} className="block text-xs leading-5 text-muted-foreground">
@@ -70,7 +70,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const [form, setForm] = useState<FormState>({ ...emptyForm, patientId: patientId ?? '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
+  const { byParameter, loading: referencesLoading, error: referencesError } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
   const normalReference = (parameter: string) => byParameter.get(parameter);
 
@@ -112,20 +112,28 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const validate = () => {
     const next: Record<string, string> = {};
     if (!form.patientId.trim()) next.patientId = 'Select the patient for this triage record.';
-    const measurements: Array<[keyof FormState, string, number, number]> = [
-      ['systolic', 'Systolic BP', 0, 400], ['diastolic', 'Diastolic BP', 0, 300],
-      ['heartRate', 'Heart rate', 0, 300], ['temperature', 'Temperature', 20, 50],
-      ['respiratoryRate', 'Respiratory rate', 0, 100], ['oxygenSaturation', 'SpO₂', 0, 100],
+    const measurements: Array<[keyof FormState, string]> = [
+      ['systolic', 'Systolic BP'], ['diastolic', 'Diastolic BP'], ['heartRate', 'Heart rate'],
+      ['temperature', 'Temperature'], ['respiratoryRate', 'Respiratory rate'], ['oxygenSaturation', 'SpO₂'],
+      ['weightKg', 'Weight'], ['heightM', 'Height'],
     ];
-    measurements.forEach(([key, label, min, max]) => {
+    measurements.forEach(([key, label]) => {
       const raw = form[key].trim();
       if (!raw) return;
       const value = Number(raw);
-      if (!Number.isFinite(value) || value < min || value > max) next[key] = `${label} must be between ${min} and ${max}.`;
+      if (!Number.isFinite(value) || value < 0) next[key] = label + ' must be a valid non-negative measurement.';
     });
     const hasCoreMeasurement = ['systolic','diastolic','temperature','oxygenSaturation','heartRate','respiratoryRate','weightKg','heightM'].some((key) => form[key as keyof FormState].trim() !== '');
     if (!hasCoreMeasurement) next.measurement = 'Enter at least one measured vital sign.';
-    if (form.painScore && (Number(form.painScore) < 0 || Number(form.painScore) > 10)) next.painScore = 'Pain score must be 0–10.';
+    if (form.painScore) {
+      const pain = Number(form.painScore);
+      const reference = normalReference('pain_score');
+      if (!Number.isFinite(pain) || pain < 0 || (reference?.normal_max !== null && reference?.normal_max !== undefined && pain > reference.normal_max)) {
+        next.painScore = reference?.normal_max !== null && reference?.normal_max !== undefined
+          ? 'Pain score must follow the sourced ' + (reference.normal_min ?? 0) + '–' + reference.normal_max + ' scale.'
+          : 'Enter a valid pain score.';
+      }
+    }
     if (form.weightKg && Number(form.weightKg) <= 0) next.weightKg = 'Enter a measured weight greater than 0.';
     if (form.heightM && Number(form.heightM) <= 0) next.heightM = 'Enter a measured height in metres.';
     setErrors(next);
@@ -191,7 +199,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
         />
         {parameter && (referencesLoading && !reference
           ? <span id={helperId} className="block text-xs text-muted-foreground">Loading clinical reference…</span>
-          : <ReferenceHelper reference={reference} id={helperId} />)}
+          : <ReferenceHelper reference={reference} id={helperId} error={referencesError} />)}
         {errors[key] && <span className="text-xs text-destructive">{errors[key]}</span>}
       </label>
     );
@@ -211,6 +219,10 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {input('systolic', 'Systolic BP', 'Enter systolic blood pressure', 'blood_pressure_systolic', { step: '1' })}
         {input('diastolic', 'Diastolic BP', 'Enter diastolic blood pressure', 'blood_pressure_diastolic', { step: '1' })}
+        <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-muted bg-muted/20 p-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Combined BP reference: </span>{normalReference('blood_pressure_combined')?.display_text ?? (referencesLoading ? 'Loading clinical reference…' : 'No active combined BP reference is configured; contact an administrator.')}
+          {normalReference('blood_pressure_combined') && <> <span>Source: </span><a href={normalReference('blood_pressure_combined')!.source_url} target="_blank" rel="noreferrer" className="underline">{normalReference('blood_pressure_combined')!.source_name}</a>.</>}
+        </div>
         {input('heartRate', 'Heart rate', 'Enter pulse rate', 'heart_rate', { step: '1' })}
         {input('temperature', 'Temperature °C', 'Enter measured temperature', 'body_temperature', { step: '0.1' })}
         {input('respiratoryRate', 'Respiratory rate', 'Enter breaths per minute', 'respiratory_rate', { step: '1' })}
@@ -235,6 +247,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
           <span className="text-muted-foreground">Calculated BMI</span>
           <strong className="block text-xl">{bmi ?? '—'}</strong>
           <span className="text-xs text-muted-foreground">{bmi ? 'kg/m² · calculated from measured height and weight' : 'Enter weight and height to calculate BMI'}</span>
+          {normalReference('body_mass_index') && <span className="mt-1 block text-xs text-muted-foreground">{normalReference('body_mass_index')!.display_text} Source: <a href={normalReference('body_mass_index')!.source_url} target="_blank" rel="noreferrer" className="underline">{normalReference('body_mass_index')!.source_name}</a>.</span>}
         </div>
       </div>
 
