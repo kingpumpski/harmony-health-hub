@@ -28,7 +28,16 @@ type FormState = {
   notes: string;
 };
 
-const emptyForm: FormState = {
+const NORMAL = {
+  systolic: { label: 'Systolic BP', low: 90, high: 120, unit: 'mmHg' },
+  diastolic: { label: 'Diastolic BP', low: 60, high: 80, unit: 'mmHg' },
+  heartRate: { label: 'Heart rate', low: 60, high: 100, unit: 'bpm' },
+  temperature: { label: 'Temperature', low: 36.1, high: 37.2, unit: '°C' },
+  respiratoryRate: { label: 'Respiratory rate', low: 12, high: 20, unit: '/min' },
+  oxygenSaturation: { label: 'SpO₂', low: 95, high: 100, unit: '%' },
+};
+
+const emptyForm: FormState =>
   patientId: '', systolic: '', diastolic: '', heartRate: '', temperature: '',
   respiratoryRate: '', oxygenSaturation: '', weightKg: '', heightM: '',
   painScore: '', consciousness: 'Alert', complaint: '', notes: '',
@@ -43,6 +52,8 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const [form, setForm] = useState<FormState>({ ...emptyForm, patientId: patientId ?? '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  const alerts = useMemo(() => Object.entries(NORMAL).flatMap(([key, range]) => { const value = numberOrNull(form[key as keyof FormState]); if (value === null || !Number.isFinite(value)) return []; if (value > range.high) return [`${range.label} ${value} ${range.unit} is above the normal upper limit of ${range.high} ${range.unit}.`]; if (value < range.low) return [`${range.label} ${value} ${range.unit} is below the normal lower limit of ${range.low} ${range.unit}.`]; return []; }), [form]);
 
   const bmi = useMemo(() => {
     const weight = numberOrNull(form.weightKg);
@@ -147,16 +158,18 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       </label>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {input('systolic', 'Systolic BP', 'e.g. 120 mmHg', { step: '1' })}
-        {input('diastolic', 'Diastolic BP', 'e.g. 80 mmHg', { step: '1' })}
-        {input('heartRate', 'Heart rate', 'e.g. 72 bpm', { step: '1' })}
-        {input('temperature', 'Temperature °C', 'e.g. 36.8 °C', { step: '0.1' })}
-        {input('respiratoryRate', 'Respiratory rate', 'e.g. 16 /min', { step: '1' })}
-        {input('oxygenSaturation', 'SpO₂ %', 'e.g. 98%', { step: '0.1' })}
+        {input('systolic', 'Systolic BP', '90–120 mmHg · e.g. 120', { step: '1' })}
+        {input('diastolic', 'Diastolic BP', '60–80 mmHg · e.g. 80', { step: '1' })}
+        {input('heartRate', 'Heart rate', '60–100 bpm · e.g. 72', { step: '1' })}
+        {input('temperature', 'Temperature °C', '36.1–37.2 °C · e.g. 36.8', { step: '0.1' })}
+        {input('respiratoryRate', 'Respiratory rate', '12–20 /min · e.g. 16', { step: '1' })}
+        {input('oxygenSaturation', 'SpO₂ %', '95–100% · e.g. 98', { step: '0.1' })}
         {input('weightKg', 'Weight (kg)', 'e.g. 70.5 kg', { step: '0.1' })}
         {input('heightM', 'Height (m)', 'e.g. 1.75 m', { step: '0.01' })}
         {input('painScore', 'Pain score (0–10)', 'e.g. 3', { step: '1' })}
       </div>
+
+      {alerts.length > 0 && <div className="rounded-xl border-2 border-critical/60 bg-critical/10 p-4" role="alert"><p className="font-semibold text-critical">Immediate clinical attention required</p><ul className="mt-1 list-disc pl-5 text-sm">{alerts.map((alert) => <li key={alert}>{alert}</li>)}</ul><p className="mt-2 text-xs text-muted-foreground">Recheck the measurement and follow the facility escalation protocol.</p></div>}
 
       {errors.measurement && <p className="text-sm text-destructive" role="alert">{errors.measurement}</p>}
 
