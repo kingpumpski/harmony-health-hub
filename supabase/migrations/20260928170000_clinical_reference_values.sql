@@ -83,16 +83,19 @@ ON CONFLICT (parameter, population_scope) WHERE is_active DO UPDATE SET
   last_reviewed_at=excluded.last_reviewed_at,
   updated_at=now();
 
-CREATE OR REPLACE FUNCTION public.clinical_reference_values_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION public.clinical_reference_values_audit_stamp()
+RETURNS trigger LANGUAGE plpgsql AS $
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_by = COALESCE(NEW.created_by, (select auth.uid()));
+  END IF;
   NEW.updated_at = now();
   NEW.updated_by = (select auth.uid());
   RETURN NEW;
 END;
-$$;
+$;
 
-DROP TRIGGER IF EXISTS clinical_reference_values_updated_at_trg ON public.clinical_reference_values;
-CREATE TRIGGER clinical_reference_values_updated_at_trg
-BEFORE UPDATE ON public.clinical_reference_values
-FOR EACH ROW EXECUTE FUNCTION public.clinical_reference_values_updated_at();
+DROP TRIGGER IF EXISTS clinical_reference_values_audit_stamp_trg ON public.clinical_reference_values;
+CREATE TRIGGER clinical_reference_values_audit_stamp_trg
+BEFORE INSERT OR UPDATE ON public.clinical_reference_values
+FOR EACH ROW EXECUTE FUNCTION public.clinical_reference_values_audit_stamp();
