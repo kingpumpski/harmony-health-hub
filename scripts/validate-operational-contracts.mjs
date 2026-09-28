@@ -44,6 +44,7 @@ const careTransitions = read('src/pages/CareTransitions.tsx');
 const clinicalOperations = read('src/pages/ClinicalOperations.tsx');
 const clinicalOperationsLifecycle = read('supabase/migrations/20260923170000_lifecycle_patient_context_hardening.sql');
 const clinicalOperationsWorkspace = read('supabase/migrations/20260921121000_post_merge_runtime_role_lookup_fix.sql');
+const insuranceLifecycle = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
 
 const admissionManagement = read('src/pages/AdmissionManagement.tsx');
 const aiClinicalAssist = read('supabase/functions/ai-clinical-assist/index.ts');
@@ -60,7 +61,7 @@ assert('Clinical Operations transition roles include specialist nurse parity', c
 assert('Clinical Operations uses server-aligned emergency lifecycle transitions', clinicalOperations.includes("if (currentStatus === 'waiting') return ['triage', 'cancelled', 'left_without_being_seen']") && clinicalOperationsLifecycle.includes("Emergency case must be triaged before treatment"), 'emergency transition controls must not advertise impossible waiting-state transitions');
 assert('Clinical Operations uses server-aligned theatre lifecycle transitions', clinicalOperations.includes("requested: ['approved', 'cancelled']") && clinicalOperationsLifecycle.includes("Invalid theatre lifecycle transition"), 'theatre transition controls must follow the authoritative lifecycle');
 assert('Clinical Operations uses server-aligned transfusion lifecycle transitions', clinicalOperations.includes("issued: ['running', 'cancelled']") && clinicalOperationsLifecycle.includes("Invalid transfusion lifecycle transition"), 'transfusion transition controls must follow the authoritative lifecycle');
-assert('Clinical Operations avoids unsafe insurance financial transitions without adjudication inputs', clinicalOperations.includes("under_review: ['rejected', 'resubmission_required']") && clinicalOperationsLifecycle.includes('Approved amount is required') && clinicalOperationsLifecycle.includes('Paid amount is required'), 'claims queue must not advertise approval/payment transitions that require missing financial inputs');
+assert('Clinical Operations avoids unsafe insurance financial transitions without adjudication inputs', clinicalOperations.includes("under_review: ['rejected', 'resubmission_required']") && insuranceLifecycle.includes('Approved amount is required') && insuranceLifecycle.includes('Paid amount is required'), 'claims queue must not advertise approval/payment transitions that require missing financial inputs');
 assert('Clinical Operations supplies an emergency cancellation disposition', clinicalOperations.includes("status === 'cancelled' ? 'Cancelled in clinical operations'"), 'emergency cancellation must satisfy the server disposition requirement');
 
 assert('admission workspace array response is handled by admission management', admissionManagement.includes('Array.isArray(workspace) ? workspace : (workspace?.admissions ?? [])'), 'admission management must tolerate the canonical array response from get_admission_workspace');
