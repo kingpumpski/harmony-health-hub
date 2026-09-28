@@ -17,6 +17,7 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   }
 
   if (!isAuthenticated || !user) {
+    if (import.meta.env.DEV) console.debug('[auth] guard:redirect', location.pathname);
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
@@ -39,5 +40,6 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     );
   }
 
+  if (import.meta.env.DEV) console.debug('[auth] guard:allow', location.pathname, user.role);
   return <>{children}</>;
 }
