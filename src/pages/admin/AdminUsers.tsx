@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus } from 'lucide-react';
+import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus, Pencil, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const availableRoles = [
@@ -11,7 +11,8 @@ const availableRoles = [
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
 ] as const;
 type RoleValue = string;
-interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; role: string }
+interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; phone: string | null; department: string | null; specialization: string | null; role: string }
+type EditableUser = Omit<DirectoryRow, 'role'>;
 
 export default function AdminUsers() {
   const { user } = useAuth(); const canManage = user?.role === 'admin';
@@ -19,7 +20,7 @@ export default function AdminUsers() {
   const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
   const [createPhone, setCreatePhone] = useState(''); const [createDepartment, setCreateDepartment] = useState(''); const [createSpecialization, setCreateSpecialization] = useState('');
-  const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false);
+  const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false); const [editingUser, setEditingUser] = useState<EditableUser | null>(null); const [savingUser, setSavingUser] = useState(false);
   const getFunctionError = async (error: unknown, data: unknown, fallback: string) => {
     if (data && typeof data === 'object' && data !== null && 'error' in data) {
       const message = (data as { error?: unknown }).error;
@@ -58,6 +59,13 @@ export default function AdminUsers() {
     setCreateEmail(''); setCreateFirstName(''); setCreateLastName(''); setCreatePhone(''); setCreateDepartment(''); setCreateSpecialization(''); setCreatePassword(''); setCreateRole('patient'); setOnboarding('invite');
     void loadDirectory();
   };
+  const saveUserProfile = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!editingUser) return; setSavingUser(true);
+    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { action: 'update_profile', userId: editingUser.id, email: editingUser.email ?? '', firstName: editingUser.first_name ?? '', lastName: editingUser.last_name ?? '', phone: editingUser.phone ?? '', department: editingUser.department ?? '', specialization: editingUser.specialization ?? '' } });
+    setSavingUser(false);
+    if (error || data?.error) return toast({ title: 'Profile correction failed', description: await getFunctionError(error, data, 'Unable to save account information'), variant: 'destructive' });
+    setEditingUser(null); toast({ title: 'Account information corrected', description: 'The updated user information has been saved and audited.' }); void loadDirectory();
+  };
   const assignRole = async (userId: string, role: RoleValue) => {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
       body: { action: 'update_role', userId, role },
@@ -78,7 +86,7 @@ export default function AdminUsers() {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">Admin User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
     {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an admin to manage users.</div>}
     {canManage && <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-      <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Staff & Patient Directory</h2><p className="text-sm text-muted-foreground">Assign or change the application role for existing accounts.</p></div><UserPlus className="w-5 h-5 text-primary" /></div><div className="space-y-3">{loading && <p className="text-sm text-muted-foreground">Loading…</p>}{users.map(u => <div key={u.id} className="rounded-2xl border border-border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{u.first_name || u.last_name ? (u.first_name ?? '') + ' ' + (u.last_name ?? '') : 'Unnamed'}</p><p className="text-xs text-muted-foreground">{u.email}</p></div><select value={u.role} onChange={e => void assignRole(u.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>)}{!loading && users.length === 0 && <p className="text-sm text-muted-foreground">No users yet.</p>}</div></div>
+      <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Staff & Patient Directory</h2><p className="text-sm text-muted-foreground">Assign or change the application role for existing accounts.</p></div><UserPlus className="w-5 h-5 text-primary" /></div><div className="space-y-3">{loading && <p className="text-sm text-muted-foreground">Loading…</p>}{users.map(u => <div key={u.id} className="rounded-2xl border border-border p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-medium">{u.first_name || u.last_name ? (u.first_name ?? '') + ' ' + (u.last_name ?? '') : 'Unnamed'}</p><p className="text-xs text-muted-foreground">{u.email}</p><p className="text-xs text-muted-foreground">{u.department || 'No department'}{u.specialization ? ' · ' + u.specialization : ''}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setEditingUser({ id:u.id,email:u.email,first_name:u.first_name,last_name:u.last_name,phone:u.phone,department:u.department,specialization:u.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button><select value={u.role} onChange={e => void assignRole(u.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div></div>{editingUser?.id === u.id && <form onSubmit={saveUserProfile} className="mt-3 grid gap-2 border-t border-border pt-3 md:grid-cols-2"><input value={editingUser.first_name ?? ''} onChange={e=>setEditingUser({...editingUser,first_name:e.target.value})} className="input-medical" placeholder="First name" required/><input value={editingUser.last_name ?? ''} onChange={e=>setEditingUser({...editingUser,last_name:e.target.value})} className="input-medical" placeholder="Last name" required/><input type="email" value={editingUser.email ?? ''} onChange={e=>setEditingUser({...editingUser,email:e.target.value})} className="input-medical md:col-span-2" placeholder="Email address" required/><input value={editingUser.phone ?? ''} onChange={e=>setEditingUser({...editingUser,phone:e.target.value})} className="input-medical" placeholder="Phone"/><input value={editingUser.department ?? ''} onChange={e=>setEditingUser({...editingUser,department:e.target.value})} className="input-medical" placeholder="Department"/><input value={editingUser.specialization ?? ''} onChange={e=>setEditingUser({...editingUser,specialization:e.target.value})} className="input-medical md:col-span-2" placeholder="Specialization"/><div className="flex gap-2 md:col-span-2"><button type="submit" disabled={savingUser} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>{savingUser?'Saving…':'Save corrections'}</button><button type="button" disabled={savingUser} onClick={()=>setEditingUser(null)} className="btn-secondary inline-flex items-center gap-2"><X className="w-4 h-4"/>Cancel</button></div></form>}</div>)}{!loading && users.length === 0 && <p className="text-sm text-muted-foreground">No users yet.</p>}</div></div>
       <div className="space-y-6">
         <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Create / Invite User</h2><p className="text-sm text-muted-foreground">Admin-created onboarding. Invitation sends the user their account setup email.</p></div><MailPlus className="w-5 h-5 text-primary" /></div>
           <form onSubmit={createUser} className="space-y-3">
