@@ -28,7 +28,6 @@ const roleModules: Record<string, Tab[]> = {
   nurse: ['capacity', 'nursing', 'emergency', 'theatre', 'transfusion'],
   midwife: ['capacity', 'nursing', 'emergency', 'transfusion'],
   specialist_nurse: ['capacity', 'nursing', 'emergency', 'theatre', 'transfusion'],
-  accountant: ['insurance'],
 };
 
 export default function ClinicalOperations() {
