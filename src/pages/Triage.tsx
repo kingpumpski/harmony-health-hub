@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, AlertTriangle, ListChecks, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import TriageRecordForm from '@/components/triage/TriageRecordForm';
 
@@ -75,7 +74,7 @@ export default function Triage() {
               <Plus className="h-4 w-4" /> {showForm ? 'Close form' : 'Add Record'}
             </button>
           </div>
-          {showForm && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4"><TriageRecordForm patients={patients} onSaved={() => { setShowForm(false); toast.success('Triage list refreshed.'); void load(); }} onCancel={() => setShowForm(false)} /></div>}
+          {showForm && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4"><TriageRecordForm patients={patients} onSaved={() => { setShowForm(false); void load(); }} onCancel={() => setShowForm(false)} /></div>}
         </section>
       }
       listTitle="Recent patient triage"
