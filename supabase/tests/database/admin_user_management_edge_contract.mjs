@@ -6,7 +6,7 @@ const ui = fs.readFileSync('src/pages/admin/AdminUsers.tsx','utf8');
 
 assert.match(edge, /service\.from\('system_audit_log'\)\.insert/);
 assert.match(edge, /actor_id:\s*caller\.id/);
-assert.match(edge, /record_system_audit/); // only explanatory guard/comment; the service-role RPC must not be used
+assert.doesNotMatch(edge, /service\\.rpc\\(['"]record_system_audit/);
 assert.doesNotMatch(edge, /service\.rpc\('record_system_audit'/);
 assert.match(edge, /auth\.admin\.deleteUser\(user\.id\)/);
 assert.match(edge, /await writeAdminAudit\(/);
