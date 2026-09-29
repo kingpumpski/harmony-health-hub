@@ -29,6 +29,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const activeRoleStorageKey = (userId: string) => `hms.activeRole:${userId}`;
 const knownPermissions = new Set([...Object.values(permissionByHref), ...Object.values(rolePermissions).flat()] as Permission[]);
 
 async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
@@ -38,6 +39,8 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   ]);
   const roles = (roleRows ?? []).map((row) => row.role as UserRole).filter(Boolean);
   const resolvedRole = roles[0] ?? 'patient';
+  const persistedRole = typeof window !== 'undefined' ? window.sessionStorage.getItem(activeRoleStorageKey(supabaseUser.id)) as UserRole | null : null;
+  const activeRole = persistedRole && roles.includes(persistedRole) ? persistedRole : resolvedRole;
   if (profileError) console.warn('[auth] profile bootstrap unavailable:', profileError.message);
   if (roleError) console.warn('[auth] role bootstrap unavailable:', roleError.message);
 
@@ -61,7 +64,7 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
     email: supabaseUser.email ?? '',
     firstName: profile?.first_name ?? '',
     lastName: profile?.last_name ?? '',
-    role: resolvedRole,
+    role: activeRole,
     roles: roles.length ? roles : ['patient'],
     department: profile?.department ?? undefined,
     specialization: profile?.specialization ?? undefined,
@@ -93,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const appUser = await loadAppUser(nextSession.user);
       if (!mountedRef.current || current !== generation.current) return;
       setUser(appUser);
+      if (typeof window !== 'undefined') window.sessionStorage.setItem(activeRoleStorageKey(appUser.id), appUser.role);
       if (import.meta.env.DEV) console.debug('[auth] session ready:', source);
     } catch (error) {
       if (!mountedRef.current || current !== generation.current) return;
@@ -145,7 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const appUser = await loadAppUser(currentSession.user);
-      if (mountedRef.current) setUser(appUser);
+      if (mountedRef.current) {
+        setUser(appUser);
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(activeRoleStorageKey(appUser.id), appUser.role);
+      }
     } catch (error) {
       console.error('[auth] unable to refresh application user:', error);
     } finally {
@@ -187,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const switchRole = useCallback((nextRole: UserRole) => {
     setUser((current) => {
       if (!current || !current.roles.includes(nextRole)) return current;
+      if (typeof window !== 'undefined') window.sessionStorage.setItem(activeRoleStorageKey(current.id), nextRole);
       return { ...current, role: nextRole };
     });
   }, []);
