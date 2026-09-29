@@ -44,6 +44,11 @@ if (!dashboard.includes('Dashboard unavailable')) throw new Error('Unsupported r
 for (const role of roles) {
   if (!permissions.includes(`  ${role}:`)) throw new Error(`Frontend fallback permission map missing ${role}`);
 }
+for (const dashboardPath of ['src/pages/dashboard/CanteenDashboard.tsx','src/pages/dashboard/ITAdminDashboard.tsx','src/pages/dashboard/PatientDashboard.tsx']) {
+  const source=read(dashboardPath);
+  if (!source.includes("get_role_dashboard_summary_for_role")) throw new Error(`Active-role dashboard RPC missing in ${dashboardPath}`);
+  if (!source.includes("},[user?.role]);")) throw new Error(`Active-role dashboard loader must refresh when role changes: ${dashboardPath}`);
+}
 for (const needle of [
   "CREATE OR REPLACE FUNCTION public.get_role_dashboard_summary()",
   "IF v_role = 'patient'",
