@@ -64,5 +64,8 @@ jobs:
       - name: Clinical reference contract checks
         run: npm run test:clinical-references
 
+      - name: Notification provider security contract
+        run: npm run test:notification-provider-security
+
       - name: Production build
         run: npm run build
