@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
 
 type Card = { label: string; href: string; icon: typeof Activity; tone: string; surface: string };
-const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
+const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'front_desk'];
 const canAppointments = (role: UserRole) => appointmentRoles.includes(role);
 const clinicalRoles: readonly UserRole[] = ['practitioner','nurse','midwife','specialist_nurse','radiologist','radiology_technician'];
 
@@ -26,7 +26,7 @@ export default function WorkflowSummary() {
     if (role === 'lab_technician') return [...common,make('Laboratory worklist','/laboratory',FlaskConical,'text-info','bg-info/5'),make('Laboratory results','/lab-results',FileText),make('Department queue','/department-queue',Users,'text-warning','bg-warning/5')];
     if (role === 'radiologist') return [...common,make('Imaging worklist','/radiology',ScanLine),make('Radiology results','/clinical-results',FileText,'text-info','bg-info/5')];
     if (role === 'radiology_technician') return [make('Imaging worklist','/radiology',ScanLine),make('Acquisition queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Urgent studies','/radiology',Siren,'text-critical','bg-critical/5')];
-    if (role === 'pharmacist') return [...common,make('Dispensing','/pharmacy',Pill,'text-success','bg-success/5'),make('Medication administration','/medications',FileText),make('Inventory & stock alerts','/stock-alerts',Activity,'text-warning','bg-warning/5'),make('Pharmacy queue','/department-queue',Users,'text-warning','bg-warning/5')];
+    if (role === 'pharmacist') return [...common,make('Dispensing','/pharmacy',Pill,'text-success','bg-success/5'),make('Inventory & stock alerts','/stock-alerts',Activity,'text-warning','bg-warning/5'),make('Pharmacy queue','/department-queue',Users,'text-warning','bg-warning/5')];
     if (role === 'accountant') return [make('Payment approvals','/accounts-approvals',CreditCard,'text-warning','bg-warning/5'),make('Billing','/billing',CreditCard,'text-success','bg-success/5'),make('Insurance claims','/insurance-claims',ShieldCheck),make('Finance queue','/finance',FileText,'text-warning','bg-warning/5'),make('Financial reports','/financial-reports',FileText)];
     if (role === 'front_desk') return [...common,make('Patient registration','/registration',Users),make('Department queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Payment handoff','/billing',CreditCard,'text-success','bg-success/5')];
     if (role === 'canteen') return [make('Meal orders','/orders',Utensils),make('Dietary plans','/dietary-plans',FileText,'text-warning','bg-warning/5'),make('Meal menu','/menu',Utensils,'text-success','bg-success/5'),make('Delivery queue','/orders',Users,'text-warning','bg-warning/5')];
