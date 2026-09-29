@@ -54,9 +54,9 @@ export default function Dashboard(){
         </div>
       </div>
     </section>
-    <WorkflowSummary/>
     {showReferral && <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard/></div>}
     {showSettlement && <div className="mb-6"><FinancialSettlementCard/></div>}
     {dashboard}
+    <WorkflowSummary/>
   </div>;
 }
