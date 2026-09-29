@@ -15,7 +15,10 @@ const sql=compact(source);
 for(const [name,spec] of Object.entries(manifest.functions)){
  assert.ok(Array.isArray(spec.signatures)&&spec.signatures.length>0,`${name}: signatures required`);
  assert.deepEqual(spec.allowed_execute_roles,["authenticated"],`${name}: selected contract must remain authenticated-only`);
+ const arities=declaredArities(name);
+ assert.ok(arities.length>0,`${name}: function declaration must exist in migration history`);
  for(const signature of spec.signatures){
+  assert.ok(arities.includes(signatureArity(signature)),`${name}: manifest signature ${signature} does not match any declared overload arity (${arities.join(",")})`);
   const qualified=`public.${name}(${signature})`;
   assert.ok(sql.includes(compact(`grant execute on function ${qualified} to authenticated;`)),`${qualified} must have an explicit authenticated EXECUTE grant`);
   if(spec.requires_public_revoke){
