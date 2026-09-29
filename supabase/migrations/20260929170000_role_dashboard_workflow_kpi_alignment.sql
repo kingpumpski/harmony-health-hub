@@ -82,9 +82,8 @@ BEGIN
     ) q;
   ELSIF v_role = 'radiologist' THEN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
-SELECT jsonb_build_object('key','ready','label','Ready for imaging','value',count(*),'href','/radiology','description','Released or queued studies') FROM public.imaging_orders WHERE status IN ('released','queued')
-      UNION ALL SELECT jsonb_build_object('key','progress','label','In progress','value',count(*),'href','/radiology','description','Studies currently being performed') FROM public.imaging_orders WHERE status='in_progress'
-      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies not completed') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status<>'completed'
+SELECT jsonb_build_object('key','ready','label','Ready for interpretation','value',count(*),'href','/radiology','description','Released or queued studies awaiting radiologist interpretation') FROM public.imaging_orders WHERE status IN ('released','queued')
+      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies awaiting radiologist attention') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status IN ('released','queued','in_progress')
       UNION ALL SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Unread workflow events') FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
     ) q;
   ELSIF v_role = 'radiology_technician' THEN
