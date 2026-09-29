@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
@@ -12,7 +12,7 @@ export default function RadiologistDashboard() {
   const [orders, setOrders] = useState<ImagingOrder[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
+  const previousIdsRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async (announce = false) => {
     setLoading(true);
@@ -23,8 +23,8 @@ export default function RadiologistDashboard() {
     ]);
     if (imagingError || notificationsError) { setError(imagingError?.message ?? notificationsError?.message ?? 'Unable to load radiology dashboard data.'); setOrders([]); setUnreadAlerts(0); setLoading(false); return; }
     const next = (imaging ?? []) as ImagingOrder[];
-    if (announce && previousIds.size > 0 && next.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
-    setPreviousIds(new Set(next.map((order) => order.id)));
+    if (announce && previousIdsRef.current.size > 0 && next.some((order) => !previousIdsRef.current.has(order.id))) playWorkflowSound('info');
+    previousIdsRef.current = new Set(next.map((order) => order.id));
     setOrders(next); setUnreadAlerts((notifications ?? []).filter((n: { is_read?: boolean; severity?: string }) => !n.is_read && String(n.severity ?? '').toLowerCase() === 'critical').length); setLoading(false);
   }, []);
 
