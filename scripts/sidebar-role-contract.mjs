@@ -47,6 +47,20 @@ for (const [role, href] of forbiddenLinks) {
 console.log(`Sidebar role contract passed for ${roles.length} roles`);
 
 
+const duplicateHrefPattern = /item\([^\n]+?,\s*'([^']+)'/g;
+
+for (const role of roles) {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
+  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const hrefs = [];
+  for (const match of block.matchAll(duplicateHrefPattern)) hrefs.push(match[1]);
+  const duplicates = [...new Set(hrefs.filter((href, index) => hrefs.indexOf(href) !== index))];
+  if (duplicates.length) throw new Error(`Sidebar role ${role} contains duplicate destinations: ${duplicates.join(', ')}`);
+}
+
+console.log('Sidebar destination uniqueness contract passed');
+
 const capabilityLinks = [
   ["nurse", "/lab-results", "laboratory_results"],
   ["specialist_nurse", "/lab-results", "laboratory_results"],
