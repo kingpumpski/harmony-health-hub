@@ -82,4 +82,4 @@ console.log(`Role dashboard contract passed for ${roles.length} roles`);
 const authSource=read('src/contexts/AuthContext.tsx');
 if (!authSource.includes('activeRoleStorageKey')) throw new Error('Active role session persistence contract missing');
 if (!authSource.includes('roles.includes(persistedRole)')) throw new Error('Persisted active role must be revalidated against assigned roles');
-if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(session.user.id))')) throw new Error('Active role context must clear on logout');
+if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(currentUserId))')) throw new Error('Active role context must clear on logout');
