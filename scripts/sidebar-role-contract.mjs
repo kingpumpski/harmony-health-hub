@@ -15,8 +15,6 @@ if (!sidebar.includes('roleNavGroups[user.role]')) throw new Error('Sidebar must
 
 const requiredLinks = [
   ["canteen", "/orders", "orders"],
-  ["canteen", "/dietary-plans", "dietary_plans"],
-  ["canteen", "/menu", "meal_orders"],
   ["radiology_technician", "/radiology", "radiology"],
   ["radiologist", "/radiology", "radiology"],
   ["pharmacist", "/pharmacy", "pharmacy"],
@@ -56,14 +54,10 @@ const capabilityLinks = [
   ["midwife", "/fertility", "fertility"],
   ["front_desk", "/registration", "registration"],
   ["front_desk", "/billing", "billing"],
-  ["pharmacist", "/inventory", "inventory"],
-  ["pharmacist", "/stock-alerts", "stock_alerts"],
+
   ["lab_technician", "/outside-lab", "outside_lab"],
   ["accountant", "/accounts-approvals", "accounts_approvals"],
   ["accountant", "/insurance-claims", "claims"],
-  ["accountant", "/financial-reports", "financial_reports"],
-  ["radiologist", "/notifications", "notifications"],
-  ["it_admin", "/notifications", "notifications"],
   ["patient", "/telemedicine", "telemedicine"],
   ["patient", "/billing", "billing"],
 ];
@@ -88,16 +82,10 @@ const guardedRoutes = [
   ['/appointments', 'appointmentRoles'],
   ['/inpatient', 'inpatientRoles'],
   ['/billing', 'billingRoles'],
-  ['/financial-reports', 'financialReportRoles'],
-  ['/telemedicine', 'telemedicineRoles'],
+    ['/telemedicine', 'telemedicineRoles'],
   ['/fertility', 'fertilityRoles'],
   ['/outside-lab', 'outsideLabRoles'],
-  ['/stock-alerts', 'pharmacyInventoryRoles'],
-  ['/menu', 'canteenRoles'],
-  ['/orders', 'canteenRoles'],
-  ['/dietary-plans', 'canteenRoles'],
-  ['/notifications', 'notificationRoles'],
-  ['/notification-preferences', 'notificationRoles'],
+    ['/orders', 'canteenRoles'],
 ];
 
 for (const [href, roles] of guardedRoutes) {
