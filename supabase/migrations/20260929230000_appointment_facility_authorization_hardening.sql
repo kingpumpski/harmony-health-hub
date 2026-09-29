@@ -313,7 +313,7 @@ BEGIN
   JOIN public.patients p ON p.id = a.patient_id
   LEFT JOIN public.profiles pr ON pr.id = a.practitioner_id
   WHERE pg_catalog.coalesce(p.status, 'active') <> 'inactive'
-    AND public.hms_patient_has_facility_access(a.id::uuid) IS NOT NULL
+    AND public.hms_patient_has_facility_access(a.patient_id)
   ORDER BY a.scheduled_at ASC
   LIMIT v_limit;
 END;
