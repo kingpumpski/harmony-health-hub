@@ -40,7 +40,7 @@ for (const name of names) {
   publicDefiners += 1;
 
   for (const block of defs) {
-    assert.match(block, /SET\s+search_path\s*=/i, name + ": public SECURITY DEFINER function must set an explicit search_path");
+    assert.match(block, /SET\s+search_path\s*(?:=|TO)\s*[^;]+/i, name + ": public SECURITY DEFINER function must set an explicit search_path");
 
     const revoke = new RegExp(
       "REVOKE\\s+(?:ALL|EXECUTE)[\\s\\S]*?ON\\s+FUNCTION\\s+public\\." + name + "\\s*\\(",
