@@ -1,5 +1,5 @@
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
-import { useCallback, useEffect, useState, type ElementType } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, BedDouble, ClipboardList, Droplets, RefreshCw, ShieldCheck, Siren, Stethoscope } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +33,7 @@ const roleModules: Record<string, Tab[]> = {
 
 export default function ClinicalOperations() {
   const { user } = useAuth();
-  const allowedTabs = roleModules[String(user?.role ?? '')] ?? [];
+  const allowedTabs = useMemo(() => roleModules[String(user?.role ?? '')] ?? [], [user?.role]);
   const permissions = new Set(user?.permissions?.length ? user.permissions : (user ? getDefaultPermissions(user.role) : []));
   const workflowLinks = [
     ['Triage', '/vitals', 'triage'], ['Encounters', '/encounters', 'encounters'], ['Theatre', '/theatre-board', 'theatre'],
