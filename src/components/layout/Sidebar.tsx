@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Bell, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
+import { Activity, BarChart3, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
@@ -61,7 +61,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   radiology_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Users, 'Patients', '/patients', 'patients'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Users, 'Patients', '/patients', 'patients')] },
   ],
   radiologist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
