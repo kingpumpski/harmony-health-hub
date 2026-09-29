@@ -26,9 +26,9 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
     } finally {
       setLoading(false);
     }
-  }
+  }, [facilityId, period]);
 
-  useEffect(() => { void load(); }, [facilityId, period]);
+  useEffect(() => { void load(); }, [load]);
 
   const pending = rows.filter((row) => row.status === 'pending').length;
   const overdue = rows.filter((row) => row.status === 'overdue').length;
