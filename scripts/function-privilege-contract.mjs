@@ -61,9 +61,9 @@ function normalizeParameter(parameter) {
 
   // Migration declarations conventionally name parameters with identifiers such
   // as _patient_id. Strip that identifier, then compare the exact PostgreSQL type.
-  value = value.replace(/^[a-zA-Z_][a-zA-Z0-9_]*\\s+/, "").trim();
+  value = value.replace(/^[a-zA-Z_][a-zA-Z0-9_]*\s+/, "").trim();
 
-  return value.replace(/\\s+/g, " ").toLowerCase();
+  return value.replace(/\s+/g, " ").toLowerCase();
 }
 
 function signatureTypes(signature) {
@@ -75,7 +75,7 @@ const declarations = new Map();
 for (const name of Object.keys(manifest.functions)) {
   const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\$&");
   const re = new RegExp(
-    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
+    "CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\\." +
       escaped +
       "\\s*\\(([\s\S]*?)\\)",
     "gi",
