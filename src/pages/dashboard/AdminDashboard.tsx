@@ -4,9 +4,9 @@ import { Activity, Bell, Cloud, Database, FileText, Settings, Shield, Upload, Us
 /**
  * Administration role surface.
  *
- * Operational counters and alerts are owned by the shared live WorkflowSummary
- * and domain dashboards. This surface intentionally avoids fabricated user,
- * patient, uptime and staffing figures.
+ * Operational counters and alerts are owned by the role-specific dashboard
+ * surfaces and authoritative domain workflows. This surface intentionally avoids
+ * fabricated user, patient, uptime and staffing figures.
  */
 export default function AdminDashboard() {
   const actions = [
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
           <div>
             <h2 className="font-semibold">Live operational control</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Queue counters, clinical alerts, service waiting states and financial workflow notifications are supplied by the shared live dashboard layer. This role surface does not maintain a second copy of those records.
+              Role-specific counters, alerts and workflow records are surfaced by the authoritative domain workspaces. This role surface avoids maintaining a second copy of those records.
             </p>
           </div>
         </div>
