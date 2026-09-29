@@ -61,7 +61,7 @@ export default function WardBedBoard() {
 
   useEffect(() => {
     void load();
-    return subscribeMasterDataChanged(['wards', 'beds', 'facilities'], () => void load());
+    return subscribeMasterDataChanged(['wards', 'beds'], () => void load());
   }, []);
 
   const createWard = async () => {
