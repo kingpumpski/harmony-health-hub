@@ -26,6 +26,9 @@ export default function CanteenMeals() {
   const [untilTime, setUntilTime] = useState('14:00');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<MenuItem[]>([{ name: '', description: '', dietary_tags: [], allergens: [], ingredients: '' }]);
+  const [planPatientId, setPlanPatientId] = useState('');
+  const [planType, setPlanType] = useState('Regular');
+  const [planRestrictions, setPlanRestrictions] = useState('');
 
   const loadMenus = useCallback(async () => {
     const { data: menuRows, error } = await (supabase as any).from('meal_menus').select('id,service_date,meal_period,available_from,available_until,status,notes').eq('service_date', date).order('meal_period');
@@ -91,6 +94,16 @@ export default function CanteenMeals() {
     toast({ title: publish ? 'Menu published' : 'Menu saved as draft' }); await loadMenus();
   };
 
+  const createPlan = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!planPatientId) { toast({ title: 'Select an active patient order first', variant: 'destructive' }); return; }
+    const { error } = await supabase.rpc('create_meal_plan_workflow', { _patient_id: planPatientId, _plan_type: planType, _restrictions: planRestrictions || null });
+    if (error) { toast({ title: 'Dietary plan could not be created', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Dietary plan created' });
+    setPlanPatientId(''); setPlanRestrictions('');
+    await loadOrders();
+  };
+
   const markDelivered = async (id: string) => {
     const { error } = await supabase.rpc('mark_meal_order_delivered', { _order_id: id });
     if (error) { toast({ title: 'Delivery update failed', description: error.message, variant: 'destructive' }); return; }
@@ -122,7 +135,16 @@ export default function CanteenMeals() {
         </section>
 
         <section className="card-medical p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /> Active patient meal orders</h2><p className="text-xs text-muted-foreground">Live operational context only: underlying documented conditions, current active diagnoses and dietary plan restrictions. No clinical notes, medications or unrelated chart data are exposed to the canteen.</p></div><span className="rounded-full border px-2.5 py-1 text-xs">{orders.length} active</span></div>
+          <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /><div><h2 className="font-semibold">Patient dietary plan</h2><p className="text-xs text-muted-foreground">Create a meal-service plan for an active ordered patient. Clinical conditions remain read-only context.</p></div></div>
+          <form onSubmit={createPlan} className="mt-4 grid gap-3 md:grid-cols-3">
+            <select value={planPatientId} onChange={e => setPlanPatientId(e.target.value)} className="input-medical"><option value="">Select active patient…</option>{orders.map(order => <option key={order.patient_id} value={order.patient_id}>{order.patient_name}{order.patient_code ? ` · ${order.patient_code}` : ''}</option>)}</select>
+            <select value={planType} onChange={e => setPlanType(e.target.value)} className="input-medical"><option>Regular</option><option>Diabetic</option><option>Low-sodium</option><option>Soft / post-op</option><option>Liquid</option><option>High-protein</option></select>
+            <div className="flex gap-2"><input value={planRestrictions} onChange={e => setPlanRestrictions(e.target.value)} placeholder="Documented dietary restrictions" className="input-medical min-w-0 flex-1" /><button className="btn-primary">Save plan</button></div>
+          </form>
+        </section>
+
+        <section className="card-medical p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold flex items-center gap-2"><ShieldAlert<p className="text-xs text-muted-foreground">Live operational context only: underlying documented conditions, current active diagnoses and dietary plan restrictions. No clinical notes, medications or unrelated chart data are exposed to the canteen.</p></div><span className="rounded-full border px-2.5 py-1 text-xs">{orders.length} active</span></div>
           <div className="mt-4 space-y-3">{orders.map(order => <article key={order.order_id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{order.patient_name}</h3>{order.patient_code ? <span className="text-xs text-muted-foreground">{order.patient_code}</span> : null}<span className="rounded-full border px-2 py-0.5 text-[10px] capitalize">{order.order_status}</span></div><p className="mt-1 text-sm"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{periodLabel(order.meal_type)} · {new Date(order.scheduled_for).toLocaleString()}</p></div>{order.order_status !== 'delivered' && <button type="button" onClick={() => void markDelivered(order.order_id)} className="btn-ghost inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Mark delivered</button>}</div>
             <div className="mt-3 grid gap-3 md:grid-cols-3"><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Underlying conditions</p><p className="mt-1 text-sm">{order.underlying_conditions || 'None documented'}</p></div><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Current diagnoses</p>{order.current_diagnoses?.length ? <ul className="mt-1 space-y-1 text-sm">{order.current_diagnoses.map((d,i) => <li key={i}>{d.diagnosis}{d.icd_code ? <span className="ml-1 text-xs text-muted-foreground">({d.icd_code})</span> : null}{d.provisional ? <span className="ml-1 text-[10px] text-muted-foreground">provisional</span> : null}</li>)}</ul> : <p className="mt-1 text-sm">No active diagnosis documented</p>}</div><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Dietary plan</p><p className="mt-1 text-sm">{order.plan_type || 'No plan recorded'}</p>{order.dietary_restrictions ? <p className="mt-1 text-xs text-muted-foreground">{order.dietary_restrictions}</p> : null}</div></div>
             <p className="mt-3 text-[10px] text-muted-foreground">Clinical context is displayed to support meal-service safety; it is not a diagnosis or dietary prescription. Follow the documented dietary plan and clinical instructions.</p>
