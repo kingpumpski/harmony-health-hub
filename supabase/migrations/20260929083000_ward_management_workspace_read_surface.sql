@@ -28,11 +28,22 @@ BEGIN
     'wards',COALESCE((
       SELECT jsonb_agg(to_jsonb(x)) FROM (
         SELECT w.id,w.name,w.code,w.specialty,w.gender_policy,w.active,w.facility_id,
-               hf.name AS facility_name
+               hf.name AS facility_name,false AS is_legacy,NULL::uuid AS legacy_id
         FROM public.ward_units w
         LEFT JOIN public.healthcare_facilities hf ON hf.id=w.facility_id
         WHERE (v_role IN ('admin','it_admin') OR w.facility_id IS NULL OR w.facility_id=v_facility)
-        ORDER BY hf.name NULLS LAST,w.name
+
+        UNION ALL
+
+        SELECT lw.id,lw.name,lw.code,lw.department AS specialty,lw.gender_policy,lw.active,
+               NULL::uuid AS facility_id,NULL::text AS facility_name,true AS is_legacy,lw.id AS legacy_id
+        FROM public.wards lw
+        WHERE NOT EXISTS (
+          SELECT 1 FROM public.ward_units w2
+          WHERE lower(pg_catalog.btrim(w2.code))=lower(pg_catalog.btrim(lw.code))
+        )
+        AND (v_role IN ('admin','it_admin') OR v_facility IS NOT NULL)
+        ORDER BY is_legacy,w.name
         LIMIT v_limit
       ) x
     ),'[]'::jsonb),
@@ -40,7 +51,7 @@ BEGIN
       SELECT jsonb_agg(to_jsonb(x)) FROM (
         SELECT b.id,b.ward_id,b.bed_number,b.status,b.patient_id,b.admission_id,b.facility_id
         FROM public.ward_beds b
-        WHERE (v_role IN ('admin','it_admin') OR b.facility_id IS NULL OR b.facility_id=v_facility)
+        WHERE v_role IN ('admin','it_admin') OR b.facility_id IS NULL OR b.facility_id=v_facility
         ORDER BY b.bed_number
         LIMIT v_limit
       ) x
