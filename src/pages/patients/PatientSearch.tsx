@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, UserPlus, MessageSquare, Activity, XCircle } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
@@ -32,10 +32,11 @@ export default function PatientSearch() {
   const [hasSearched, setHasSearched] = useState(false);
   const latestQueryRef = useRef('');
 
-  const handleSearch = async (event?: FormEvent) => {
+  const handleSearch = useCallback(async (event?: FormEvent) => {
     event?.preventDefault();
     const value = query.trim();
     if (!value) {
+      latestQueryRef.current = '';
       setResults([]);
       setError('');
       setHasSearched(false);
@@ -57,14 +58,14 @@ export default function PatientSearch() {
     } finally {
       if (latestQueryRef.current === value) setIsLoading(false);
     }
-  };
+  }, [query]);
 
   useEffect(() => {
     const value = query.trim();
     if (!value) return;
     const timer = window.setTimeout(() => { void handleSearch(); }, 450);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, handleSearch]);
 
   const columns = [
     {
