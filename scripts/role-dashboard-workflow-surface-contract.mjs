@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const workflow = fs.readFileSync('src/components/WorkflowSummary.tsx','utf8');
 const dashboard = fs.readFileSync('src/pages/Dashboard.tsx','utf8');
 const kpi = fs.readFileSync('supabase/migrations/20260929170000_role_dashboard_workflow_kpi_alignment.sql','utf8');
+const kpiCleanup = fs.readFileSync('supabase/migrations/20260929200000_role_dashboard_kpi_cleanup.sql','utf8');
 
 assert.match(workflow,/Role-specific operational shortcuts/);
 assert.match(workflow,/className="mt-8 border-t border-border pt-6"/);
@@ -30,5 +31,5 @@ assert.doesNotMatch(kpi,/Awaiting release/);
 assert.doesNotMatch(kpi,/Ready for imaging/);
 
 console.log('Role dashboard workflow surface contract: 16 assertions passed');
-assert.doesNotMatch(kpi,/v_role = 'pharmacist'[\\s\\S]*'key','medications'/);
+assert.doesNotMatch(kpiCleanup,/medication administration/i);
 assert.doesNotMatch(workflow,/make\('Specialist referrals'.*admin/);
