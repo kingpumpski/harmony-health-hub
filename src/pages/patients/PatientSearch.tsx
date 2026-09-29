@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, UserPlus, MessageSquare, Activity, XCircle } from 'lucide-react';
 import { searchPatients } from '@/lib/healthApi';
@@ -30,6 +30,7 @@ export default function PatientSearch() {
   const [message, setMessage] = useState('Search by patient name, patient code, phone, email or Ghana Card.');
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const latestQueryRef = useRef('');
 
   const handleSearch = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -38,10 +39,11 @@ export default function PatientSearch() {
       setResults([]);
       setError('');
       setHasSearched(false);
-      setMessage('Enter a search term to find a patient.');
+      setMessage('Enter a patient name or identifier to search.');
       return;
     }
     setIsLoading(true);
+    latestQueryRef.current = value;
     setHasSearched(true);
     setError('');
     try {
@@ -53,9 +55,16 @@ export default function PatientSearch() {
       setMessage('Search could not be completed.');
       setError(searchError instanceof Error ? searchError.message : 'Unable to search patients right now.');
     } finally {
-      setIsLoading(false);
+      if (latestQueryRef.current === value) setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const value = query.trim();
+    if (!value) return;
+    const timer = window.setTimeout(() => { void handleSearch(); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   const columns = [
     {
@@ -121,7 +130,7 @@ export default function PatientSearch() {
 
       <RecordList
         title="Patient directory"
-        description={hasSearched ? `${results.length} matching patient record(s)` : 'Search results appear here after you run a patient search.'}
+        description={hasSearched ? `${results.length} matching patient record(s)` : 'Search results update as you enter a patient name or identifier.'}
         data={results}
         columns={columns}
         isLoading={isLoading}
@@ -133,7 +142,7 @@ export default function PatientSearch() {
         addNewLabel="Register Patient"
         emptyState={{
           title: hasSearched ? 'No matching patients' : 'No patient search results',
-          description: hasSearched ? 'Check the identifier or search using the patient’s full name.' : 'Enter a patient identifier above to begin.',
+          description: hasSearched ? 'Check the identifier or search using the patient’s full name.' : 'Enter a patient name or identifier to begin.',
           cta: canRegister && hasSearched ? <button type="button" className="btn-secondary" onClick={() => navigate('/registration')}><UserPlus className="mr-2 h-4 w-4" />Register a new patient</button> : undefined,
         }}
       />
