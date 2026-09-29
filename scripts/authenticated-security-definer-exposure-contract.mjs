@@ -22,22 +22,11 @@ const sources = files.map((name) => ({
 
 const allSource = sources.map(({ sql }) => sql).join("\n");
 
-function normalizeSignature(signature) {
-  return signature
-    .replace(/\bIN\s+/gi, "")
-    .replace(/\bOUT\s+/gi, "")
-    .replace(/\bINOUT\s+/gi, "")
-    .replace(/\bVARIADIC\s+/gi, "")
-    .replace(/\b[A-Za-z_][A-Za-z0-9_]*\s+(?=(?:uuid|text|jsonb|json|numeric|integer|bigint|boolean|date|timestamp|timestamptz|inet|\w+\[))/gi, "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-}
-
 function functionDeclarations(sql) {
   const pattern = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)\s*\(([^)]*)\)[\s\S]*?SECURITY\s+DEFINER/gi;
   return [...sql.matchAll(pattern)].map((match) => ({
     name: match[1],
-    signature: normalizeSignature(match[2]),
+    signature: match[2],
   }));
 }
 
@@ -51,26 +40,27 @@ assert(
 );
 
 function hasExplicitRevoke(name, role) {
-  const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\function hasExplicitRevoke(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  return new RegExp(
-    "REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\." + escaped + "\\s*\\([^;]*\\)\\s+FROM\\s+PUBLIC\\s*,?\\s*anon",
-    "i",
-  ).test(allSource);
-}
-
-function hasAuthenticatedGrant(name) {");
-  return new RegExp(
-    "REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\." + escaped +
-      "\\s*\\([^;]*\\)\\s+FROM\\s+" + role,
-    "i",
-  ).test(allSource);
+  const pattern = new RegExp(
+    "REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^;]*\\)\\s+FROM\\s+([^;]+)",
+    "gi",
+  );
+  return [...allSource.matchAll(pattern)].some((match) =>
+    match[1]
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .includes(role.toLowerCase()),
+  );
 }
 
 function hasAuthenticatedGrant(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
-    "GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\." + escaped + "\\s*\\([^;]*\\)\\s+TO\\s+authenticated",
+    "GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^;]*\\)\\s+TO\\s+authenticated",
     "i",
   ).test(allSource);
 }
@@ -78,7 +68,9 @@ function hasAuthenticatedGrant(name) {
 function hasPublicGrant(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
-    "GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\." + escaped + "\\s*\\([^;]*\\)\\s+TO\\s+PUBLIC",
+    "GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^;]*\\)\\s+TO\\s+PUBLIC",
     "i",
   ).test(allSource);
 }
