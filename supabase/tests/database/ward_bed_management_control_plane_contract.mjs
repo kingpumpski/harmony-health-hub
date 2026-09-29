@@ -6,6 +6,7 @@ const files = [
   '20260929080000_ward_bed_management_control_plane.sql',
   '20260929081500_ward_management_facility_selection.sql',
   '20260929083000_ward_management_workspace_read_surface.sql',
+  '20260929170000_fix_ward_management_workspace_ordering.sql',
 ];
 const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name), 'utf8')).join('\n');
 
@@ -21,13 +22,21 @@ const required = [
   "assign_ward_unit_facility",
   "import_legacy_ward",
   "INSERT INTO public.ward_units(name,code,specialty,gender_policy,active,facility_id)",
+  "ORDER BY is_legacy,name",
+];
+
+const forbidden = [
+  'ORDER BY is_legacy,w.name',
 ];
 
 const missing = required.filter((fragment) => !source.includes(fragment));
-if (missing.length) {
+const presentForbidden = forbidden.filter((fragment) => source.includes(fragment));
+
+if (missing.length || presentForbidden.length) {
   console.error('Ward-bed management control-plane contract failed:');
-  for (const fragment of missing) console.error(`- ${fragment}`);
+  for (const fragment of missing) console.error(`- missing: ${fragment}`);
+  for (const fragment of presentForbidden) console.error(`- forbidden: ${fragment}`);
   process.exitCode = 1;
 } else {
-  console.log(`Ward-bed management control-plane contract: ${required.length}/${required.length} invariants present`);
+  console.log(`Ward-bed management control-plane contract: ${required.length}/${required.length} invariants present; ordering regression absent`);
 }
