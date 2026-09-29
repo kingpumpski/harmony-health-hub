@@ -17,7 +17,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
     { label: 'Business & Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports'), item(CreditCard, 'Finance', '/finance', 'finance')] },
-    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support')] },
+    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
   ],
   practitioner: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
@@ -69,7 +69,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
