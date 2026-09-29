@@ -22,7 +22,8 @@ const sourceByFile = new Map(
 );
 const allSource = [...sourceByFile.values()].join("\n");
 
-function functionBodies(name) {
+function functionDefinitions(name) {
+  const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\function functionBodies(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
@@ -45,6 +46,40 @@ function assertFunctionContract(name, checks) {
     for (const pattern of checks) {
       assert(
         pattern.test(body),
+        name + " overload #" + (index + 1) + ": missing " + pattern,
+      );
+    }
+  });
+}
+");
+  const pattern = new RegExp(
+    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1",
+    "gi",
+  );
+  return [...allSource.matchAll(pattern)].map((match) => ({
+    definition: match[0],
+    body: match[2],
+  }));
+}
+
+function functionBodies(name) {
+  return functionDefinitions(name).map((item) => item.body);
+}
+
+function functionBody(name) {
+  const bodies = functionBodies(name);
+  return bodies.length ? bodies[bodies.length - 1] : "";
+}
+
+function assertFunctionContract(name, checks) {
+  const definitions = functionDefinitions(name);
+  assert(definitions.length, "authorization contract function missing: " + name);
+  definitions.forEach(({ definition }, index) => {
+    for (const pattern of checks) {
+      assert(
+        pattern.test(definition),
         name + " overload #" + (index + 1) + ": missing " + pattern,
       );
     }
@@ -195,16 +230,18 @@ const privilegedTenancyFunctions = [
 ];
 
 for (const name of privilegedTenancyFunctions) {
-  const body = functionBody(name);
-  assert(body, "tenancy security-definer function missing: " + name);
-  assert(
-    /SECURITY\s+DEFINER/i.test(body),
-    name + ": must remain SECURITY DEFINER",
-  );
-  assert(
-    /SET\s+search_path\s*=\s*''/i.test(body),
-    name + ": must use empty search_path",
-  );
+  const definitions = functionDefinitions(name);
+  assert(definitions.length, "tenancy security-definer function missing: " + name);
+  definitions.forEach(({ definition }, index) => {
+    assert(
+      /SECURITY\s+DEFINER/i.test(definition),
+      name + " overload #" + (index + 1) + ": must remain SECURITY DEFINER",
+    );
+    assert(
+      /SET\s+search_path\s*=\s*''/i.test(definition),
+      name + " overload #" + (index + 1) + ": must use empty search_path",
+    );
+  });
 }
 
 console.log(
