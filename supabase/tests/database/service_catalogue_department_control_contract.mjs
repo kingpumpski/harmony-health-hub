@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const sql=fs.readFileSync('supabase/migrations/20260929103000_service_catalogue_department_control.sql','utf8')+'\n'+fs.readFileSync('supabase/migrations/20260929110000_insurance_tariff_governance.sql','utf8');
+const sql=fs.readFileSync('supabase/migrations/20260929103000_service_catalogue_department_control.sql','utf8')+'\n'+fs.readFileSync('supabase/migrations/20260929110000_insurance_tariff_governance.sql','utf8')+'\n'+fs.readFileSync('supabase/migrations/20260929113000_reconcile_billing_canonical_tariffs.sql','utf8');
 const required=[
   'CREATE OR REPLACE FUNCTION public.create_insurance_service_tariff',
   'CREATE OR REPLACE FUNCTION public.update_insurance_service_tariff',
