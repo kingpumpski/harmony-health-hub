@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
@@ -14,7 +14,7 @@ export default function RadiologistDashboard() {
   const [loading, setLoading] = useState(false);
   const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const load = async (announce = false) => {
+  const load = useCallback(async (announce = false) => {
     setLoading(true);
     setError(null);
     const [{ data: imaging, error: imagingError }, { data: notifications, error: notificationsError }] = await Promise.all([
@@ -26,8 +26,9 @@ export default function RadiologistDashboard() {
     if (announce && previousIds.size > 0 && next.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
     setPreviousIds(new Set(next.map((order) => order.id)));
     setOrders(next); setUnreadAlerts((notifications ?? []).filter((n: { is_read?: boolean; severity?: string }) => !n.is_read && String(n.severity ?? '').toLowerCase() === 'critical').length); setLoading(false);
-  };
-  useEffect(() => { void load(); }, []);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     const channel = supabase.channel('radiologist-dashboard-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load(true))
