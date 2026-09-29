@@ -17,29 +17,13 @@ function walk(dir) {
 
 for (const root of roots) walk(path.join(process.cwd(), root));
 
-const sourceByFile = new Map(files.map((file) => [file, fs.readFileSync(file, "utf8")]));
+const sourceByFile = new Map(
+  files.map((file) => [file, fs.readFileSync(file, "utf8")]),
+);
 const allSource = [...sourceByFile.values()].join("\n");
 
 function functionBodies(name) {
-  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\function functionBody(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(
-    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
-      escaped +
-      "\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1",
-    "gi",
-  );
-  const matches = [...allSource.matchAll(pattern)].map((match) => match[2]);
-  return matches.length ? matches[matches.length - 1] : "";
-}
-
-function assertFunctionContract(name, checks) {
-  const body = functionBody(name);
-  assert(body, "authorization contract function missing: " + name);
-  for (const pattern of checks) {
-    assert(pattern.test(body), name + ": missing " + pattern);
-  }
-}");
   const pattern = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
       escaped +
@@ -110,7 +94,10 @@ const tenancyMigrationPath = path.join(
   process.cwd(),
   "supabase/migrations/20260929160000_patient_facility_tenancy_foundation.sql",
 );
-assert(fs.existsSync(tenancyMigrationPath), "patient facility tenancy foundation migration missing");
+assert(
+  fs.existsSync(tenancyMigrationPath),
+  "patient facility tenancy foundation migration missing",
+);
 
 const tenancyMigration = fs.readFileSync(tenancyMigrationPath, "utf8");
 for (const pattern of [
@@ -127,7 +114,10 @@ for (const pattern of [
   /GRANT SELECT ON TABLE public\.patient_facility_access TO authenticated/i,
   /REVOKE ALL ON FUNCTION public\.auto_link_patient_to_active_facility\(\) FROM PUBLIC/i,
 ]) {
-  assert(pattern.test(tenancyMigration), "patient facility tenancy migration missing: " + pattern);
+  assert(
+    pattern.test(tenancyMigration),
+    "patient facility tenancy migration missing: " + pattern,
+  );
 }
 
 const facilityLineageDebt = {
@@ -156,7 +146,10 @@ assert(
 );
 
 for (const name of facilityLineageDebt.functions) {
-  assert(functionBody(name), "reviewed function missing from repository: " + name);
+  assert(
+    functionBody(name),
+    "reviewed function missing from repository: " + name,
+  );
 }
 
 const privilegedTenancyFunctions = [
@@ -170,14 +163,20 @@ const privilegedTenancyFunctions = [
 for (const name of privilegedTenancyFunctions) {
   const body = functionBody(name);
   assert(body, "tenancy security-definer function missing: " + name);
-  assert(/SECURITY\s+DEFINER/i.test(body), name + ": must remain SECURITY DEFINER");
-  assert(/SET\s+search_path\s*=\s*''/i.test(body), name + ": must use empty search_path");
+  assert(
+    /SECURITY\s+DEFINER/i.test(body),
+    name + ": must remain SECURITY DEFINER",
+  );
+  assert(
+    /SET\s+search_path\s*=\s*''/i.test(body),
+    name + ": must use empty search_path",
+  );
 }
 
 console.log(
   "Authorization boundary regression passed: " +
     functionContracts.length +
-    " function-specific contracts; " +
+    " function contracts across all overloads; " +
     facilityLineageDebt.functions.length +
     " patient/facility tenancy items explicitly tracked; " +
     privilegedTenancyFunctions.length +
