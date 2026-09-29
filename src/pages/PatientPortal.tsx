@@ -32,7 +32,7 @@ export default function PatientPortal() {
   useEffect(() => {
     if (!user) return;
     void loadReports();
-  }, [loadReports]);
+  }, [loadReports, user]);
 
   const requestAIReport = async () => {
     if (!patient) return;
