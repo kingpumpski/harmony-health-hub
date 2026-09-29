@@ -126,6 +126,10 @@ BEGIN
 END;
 $function$;
 
+INSERT INTO public.permissions(permission_key,description,is_active) VALUES ('insurance_companies','Manage the insurance company master directory',true) ON CONFLICT(permission_key) DO UPDATE SET description=EXCLUDED.description,is_active=true,updated_at=now();
+INSERT INTO public.role_permissions(role,permission_key) VALUES ('it_admin','insurance_companies') ON CONFLICT DO NOTHING;
+
+DROP POLICY IF EXISTS insurance_companies_admin_it_read ON public.insurance_companies;
 CREATE POLICY insurance_companies_admin_it_read
   ON public.insurance_companies
   FOR SELECT
