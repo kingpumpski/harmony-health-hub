@@ -23,7 +23,8 @@
     "test:clinical-references": "node scripts/clinical-reference-contract.mjs",
     "test:patient-facility-boundary": "node scripts/patient-facility-boundary-contract.mjs",
     "test:security-definer-review": "node scripts/security-definer-review-contract.mjs",
-    "test:index-lifecycle": "node scripts/index-lifecycle-contract.mjs"
+    "test:index-lifecycle": "node scripts/index-lifecycle-contract.mjs",
+    "test:authorization-isolation-evidence": "node scripts/authorization-isolation-evidence-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
