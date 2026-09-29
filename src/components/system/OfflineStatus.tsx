@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { getOfflineMutations, subscribeToOfflineSync, syncOfflineMutations, type OfflineOperationEvent } from '@/lib/offlineSync';
 
@@ -16,9 +16,9 @@ export default function OfflineStatus() {
   const [syncing, setSyncing] = useState(false);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
 
-  const refresh = async () => setPending((await getOfflineMutations()).length);
+  const refresh = useCallback(async () => setPending((await getOfflineMutations()).length), []);
 
-  const synchronize = async () => {
+  const synchronize = useCallback(async () => {
     if (!navigator.onLine) return;
     setSyncing(true);
     try {
