@@ -13,6 +13,7 @@ const sourceRequired = [
   'RETRY_MAX_DELAY_MS',
   "['record_triage_assessment', 'record_triage_assessment_offline', 'triage'",
   "const OFFLINE_POSTGREST_TABLES = new Set(['patients']);",
+  "const triageContracts = contracts.filter(([source]) => source === 'record_triage_assessment');",
 ];
 
 
@@ -57,6 +58,12 @@ if (!triageSource.includes("rpc('record_triage_assessment', payload)")) {
 }
 if (!triageSource.includes('offlineAwareFetch converts that RPC to the explicit idempotent offline RPC')) {
   failures.push('Offline triage must document the explicit idempotent offline RPC replay path.');
+}
+
+const triageContractsStart = source.indexOf('const contracts:');
+const triageContractsSection = triageContractsStart >= 0 ? source.slice(triageContractsStart, source.indexOf('for (const [source, target, kind, transform] of contracts)', triageContractsStart)) : '';
+if ((triageContractsSection.match(/\['record_triage_assessment', 'record_triage_assessment_offline', 'triage'/g) || []).length !== 1) {
+  failures.push('Triage offline RPC contract must be registered exactly once.');
 }
 
 const normalizedReplay = replaySection.replace(/\/\/[^\n]*\n/g, '').replace(/\s+/g, ' ');
