@@ -8,6 +8,14 @@ const files = fs.existsSync(migrationsDir)
   ? fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql"))
   : [];
 const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name), "utf8")).join("\n");
+const migration = files.find((name) => name === "20260929200000_secure_default_function_execute_privileges.sql");
+assert.ok(migration, "secure default function execution migration must exist");
+const migrationSource = fs.readFileSync(path.join(migrationsDir, migration), "utf8");
+assert.equal(
+  (migrationSource.match(/REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/g) ?? []).length,
+  1,
+  "secure default migration must contain exactly one PUBLIC revoke",
+);
 
 assert.match(
   source,
