@@ -14,6 +14,7 @@ function walk(dir) {
     else if (/\.(sql|mjs|ts|tsx)$/.test(entry.name)) files.push(full);
   }
 }
+
 for (const root of roots) walk(path.join(process.cwd(), root));
 
 const sourceByFile = new Map(files.map((file) => [file, fs.readFileSync(file, "utf8")]));
@@ -24,27 +25,80 @@ function functionBody(name) {
   const pattern = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
       escaped +
-      "\\b[\\s\\S]*?\\$function\\$([\\s\\S]*?)\\$function\\$",
+      "\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1",
     "gi",
   );
-  const matches = [...allSource.matchAll(pattern)].map((match) => match[1]);
+  const matches = [...allSource.matchAll(pattern)].map((match) => match[2]);
   return matches.length ? matches[matches.length - 1] : "";
 }
 
-const contracts = [
-  { name: "patient/encounter linkage", checks: [/encounter does not belong to patient/i, /patient_id/i] },
-  { name: "facility authorization primitive", checks: [/has_facility_access/i, /facility_memberships/i] },
-  { name: "clinical role authorization", checks: [/clinical role required/i, /current_user_is_clinical_staff/i] },
-  { name: "notification recipient scoping", checks: [/notification_feature_enabled/i, /_user_id\s+uuid/i, /auth\\.uid\\(\\)/i] },
+function assertFunctionContract(name, checks) {
+  const body = functionBody(name);
+  assert(body, "authorization contract function missing: " + name);
+  for (const pattern of checks) {
+    assert(pattern.test(body), `${name}: missing ${pattern}`);
+  }
+}
+
+const functionContracts = [
+  {
+    name: "create_imaging_order_with_payment_gate",
+    checks: [/patient_id/i, /encounter does not belong to patient/i],
+  },
+  {
+    name: "create_insurance_claim_draft",
+    checks: [/patient_id/i, /invoice does not belong to patient/i],
+  },
+  {
+    name: "create_pharmacy_pos_sale",
+    checks: [/pharmacy or front desk role required/i, /patient_id/i],
+  },
+  {
+    name: "hms_patient_has_facility_access",
+    checks: [/patient_facility_access/i, /facility_memberships/i, /auth\.uid\(\)/i],
+  },
+  {
+    name: "hms_assert_patient_facility_access",
+    checks: [/hms_patient_has_facility_access/i, /patient facility access denied/i],
+  },
+  {
+    name: "link_patient_to_current_facility",
+    checks: [/hms_current_active_facility_id/i, /patient_facility_access/i, /facility linking is not permitted/i],
+  },
+  {
+    name: "notification_feature_enabled",
+    checks: [/_user_id/i, /auth\.uid\(\)/i],
+  },
 ];
 
-for (const contract of contracts) {
-  assert(contract.checks.every((pattern) => pattern.test(allSource)), "authorization contract missing: " + contract.name);
+for (const contract of functionContracts) {
+  assertFunctionContract(contract.name, contract.checks);
+}
+
+const tenancyMigrationPath = path.join(
+  process.cwd(),
+  "supabase/migrations/20260929160000_patient_facility_tenancy_foundation.sql",
+);
+assert(fs.existsSync(tenancyMigrationPath), "patient facility tenancy foundation migration missing");
+
+const tenancyMigration = fs.readFileSync(tenancyMigrationPath, "utf8");
+for (const pattern of [
+  /CREATE TABLE IF NOT EXISTS public\.patient_facility_access/i,
+  /ENABLE ROW LEVEL SECURITY/i,
+  /hms_current_active_facility_id/i,
+  /hms_patient_has_facility_access/i,
+  /hms_assert_patient_facility_access/i,
+  /link_patient_to_current_facility/i,
+  /trg_auto_link_patient_to_active_facility/i,
+  /REVOKE ALL ON TABLE public\.patient_facility_access FROM anon/i,
+]) {
+  assert(pattern.test(tenancyMigration), "patient facility tenancy migration missing: " + pattern);
 }
 
 const facilityLineageDebt = {
-  schemaGap: "patients has no facility_id; operational patient records do not consistently carry facility_id",
+  schemaGap: "historical patient/facility lineage is incomplete; patients has no facility_id and operational patient records do not consistently carry facility_id",
   requiresDedicatedTenancyMigration: true,
+  historicalBackfillPolicy: "do not infer or bulk-link ambiguous historical patients; require explicit authorized facility linking",
   functions: [
     "create_appointment_workflow",
     "create_ai_clinical_session",
@@ -58,7 +112,11 @@ const facilityLineageDebt = {
   ],
 };
 
-assert(facilityLineageDebt.requiresDedicatedTenancyMigration === true && facilityLineageDebt.functions.length > 0, "facility-lineage debt inventory must remain explicit");
+assert(
+  facilityLineageDebt.requiresDedicatedTenancyMigration === true &&
+    facilityLineageDebt.functions.length > 0,
+  "facility-lineage debt inventory must remain explicit",
+);
 
 for (const name of facilityLineageDebt.functions) {
   assert(functionBody(name) || allSource.includes(name), "reviewed function missing from repository: " + name);
@@ -66,8 +124,8 @@ for (const name of facilityLineageDebt.functions) {
 
 console.log(
   "Authorization boundary regression passed: " +
-    contracts.length +
-    " baseline contracts; " +
+    functionContracts.length +
+    " function-specific contracts; " +
     facilityLineageDebt.functions.length +
     " patient/facility tenancy items explicitly tracked.",
 );
