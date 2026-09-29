@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { searchGlobalWorkspace, type GlobalSearchResult } from "@/lib/globalWorkspaceSearch";
 import { notificationSoundKind, playWorkflowSound } from "@/lib/workflowFeedback";
 
+const db = supabase as any;
+
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
   radiologist: "Radiologist", radiology_technician: "Radiology Technician", lab_technician: "Lab Technician", pharmacist: "Pharmacist", accountant: "Accounts Officer",
@@ -37,7 +39,6 @@ export default function Header({ onMenu }: HeaderProps) {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const accountContainerRef = useRef<HTMLDivElement>(null);
-  const db = supabase as any;
 
   const loadNotifications = useCallback(async () => {
     if (!user?.id || user.role === "it_admin") return;
@@ -88,7 +89,7 @@ export default function Header({ onMenu }: HeaderProps) {
       void searchGlobalWorkspace(query, roles, user?.permissions ?? []).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [searchOpen, searchTerm, user?.role, user?.permissions, loadNotifications]);
+  }, [searchOpen, searchTerm, user?.role, user?.roles, user?.permissions, loadNotifications]);
 
   useEffect(() => {
     if (!user?.id || user.role === "it_admin") return;
