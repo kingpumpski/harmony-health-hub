@@ -83,21 +83,21 @@ BEGIN
   ELSIF v_role = 'radiologist' THEN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
 SELECT jsonb_build_object('key','ready','label','Ready for interpretation','value',count(*),'href','/radiology','description','Released or queued studies awaiting radiologist interpretation') FROM public.imaging_orders WHERE status IN ('released','queued')
-      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies awaiting radiologist attention') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status IN ('released','queued')
+      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies awaiting radiologist attention') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status IN ('released','queued','in_progress')
       UNION ALL SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Unread workflow events') FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
     ) q;
   ELSIF v_role = 'radiology_technician' THEN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
       SELECT jsonb_build_object('key','ready','label','Ready for acquisition','value',count(*),'href','/radiology','description','Released or queued studies awaiting acquisition') x FROM public.imaging_orders WHERE status IN ('released','queued')
       UNION ALL SELECT jsonb_build_object('key','progress','label','Acquisition in progress','value',count(*),'href','/radiology','description','Studies currently being acquired') FROM public.imaging_orders WHERE status='in_progress'
-      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies requiring acquisition attention') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status IN ('released','queued','in_progress')
+      UNION ALL SELECT jsonb_build_object('key','urgent','label','Urgent / STAT','value',count(*),'href','/radiology','description','Urgent studies requiring acquisition attention') FROM public.imaging_orders WHERE priority IN ('urgent','stat') AND status<>'completed'
       UNION ALL SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Unread workflow events') FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
     ) q;
   ELSIF v_role = 'pharmacist' THEN
     SELECT jsonb_agg(x ORDER BY x->>'key') INTO v_cards FROM (
       SELECT jsonb_build_object('key','dispensing','label','Dispensing queue','value',count(*),'href','/pharmacy','description','Medication plans awaiting preparation or dispensing') x FROM public.pharmacy_dispensing_plans WHERE status IN ('pending','prepared')
+      UNION ALL SELECT jsonb_build_object('key','medications','label','Medication administration','value',count(*),'href','/medications','description','Medication workflow requiring attention') FROM public.medication_administrations WHERE status='scheduled'
       UNION ALL SELECT jsonb_build_object('key','inventory','label','Inventory alerts','value',count(*),'href','/stock-alerts','description','Items at or below reorder level') FROM public.pharmacy_inventory WHERE active AND stock_quantity <= COALESCE(reorder_level,0)
-      UNION ALL SELECT jsonb_build_object('key','expiry','label','Expiry watch','value',count(*),'href','/stock-alerts','description','Active stock expiring within 30 days') FROM public.pharmacy_inventory WHERE active AND expiry_date IS NOT NULL AND expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 30
       UNION ALL SELECT jsonb_build_object('key','queue','label','Department queue','value',count(*),'href','/department-queue','description','Pharmacy service orders') FROM public.department_queues WHERE department='pharmacy' AND status IN ('waiting','in_progress')
       UNION ALL SELECT jsonb_build_object('key','notifications','label','Unread notifications','value',count(*),'href','/notifications','description','Unread workflow events') FROM public.notifications WHERE (recipient_user_id=v_uid OR recipient_role=v_role::public.app_role) AND NOT is_read
     ) q;
