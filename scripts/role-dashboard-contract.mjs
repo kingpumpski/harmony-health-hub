@@ -40,7 +40,7 @@ for (const [role,component] of expected) {
 }
 if (dashboard.includes("if(user.role === 'it_admin') return <ITSupportWorkspace/>")) throw new Error('IT Admin must use the role dashboard route');
 if (dashboard.includes("case'front_desk':default:")) throw new Error('Dashboard default must not silently absorb unknown roles');
-if (!dashboard.includes("case'front_desk':dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk route is missing');
+if (!dashboard.replace(/\s+/g, '').includes("case'front_desk':dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk route is missing');
 if (!dashboard.includes('Dashboard unavailable')) throw new Error('Unsupported roles must fail closed');
 if (dashboard.includes('WorkflowSummary')) throw new Error('Global WorkflowSummary must not be duplicated above role dashboards');
 if (dashboard.includes('Role command center')) throw new Error('Global role command center must not duplicate role dashboard hierarchy');
