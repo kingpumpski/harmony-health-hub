@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "scope": "security-definer-exposure",
+  "policy": "Authenticated EXECUTE is intentional only for application RPCs whose function body performs explicit authorization. Anonymous EXECUTE must remain disabled for public SECURITY DEFINER functions.",
+  "review": {
+    "authenticated_security_definer_lint": "accepted_pending_function_specific_review",
+    "anonymous_security_definer_execute": "must_remain_zero",
+    "search_path": "every public SECURITY DEFINER function must define an explicit non-public search_path"
+  },
+  "required_review_dimensions": [
+    "authentication",
+    "role_or_permission",
+    "facility_boundary",
+    "patient_or_resource_ownership",
+    "workflow_state",
+    "concurrency_or_row_locking",
+    "explicit_execute_grant"
+  ]
+}
