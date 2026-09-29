@@ -22,7 +22,7 @@ export function useClinicalReferences(parameters: string[]) {
   const [references, setReferences] = useState<ClinicalReference[]>([]);
   const [loading, setLoading] = useState(true);
   const parameterKey = parameters.join('|');
-  const parameterList = parameterKey ? parameterKey.split('|') : [];
+  const parameterList = useMemo(() => parameterKey ? parameterKey.split('|') : [], [parameterKey]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +47,7 @@ export function useClinicalReferences(parameters: string[]) {
     };
     void load();
     return () => { active = false; };
-  }, [parameterKey]);
+  }, [parameterKey, parameterList]);
 
   const byParameter = useMemo(
     () => new Map(references.map((reference) => [reference.parameter, reference])),
