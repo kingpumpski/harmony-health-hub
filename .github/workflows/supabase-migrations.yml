@@ -277,4 +277,4 @@ jobs:
         run: node scripts/security-definer-read-workspace-batch6-contract.mjs
 
       - name: Verify SECURITY DEFINER clinical context batch 7 contract
-        run: node scripts/security-definer-clinical-context-batch7-contract.mjs
+        run: node scripts/security-definer-clinical-context-batch7-contract.mjs\n      - name: Verify SECURITY DEFINER mutation paths batch 8 contract\n        run: node scripts/security-definer-mutation-batch8-contract.mjs\n
