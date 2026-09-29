@@ -11,6 +11,11 @@ const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name
 const migration = files.find((name) => name === "20260929200000_secure_default_function_execute_privileges.sql");
 assert.ok(migration, "secure default function execution migration must exist");
 const migrationSource = fs.readFileSync(path.join(migrationsDir, migration), "utf8");
+const migrationStatements = migrationSource
+  .split(";")
+  .map((statement) => statement.trim())
+  .filter(Boolean);
+assert.equal(migrationStatements.length, 3, "secure default migration must contain exactly three default-privilege statements");
 assert.equal(
   (migrationSource.match(/REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/g) ?? []).length,
   1,
