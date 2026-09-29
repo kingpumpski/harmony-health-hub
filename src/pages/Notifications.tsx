@@ -19,6 +19,8 @@ interface NotificationRow {
   recipient_user_id: string | null;
 }
 
+const db = supabase as any;
+
 const severityIcon = (sev: string) => {
   if (sev === 'critical') return <AlertTriangle className="w-5 h-5 text-critical animate-pulse" />;
   if (sev === 'warning') return <AlertCircle className="w-5 h-5 text-warning" />;
@@ -30,8 +32,6 @@ export default function Notifications() {
   const { user } = useAuth();
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const db = supabase as any;
-
   const load = useCallback(async () => {
     const { data, error } = await db.rpc('get_workflow_notifications', { _limit: 200 });
     if (!error) {
