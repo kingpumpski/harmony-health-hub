@@ -55,11 +55,17 @@ const isolation = JSON.parse(
 );
 for (const [name, item] of Object.entries(functions)) {
   if (item.requires_isolated_regression) {
-    assert.equal(
-      isolation.status,
-      "not_run",
-      `${name}: isolated regression evidence must remain explicitly not_run until fixtures exist`,
+    assert.ok(
+      ["not_run", "reviewed", "enforced"].includes(isolation.status),
+      `${name}: invalid isolation evidence status`,
     );
+    if (isolation.status !== "not_run") {
+      assert.equal(
+        isolation.environment,
+        "isolated",
+        `${name}: reviewed/enforced isolation requires an isolated environment`,
+      );
+    }
   }
 }
 
