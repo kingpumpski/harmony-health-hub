@@ -6,8 +6,11 @@
 -- contract is reviewed.
 --
 -- This migration is intentionally committed to the security branch first.
--- It must be validated in an isolated Supabase database before production
--- application.
+-- It must be validated in an isolated Supabase environment before production.
+--
+-- Scope: functions created by the postgres migration owner. Other function-
+-- owning roles must receive equivalent policy through their own audited
+-- migrations.
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
