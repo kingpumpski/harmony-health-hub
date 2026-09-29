@@ -28,6 +28,7 @@ RETURNS SETOF public.insurance_companies
 LANGUAGE sql
 SECURITY INVOKER
 STABLE
+SET search_path TO 'pg_catalog','public'
 AS $function$
   SELECT c.*
   FROM public.insurance_companies c
