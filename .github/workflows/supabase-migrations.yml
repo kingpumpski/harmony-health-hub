@@ -268,3 +268,5 @@ jobs:
         run: node scripts/canteen-dietary-operational-contract.mjs
       - name: Verify clinical SECURITY DEFINER search-path contract
         run: node scripts/clinical-security-definer-contract.mjs
+      - name: Verify patient workflow field authorization contract
+        run: node scripts/patient_workflow_field_authorization_contract.mjs
