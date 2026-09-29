@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Plus, RefreshCw, Settings2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,7 +48,7 @@ export default function ReportsCenter() {
     return report.report_name.toLowerCase().includes(search.toLowerCase()) && (category === 'all' || report.category?.name === category);
   }), [configs, search, category]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [facilityRows, definitionRows] = await Promise.all([listFacilities(), listDefinitions()]);
@@ -60,9 +60,9 @@ export default function ReportsCenter() {
       if (!preferred) setConfigs([]);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to load Reports Center.'); }
     finally { setLoading(false); }
-  }
+  }, [selectedFacilityId]);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     if (!selectedFacilityId) { setConfigs([]); return; }
     setRun(null); setRunItems([]);
