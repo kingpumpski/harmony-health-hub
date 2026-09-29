@@ -55,3 +55,8 @@ The repository contract `test:public-view-security` prevents newly introduced pu
 Function execution is opt-in for protected application RPCs. The repository maintains explicit privilege manifests and migration contracts for authenticated execution and PUBLIC/anon revocation. Default privileges are separately hardened so newly created public-schema functions do not silently become Data API-callable.
 
 The remaining authenticated SECURITY DEFINER advisor findings are tracked as intentional application RPCs pending individual authorization review; the project does not resolve the warning by blindly revoking all authenticated execution, because that would break legitimate workflow boundaries.
+
+
+### Inpatient bed facility boundary
+
+The canonical `transfer_patient_ward_bed_workflow` now requires a valid active-facility context for non-admin callers and rejects destination/source beds outside that facility. Admins retain cross-facility troubleshooting authority. The migration is validated transactionally against the live schema but remains subject to the existing production migration approval gate.
