@@ -2,7 +2,9 @@ import fs from 'node:fs';
 
 const sql = fs.readFileSync('supabase/migrations/20260929120000_claim_invoice_reconciliation.sql', 'utf8')
   + '\n'
-  + fs.readFileSync('supabase/migrations/20260929121500_claim_reconciliation_read_context.sql', 'utf8');
+  + fs.readFileSync('supabase/migrations/20260929121500_claim_reconciliation_read_context.sql', 'utf8')
+  + '\n'
+  + fs.readFileSync('supabase/migrations/20260929133000_claim_canonical_insurer_inheritance.sql', 'utf8');
 
 const required = [
   'CREATE OR REPLACE FUNCTION public.reconcile_insurance_claim_to_invoice',
@@ -15,8 +17,15 @@ const required = [
   'CREATE OR REPLACE FUNCTION public.get_insurance_claim_reconciliation_context',
   'REVOKE ALL ON FUNCTION public.get_insurance_claim_reconciliation_context(uuid[]) FROM PUBLIC,anon',
   'GRANT EXECUTE ON FUNCTION public.get_insurance_claim_reconciliation_context(uuid[]) TO authenticated',
-  'insurance_company_id',
   'invoice_insurance_total',
+  'CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft',
+  'SELECT p.insurance_company_id',
+  'FROM public.insurance_cases x',
+  "x.eligibility_status='eligible'",
+  'v_company',
+  'Insurance payer is required when no canonical insurer is linked to the patient',
+  'REVOKE ALL ON FUNCTION public.create_insurance_claim_draft(uuid,text,text,numeric,uuid) FROM PUBLIC,anon',
+  'GRANT EXECUTE ON FUNCTION public.create_insurance_claim_draft(uuid,text,text,numeric,uuid) TO authenticated',
 ];
 
 const missing = required.filter((item) => !sql.includes(item));
