@@ -39,3 +39,19 @@ Security-definer functions are retained only where they provide a deliberate aut
 ### Production safety
 
 Do not bulk-link ambiguous historical patients. Do not enable patient-wide cross-facility RLS until the tenancy fixtures prove that the model preserves legitimate workflows.
+
+
+## Exposed views
+
+Public-schema views are treated as security boundaries, not as harmless read-only projections. Every exposed view must either:
+
+- use PostgreSQL `security_invoker = true` so the querying user's underlying-table permissions and RLS apply; or
+- have explicit Data API privilege revocation when it is not intended for `anon`/ `authenticated`.
+
+The repository contract `test:public-view-security` prevents newly introduced public views from bypassing this review. This follows Supabase guidance that views can otherwise bypass RLS when created by a privileged owner. 
+
+## Function exposure and defaults
+
+Function execution is opt-in for protected application RPCs. The repository maintains explicit privilege manifests and migration contracts for authenticated execution and PUBLIC/anon revocation. Default privileges are separately hardened so newly created public-schema functions do not silently become Data API-callable.
+
+The remaining authenticated SECURITY DEFINER advisor findings are tracked as intentional application RPCs pending individual authorization review; the project does not resolve the warning by blindly revoking all authenticated execution, because that would break legitimate workflow boundaries.
