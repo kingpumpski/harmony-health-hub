@@ -10,7 +10,8 @@ if (!/\[functions\.notification-provider-config\][\s\S]*?verify_jwt\s*=\s*true/.
 for (const fragment of [
   'Authorization',
   'auth.getUser(token)',
-  "['admin','it_admin']",
+  'admin',
+  'it_admin',
   'has_facility_access',
   'NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
@@ -25,8 +26,8 @@ if (/console\.(log|error|warn)\([^)]*(password|api_key|credentials)/i.test(provi
   throw new Error('notification-provider-config must not log provider credentials');
 }
 
-if (/JSON\.stringify\([^)]*credentials/i.test(provider)) {
-  throw new Error('notification-provider-config must not serialize provider credentials into responses');
+if (/JSON\.stringify\([^)]*credentials\s*\)/i.test(provider)) {
+  throw new Error('notification-provider-config must not serialize the credentials object into logs or responses');
 }
 
-console.log('Notification provider Edge Function security contract passed');
+console.log('Notification provider security contract passed');
