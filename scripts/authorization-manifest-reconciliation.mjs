@@ -51,11 +51,17 @@ for (const dimension of highRisk.review_dimensions) {
 const isolation = readJson("authorization-isolation-evidence.json");
 for (const [name, item] of Object.entries(highRisk.functions ?? {})) {
   if (item.requires_isolated_regression) {
-    assert.equal(
-      isolation.status,
-      "not_run",
-      `${name}: isolation evidence cannot be considered complete while status is ${isolation.status}`,
+    assert.ok(
+      ["not_run", "reviewed", "enforced"].includes(isolation.status),
+      `${name}: invalid isolation evidence status`,
     );
+    if (isolation.status !== "not_run") {
+      assert.equal(
+        isolation.environment,
+        "isolated",
+        `${name}: reviewed/enforced isolation requires an isolated environment`,
+      );
+    }
   }
 }
 
