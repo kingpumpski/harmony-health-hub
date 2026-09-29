@@ -13,14 +13,15 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:security-best-practices && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
+    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:security-best-practices && npm run test:patient-facility-boundary && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
     "test:role-dashboards": "node scripts/role-dashboard-contract.mjs",
     "test:sidebar-roles": "node scripts/sidebar-role-contract.mjs",
     "test:triage": "node scripts/triage-contract.mjs",
-    "test:clinical-references": "node scripts/clinical-reference-contract.mjs"
+    "test:clinical-references": "node scripts/clinical-reference-contract.mjs",
+    "test:patient-facility-boundary": "node scripts/patient-facility-boundary-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
