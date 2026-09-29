@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260929203000_harden_security_definer_read_workspace_paths_batch6.sql');
-const sql = fs.readFileSync(migrationPath, 'utf8');
+const sql = fs.readFileSync(migrationPath, 'utf8').replace(/\s+/g, ' ').trim();
 
 const signatures = [
   'get_admission_workspace(integer)',
@@ -23,17 +23,13 @@ const signatures = [
 ];
 
 for (const signature of signatures) {
-  const escaped = signature.replace(/[.*+?^$\\{}()|[\\]\\]/g, '\\$&');
-  const pattern = new RegExp(
-    `ALTER\\s+FUNCTION\\s+public\\.${escaped}\\s+SET\\s+search_path\\s*=\\s*pg_catalog\\s*,\\s*public\\s*;`,
-    'i',
-  );
-  if (!pattern.test(sql)) {
+  const statement = `ALTER FUNCTION public.${signature} SET search_path = pg_catalog, public;`;
+  if (!sql.toLowerCase().includes(statement.toLowerCase())) {
     throw new Error(`Missing hardened ALTER FUNCTION for ${signature}`);
   }
 }
 
-if (/SET\\s+search_path\\s*=\\s*public\\s*;/i.test(sql)) {
+if (/SET search_path = public;/i.test(sql)) {
   throw new Error('Migration contains an unsafe public-only search_path');
 }
 
