@@ -219,31 +219,76 @@ BEGIN
 END;
 $function$;
 
--- Bring legacy wards created through the obsolete public.wards path into the
--- canonical ward_units read model. They remain unscoped until an Admin/IT
--- Admin assigns their facility in the Ward Management UI.
-INSERT INTO public.ward_units(name,code,specialty,gender_policy,active,facility_id)
-SELECT
-  CASE WHEN EXISTS (
-    SELECT 1 FROM public.ward_units wu WHERE lower(pg_catalog.btrim(wu.name))=lower(pg_catalog.btrim(w.name))
-  ) THEN pg_catalog.btrim(w.name)||' ['||w.code||']' ELSE pg_catalog.btrim(w.name) END,
-  pg_catalog.btrim(w.code),
-  NULLIF(pg_catalog.btrim(w.department),''),
-  CASE WHEN lower(coalesce(w.gender_policy,'mixed')) IN ('male','female') THEN lower(w.gender_policy) ELSE 'mixed' END,
-  coalesce(w.active,true),
-  NULL
-FROM public.wards w
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.ward_units wu WHERE lower(pg_catalog.btrim(wu.code))=lower(pg_catalog.btrim(w.code))
-);
+-- Legacy public.wards rows are intentionally not copied automatically because the
+-- live ward facility trigger requires an authenticated facility context. They are
+-- exposed by get_ward_management_workspace and imported explicitly by Admin/IT Admin.
+
+CREATE OR REPLACE FUNCTION public.import_legacy_ward(
+  _legacy_ward_id uuid,
+  _facility_id uuid
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  legacy public.wards%ROWTYPE;
+  v_name text;
+  v_id uuid;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+    RAISE EXCEPTION 'Administrator or IT administrator role required';
+  END IF;
+  IF _facility_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.healthcare_facilities WHERE id=_facility_id AND is_active=true
+  ) THEN RAISE EXCEPTION 'Active facility is required'; END IF;
+  IF NOT public.has_facility_access(uid,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
+
+  SELECT * INTO legacy FROM public.wards WHERE id=_legacy_ward_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Legacy ward not found'; END IF;
+
+  IF EXISTS (SELECT 1 FROM public.ward_units WHERE lower(pg_catalog.btrim(code))=lower(pg_catalog.btrim(legacy.code))) THEN
+    SELECT id INTO v_id FROM public.ward_units WHERE lower(pg_catalog.btrim(code))=lower(pg_catalog.btrim(legacy.code)) LIMIT 1;
+    RETURN v_id;
+  END IF;
+
+  v_name := NULLIF(pg_catalog.btrim(legacy.name),'');
+  IF v_name IS NULL THEN RAISE EXCEPTION 'Legacy ward name is required'; END IF;
+  IF EXISTS (SELECT 1 FROM public.ward_units WHERE lower(pg_catalog.btrim(name))=lower(v_name)) THEN
+    v_name := v_name || ' [' || pg_catalog.btrim(legacy.code) || ']';
+  END IF;
+
+  INSERT INTO public.ward_units(name,code,specialty,gender_policy,active,facility_id)
+  VALUES (
+    v_name,
+    pg_catalog.btrim(legacy.code),
+    NULLIF(pg_catalog.btrim(legacy.department),''),
+    CASE WHEN lower(coalesce(legacy.gender_policy,'mixed')) IN ('male','female') THEN lower(legacy.gender_policy) ELSE 'mixed' END,
+    coalesce(legacy.active,true),
+    _facility_id
+  )
+  RETURNING id INTO v_id;
+
+  PERFORM public.record_system_audit(
+    'legacy_ward_imported','inpatient','ward_units',v_id,'info',
+    jsonb_build_object('legacy_ward_id',_legacy_ward_id,'facility_id',_facility_id,'actor_id',uid)
+  );
+  RETURN v_id;
+END;
+$function$;
 
 REVOKE ALL ON FUNCTION public.create_ward_unit(text,text,text,text) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.update_ward_unit(uuid,text,text,text,text,boolean) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.assign_ward_unit_facility(uuid,uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.create_ward_bed(uuid,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.import_legacy_ward(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.create_ward_unit(text,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_ward_unit(uuid,text,text,text,text,boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.assign_ward_unit_facility(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_ward_bed(uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_legacy_ward(uuid,uuid) TO authenticated;
 
 COMMIT;
