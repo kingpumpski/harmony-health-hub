@@ -90,6 +90,7 @@ for (const pattern of [
   /hms_assert_patient_facility_access/i,
   /link_patient_to_current_facility/i,
   /trg_auto_link_patient_to_active_facility/i,
+  /SET search_path = ''/i,
   /REVOKE ALL ON TABLE public\.patient_facility_access FROM anon/i,
 ]) {
   assert(pattern.test(tenancyMigration), "patient facility tenancy migration missing: " + pattern);
