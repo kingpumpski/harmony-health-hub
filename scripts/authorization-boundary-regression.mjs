@@ -65,6 +65,18 @@ const functionContracts = [
     checks: [/pharmacy or front desk role required/i, /patient_id/i],
   },
   {
+    name: "create_appointment_workflow",
+    checks: [/hms_patient_has_facility_access/i, /patient facility access denied/i, /SET\s+search_path\s*=\s*''/i],
+  },
+  {
+    name: "update_appointment_workflow",
+    checks: [/hms_patient_has_facility_access/i, /appointment facility access denied/i, /SET\s+search_path\s*=\s*''/i],
+  },
+  {
+    name: "get_appointment_worklist",
+    checks: [/hms_patient_has_facility_access/i, /SET\s+search_path\s*=\s*''/i],
+  },
+  {
     name: "hms_patient_has_facility_access",
     checks: [/patient_facility_access/i, /facility_memberships/i, /auth\.uid\(\)/i],
   },
