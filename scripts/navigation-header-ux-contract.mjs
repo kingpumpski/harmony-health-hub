@@ -10,6 +10,10 @@ const settingsPage = read('src/pages/admin/Settings.tsx');
 const reportsCenter = read('src/pages/ReportsCenter.tsx');
 
 const failures = [];
+const assert = (name, condition, detail) => {
+  if (!condition) failures.push(`${name}: ${detail}`);
+};
+
 assert('notification configuration belongs to system settings',
   settingsPage.includes('Notification Control Plane') &&
   settingsPage.includes('Email Service Configuration') &&
@@ -29,10 +33,6 @@ assert('admin and IT admin navigation exposes system settings',
   header.includes('to="/admin/settings"') &&
   header.includes('user.role === "it_admin"'),
   'Administrators and IT administrators must have an explicit system settings entry point');
-
-const assert = (name, condition, detail) => {
-  if (!condition) failures.push(`${name}: ${detail}`);
-};
 
 assert('global search is in the header action cluster',
   header.includes('aria-label="Global search"') &&
