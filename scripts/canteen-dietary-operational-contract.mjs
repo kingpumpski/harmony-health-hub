@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const migration = read('supabase/migrations/20260929150000_canteen_dietary_operational_workspace.sql');
+const realtimeFix = read('supabase/migrations/20260929151500_fix_canteen_realtime_topic_authorization.sql');
 const ui = read('src/pages/CanteenMeals.tsx');
 const app = read('src/App.tsx');
 
@@ -17,6 +18,7 @@ assert.match(migration, /FROM public\.diagnoses d/);
 assert.match(migration, /e\.status NOT IN \('completed','cancelled'\)/);
 assert.match(migration, /realtime\.send/);
 assert.match(migration, /'canteen_context_changed'/);
+assert.match(realtimeFix, /realtime\.topic\(\) = 'canteen:operations'/);
 assert.match(migration, /realtime:can\w+:operations/);
 assert.match(ui, /get_canteen_active_patient_orders/);
 assert.match(ui, /current_diagnoses/);
