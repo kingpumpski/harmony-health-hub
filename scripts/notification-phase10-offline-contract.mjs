@@ -23,7 +23,7 @@ assert('worker-circuit-breaker',worker.includes('notification_provider_health')&
 assert('scheduler-boundary',scheduler.includes('enqueue_notification_v2')&&scheduler.includes('_facility_id:row.facility_id??null'),'scheduler must preserve facility scope');
 assert('send-async-boundary',send.includes('202')&&send.includes('enqueue_notification_v2'),'send API must enqueue asynchronously');
 assert('webhook-idempotency',webhook.includes('notification_webhook_events'),'provider webhooks must have durable idempotency');
-assert('settings-routing-controls',settings.includes('priority:Number(emailDraft.priority||100)')&&settings.includes('isPrimary:emailDraft.isPrimary'),'UI must submit routing controls');
+assert('settings-routing-controls',/priority\s*:\s*Number\(emailDraft\.priority\s*\|\|\s*100\)/.test(settings)&&/isPrimary\s*:\s*emailDraft\.isPrimary/.test(settings),'UI must submit routing controls');
 assert('runbook-gmail',docs.includes('465')&&docs.includes('NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY'),'runbook must document Gmail SMTP and encryption prerequisites');
 const migrations=fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.includes('notification')).sort();
 const versions=migrations.map(n=>n.match(/^(\\d+)_/)?.[1]).filter(Boolean);
