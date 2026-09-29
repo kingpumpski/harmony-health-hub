@@ -7,7 +7,7 @@
 -- validated in an isolated database/branch with cross-facility fixtures first.
 
 CREATE TABLE IF NOT EXISTS public.patient_facility_access (
-  id uuid PRIMARY KEY DEFAULT public.gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
   patient_id uuid NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE RESTRICT,
   access_status text NOT NULL DEFAULT 'active'
