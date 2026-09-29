@@ -8,7 +8,7 @@ const required=[
   'CREATE OR REPLACE FUNCTION public.update_insurance_company',
   'CREATE OR REPLACE FUNCTION public.list_insurance_companies',
   'insurance_company_id uuid REFERENCES public.insurance_companies(id)',
-  "insurance_companies','insurance_companies"
+  "('insurance_companies','Manage the insurance company master directory',true)"
 ];
 const missing=required.filter(fragment=>!sql.includes(fragment));
 if(missing.length){console.error('Insurance company master-data contract failed:',missing.join(', '));process.exitCode=1;}
