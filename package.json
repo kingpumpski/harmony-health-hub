@@ -34,7 +34,8 @@
     "test:migration-workflow-safety": "node scripts/migration-workflow-safety-contract.mjs",
     "test:migration-workflow-concurrency": "node scripts/migration-workflow-concurrency-contract.mjs",
     "test:authorization-privilege-manifest": "node scripts/authorization-privilege-manifest-contract.mjs",
-    "test:patient-facility-execute": "node scripts/patient-facility-execute-contract.mjs"
+    "test:patient-facility-execute": "node scripts/patient-facility-execute-contract.mjs",
+    "test:public-security-definer-exposure": "node scripts/public-security-definer-exposure-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
