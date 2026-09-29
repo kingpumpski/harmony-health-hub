@@ -102,20 +102,12 @@ const guardedRoutes = [
 ];
 
 for (const [href, roles] of guardedRoutes) {
-  const escapedHref = href.replace(/[.*+?^\${}()|[\]\\]/g, '\\for (const [href, roles] of guardedRoutes) {
-  const normalizedApp = app.replace(/\s+/g, '');
-  const routeMarker = `<Routepath="${href}"element={<RoleGuardallowedRoles={${roles}}}>`;
-  if (!normalizedApp.includes(routeMarker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
-}');
-  const escapedRoles = roles.replace(/[.*+?^\${}()|[\]\\]/g, '\\for (const [href, roles] of guardedRoutes) {
-  const normalizedApp = app.replace(/\s+/g, '');
-  const routeMarker = `<Routepath="${href}"element={<RoleGuardallowedRoles={${roles}}}>`;
-  if (!normalizedApp.includes(routeMarker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
-}');
-  const guardedRoutePattern = new RegExp(
-    `<Route\\s+path=["']${escapedHref}["']\\s+element=\\{<RoleGuard\\s+allowedRoles=\\{${escapedRoles}\\}`,
+  const routePattern = new RegExp(
+    `<Route\\s+path=["']${href}["']\\s+element=\\{<RoleGuard\\s+allowedRoles=\\{${roles}\\}`,
   );
-  if (!guardedRoutePattern.test(app)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  if (!routePattern.test(app)) {
+    throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  }
 }
 
 const roleArrays = {
