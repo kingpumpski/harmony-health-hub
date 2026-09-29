@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle, BellRing, Image as ImageIcon, Loader2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
