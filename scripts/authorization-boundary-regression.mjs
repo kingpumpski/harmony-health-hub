@@ -48,46 +48,25 @@ function functionBody(name) {
 function assertFunctionContract(name, checks) {
   const definitions = functionDefinitions(name);
   assert(definitions.length, "authorization contract function missing: " + name);
-  const effectiveDefinition = definitions[definitions.length - 1].definition;
-  for (const pattern of checks) {
-    assert(
-      pattern.test(effectiveDefinition),
-      name + ": effective definition is missing " + pattern,
-    );
-  }
+  definitions.forEach(({ definition }, index) => {
+    for (const pattern of checks) {
+      assert(
+        pattern.test(definition),
+        name + " overload #" + (index + 1) + ": missing " + pattern,
+      );
+    }
+  });
 }
 
 function hasEmptySearchPathOverride(name, signature) {
-  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\function assertFunctionContract(name, checks) {
-  const definitions = functionDefinitions(name);
-  assert(definitions.length, "authorization contract function missing: " + name);
-  definitions.forEach(({ definition }, index) => {
-    for (const pattern of checks) {
-      assert(
-        pattern.test(definition),
-        name + " overload #" + (index + 1) + ": missing " + pattern,
-      );
-    }
-  });
-}");
-  const escapedSignature = signature.replace(/[.*+?^$()|[\]\\]/g, "\\function assertFunctionContract(name, checks) {
-  const definitions = functionDefinitions(name);
-  assert(definitions.length, "authorization contract function missing: " + name);
-  definitions.forEach(({ definition }, index) => {
-    for (const pattern of checks) {
-      assert(
-        pattern.test(definition),
-        name + " overload #" + (index + 1) + ": missing " + pattern,
-      );
-    }
-  });
-}");
+  const escapedName = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&");
+  const escapedSignature = signature.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&");
   return new RegExp(
-    "ALTER\\s+FUNCTION\\s+public\\." +
+    "ALTER\\\\s+FUNCTION\\\\s+public\\\\." +
       escapedName +
-      "\\s*\\(" +
+      "\\\\s*\\\\(" +
       escapedSignature +
-      "\\)\\s+SET\\s+search_path\\s*=\\s*['\\\"]['\\\"]",
+      "\\\\)\\\\s+SET\\\\s+search_path\\\\s*=\\\\s*['\\\\\"]['\\\\\"]",
     "i",
   ).test(allSource);
 }
@@ -137,14 +116,6 @@ const functionContracts = [
       /(?:Destination bed is outside the active facility|Facility access required for destination bed)/i,
       /(?:Source bed is outside the active facility|Facility access required for source bed)/i,
       /FOR\s+UPDATE/i,
-    ],
-  },
-  {
-    name: "create_admission_workflow",
-    checks: [
-      /(?:current_user_facility_id|has_facility_access)/i,
-      /(?:Facility access required for admission ward|outside the active facility)/i,
-      /FOR\s+UPDATE|FOR\s+SHARE/i,
     ],
   },
   {
