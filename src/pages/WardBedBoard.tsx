@@ -16,6 +16,8 @@ type Ward = {
   active: boolean;
   facility_id: string | null;
   facility_name?: string | null;
+  is_legacy?: boolean;
+  legacy_id?: string | null;
 };
 type Bed = {
   id: string;
@@ -85,11 +87,15 @@ export default function WardBedBoard() {
     void load();
   };
 
-  const assignFacility = async (wardId: string) => {
-    const facilityId = facilityChoice[wardId];
+  const assignFacility = async (ward: Ward) => {
+    const facilityId = facilityChoice[ward.id];
     if (!facilityId) return;
     setBusy(true);
-    const { error } = await supabase.rpc('assign_ward_unit_facility', { _ward_id: wardId, _facility_id: facilityId } as never);
+    const rpc = ward.is_legacy ? 'import_legacy_ward' : 'assign_ward_unit_facility';
+    const args = ward.is_legacy
+      ? { _legacy_ward_id: ward.legacy_id, _facility_id: facilityId }
+      : { _ward_id: ward.id, _facility_id: facilityId };
+    const { error } = await supabase.rpc(rpc as never, args as never);
     setBusy(false);
     if (error) {
       toast({ title: 'Facility assignment failed', description: error.message, variant: 'destructive' });
@@ -228,10 +234,10 @@ export default function WardBedBoard() {
 
               {canManage && legacyUnscoped && (
                 <div className="mb-3 rounded-lg border border-dashed border-border p-3">
-                  <p className="text-xs font-medium">Legacy ward requires facility assignment</p>
+                  <p className="text-xs font-medium">Legacy ward requires canonical facility import</p>
                   <div className="mt-2 flex gap-2">
                     <select aria-label={`Assign facility to ward ${w.name}`} value={facilityChoice[w.id] || ''} onChange={(e) => setFacilityChoice((current) => ({ ...current, [w.id]: e.target.value }))} className="input-medical min-w-0 flex-1"><option value="">Select facility…</option>{facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}</option>)}</select>
-                    <button type="button" disabled={busy || !facilityChoice[w.id]} onClick={() => void assignFacility(w.id)} className="btn-secondary text-xs disabled:opacity-50"><Link2 className="inline h-3.5 w-3.5 mr-1" />Assign</button>
+                    <button type="button" disabled={busy || !facilityChoice[w.id]} onClick={() => void assignFacility(w)} className="btn-secondary text-xs disabled:opacity-50"><Link2 className="inline h-3.5 w-3.5 mr-1" />Import</button>
                   </div>
                 </div>
               )}
