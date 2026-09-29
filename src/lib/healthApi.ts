@@ -109,7 +109,7 @@ export async function searchPatients(query: string) {
   return ranked.sort((a, b) => b.score - a.score).map(({ patient }) => patient);
 }
 
-export async function getPatientById(id: string) { const { data } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,gender,email,phone,address,city,ghana_card_number,blood_group,genotype,allergies,chronic_conditions,insurance_provider,insurance_number,insurance_group_number,insurance_expiry,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,status').eq('id', id).maybeSingle(); return data; }
+export async function getPatientById(id: string) { const { data } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,gender,email,phone,address,city,ghana_card_number,blood_group,genotype,allergies,chronic_conditions,insurance_provider,insurance_number,insurance_group_number,insurance_expiry,insurance_company_id,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,status').eq('id', id).maybeSingle(); return data; }
 export async function updatePatient(id: string, data: Partial<Patient>) {
   const updateRow = {
     patient_code: data.patientId,
@@ -121,12 +121,16 @@ export async function updatePatient(id: string, data: Partial<Patient>) {
     phone: data.phone,
     address: data.address,
     ghana_card_number: data.ghanaCardNumber,
+    city: data.city,
     insurance_provider: data.insuranceProvider,
     insurance_number: data.insuranceNumber ?? data.insurance?.policyNumber,
+    insurance_group_number: data.insuranceGroupNumber ?? data.insurance?.groupNumber,
+    insurance_expiry: data.insuranceExpiry ?? data.insurance?.expiryDate,
     emergency_contact_name: data.emergencyContact?.name,
     emergency_contact_phone: data.emergencyContact?.phone,
     emergency_contact_relation: data.emergencyContact?.relationship,
     blood_group: data.bloodType,
+    genotype: data.genotype,
     allergies: Array.isArray(data.allergies) ? data.allergies.join(', ') : data.allergies,
     chronic_conditions: Array.isArray(data.chronicConditions) ? data.chronicConditions.join(', ') : data.chronicConditions,
     status: data.status,
