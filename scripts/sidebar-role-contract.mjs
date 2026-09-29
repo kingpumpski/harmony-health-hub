@@ -13,6 +13,13 @@ if (!sidebar.includes('const unsupportedRole = !roleGroups;')) throw new Error('
 if (!sidebar.includes('Navigation is intentionally restricted')) throw new Error('Unsupported-role navigation must fail closed with an explicit message');
 if (!sidebar.includes('roleNavGroups[user.role]')) throw new Error('Sidebar must resolve navigation from the assigned role');
 
+const getRoleBlock = (role) => {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRoleMatch = sidebar.slice(roleStart + 3).match(/\n  [a-z_]+:\s*\[/);
+  const nextRole = nextRoleMatch ? roleStart + 3 + nextRoleMatch.index : -1;
+  return sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+};
+
 const requiredLinks = [
   ["canteen", "/orders", "orders"],
   ["radiology_technician", "/radiology", "radiology"],
