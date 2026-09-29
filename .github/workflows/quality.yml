@@ -55,5 +55,8 @@ jobs:
       - name: Clinical reference contract checks
         run: npm run test:clinical-references
 
+      - name: Role dashboard KPI semantic contract
+        run: node scripts/role-dashboard-kpi-semantic-contract.mjs
+
       - name: Production build
         run: npm run build
