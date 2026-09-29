@@ -13,7 +13,7 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:default-function-execute && npm run test:authorization-isolation-evidence && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
+    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:default-function-execute && npm run test:authorization-isolation-evidence && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
@@ -27,7 +27,8 @@
     "test:authorization-isolation-evidence": "node scripts/authorization-isolation-evidence-contract.mjs",
     "test:authorization-high-risk": "node scripts/authorization-high-risk-contract.mjs",
     "test:authorization-manifest-reconciliation": "node scripts/authorization-manifest-reconciliation.mjs",
-    "test:default-function-execute": "node scripts/default-function-execute-contract.mjs"
+    "test:default-function-execute": "node scripts/default-function-execute-contract.mjs",
+    "test:function-privilege": "node scripts/function-privilege-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
