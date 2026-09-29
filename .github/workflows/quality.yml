@@ -58,5 +58,8 @@ jobs:
       - name: Public SECURITY DEFINER exposure contract
         run: npm run test:public-security-definer-exposure
 
+      - name: Dependency security contract
+        run: npm run test:dependency-security
+
       - name: Production build
         run: npm run build
