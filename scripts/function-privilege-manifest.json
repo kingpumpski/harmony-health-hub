@@ -73,6 +73,26 @@
       ],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
+    },
+    "update_appointment_workflow": {
+      "signatures": [
+        "uuid,timestamptz,text,text,text,text,text,uuid"
+      ],
+      "allowed_execute_roles": [
+        "authenticated"
+      ],
+      "requires_public_revoke": true,
+      "requires_anon_revoke": true
+    },
+    "get_appointment_worklist": {
+      "signatures": [
+        "integer"
+      ],
+      "allowed_execute_roles": [
+        "authenticated"
+      ],
+      "requires_public_revoke": true,
+      "requires_anon_revoke": true
     }
   }
 }
