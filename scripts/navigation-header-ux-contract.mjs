@@ -6,7 +6,30 @@ const header = read('src/components/layout/Header.tsx');
 const sidebar = read('src/components/layout/Sidebar.tsx');
 const mainLayout = read('src/components/layout/MainLayout.tsx');
 
+const settingsPage = read('src/pages/admin/Settings.tsx');
+const reportsCenter = read('src/pages/ReportsCenter.tsx');
+
 const failures = [];
+assert('notification configuration belongs to system settings',
+  settingsPage.includes('Notification Control Plane') &&
+  settingsPage.includes('Email Service Configuration') &&
+  settingsPage.includes('Custom SMTP') &&
+  settingsPage.includes('update_facility_notification_configuration'),
+  'System Settings must own notification control-plane and SMTP configuration');
+
+assert('reports center contains reporting only',
+  !reportsCenter.includes('Notification Control Plane') &&
+  !reportsCenter.includes('Notification onboarding') &&
+  !reportsCenter.includes('facility_notification_config') &&
+  !reportsCenter.includes('set_facility_notification_provider'),
+  'Reports Center must not render or own notification configuration');
+
+assert('admin and IT admin navigation exposes system settings',
+  sidebar.includes("item(Settings, 'System Settings', '/admin/settings', 'system_settings')") &&
+  header.includes('to="/admin/settings"') &&
+  header.includes('user.role === "it_admin"'),
+  'Administrators and IT administrators must have an explicit system settings entry point');
+
 const assert = (name, condition, detail) => {
   if (!condition) failures.push(`${name}: ${detail}`);
 };
