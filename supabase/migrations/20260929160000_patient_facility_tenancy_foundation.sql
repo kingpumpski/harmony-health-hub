@@ -28,6 +28,23 @@ CREATE INDEX IF NOT EXISTS idx_patient_facility_access_facility
 
 ALTER TABLE public.patient_facility_access ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION public.hms_current_active_facility_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT uaf.facility_id
+  FROM public.user_active_facilities uaf
+  JOIN public.facility_memberships fm
+    ON fm.user_id = uaf.user_id
+   AND fm.facility_id = uaf.facility_id
+   AND fm.is_active = true
+  WHERE uaf.user_id = (SELECT auth.uid())
+  LIMIT 1;
+$function$;
+
 DROP POLICY IF EXISTS "patient facility access read" ON public.patient_facility_access;
 CREATE POLICY "patient facility access read"
 ON public.patient_facility_access
@@ -52,23 +69,6 @@ WITH CHECK (
   public.has_role((SELECT auth.uid()), 'admin')
   OR public.has_role((SELECT auth.uid()), 'it_admin')
 );
-
-CREATE OR REPLACE FUNCTION public.hms_current_active_facility_id()
-RETURNS uuid
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $function$
-  SELECT uaf.facility_id
-  FROM public.user_active_facilities uaf
-  JOIN public.facility_memberships fm
-    ON fm.user_id = uaf.user_id
-   AND fm.facility_id = uaf.facility_id
-   AND fm.is_active = true
-  WHERE uaf.user_id = (SELECT auth.uid())
-  LIMIT 1;
-$function$;
 
 CREATE OR REPLACE FUNCTION public.hms_patient_has_facility_access(_patient_id uuid)
 RETURNS boolean
