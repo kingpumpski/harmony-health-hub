@@ -12,6 +12,11 @@ on:
           - validate
           - apply
           - verify
+      confirm_production_apply:
+        description: 'For apply mode only, enter APPLY_PRODUCTION to acknowledge a production schema change'
+        required: true
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -45,8 +50,13 @@ jobs:
         if: ${{ inputs.mode == 'validate' }}
         run: supabase db push --linked --dry-run
 
-      - name: Apply migrations
+      - name: Require explicit production apply confirmation
         if: ${{ inputs.mode == 'apply' }}
+        run: |
+          test "${{ inputs.confirm_production_apply }}" = "APPLY_PRODUCTION"
+
+      - name: Apply migrations
+        if: ${{ inputs.mode == 'apply' && inputs.confirm_production_apply == 'APPLY_PRODUCTION' }}
         run: supabase db push --linked
 
       - name: Verify database lint
