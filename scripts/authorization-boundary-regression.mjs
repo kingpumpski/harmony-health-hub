@@ -36,7 +36,7 @@ function assertFunctionContract(name, checks) {
   const body = functionBody(name);
   assert(body, "authorization contract function missing: " + name);
   for (const pattern of checks) {
-    assert(pattern.test(body), `${name}: missing ${pattern}`);
+    assert(pattern.test(body), name + ": missing " + pattern);
   }
 }
 
@@ -63,7 +63,11 @@ const functionContracts = [
   },
   {
     name: "link_patient_to_current_facility",
-    checks: [/hms_current_active_facility_id/i, /patient_facility_access/i, /facility linking is not permitted/i],
+    checks: [
+      /hms_current_active_facility_id/i,
+      /patient_facility_access/i,
+      /facility linking is not permitted/i,
+    ],
   },
   {
     name: "notification_feature_enabled",
@@ -92,14 +96,19 @@ for (const pattern of [
   /trg_auto_link_patient_to_active_facility/i,
   /SET search_path = ''/i,
   /REVOKE ALL ON TABLE public\.patient_facility_access FROM anon/i,
+  /REVOKE ALL ON TABLE public\.patient_facility_access FROM authenticated/i,
+  /GRANT SELECT ON TABLE public\.patient_facility_access TO authenticated/i,
+  /REVOKE ALL ON FUNCTION public\.auto_link_patient_to_active_facility\(\) FROM PUBLIC/i,
 ]) {
   assert(pattern.test(tenancyMigration), "patient facility tenancy migration missing: " + pattern);
 }
 
 const facilityLineageDebt = {
-  schemaGap: "historical patient/facility lineage is incomplete; patients has no facility_id and operational patient records do not consistently carry facility_id",
+  schemaGap:
+    "historical patient/facility lineage is incomplete; patients has no facility_id and operational patient records do not consistently carry facility_id",
   requiresDedicatedTenancyMigration: true,
-  historicalBackfillPolicy: "do not infer or bulk-link ambiguous historical patients; require explicit authorized facility linking",
+  historicalBackfillPolicy:
+    "do not infer or bulk-link ambiguous historical patients; require explicit authorized facility linking",
   functions: [
     "create_appointment_workflow",
     "create_ai_clinical_session",
@@ -120,7 +129,22 @@ assert(
 );
 
 for (const name of facilityLineageDebt.functions) {
-  assert(functionBody(name) || allSource.includes(name), "reviewed function missing from repository: " + name);
+  assert(functionBody(name), "reviewed function missing from repository: " + name);
+}
+
+const privilegedTenancyFunctions = [
+  "hms_current_active_facility_id",
+  "hms_patient_has_facility_access",
+  "hms_assert_patient_facility_access",
+  "link_patient_to_current_facility",
+  "auto_link_patient_to_active_facility",
+];
+
+for (const name of privilegedTenancyFunctions) {
+  const body = functionBody(name);
+  assert(body, "tenancy security-definer function missing: " + name);
+  assert(/SECURITY\s+DEFINER/i.test(body), name + ": must remain SECURITY DEFINER");
+  assert(/SET\s+search_path\s*=\s*''/i.test(body), name + ": must use empty search_path");
 }
 
 console.log(
@@ -128,6 +152,8 @@ console.log(
     functionContracts.length +
     " function-specific contracts; " +
     facilityLineageDebt.functions.length +
-    " patient/facility tenancy items explicitly tracked.",
+    " patient/facility tenancy items explicitly tracked; " +
+    privilegedTenancyFunctions.length +
+    " tenancy security-definer contracts.",
 );
 console.log("No production data or database state is changed by this test.");
