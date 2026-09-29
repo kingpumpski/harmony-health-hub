@@ -12,5 +12,21 @@
     "update_patient_workflow": "pending_tenancy_enforcement",
     "upload_patient_document_metadata": "pending_tenancy_enforcement",
     "search_patient_directory": "pending_tenancy_enforcement"
+  },
+  "review_dimensions": [
+    "authentication",
+    "role_or_permission",
+    "facility_lineage",
+    "patient_or_resource_ownership",
+    "workflow_state",
+    "concurrency_or_row_locking",
+    "read_path",
+    "mutation_path",
+    "isolated_cross_facility_regression"
+  ],
+  "status_policy": {
+    "pending_tenancy_enforcement": "awaits isolated cross-facility fixture and regression",
+    "enforced": "requires helper call in every overload plus isolated cross-facility regression evidence",
+    "exempt": "requires documented rationale in security documentation"
   }
 }
