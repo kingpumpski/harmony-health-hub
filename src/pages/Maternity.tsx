@@ -1,5 +1,5 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, Baby, Plus, RefreshCw } from 'lucide-react';
 
@@ -12,9 +12,9 @@ export default function Maternity(){
  const [patientId,setPatientId]=useState(''),[episodeId,setEpisodeId]=useState(''),[risk,setRisk]=useState('routine'),[status,setStatus]=useState('antenatal');
  const [gravida,setGravida]=useState(''),[para,setPara]=useState(''),[lmp,setLmp]=useState(''),[edd,setEdd]=useState(''),[notes,setNotes]=useState(''),[message,setMessage]=useState(''),[loading,setLoading]=useState(false);
  const [obs,setObs]=useState({blood_pressure:'',pulse:'',temperature:'',fetal_heart_rate:'',contractions_per_10_min:'',cervical_dilation_cm:'',effacement_percent:'',station:'',membrane_status:'',notes:''});
- const loadObservations=async(id:string)=>{const {data,error}=await db.rpc('get_maternity_workspace',{_limit:200,_episode_id:id});if(error)setMessage(error.message);else setObservations((data?.observations??[]) as Observation[])};
- const load=async()=>{setLoading(true);const [{data:ps,error:pe},{data:workspace,error:ee}]=await Promise.all([searchPatientDirectory('', 1000),db.rpc('get_maternity_workspace',{_limit:200,_episode_id:null})]);const es=workspace?.episodes??[];if(pe||ee){setMessage(pe?.message??ee?.message??'Unable to load maternity records.');setLoading(false);return}setPatients((ps??[]) as Patient[]);setEpisodes((es??[]) as Episode[]);const selected=episodeId||((es??[])[0] as Episode|undefined)?.id||'';if(selected){setEpisodeId(selected);await loadObservations(selected)}setLoading(false)};
- useEffect(()=>{void load()},[]);
+ const loadObservations=useCallback(async(id:string)=>{const {data,error}=await db.rpc('get_maternity_workspace',{_limit:200,_episode_id:id});if(error)setMessage(error.message);else setObservations((data?.observations??[]) as Observation[]);},[]);
+ const load=useCallback(async()=>{setLoading(true);const [{data:ps,error:pe},{data:workspace,error:ee}]=await Promise.all([searchPatientDirectory('', 1000),db.rpc('get_maternity_workspace',{_limit:200,_episode_id:null})]);const es=workspace?.episodes??[];if(pe||ee){setMessage(pe?.message??ee?.message??'Unable to load maternity records.');setLoading(false);return}setPatients((ps??[]) as Patient[]);setEpisodes((es??[]) as Episode[]);const selected=episodeId||((es??[])[0] as Episode|undefined)?.id||'';if(selected){setEpisodeId(selected);await loadObservations(selected)}setLoading(false)},[episodeId,loadObservations]);
+ useEffect(()=>{void load()},[load]);
  const selected=useMemo(()=>episodes.find(e=>e.id===episodeId),[episodes,episodeId]);
  const pname=(id:string)=>{const p=patients.find(x=>x.id===id);return p?`${p.first_name} ${p.last_name} (${p.patient_code})`:id};
  const createEpisode=async()=>{if(!patientId)return setMessage('Select a patient first.');setLoading(true);const {data,error}=await db.rpc('create_maternity_episode_workflow',{_patient_id:patientId,_gravida:gravida?Number(gravida):null,_para:para?Number(para):null,_lmp:lmp||null,_edd:edd||null,_risk_level:risk,_status:status,_notes:notes||null});if(error)setMessage(error.message);else{setMessage('Maternity episode created.');setPatientId('');setGravida('');setPara('');setLmp('');setEdd('');setNotes('');await load();if(data?.episode_id)setEpisodeId(data.episode_id)}setLoading(false)};
