@@ -23,35 +23,7 @@ const sourceByFile = new Map(
 const allSource = [...sourceByFile.values()].join("\n");
 
 function functionDefinitions(name) {
-  const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\function functionBodies(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(
-    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
-      escaped +
-      "\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1",
-    "gi",
-  );
-  return [...allSource.matchAll(pattern)].map((match) => match[2]);
-}
-
-function functionBody(name) {
-  const bodies = functionBodies(name);
-  return bodies.length ? bodies[bodies.length - 1] : "";
-}
-
-function assertFunctionContract(name, checks) {
-  const bodies = functionBodies(name);
-  assert(bodies.length, "authorization contract function missing: " + name);
-  bodies.forEach((body, index) => {
-    for (const pattern of checks) {
-      assert(
-        pattern.test(body),
-        name + " overload #" + (index + 1) + ": missing " + pattern,
-      );
-    }
-  });
-}
-");
   const pattern = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
       escaped +
@@ -125,6 +97,15 @@ const functionContracts = [
     ],
   },
   {
+    name: "transfer_patient_ward_bed_workflow",
+    checks: [
+      /current_user_facility_id/i,
+      /Destination bed is outside the active facility/i,
+      /Source bed is outside the active facility/i,
+      /FOR\s+UPDATE/i,
+    ],
+  },
+  {
     name: "hms_patient_has_facility_access",
     checks: [/patient_facility_access/i, /facility_memberships/i, /auth\.uid\(\)/i],
   },
@@ -183,6 +164,7 @@ for (const pattern of [
 const hardenedPatientFacilityFunctions = [
   "create_appointment_workflow",
 ];
+
 const facilityLineageDebt = {
   schemaGap:
     "historical patient/facility lineage is incomplete; patients has no facility_id and operational patient records do not consistently carry facility_id",
