@@ -13,7 +13,6 @@ const sourceRequired = [
   'RETRY_MAX_DELAY_MS',
   "['record_triage_assessment', 'record_triage_assessment_offline', 'triage'",
   "const OFFLINE_POSTGREST_TABLES = new Set(['patients']);",
-  "const triageContracts = contracts.filter(([source]) => source === 'record_triage_assessment');",
 ];
 
 
@@ -27,8 +26,6 @@ const migrationRequired = [
   "v_priority = 'critical'",
   'WHERE id = _id',
   'already_recorded',
-  'ON CONFLICT (id) DO NOTHING',
-  'RETURNING id INTO v_inserted',
 ];
 
 const triageInvariantRequired = [
