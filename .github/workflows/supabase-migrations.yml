@@ -210,6 +210,8 @@ jobs:
         run: node supabase/tests/database/ward_bed_assignment_patient_context_contract.mjs
       - name: Verify ward-bed facility boundary contract
         run: node supabase/tests/database/ward_bed_facility_boundary_contract.mjs
+      - name: Verify ward-bed management control-plane contract
+        run: node supabase/tests/database/ward_bed_management_control_plane_contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract
