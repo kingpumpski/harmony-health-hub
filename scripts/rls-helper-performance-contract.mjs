@@ -9,6 +9,7 @@ const helpers = [
   /public\.current_user_has_role\s*\(/gi,
   /public\.current_user_is_clinical_staff\s*\(/gi,
   /public\.current_user_can_edit_patient_record\s*\(/gi,
+  /public\.hms_current_active_facility_id\s*\(/gi,
 ];
 
 const files = fs
