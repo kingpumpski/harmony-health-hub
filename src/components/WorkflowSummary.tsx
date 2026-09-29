@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, AlertTriangle } from 'lucide-react';
+import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, AlertTriangle, Settings, Cloud, Upload, FileText, Utensils } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
