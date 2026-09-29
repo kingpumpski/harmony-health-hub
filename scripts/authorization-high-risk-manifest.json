@@ -37,7 +37,7 @@
       "requires_isolated_regression": true
     },
     "create_appointment_workflow": {
-      "status": "requires_isolated_regression",
+      "status": "source_contract_reviewed",
       "mutation": true,
       "patient_scoped": true,
       "requires_isolated_regression": true
