@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -222,7 +222,7 @@ export default function Settings(){
 
     <div className="rounded-xl border p-4 space-y-4">
       <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4"/>Email Service Configuration</h3>
-      <p className="text-xs text-muted-foreground">IT Admins can configure the facility's outbound email service. Credentials are encrypted server-side and are never displayed after submission.</p>
+      <p className="text-xs text-muted-foreground">Administrators and IT administrators can configure the facility's outbound email service. Credentials are encrypted server-side and are never displayed after submission.</p>
       <div className="grid gap-3 md:grid-cols-3">
         <select className="input-medical" value={emailProvider} onChange={e=>setEmailProvider(e.target.value as any)}><option value="resend">Resend</option><option value="smtp">Custom SMTP</option></select>
         <select className="input-medical" value={emailEnvironment} onChange={e=>setEmailEnvironment(e.target.value as any)}><option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option></select>
