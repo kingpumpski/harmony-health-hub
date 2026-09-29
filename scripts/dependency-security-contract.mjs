@@ -46,4 +46,4 @@ assert.equal(domDeps["react-router"], "6.30.6");
 const routerDeps = locked["node_modules/react-router"]?.dependencies ?? {};
 assert.equal(routerDeps["@remix-run/router"], "1.23.4");
 
-console.log("[dependency-security] React Router security baseline is pinned to react-router-dom/react-router 6.30.6 and @remix-run/router 1.23.4.");
+console.log("[dependency-security] Supabase JS is pinned to 2.109.0; React Router is pinned to the patched 6.30.6/1.23.4 baseline.");
