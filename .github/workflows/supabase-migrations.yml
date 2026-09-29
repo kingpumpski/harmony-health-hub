@@ -216,6 +216,8 @@ jobs:
         run: node supabase/tests/database/insurance_company_master_data_contract.mjs
       - name: Verify claim reconciliation contract
         run: node supabase/tests/database/claim_reconciliation_contract.mjs
+      - name: Verify HMS dashboard operational surface contract
+        run: node scripts/hms-dashboard-operational-surface-contract.mjs
       - name: Verify patient canonical insurer linkage contract
         run: node supabase/tests/database/patient_canonical_insurer_linkage_contract.mjs
           node scripts/patient-canonical-insurer-ui-contract.mjs
