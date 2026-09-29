@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "scope": "high-risk-authorization-rpc-review",
+  "policy": "No high-risk authenticated RPC may be treated as authorization-reviewed solely because it is SECURITY DEFINER or callable by authenticated users.",
+  "review_dimensions": [
+    "authentication",
+    "role_or_permission",
+    "facility_boundary",
+    "patient_or_resource_ownership",
+    "workflow_state",
+    "concurrency_or_row_locking",
+    "explicit_execute_grant",
+    "read_path",
+    "mutation_path"
+  ],
+  "status_vocabulary": [
+    "source_contract_reviewed",
+    "requires_isolated_regression"
+  ],
+  "functions": {
+    "create_imaging_order_with_payment_gate": {
+      "status": "source_contract_reviewed",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "create_insurance_claim_draft": {
+      "status": "source_contract_reviewed",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "create_pharmacy_pos_sale": {
+      "status": "source_contract_reviewed",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "create_appointment_workflow": {
+      "status": "requires_isolated_regression",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "create_lab_order_with_payment_gate": {
+      "status": "requires_isolated_regression",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "update_patient_workflow": {
+      "status": "requires_isolated_regression",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "upload_patient_document_metadata": {
+      "status": "requires_isolated_regression",
+      "mutation": true,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "search_patient_directory": {
+      "status": "requires_isolated_regression",
+      "mutation": false,
+      "patient_scoped": true,
+      "requires_isolated_regression": true
+    },
+    "notification_feature_enabled": {
+      "status": "source_contract_reviewed",
+      "mutation": false,
+      "patient_scoped": false,
+      "requires_isolated_regression": false
+    }
+  }
+}
