@@ -16,6 +16,7 @@ import RadiologyTechnicianDashboard from './dashboard/RadiologyTechnicianDashboa
 import PatientDashboard from './dashboard/PatientDashboard';
 import ITAdminDashboard from './dashboard/ITAdminDashboard';
 import { AlertTriangle } from 'lucide-react';
+import type { UserRole } from '@/types';
 
 export default function Dashboard(){
   const {user}=useAuth();
@@ -48,6 +49,12 @@ export default function Dashboard(){
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Your role-aware workspace is ready. Use the active cards and shortcuts to move directly into today's work.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
+          {user.roles.length > 1 && <label className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium">
+            <span className="text-muted-foreground">Role</span>
+            <select aria-label="Active operational role" value={user.role} onChange={(event) => user.switchRole(event.target.value as UserRole)} className="bg-transparent font-medium outline-none">
+              {user.roles.map((role) => <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>)}
+            </select>
+          </label>}
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium"><Activity className="h-3.5 w-3.5 text-primary"/>Live workspace</span>
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium"><ShieldCheck className="h-3.5 w-3.5 text-success"/>Access controlled</span>
           <span className="hidden items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium sm:inline-flex"><Clock3 className="h-3.5 w-3.5 text-muted-foreground"/>Today</span>
