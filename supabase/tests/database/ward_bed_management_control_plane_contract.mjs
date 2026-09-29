@@ -19,6 +19,7 @@ const required = [
   "INSERT INTO public.ward_beds",
   "get_ward_management_workspace",
   "assign_ward_unit_facility",
+  "import_legacy_ward",
   "INSERT INTO public.ward_units(name,code,specialty,gender_policy,active,facility_id)",
 ];
 
