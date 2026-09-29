@@ -13,7 +13,7 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:contracts && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:authorization-isolation-evidence && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:patient-facility-execute && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation",
+    "test": "npm run test:contracts && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:authorization-isolation-evidence && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:patient-facility-execute && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation && npm run test:rls-helper-performance",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
@@ -38,7 +38,8 @@
     "test:public-security-definer-exposure": "node scripts/public-security-definer-exposure-contract.mjs",
     "test:dependency-security": "node scripts/dependency-security-contract.mjs",
     "test:public-view-security": "node scripts/public-view-security-contract.mjs",
-    "test:security-definer-creation": "node scripts/security-definer-creation-contract.mjs"
+    "test:security-definer-creation": "node scripts/security-definer-creation-contract.mjs",
+    "test:rls-helper-performance": "node scripts/rls-helper-performance-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
