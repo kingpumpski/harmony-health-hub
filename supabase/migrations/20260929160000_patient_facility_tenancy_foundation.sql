@@ -7,7 +7,7 @@
 -- validated in an isolated database/branch with cross-facility fixtures first.
 
 CREATE TABLE IF NOT EXISTS public.patient_facility_access (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT public.gen_random_uuid(),
   patient_id uuid NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE RESTRICT,
   access_status text NOT NULL DEFAULT 'active'
@@ -33,7 +33,7 @@ RETURNS uuid
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
   SELECT uaf.facility_id
   FROM public.user_active_facilities uaf
@@ -75,7 +75,7 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
   SELECT
     (SELECT auth.uid()) IS NOT NULL
@@ -97,7 +97,7 @@ RETURNS uuid
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 BEGIN
   IF NOT public.hms_patient_has_facility_access(_patient_id) THEN
@@ -114,7 +114,7 @@ CREATE OR REPLACE FUNCTION public.link_patient_to_current_facility(
 RETURNS public.patient_facility_access
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_facility_id uuid;
@@ -158,7 +158,7 @@ BEGIN
     _patient_id,
     v_facility_id,
     'active',
-    NULLIF(btrim(_reason), ''),
+    NULLIF(pg_catalog.btrim(_reason), ''),
     (SELECT auth.uid()),
     now(),
     NULL
@@ -180,7 +180,7 @@ CREATE OR REPLACE FUNCTION public.auto_link_patient_to_active_facility()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_facility_id uuid;
