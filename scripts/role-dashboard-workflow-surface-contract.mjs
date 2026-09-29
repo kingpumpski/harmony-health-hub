@@ -30,3 +30,5 @@ assert.doesNotMatch(kpi,/Awaiting release/);
 assert.doesNotMatch(kpi,/Ready for imaging/);
 
 console.log('Role dashboard workflow surface contract: 16 assertions passed');
+assert.doesNotMatch(kpi,/v_role = 'pharmacist'[\\s\\S]*'key','medications'/);
+assert.doesNotMatch(workflow,/make\('Specialist referrals'.*admin/);
