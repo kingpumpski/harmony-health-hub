@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scope": "patient-facility-authorization",
+  "policy": "No patient-scoped workflow may be marked enforced until its facility lineage and cross-facility regression fixture are validated.",
+  "functions": {
+    "create_appointment_workflow": "pending_tenancy_enforcement",
+    "create_ai_clinical_session": "pending_tenancy_enforcement",
+    "create_imaging_order_with_payment_gate": "pending_tenancy_enforcement",
+    "create_lab_order_with_payment_gate": "pending_tenancy_enforcement",
+    "create_insurance_claim_draft": "pending_tenancy_enforcement",
+    "create_pharmacy_pos_sale": "pending_tenancy_enforcement",
+    "update_patient_workflow": "pending_tenancy_enforcement",
+    "upload_patient_document_metadata": "pending_tenancy_enforcement",
+    "search_patient_directory": "pending_tenancy_enforcement"
+  }
+}
