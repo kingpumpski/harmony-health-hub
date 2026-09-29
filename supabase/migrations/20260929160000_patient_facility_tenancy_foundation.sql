@@ -233,6 +233,7 @@ REVOKE ALL ON FUNCTION public.link_patient_to_current_facility(uuid, text) FROM 
 REVOKE ALL ON FUNCTION public.link_patient_to_current_facility(uuid, text) FROM anon;
 REVOKE ALL ON FUNCTION public.auto_link_patient_to_active_facility() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.auto_link_patient_to_active_facility() FROM anon;
+REVOKE ALL ON FUNCTION public.auto_link_patient_to_active_facility() FROM authenticated;
 
 GRANT EXECUTE ON FUNCTION public.hms_current_active_facility_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.hms_patient_has_facility_access(uuid) TO authenticated;
