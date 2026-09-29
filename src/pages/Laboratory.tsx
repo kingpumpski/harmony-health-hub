@@ -1,5 +1,5 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -57,7 +57,7 @@ export default function Laboratory() {
   const previousQueueTotal = useRef(0);
   const hasLoadedQueue = useRef(false);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
@@ -89,14 +89,14 @@ export default function Laboratory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchParams]);
 
   useEffect(() => {
     void loadAll();
     const unsubscribe = subscribeMasterDataChanged(['lab_tests','patients'], () => void loadAll());
     const refreshTimer = window.setInterval(() => void loadAll(), 30000);
     return () => { unsubscribe(); window.clearInterval(refreshTimer); };
-  }, [user?.id]);
+  }, [loadAll]);
 
   const counters = useMemo(() => {
     const awaitingSample = orders.filter((o) => o.status === 'ordered').length;
@@ -154,7 +154,7 @@ export default function Laboratory() {
     };
     void loadEncounters();
     return () => { active = false; };
-  }, [pid]);
+  }, [pid, encounterId]);
 
   const canCreateCatalogue = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_items') || user?.permissions.includes('create_services');
   const filteredCatalogue = useMemo(() => catalogue.filter((item) => `${item.test_code} ${item.test_name} ${item.category ?? ''}`.toLowerCase().includes(catalogueSearch.toLowerCase())), [catalogue, catalogueSearch]);
