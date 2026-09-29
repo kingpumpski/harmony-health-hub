@@ -2,6 +2,9 @@
 -- active facility patient-tenancy boundary introduced by the patient access foundation.
 -- This migration is intentionally additive and must be validated in an isolated
 -- environment before production application.
+-- Patient/appointment row locks make the authorization decision and subsequent
+-- mutation share the same transaction snapshot, reducing TOCTOU exposure when
+-- facility links or appointment ownership are changed concurrently.
 
 CREATE OR REPLACE FUNCTION public.create_appointment_workflow(
   _patient_id UUID,
@@ -36,12 +39,13 @@ BEGIN
     RAISE EXCEPTION 'Patient facility access denied';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.patients
-    WHERE id = _patient_id
-      AND COALESCE(status, 'active') <> 'inactive'
-  ) THEN
+  PERFORM 1
+  FROM public.patients
+  WHERE id = _patient_id
+    AND COALESCE(status, 'active') <> 'inactive'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'Active patient does not exist';
   END IF;
 
@@ -196,6 +200,15 @@ BEGIN
     OR public.has_role((SELECT auth.uid()), 'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'You are not authorized to edit appointments';
+  END IF;
+
+  PERFORM 1
+  FROM public.appointments a
+  WHERE a.id = _appointment_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Appointment not found';
   END IF;
 
   IF NOT EXISTS (
