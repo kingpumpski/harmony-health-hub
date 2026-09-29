@@ -9,6 +9,10 @@ const files = [
   '20260929170000_fix_ward_management_workspace_ordering.sql',
 ];
 const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name), 'utf8')).join('\n');
+const fixSource = fs.readFileSync(
+  path.join(migrationsDir, '20260929170000_fix_ward_management_workspace_ordering.sql'),
+  'utf8',
+);
 
 const required = [
   "CREATE OR REPLACE FUNCTION public.create_ward_unit(",
@@ -22,21 +26,18 @@ const required = [
   "assign_ward_unit_facility",
   "import_legacy_ward",
   "INSERT INTO public.ward_units(name,code,specialty,gender_policy,active,facility_id)",
-  "ORDER BY is_legacy,name",
-];
-
-const forbidden = [
-  'ORDER BY is_legacy,w.name',
 ];
 
 const missing = required.filter((fragment) => !source.includes(fragment));
-const presentForbidden = forbidden.filter((fragment) => source.includes(fragment));
+const hasFixedOrdering = fixSource.includes('ORDER BY is_legacy,name');
+const hasBrokenOrdering = fixSource.includes('ORDER BY is_legacy,w.name');
 
-if (missing.length || presentForbidden.length) {
+if (missing.length || !hasFixedOrdering || hasBrokenOrdering) {
   console.error('Ward-bed management control-plane contract failed:');
   for (const fragment of missing) console.error(`- missing: ${fragment}`);
-  for (const fragment of presentForbidden) console.error(`- forbidden: ${fragment}`);
+  if (!hasFixedOrdering) console.error('- missing: fixed ward ordering');
+  if (hasBrokenOrdering) console.error('- forbidden in fix migration: ORDER BY is_legacy,w.name');
   process.exitCode = 1;
 } else {
-  console.log(`Ward-bed management control-plane contract: ${required.length}/${required.length} invariants present; ordering regression absent`);
+  console.log(`Ward-bed management control-plane contract: ${required.length}/${required.length} invariants present; ordering regression fixed`);
 }
