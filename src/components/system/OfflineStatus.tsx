@@ -77,7 +77,7 @@ export default function OfflineStatus() {
       window.clearInterval(retryTimer);
       window.clearInterval(messageTimer);
     };
-  }, []);
+  }, [refresh, synchronize]);
 
   if (online && pending === 0 && !syncing && !operationMessage) return null;
 
