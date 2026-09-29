@@ -59,14 +59,14 @@ function assertFunctionContract(name, checks) {
 }
 
 function hasEmptySearchPathOverride(name, signature) {
-  const escapedName = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&");
-  const escapedSignature = signature.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&");
+  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
+  const escapedSignature = signature.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
-    "ALTER\\\\s+FUNCTION\\\\s+public\\\\." +
+    "ALTER\\s+FUNCTION\\s+public\\." +
       escapedName +
-      "\\\\s*\\\\(" +
+      "\\s*\\(" +
       escapedSignature +
-      "\\\\)\\\\s+SET\\\\s+search_path\\\\s*=\\\\s*['\\\\\"]['\\\\\"]",
+      "\\)\\s+SET\\s+search_path\\s*=\\s*['\\\"]['\\\"]",
     "i",
   ).test(allSource);
 }
