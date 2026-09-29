@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "scope": "isolated-cross-facility-regression",
+  "environment": "not_configured",
+  "status": "not_run",
+  "policy": "No patient-facility boundary may transition to enforced until an isolated environment proves both same-facility allow and cross-facility deny behavior for reads and mutations.",
+  "fixture_requirements": {
+    "facility_a": "isolated facility fixture",
+    "facility_b": "isolated facility fixture",
+    "user_a": "non-admin user with active membership only in facility A",
+    "user_b": "non-admin user with active membership only in facility B",
+    "patient_a": "patient explicitly linked to facility A",
+    "patient_b": "patient explicitly linked to facility B"
+  },
+  "required_cases": [
+    {"id":"a-read-own-facility","actor":"user_a","target":"patient_a","operation":"read","expected":"allow"},
+    {"id":"b-read-own-facility","actor":"user_b","target":"patient_b","operation":"read","expected":"allow"},
+    {"id":"a-read-cross-facility","actor":"user_a","target":"patient_b","operation":"read","expected":"deny"},
+    {"id":"b-read-cross-facility","actor":"user_b","target":"patient_a","operation":"read","expected":"deny"},
+    {"id":"a-mutate-own-facility","actor":"user_a","target":"patient_a","operation":"mutation","expected":"allow"},
+    {"id":"b-mutate-own-facility","actor":"user_b","target":"patient_b","operation":"mutation","expected":"allow"},
+    {"id":"a-mutate-cross-facility","actor":"user_a","target":"patient_b","operation":"mutation","expected":"deny"},
+    {"id":"b-mutate-cross-facility","actor":"user_b","target":"patient_a","operation":"mutation","expected":"deny"},
+    {"id":"admin-cross-facility","actor":"admin_fixture","target":"patient_b","operation":"authorized_admin_access","expected":"allow"}
+  ],
+  "evidence": {
+    "run_id": null,
+    "executed_at": null,
+    "database_environment": null,
+    "cases": []
+  },
+  "transition_requirements": {
+    "reviewed": "all required cases have recorded observations matching expected outcomes",
+    "enforced": "reviewed plus isolated database identity/fixture evidence and no production fixtures"
+  }
+}
