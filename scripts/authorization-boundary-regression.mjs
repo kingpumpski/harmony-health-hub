@@ -35,7 +35,7 @@ const contracts = [
   { name: "patient/encounter linkage", checks: [/encounter does not belong to patient/i, /patient_id/i] },
   { name: "facility authorization primitive", checks: [/has_facility_access/i, /facility_memberships/i] },
   { name: "clinical role authorization", checks: [/clinical role required/i, /current_user_is_clinical_staff/i] },
-  { name: "notification recipient scoping", checks: [/notification_feature_enabled/i, /_user_id\\s+uuid/i, /auth\\.uid\\(\\)/i] },
+  { name: "notification recipient scoping", checks: [/notification_feature_enabled/i, /_user_id\s+uuid/i, /auth\\.uid\\(\\)/i] },
 ];
 
 for (const contract of contracts) {
