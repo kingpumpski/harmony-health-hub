@@ -13,7 +13,7 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
+    "test": "npm run test:contracts && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:authorization-high-risk && npm run test:security-best-practices && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:patient-facility-boundary && npm run test:role-dashboards && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
