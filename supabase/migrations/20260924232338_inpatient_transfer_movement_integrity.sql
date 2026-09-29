@@ -76,6 +76,15 @@ BEGIN
     RAISE EXCEPTION 'Inpatient movement is not permitted';
   END IF;
 
+  -- Non-admin inpatient movement must remain inside the caller's active facility.
+  -- Admins retain cross-facility troubleshooting authority; all other roles are
+  -- constrained by the destination/source bed facility boundary.
+  IF NOT public.has_role(uid,'admin') THEN
+    IF public.current_user_facility_id() IS NULL THEN
+      RAISE EXCEPTION 'Active facility context required';
+    END IF;
+  END IF;
+
   IF _patient_id IS NULL OR _admission_id IS NULL OR _destination_bed_id IS NULL THEN
     RAISE EXCEPTION 'Patient, admission and destination bed are required';
   END IF;
@@ -105,6 +114,11 @@ BEGIN
 
   IF v_destination.id IS NULL THEN
     RAISE EXCEPTION 'Destination bed not found';
+  END IF;
+
+  IF NOT public.has_role(uid,'admin')
+     AND (v_destination.facility_id IS NULL OR v_destination.facility_id IS DISTINCT FROM public.current_user_facility_id()) THEN
+    RAISE EXCEPTION 'Destination bed is outside the active facility';
   END IF;
 
   IF v_destination.status <> 'available' OR v_destination.patient_id IS NOT NULL THEN
@@ -148,6 +162,11 @@ BEGIN
 
     IF v_source.id IS NULL THEN
       RAISE EXCEPTION 'Source bed not found';
+    END IF;
+
+    IF NOT public.has_role(uid,'admin')
+       AND (v_source.facility_id IS NULL OR v_source.facility_id IS DISTINCT FROM public.current_user_facility_id()) THEN
+      RAISE EXCEPTION 'Source bed is outside the active facility';
     END IF;
 
     IF v_source.patient_id IS DISTINCT FROM _patient_id OR v_source.admission_id IS DISTINCT FROM _admission_id OR v_source.status <> 'occupied' THEN
