@@ -14,14 +14,17 @@ assert.match(workflow,/make\('Meal menu','\/menu'/);
 assert.match(workflow,/if \(role === 'radiology_technician'\)/);
 assert.doesNotMatch(workflow,/Awaiting Accounts/);
 assert.doesNotMatch(workflow,/Radiology results.*radiology_technician/);
+assert.doesNotMatch(workflow,/Payment release/);
 assert.doesNotMatch(workflow,/Laboratory work.*radiology_technician/);
 assert.match(dashboard,/\{dashboard\}\s*<WorkflowSummary\/>/);
 assert.doesNotMatch(dashboard,/\{\s*<WorkflowSummary\/>\s*\}\s*\{showReferral/);
 assert.match(kpi,/v_role = 'radiologist'/);
 assert.match(kpi,/v_role = 'radiology_technician'/);
 assert.match(kpi,/Ready for interpretation/);
+assert.doesNotMatch(kpi,/v_role = 'radiologist'[\s\S]*'key','progress'/);
 assert.match(kpi,/Ready for acquisition/);
 assert.doesNotMatch(kpi,/v_role IN \('radiologist','radiology_technician'\)/);
 assert.doesNotMatch(kpi,/Awaiting release/);
+assert.doesNotMatch(kpi,/Ready for imaging/);
 
 console.log('Role dashboard workflow surface contract: 16 assertions passed');
