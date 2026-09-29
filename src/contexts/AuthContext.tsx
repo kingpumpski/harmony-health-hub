@@ -184,8 +184,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (import.meta.env.DEV) console.debug('[auth] logout:complete');
   }, []);
 
-  const switchRole = useCallback((_role: UserRole) => {
-    // Compatibility API. Authoritative roles remain database-backed.
+  const switchRole = useCallback((nextRole: UserRole) => {
+    setUser((current) => {
+      if (!current || !current.roles.includes(nextRole)) return current;
+      return { ...current, role: nextRole };
+    });
   }, []);
 
   return (
