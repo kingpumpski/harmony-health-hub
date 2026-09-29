@@ -46,7 +46,7 @@
     },
     "create_lab_order_with_payment_gate": {
       "signatures": [
-        "uuid,text,text,text,text,numeric"
+        "uuid,text,text,text,text,numeric,uuid"
       ],
       "allowed_execute_roles": [
         "authenticated"
