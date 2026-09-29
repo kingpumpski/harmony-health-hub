@@ -5,7 +5,19 @@
   "review": {
     "authenticated_security_definer_lint": "accepted_pending_function_specific_review",
     "anonymous_security_definer_execute": "must_remain_zero",
-    "search_path": "every public SECURITY DEFINER function must define an explicit non-public search_path"
+    "search_path": "every public SECURITY DEFINER function must define an explicit non-public search_path",
+    "required_evidence": [
+      "function-specific source contract",
+      "explicit EXECUTE grant review",
+      "facility/patient boundary evidence where applicable",
+      "isolated cross-facility regression for patient-scoped workflows",
+      "security advisor review"
+    ],
+    "transitions": {
+      "accepted_pending_function_specific_review": "no blanket revoke or invoker conversion; review by function",
+      "reviewed": "source and privilege contract validated",
+      "enforced": "reviewed plus applicable isolation regression evidence"
+    }
   },
   "required_review_dimensions": [
     "authentication",
