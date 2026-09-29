@@ -53,7 +53,7 @@ TO authenticated
 USING (
   public.has_role((SELECT auth.uid()), 'admin')
   OR public.has_role((SELECT auth.uid()), 'it_admin')
-  OR facility_id = public.hms_current_active_facility_id()
+  OR facility_id = (select public.hms_current_active_facility_id())
 );
 
 DROP POLICY IF EXISTS "patient facility access admin write" ON public.patient_facility_access;
