@@ -51,16 +51,10 @@ for (const file of files) {
     }
   }
 
-  const publicViews = source.match(/CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+public\.[^;]+/gis) ?? [];
-  for (const view of publicViews) {
-    if (!/security_invoker\s*=\s*true/i.test(view)) {
-      findings.push({
-        file,
-        rule: "security-invoker-view",
-        detail: "Public API-facing views should use security_invoker=true or be deliberately isolated/revoked.",
-      });
-    }
-  }
+  // Public view exposure is validated by the dedicated repository-wide
+  // public-view-security contract, which also handles revocation declared
+  // in a later migration. Keep this audit focused on function/authz rules.
+
 }
 
 if (findings.length) {
