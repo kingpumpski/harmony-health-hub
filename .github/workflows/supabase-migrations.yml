@@ -275,3 +275,6 @@ jobs:
 
       - name: Verify SECURITY DEFINER read/workspace paths batch 6 contract
         run: node scripts/security-definer-read-workspace-batch6-contract.mjs
+
+      - name: Verify SECURITY DEFINER clinical context batch 7 contract
+        run: node scripts/security-definer-clinical-context-batch7-contract.mjs
