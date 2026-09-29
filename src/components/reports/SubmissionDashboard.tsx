@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Loader2, RefreshCw, Send, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { listSubmissions, markSubmissionsSubmitted, type ReportSubmission } from '@/lib/reportsCenter';
@@ -16,7 +16,7 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  async function load(showError = true) {
+  const load = useCallback(async (showError = true) => {
     setLoading(true);
     try {
       const submissions = await listSubmissions(facilityId, period);
