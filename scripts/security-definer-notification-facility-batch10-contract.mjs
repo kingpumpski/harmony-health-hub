@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+const sql=fs.readFileSync('supabase/migrations/20260929221500_harden_security_definer_notification_facility_paths_batch10.sql','utf8').toLowerCase();
+const names=['enqueue_notification_v2','ensure_notification_preferences','erase_notification_history','initialize_facility_notification_onboarding','mark_facility_notification_production_ready','mark_notification_read','mark_report_submissions_submitted','mark_video_session_paid','record_notification_consent','recover_stale_report_run','register_notification_device','revoke_notification_device','seed_facility_reports','set_facility_routing_mode','set_my_active_facility','sync_overdue_report_submissions','upsert_my_staff_signature','upsert_report_submission_tracking','verify_facility_notification_provider'];
+for(const n of names)if(!sql.includes('alter function public.'+n)||!sql.includes('set search_path = pg_catalog, public'))throw new Error('Missing '+n);
+console.log('Verified '+names.length+' batch-10 SECURITY DEFINER hardening statements.');
