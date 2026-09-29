@@ -272,3 +272,6 @@ jobs:
         run: node scripts/canteen-dietary-operational-contract.mjs
       - name: Verify role dashboard workflow surface contract
         run: node scripts/role-dashboard-workflow-surface-contract.mjs
+
+      - name: Verify SECURITY DEFINER read/workspace paths batch 6 contract
+        run: node scripts/security-definer-read-workspace-batch6-contract.mjs
