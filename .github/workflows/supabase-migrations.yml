@@ -214,6 +214,8 @@ jobs:
         run: node supabase/tests/database/ward_bed_management_control_plane_contract.mjs
       - name: Verify insurance company master-data contract
         run: node supabase/tests/database/insurance_company_master_data_contract.mjs
+      - name: Verify claim reconciliation contract
+        run: node supabase/tests/database/claim_reconciliation_contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract
