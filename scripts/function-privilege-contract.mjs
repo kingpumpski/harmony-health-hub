@@ -55,8 +55,8 @@ function splitParameters(value) {
 function normalizeParameter(parameter) {
   let value = parameter
     .replace(/\b(?:INOUT|IN|OUT|VARIADIC)\b/gi, "")
-    .replace(/\bDEFAULT\b[\\s\\S]*$/i, "")
-    .replace(/=[\\s\\S]*$/i, "")
+    .replace(/\bDEFAULT\b[\s\S]*$/i, "")
+    .replace(/=[\s\S]*$/i, "")
     .trim();
 
   // Migration declarations conventionally name parameters with identifiers such
@@ -77,7 +77,7 @@ for (const name of Object.keys(manifest.functions)) {
   const re = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
       escaped +
-      "\\s*\\(([\\s\\S]*?)\\)",
+      "\\s*\\(([\s\S]*?)\\)",
     "gi",
   );
 
