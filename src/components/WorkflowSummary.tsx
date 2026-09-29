@@ -1,78 +1,49 @@
 import { useMemo } from 'react';
-import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, AlertTriangle } from 'lucide-react';
+import { Activity, CalendarDays, CreditCard, Users, BedDouble, Siren, Scissors, ShieldCheck, FlaskConical, Pill, ScanLine, Baby, AlertTriangle, Settings, Cloud, Upload, FileText, Utensils } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
 
 type Card = { label: string; href: string; icon: typeof Activity; tone: string; surface: string };
-const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'lab_technician', 'pharmacist', 'front_desk'];
+const appointmentRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'front_desk'];
 const canAppointments = (role: UserRole) => appointmentRoles.includes(role);
-const canBeds = (role: UserRole) => ['admin', 'nurse', 'midwife', 'specialist_nurse', 'practitioner'].includes(role);
-const canEmergency = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'front_desk'].includes(role);
-const canTheatre = (role: UserRole) => ['admin', 'practitioner', 'nurse', 'specialist_nurse'].includes(role);
-const canClaims = (role: UserRole) => ['admin', 'accountant'].includes(role);
-const clinicalRoles: readonly UserRole[] = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician'];
+const clinicalRoles: readonly UserRole[] = ['practitioner','nurse','midwife','specialist_nurse','radiologist','radiology_technician'];
 
 export default function WorkflowSummary() {
   const { user } = useAuth();
   const cards = useMemo<Card[]>(() => {
     if (!user) return [];
     const role = user.role;
+    const make = (label: string, href: string, icon: typeof Activity, tone = 'text-primary', surface = 'bg-primary/5'): Card => ({ label, href, icon, tone, surface });
     const common: Card[] = [
-      ...(canAppointments(role) ? [
-        { label: "Today's appointments", href: '/appointments', icon: CalendarDays, tone: 'text-primary', surface: 'bg-primary/5' },
-      ] : []),
-      ...(clinicalRoles.includes(role) ? [{ label: 'Critical alerts', href: '/notifications', icon: AlertTriangle, tone: 'text-critical', surface: 'bg-critical/5' }] : []),
+      ...(canAppointments(role) ? [make("Today's appointments", '/appointments', CalendarDays)] : []),
+      ...(clinicalRoles.includes(role) ? [make('Critical alerts', '/notifications', AlertTriangle, 'text-critical', 'bg-critical/5')] : []),
     ];
-    if (role === 'practitioner') return [...common,
-      { label: 'Patients waiting', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
-      { label: 'Laboratory', href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5' },
-      { label: 'Radiology results', href: '/clinical-results', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-info', surface: 'bg-info/5' },
-      { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' },
-    ];
-    if (role === 'radiology_technician') return [...common,
-      { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
-    ];
-    if (role === 'radiologist') return [...common,
-      { label: 'Radiology queue', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Radiology results', href: '/clinical-results', icon: ScanLine, tone: 'text-info', surface: 'bg-info/5' },
-    ];
-    if (role === 'lab_technician') return [...common, { label: 'Laboratory', href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5' }];
-    if (role === 'pharmacist') return [...common, { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' }, { label: 'Patients waiting', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' }];
-    if (role === 'accountant') return [
-      { label: 'Payment approvals', href: '/accounts-approvals', icon: CreditCard, tone: 'text-warning', surface: 'bg-warning/5' },
-      { label: 'Claims', href: '/insurance-claims', icon: ShieldCheck, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Billing', href: '/billing', icon: CreditCard, tone: 'text-success', surface: 'bg-success/5' },
-    ];
-    if (role === 'nurse' || role === 'midwife' || role === 'specialist_nurse') return [...common,
-      { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' },
-      ...(canBeds(role) ? [{ label: 'Occupied beds', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
-      ...(role === 'midwife' ? [{ label: 'Maternity', href: '/maternity', icon: Baby, tone: 'text-success', surface: 'bg-success/5' }] : []),
-    ];
-    if (role === 'front_desk') return [...common, { label: 'Department queue', href: '/department-queue', icon: Users, tone: 'text-warning', surface: 'bg-warning/5' }, { label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }];
-    return [...common,
-      { label: 'Laboratory', href: '/laboratory', icon: FlaskConical, tone: 'text-info', surface: 'bg-info/5' },
-      { label: 'Pharmacy', href: '/pharmacy', icon: Pill, tone: 'text-success', surface: 'bg-success/5' },
-      { label: 'Radiology', href: '/radiology', icon: ScanLine, tone: 'text-primary', surface: 'bg-primary/5' },
-      { label: 'Accounts', href: '/accounts-approvals', icon: CreditCard, tone: 'text-warning', surface: 'bg-warning/5' },
-      ...(canBeds(role) ? [{ label: 'Admissions', href: '/admissions', icon: BedDouble, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
-      ...(canEmergency(role) ? [{ label: 'Emergency', href: '/emergency-board', icon: Siren, tone: 'text-critical', surface: 'bg-critical/5' }] : []),
-      ...(canTheatre(role) ? [{ label: 'Theatre', href: '/theatre-board', icon: Scissors, tone: 'text-primary', surface: 'bg-primary/5' }] : []),
-      ...(canClaims(role) ? [{ label: 'Claims', href: '/insurance-claims', icon: ShieldCheck, tone: 'text-warning', surface: 'bg-warning/5' }] : []),
-    ];
+    if (role === 'admin') return [make('User management','/admin/users',Users),make('Role permissions','/admin/roles',ShieldCheck),make('System settings','/admin/settings',Settings),make('Audit logs','/admin/logs',FileText),make('Offline synchronization','/admin/offline-sync',Cloud),make('Data import','/admin/data-import',Upload),make('Reports','/reports',FileText)];
+    if (role === 'practitioner') return [...common,make('Patients waiting','/department-queue',Users,'text-warning','bg-warning/5'),make('Laboratory work','/laboratory',FlaskConical,'text-info','bg-info/5'),make('Radiology work','/radiology',ScanLine),make('Pharmacy','/pharmacy',Pill,'text-success','bg-success/5'),make('Inpatient','/inpatient',BedDouble,'text-info','bg-info/5'),make('Emergency','/emergency-board',Siren,'text-critical','bg-critical/5'),make('Theatre','/theatre-board',Scissors)];
+    if (role === 'nurse' || role === 'specialist_nurse') return [...common,make('Department queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Inpatient','/inpatient',BedDouble),make('Medication administration','/medications',Pill,'text-success','bg-success/5'),make('Nursing handover','/nursing-handover',FileText),make('Vitals & triage','/vitals',Activity,'text-critical','bg-critical/5')];
+    if (role === 'midwife') return [...common,make('Maternity','/maternity',Baby,'text-success','bg-success/5'),make('Inpatient','/inpatient',BedDouble),make('Medication administration','/medications',Pill,'text-success','bg-success/5'),make('Nursing handover','/nursing-handover',FileText),make('Vitals & triage','/vitals',Activity,'text-critical','bg-critical/5')];
+    if (role === 'lab_technician') return [...common,make('Laboratory worklist','/laboratory',FlaskConical,'text-info','bg-info/5'),make('Laboratory results','/lab-results',FileText),make('Department queue','/department-queue',Users,'text-warning','bg-warning/5')];
+    if (role === 'radiologist') return [...common,make('Imaging worklist','/radiology',ScanLine),make('Radiology results','/clinical-results',FileText,'text-info','bg-info/5')];
+    if (role === 'radiology_technician') return [make('Imaging worklist','/radiology',ScanLine),make('Acquisition queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Urgent studies','/radiology',Siren,'text-critical','bg-critical/5')];
+    if (role === 'pharmacist') return [...common,make('Dispensing','/pharmacy',Pill,'text-success','bg-success/5'),make('Inventory & stock alerts','/stock-alerts',Activity,'text-warning','bg-warning/5'),make('Pharmacy queue','/department-queue',Users,'text-warning','bg-warning/5')];
+    if (role === 'accountant') return [make('Payment approvals','/accounts-approvals',CreditCard,'text-warning','bg-warning/5'),make('Billing','/billing',CreditCard,'text-success','bg-success/5'),make('Insurance claims','/insurance-claims',ShieldCheck),make('Finance queue','/finance',FileText,'text-warning','bg-warning/5'),make('Financial reports','/financial-reports',FileText)];
+    if (role === 'front_desk') return [...common,make('Patient registration','/registration',Users),make('Department queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Payment handoff','/billing',CreditCard,'text-success','bg-success/5')];
+    if (role === 'canteen') return [make('Meal orders','/orders',Utensils),make('Dietary plans','/dietary-plans',FileText,'text-warning','bg-warning/5'),make('Meal menu','/menu',Utensils,'text-success','bg-success/5'),make('Delivery queue','/orders',Users,'text-warning','bg-warning/5')];
+    if (role === 'patient') return [make('My health record','/patient-portal',Activity),make('Appointments','/appointments',CalendarDays),make('Meal menu','/menu',Utensils,'text-success','bg-success/5'),make('Telemedicine','/telemedicine',Activity)];
+    if (role === 'it_admin') return [make('IT support','/it-support',ShieldCheck),make('Offline synchronization','/admin/offline-sync',Cloud),make('Audit logs','/admin/logs',FileText),make('System notifications','/notifications',Activity,'text-warning','bg-warning/5')];
+    return [];
   }, [user]);
 
   if (!user || !cards.length) return null;
   return (
-    <section aria-label="Workflow navigation" className="mb-6">
+    <section aria-label="Workflow navigation" className="mt-8 border-t border-border pt-6">
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Quick access</p>
           <h2 className="text-base font-semibold">Your active workspaces</h2>
         </div>
-        <span className="hidden text-xs text-muted-foreground sm:inline">Role-aware shortcuts</span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">Role-specific operational shortcuts</span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {cards.map(({ label, href, icon: Icon, tone, surface }) => (
