@@ -76,7 +76,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const [saving, setSaving] = useState(false);
   const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
-  const normalReference = (parameter: string) => byParameter.get(parameter);
+  const normalReference = useCallback((parameter: string) => byParameter.get(parameter), [byParameter]);
   const bmiReference = normalReference('bmi_adult_interpretation');
 
   const alerts = useMemo(() => {
@@ -101,7 +101,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       }
       return [];
     });
-  }, [form, byParameter]);
+  }, [form, byParameter, normalReference]);
 
   const bmi = useMemo(() => {
     const weight = numberOrNull(form.weightKg);
