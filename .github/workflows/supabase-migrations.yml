@@ -266,6 +266,8 @@ jobs:
         run: supabase test db --linked supabase/tests/database/notification_module_contract.sql
       - name: Verify authorization helper SECURITY DEFINER batch 5 contract
         run: node scripts/security-definer-auth-helper-batch5-contract.mjs
+      - name: Verify canteen RBAC and realtime contract
+        run: node scripts/canteen-rbac-realtime-contract.mjs
       - name: Verify canteen dietary operational contract
         run: node scripts/canteen-dietary-operational-contract.mjs
       - name: Verify role dashboard workflow surface contract
