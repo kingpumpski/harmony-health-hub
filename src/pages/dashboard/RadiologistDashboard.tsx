@@ -35,7 +35,7 @@ export default function RadiologistDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => { if (payload.eventType === 'INSERT' && String((payload.new as { severity?: string }).severity ?? '').toLowerCase() === 'critical') playWorkflowSound('critical'); void load(); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, []);
+  }, [load]);
   const counters = useMemo<Record<StatusKey, number>>(() => ({ ready: orders.filter((o) => ['released', 'queued'].includes(o.status)).length, completed: orders.filter((o) => o.status === 'completed').length, urgent: orders.filter((o) => ['urgent', 'stat'].includes(o.priority) && o.status !== 'completed').length }), [orders]);
   const activeQueue = useMemo(() => orders.filter((o) => ['released', 'queued'].includes(o.status)).slice(0, 8), [orders]);
   const cards = [
