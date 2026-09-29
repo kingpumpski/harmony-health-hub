@@ -220,6 +220,7 @@ jobs:
         run: node supabase/tests/database/patient_canonical_insurer_linkage_contract.mjs
           node scripts/patient-canonical-insurer-ui-contract.mjs
           node scripts/unindexed-foreign-key-contract.mjs
+          node scripts/claim-security-definer-contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract
