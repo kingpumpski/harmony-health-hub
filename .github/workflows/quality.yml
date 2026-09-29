@@ -55,5 +55,8 @@ jobs:
       - name: Clinical reference contract checks
         run: npm run test:clinical-references
 
+      - name: Public SECURITY DEFINER exposure contract
+        run: npm run test:public-security-definer-exposure
+
       - name: Production build
         run: npm run build
