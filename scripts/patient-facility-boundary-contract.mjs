@@ -57,9 +57,15 @@ for (const [name, status] of entries) {
       `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&")}\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1`,
       "i",
     );
-    const match = source.match(fnPattern);
-    assert(match, `unable to inspect enforced function: ${name}`);
-    assert.match(match[2], /hms_assert_patient_facility_access|hms_patient_has_facility_access/i, `${name}: enforced status requires patient-facility authorization`);
+    const matches = [...source.matchAll(fnPattern)];
+    assert(matches.length, `unable to inspect enforced function: ${name}`);
+    for (const match of matches) {
+      assert.match(
+        match[2],
+        /hms_assert_patient_facility_access|hms_patient_has_facility_access/i,
+        `${name}: every overload marked enforced requires patient-facility authorization`,
+      );
+    }
   }
 }
 
