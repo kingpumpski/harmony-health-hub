@@ -7,7 +7,7 @@ export type Permission =
   | 'department_queue' | 'laboratory' | 'laboratory_results' | 'radiology' | 'radiology_results' | 'pharmacy'
   | 'medication_administration' | 'billing' | 'maternity' | 'telemedicine' | 'fertility'
   | 'dental' | 'procedures' | 'anesthesia' | 'ophthalmology' | 'ai_clinical' | 'users'
-  | 'system_library' | 'clinical_references' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders'
+  | 'system_library' | 'clinical_references' | 'insurance_companies' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders'
   | 'notifications' | 'outside_lab' | 'financial_reports' | 'inventory' | 'stock_alerts'
   | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items';
 
@@ -20,7 +20,7 @@ export const permissionByHref: Record<string, Permission> = {
   '/radiology':'radiology','/clinical-results':'radiology_results','/pharmacy':'pharmacy','/medications':'medication_administration',
   '/billing':'billing','/maternity':'maternity','/telemedicine':'telemedicine','/fertility':'fertility','/dental':'dental',
   '/procedures':'procedures','/anesthesia':'anesthesia','/ophthalmology':'ophthalmology','/ai-clinical':'ai_clinical',
-  '/admin/users':'users','/admin/system':'system_library','/admin/clinical-references':'clinical_references','/admin/offline-sync':'offline_sync','/admin/data-import':'data_import',
+  '/admin/users':'users','/admin/system':'system_library','/admin/clinical-references':'clinical_references','/admin/insurance-companies':'insurance_companies','/admin/offline-sync':'offline_sync','/admin/data-import':'data_import',
   '/inpatients':'inpatients','/menu':'meal_orders','/notifications':'notifications','/outside-lab':'outside_lab',
   '/financial-reports':'financial_reports','/inventory':'inventory','/stock-alerts':'stock_alerts','/patient-portal':'patient_portal',
   '/orders':'orders','/dietary-plans':'dietary_plans',
@@ -40,7 +40,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing'],
-  it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward'],
+  it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {
