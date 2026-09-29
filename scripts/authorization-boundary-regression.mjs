@@ -66,15 +66,28 @@ const functionContracts = [
   },
   {
     name: "create_appointment_workflow",
-    checks: [/hms_patient_has_facility_access/i, /patient facility access denied/i, /SET\s+search_path\s*=\s*''/i],
+    checks: [
+      /hms_patient_has_facility_access/i,
+      /patient facility access denied/i,
+      /SET\s+search_path\s*=\s*''/i,
+      /FOR\s+UPDATE/i,
+    ],
   },
   {
     name: "update_appointment_workflow",
-    checks: [/hms_patient_has_facility_access/i, /appointment facility access denied/i, /SET\s+search_path\s*=\s*''/i],
+    checks: [
+      /hms_patient_has_facility_access/i,
+      /appointment facility access denied/i,
+      /SET\s+search_path\s*=\s*''/i,
+      /FOR\s+UPDATE/i,
+    ],
   },
   {
     name: "get_appointment_worklist",
-    checks: [/hms_patient_has_facility_access/i, /SET\s+search_path\s*=\s*''/i],
+    checks: [
+      /hms_patient_has_facility_access/i,
+      /SET\s+search_path\s*=\s*''/i,
+    ],
   },
   {
     name: "hms_patient_has_facility_access",
@@ -132,6 +145,9 @@ for (const pattern of [
   );
 }
 
+const hardenedPatientFacilityFunctions = [
+  "create_appointment_workflow",
+];
 const facilityLineageDebt = {
   schemaGap:
     "historical patient/facility lineage is incomplete; patients has no facility_id and operational patient records do not consistently carry facility_id",
@@ -139,7 +155,6 @@ const facilityLineageDebt = {
   historicalBackfillPolicy:
     "do not infer or bulk-link ambiguous historical patients; require explicit authorized facility linking",
   functions: [
-    "create_appointment_workflow",
     "create_ai_clinical_session",
     "create_imaging_order_with_payment_gate",
     "create_lab_order_with_payment_gate",
@@ -150,6 +165,13 @@ const facilityLineageDebt = {
     "search_patient_directory",
   ],
 };
+
+for (const name of hardenedPatientFacilityFunctions) {
+  assert(
+    functionBody(name),
+    "hardened patient/facility function missing from repository: " + name,
+  );
+}
 
 assert(
   facilityLineageDebt.requiresDedicatedTenancyMigration === true &&
@@ -189,8 +211,10 @@ console.log(
   "Authorization boundary regression passed: " +
     functionContracts.length +
     " function contracts across all overloads; " +
+    hardenedPatientFacilityFunctions.length +
+    " patient/facility functions hardened; " +
     facilityLineageDebt.functions.length +
-    " patient/facility tenancy items explicitly tracked; " +
+    " remaining tenancy items explicitly tracked; " +
     privilegedTenancyFunctions.length +
     " tenancy security-definer contracts.",
 );
