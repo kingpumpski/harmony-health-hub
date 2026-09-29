@@ -14,6 +14,7 @@ const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
 const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
 
 const required = {
+  "@supabase/supabase-js": "2.109.0",
   "react-router-dom": "6.30.6",
   "react-router": "6.30.6",
   "@remix-run/router": "1.23.4",
@@ -26,13 +27,14 @@ const rootDeps = {
 
 for (const [name, version] of Object.entries(required)) {
   assert.equal(
-    name === "react-router-dom" ? rootDeps[name] : lock.packages[`node_modules/${name}`]?.version,
+    name === "react-router-dom" || name === "@supabase/supabase-js" ? rootDeps[name] : lock.packages[`node_modules/${name}`]?.version,
     name === "react-router-dom" ? "^6.30.6" : version,
     name + ": dependency must remain on the patched baseline",
   );
 }
 
 const locked = lock.packages;
+assert.equal(locked["node_modules/@supabase/supabase-js"]?.version, "2.109.0");
 assert.equal(locked["node_modules/react-router-dom"]?.version, "6.30.6");
 assert.equal(locked["node_modules/react-router"]?.version, "6.30.6");
 assert.equal(locked["node_modules/@remix-run/router"]?.version, "1.23.4");
