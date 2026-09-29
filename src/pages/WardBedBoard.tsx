@@ -1,4 +1,3 @@
-import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
 import { BedDouble, Plus, RefreshCw, Building2, Link2 } from 'lucide-react';
@@ -63,13 +62,6 @@ export default function WardBedBoard() {
   useEffect(() => {
     void load();
     return subscribeMasterDataChanged(['wards', 'beds', 'facilities'], () => void load());
-  }, []);
-
-  useEffect(() => {
-    void getOperationalWorkspace('ward', 500).then(({ data }) => {
-      if (!data) return;
-    });
-    void searchPatientDirectory('', 500).then(({ data }) => setPatients((data ?? []) as Patient[]));
   }, []);
 
   const createWard = async () => {
