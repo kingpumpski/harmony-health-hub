@@ -64,5 +64,5 @@ if (failures.length) {
   for (const fragment of failures) console.error(`- ${fragment}`);
   process.exitCode = 1;
 } else {
-  console.log('Offline replay security contract: 13/13 invariants present');
+  console.log('Offline replay security contract: 19/19 invariants present');
 }
