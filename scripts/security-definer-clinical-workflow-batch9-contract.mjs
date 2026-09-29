@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+const p=path.join(process.cwd(),'supabase/migrations/20260929220000_harden_security_definer_clinical_workflow_paths_batch9.sql');
+const sql=fs.readFileSync(p,'utf8').replace(/\s+/g,' ').trim().toLowerCase();
+const signatures=['pay_selected_invoice_items(uuid,uuid[],text,text)','prepare_pharmacy_dispensing(uuid,uuid,integer,text)','reconcile_discharge_billing(uuid)','record_fertility_monitoring_workflow(uuid,date,integer,numeric,numeric,numeric,numeric,integer,integer,numeric,text)','record_maternity_observation_workflow(uuid,text,integer,numeric,integer,integer,numeric,integer,text,text,text)','record_transfusion_event(uuid,text,boolean,text)','register_outside_lab_document(uuid,text,text,text,text)','release_service_order(uuid,text)','reopen_medication_administration(uuid,text)','review_ophthalmology_exam(uuid,jsonb)','schedule_patient_referral_workflow(uuid)','schedule_video_session(uuid,timestamp with time zone,text)','start_imaging_order(uuid)','start_video_session(uuid)','transition_emergency_case(uuid,text,text)','transition_fertility_cycle_workflow(uuid,text,text)','transition_theatre_case(uuid,text,text)','update_appointment_workflow(uuid,timestamp with time zone,text,text,text,text)','update_insurance_case(uuid,text,text,text,numeric,numeric,text)'];
+for(const s of signatures){if(!sql.includes(`alter function public.${s} set search_path = pg_catalog, public;`))throw new Error('Missing: '+s);}
+if(sql.includes('search_path = public;'))throw new Error('Unsafe public-only search_path');
+console.log(`Verified ${signatures.length} clinical/financial SECURITY DEFINER path hardening statements.`);
