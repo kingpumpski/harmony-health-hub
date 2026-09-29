@@ -27,7 +27,7 @@ export default function OfflineStatus() {
       setSyncing(false);
       await refresh();
     }
-  };
+  }, [refresh]);
 
   useEffect(() => {
     const onOnline = () => {
