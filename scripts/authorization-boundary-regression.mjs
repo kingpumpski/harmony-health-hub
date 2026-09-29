@@ -20,7 +20,8 @@ for (const root of roots) walk(path.join(process.cwd(), root));
 const sourceByFile = new Map(files.map((file) => [file, fs.readFileSync(file, "utf8")]));
 const allSource = [...sourceByFile.values()].join("\n");
 
-function functionBody(name) {
+function functionBodies(name) {
+  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\function functionBody(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
@@ -38,6 +39,32 @@ function assertFunctionContract(name, checks) {
   for (const pattern of checks) {
     assert(pattern.test(body), name + ": missing " + pattern);
   }
+}");
+  const pattern = new RegExp(
+    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^)]*\\)[\\s\\S]*?AS\\s+(\\$[A-Za-z0-9_]*\\$)([\\s\\S]*?)\\1",
+    "gi",
+  );
+  return [...allSource.matchAll(pattern)].map((match) => match[2]);
+}
+
+function functionBody(name) {
+  const bodies = functionBodies(name);
+  return bodies.length ? bodies[bodies.length - 1] : "";
+}
+
+function assertFunctionContract(name, checks) {
+  const bodies = functionBodies(name);
+  assert(bodies.length, "authorization contract function missing: " + name);
+  bodies.forEach((body, index) => {
+    for (const pattern of checks) {
+      assert(
+        pattern.test(body),
+        name + " overload #" + (index + 1) + ": missing " + pattern,
+      );
+    }
+  });
 }
 
 const functionContracts = [
