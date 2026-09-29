@@ -218,6 +218,7 @@ jobs:
         run: node supabase/tests/database/claim_reconciliation_contract.mjs
       - name: Verify patient canonical insurer linkage contract
         run: node supabase/tests/database/patient_canonical_insurer_linkage_contract.mjs
+          node scripts/patient-canonical-insurer-ui-contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract

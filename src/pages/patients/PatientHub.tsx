@@ -25,7 +25,7 @@ function EmptyState({ label }: { label: string }) { return <div className="round
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const [searchParams] = useSearchParams(); const { user } = useAuth();
   const [patient, setPatient] = useState<any>(null); const [activeTab, setActiveTab] = useState<TabKey>(() => searchParams.get('vitals') === '1' ? 'vitals' : 'profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
-  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canClinicalHistory = [...roleSet].some((role) => clinicalHistoryRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role));
+  const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canClinicalHistory = [...roleSet].some((role) => clinicalHistoryRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role)); const canManageInsurance = roleSet.has('admin') || roleSet.has('it_admin');
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any; setHistoryLoading(true); setHistoryError('');
@@ -48,7 +48,7 @@ export default function PatientHub() {
   return <div className="space-y-5 animate-fade-in pb-6">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-3"><button type="button" onClick={() => navigate('/patients')} className="p-2 rounded-lg hover:bg-muted" aria-label="Back to patient search"><ArrowLeft className="w-5 h-5" /></button><PatientAvatar name={`${patient.first_name} ${patient.last_name}`} size="lg" /><div><h1 className="text-2xl font-heading font-bold">{patient.first_name} {patient.last_name}</h1><div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span>Patient code: {patient.patient_code}</span><span aria-hidden="true">·</span><span className="capitalize">{patient.status || 'active'}</span></div></div></div><button type="button" onClick={refresh} disabled={historyLoading} className="btn-secondary inline-flex items-center justify-center gap-2">{historyLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}{historyLoading ? 'Refreshing…' : 'Refresh record'}</button></div>
     <div className="overflow-x-auto rounded-2xl border border-border bg-card"><div className="flex min-w-max gap-1 p-2" role="tablist" aria-label="Patient record sections">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`} role="tab" aria-selected={activeTab === tab.key} aria-controls={`patient-tab-${tab.key}`} tabIndex={activeTab === tab.key ? 0 : -1} onKeyDown={(event) => { if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); setActiveTab(tabs[(tabs.findIndex((item) => item.key === activeTab) + 1) % tabs.length].key); } if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); setActiveTab(tabs[(tabs.findIndex((item) => item.key === activeTab) - 1 + tabs.length) % tabs.length].key); } }} ><Icon className="w-4 h-4" />{tab.label}<span className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] ${tabCounts[tab.key] > 0 ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{tabCounts[tab.key]}</span></button>; })}</div></div>
-    {historyError && <div role="status" className="rounded-2xl border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">{historyError} Use Refresh record to try again.</div>}<div id={`patient-tab-${activeTab}`} role="tabpanel" aria-labelledby={`patient-tab-${activeTab}`} tabIndex={0} className="outline-none">{activeTab === 'profile' && <ProfileTab patient={patient} canEdit={canEdit} onSaved={(next) => setPatient(next)} />}
+    {historyError && <div role="status" className="rounded-2xl border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">{historyError} Use Refresh record to try again.</div>}<div id={`patient-tab-${activeTab}`} role="tabpanel" aria-labelledby={`patient-tab-${activeTab}`} tabIndex={0} className="outline-none">{activeTab === 'profile' && <ProfileTab patient={patient} canEdit={canEdit} canManageInsurance={canManageInsurance} onSaved={(next) => setPatient(next)} />}
     {activeTab === 'appointments' && <AppointmentsTab patientId={patient.id} rows={rows.appointments ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
     {activeTab === 'vitals' && <VitalsTab patientId={patient.id} rows={rows.vitals ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
     {activeTab === 'encounters' && <EncountersTab patientId={patient.id} rows={rows.encounters ?? []} canWrite={canClinicalWrite} onSaved={refresh} />}
@@ -60,8 +60,82 @@ export default function PatientHub() {
   </div>;
 }
 
-function ProfileTab({ patient, canEdit, onSaved }: { patient: any; canEdit: boolean; onSaved: (patient: any) => void }) { const initialForm = { first_name: patient.first_name ?? '', last_name: patient.last_name ?? '', date_of_birth: patient.date_of_birth ?? '', gender: patient.gender ?? '', phone: patient.phone ?? '', email: patient.email ?? '', address: patient.address ?? '', city: patient.city ?? '', ghana_card_number: patient.ghana_card_number ?? '', blood_group: patient.blood_group ?? '', genotype: patient.genotype ?? '', allergies: patient.allergies ?? '', chronic_conditions: patient.chronic_conditions ?? '', insurance_provider: patient.insurance_provider ?? '', insurance_number: patient.insurance_number ?? '', insurance_group_number: patient.insurance_group_number ?? '', insurance_expiry: patient.insurance_expiry ?? '', emergency_contact_name: patient.emergency_contact_name ?? '', emergency_contact_phone: patient.emergency_contact_phone ?? '', emergency_contact_relation: patient.emergency_contact_relation ?? '' }; const [form, setForm] = useState(initialForm); const [saving, setSaving] = useState(false); const [dirty, setDirty] = useState(false); const update = (key: string, value: string) => { setForm((c) => ({ ...c, [key]: value })); setDirty(true); }; const save = async (event: FormEvent) => { event.preventDefault(); if (!dirty) { toast.info('No patient changes to save.'); return; } setSaving(true); try { await updatePatient(patient.id, form as any); onSaved({ ...patient, ...form }); setDirty(false); toast.success('Patient record updated. The change was added to the audit trail.'); } catch (error: any) { toast.error(error.message ?? 'Could not update patient record'); } finally { setSaving(false); } }; const fields = [['first_name','First name'],['last_name','Last name'],['date_of_birth','Date of birth'],['phone','Phone'],['email','Email'],['address','Address'],['city','City'],['ghana_card_number','Ghana Card / national identifier'],['blood_group','Blood group'],['genotype','Genotype'],['insurance_provider','Insurance provider'],['insurance_number','Insurance policy number'],['insurance_group_number','Insurance group number'],['insurance_expiry','Insurance expiry'],['emergency_contact_name','Emergency contact'],['emergency_contact_phone','Emergency phone'],['emergency_contact_relation','Emergency relationship']] as const; return <Section title="Patient demographic and administrative record"><form onSubmit={save} className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{fields.map(([key,label]) => <label key={key} className="space-y-1 text-sm"><span className="font-medium">{label}</span><input type={key.includes('date') || key === 'insurance_expiry' ? 'date' : key === 'email' ? 'email' : key.includes('phone') ? 'tel' : 'text'} value={form[key] ?? ''} onChange={(e) => update(key,e.target.value)} disabled={!canEdit} className="input-medical w-full" /></label>)}<label className="space-y-1 text-sm"><span className="font-medium">Gender</span><select value={form.gender} onChange={(e)=>update('gender',e.target.value)} disabled={!canEdit} className="input-medical w-full"><option value="">Not recorded</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></label><label className="space-y-1 text-sm sm:col-span-2"><span className="font-medium">Allergies</span><textarea value={form.allergies} onChange={(e)=>update('allergies',e.target.value)} disabled={!canEdit} className="input-medical min-h-20 w-full" /></label><label className="space-y-1 text-sm sm:col-span-2"><span className="font-medium">Chronic conditions</span><textarea value={form.chronic_conditions} onChange={(e)=>update('chronic_conditions',e.target.value)} disabled={!canEdit} className="input-medical min-h-20 w-full" /></label></div>{canEdit ? <div className="flex flex-wrap items-center gap-3"><button type="submit" disabled={saving || !dirty} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{saving ? 'Saving…':'Save patient changes'}</button>{dirty && !saving && <span className="text-xs text-muted-foreground">Unsaved changes</span>}</div> : <p className="text-sm text-muted-foreground">Your role has read-only access to patient demographics.</p>}</form></Section>; }
-
+function ProfileTab({ patient, canEdit, canManageInsurance, onSaved }: { patient: any; canEdit: boolean; canManageInsurance: boolean; onSaved: (patient: any) => void }) {
+  const initialForm = { first_name: patient.first_name ?? '', last_name: patient.last_name ?? '', date_of_birth: patient.date_of_birth ?? '', gender: patient.gender ?? '', phone: patient.phone ?? '', email: patient.email ?? '', address: patient.address ?? '', city: patient.city ?? '', ghana_card_number: patient.ghana_card_number ?? '', blood_group: patient.blood_group ?? '', genotype: patient.genotype ?? '', allergies: patient.allergies ?? '', chronic_conditions: patient.chronic_conditions ?? '', insurance_provider: patient.insurance_provider ?? '', insurance_number: patient.insurance_number ?? '', insurance_group_number: patient.insurance_group_number ?? '', insurance_expiry: patient.insurance_expiry ?? '', insurance_company_id: patient.insurance_company_id ?? '', emergency_contact_name: patient.emergency_contact_name ?? '', emergency_contact_phone: patient.emergency_contact_phone ?? '', emergency_contact_relation: patient.emergency_contact_relation ?? '' };
+  const [form, setForm] = useState(initialForm);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [insurers, setInsurers] = useState<Array<{id:string;code:string;name:string}>>([]);
+  const [insurersLoading, setInsurersLoading] = useState(false);
+  const update = (key: string, value: string) => { setForm((c) => ({ ...c, [key]: value })); setDirty(true); };
+  useEffect(() => {
+    if (!canManageInsurance) return;
+    let active = true;
+    setInsurersLoading(true);
+    void (async () => {
+      const { data, error } = await (supabase as any).rpc('list_insurance_companies', { _include_inactive: false });
+      if (!active) return;
+      setInsurersLoading(false);
+      if (error) {
+        toast.error(error.message ?? 'Unable to load insurance companies');
+        return;
+      }
+      setInsurers((data ?? []) as Array<{id:string;code:string;name:string}>);
+    })();
+    return () => { active = false; };
+  }, [canManageInsurance]);
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!dirty) { toast.info('No patient changes to save.'); return; }
+    setSaving(true);
+    try {
+      const updatePayload = {
+        firstName: form.first_name,
+        lastName: form.last_name,
+        dateOfBirth: form.date_of_birth,
+        gender: form.gender,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
+        city: form.city,
+        ghanaCardNumber: form.ghana_card_number,
+        bloodType: form.blood_group,
+        genotype: form.genotype,
+        allergies: form.allergies,
+        chronicConditions: form.chronic_conditions,
+        insuranceProvider: form.insurance_provider,
+        insuranceNumber: form.insurance_number,
+        insuranceGroupNumber: form.insurance_group_number,
+        insuranceExpiry: form.insurance_expiry,
+        emergencyContact: { name: form.emergency_contact_name, phone: form.emergency_contact_phone, relationship: form.emergency_contact_relation },
+      };
+      const updated = await updatePatient(patient.id, updatePayload as any);
+      let nextPatient = { ...patient, ...form };
+      if (canManageInsurance && form.insurance_company_id !== (patient.insurance_company_id ?? '')) {
+        const { data: linked, error: insurerError } = await (supabase as any).rpc('set_patient_insurance_company', {
+          _patient_id: patient.id,
+          _insurance_company_id: form.insurance_company_id || null,
+        });
+        if (insurerError) throw insurerError;
+        nextPatient = { ...nextPatient, ...(linked ?? {}), insurance_company_id: form.insurance_company_id || null };
+      } else {
+        nextPatient = { ...nextPatient, ...(updated?.patient ?? {}) };
+      }
+      onSaved(nextPatient);
+      setDirty(false);
+      toast.success('Patient record updated. The change was added to the audit trail.');
+    } catch (error: any) {
+      toast.error(error.message ?? 'Could not update patient record');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const fields = [['first_name','First name'],['last_name','Last name'],['date_of_birth','Date of birth'],['phone','Phone'],['email','Email'],['address','Address'],['city','City'],['ghana_card_number','Ghana Card / national identifier'],['blood_group','Blood group'],['genotype','Genotype'],['insurance_provider','Insurance provider'],['insurance_number','Insurance policy number'],['insurance_group_number','Insurance group number'],['insurance_expiry','Insurance expiry'],['emergency_contact_name','Emergency contact'],['emergency_contact_phone','Emergency phone'],['emergency_contact_relation','Emergency relationship']] as const;
+  return <Section title="Patient demographic and administrative record"><form onSubmit={save} className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{fields.map(([key,label]) => <label key={key} className="space-y-1 text-sm"><span className="font-medium">{label}</span><input type={key.includes('date') || key === 'insurance_expiry' ? 'date' : key === 'email' ? 'email' : key.includes('phone') ? 'tel' : 'text'} value={form[key] ?? ''} onChange={(e) => update(key,e.target.value)} disabled={!canEdit} className="input-medical w-full" /></label>)}
+  <label className="space-y-1 text-sm"><span className="font-medium">Gender</span><select value={form.gender} onChange={(e)=>update('gender',e.target.value)} disabled={!canEdit} className="input-medical w-full"><option value="">Not recorded</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></label>
+  {canManageInsurance && <label className="space-y-1 text-sm"><span className="font-medium">Canonical insurance company</span><select value={form.insurance_company_id} onChange={(e)=>update('insurance_company_id',e.target.value)} disabled={!canEdit || insurersLoading} className="input-medical w-full"><option value="">No canonical insurer linked</option>{insurers.map((company)=><option key={company.id} value={company.id}>{company.name} ({company.code})</option>)}</select><span className="text-xs text-muted-foreground">{insurersLoading ? 'Loading configured insurers…' : insurers.length ? 'Authoritative payer used by claims and billing reconciliation.' : 'No active canonical insurers are configured yet.'}</span></label>}
+  <label className="space-y-1 text-sm sm:col-span-2"><span className="font-medium">Allergies</span><textarea value={form.allergies} onChange={(e)=>update('allergies',e.target.value)} disabled={!canEdit} className="input-medical min-h-20 w-full" /></label><label className="space-y-1 text-sm sm:col-span-2"><span className="font-medium">Chronic conditions</span><textarea value={form.chronic_conditions} onChange={(e)=>update('chronic_conditions',e.target.value)} disabled={!canEdit} className="input-medical min-h-20 w-full" /></label></div>{canEdit ? <div className="flex flex-wrap items-center gap-3"><button type="submit" disabled={saving || !dirty} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{saving ? 'Saving…':'Save patient changes'}</button>{dirty && !saving && <span className="text-xs text-muted-foreground">Unsaved changes</span>}</div> : <p className="text-sm text-muted-foreground">Your role has read-only access to patient demographics.</p>}</form></Section>;
+}
 function AppointmentsTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({scheduled_at:'',department:'',reason:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {error}=await(supabase as any).rpc('create_patient_appointment',{_patient_id:patientId,_scheduled_at:form.scheduled_at,_department:form.department||null,_reason:form.reason||null});if(error)return toast.error(error.message);setForm({scheduled_at:'',department:'',reason:''});toast.success('Appointment added');onSaved();};return <div className="space-y-5"><Section title="Appointment history">{rows.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Scheduled</th><th className="p-2">Department</th><th className="p-2">Reason</th><th className="p-2">Status</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id} className="border-b"><td className="p-2">{formatDate(r.scheduled_at)}</td><td className="p-2">{r.department||'—'}</td><td className="p-2">{r.reason||'—'}</td><td className="p-2 capitalize">{r.status}</td></tr>)}</tbody></table></div>:<EmptyState label="appointments"/>}</Section>{canWrite&&<Section title="Add appointment"><form onSubmit={submit} className="grid gap-4 sm:grid-cols-3"><input required type="datetime-local" value={form.scheduled_at} onChange={e=>setForm({...form,scheduled_at:e.target.value})} className="input-medical"/><input placeholder="Department" value={form.department} onChange={e=>setForm({...form,department:e.target.value})} className="input-medical"/><input placeholder="Reason" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="input-medical"/><button className="btn-primary sm:col-span-3">Create appointment</button></form></Section>}</div>; }
 
 function VitalsTab({ patientId, canWrite, onSaved }: any) {
