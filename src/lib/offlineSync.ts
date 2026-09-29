@@ -318,7 +318,6 @@ export async function offlineAwareFetch(input: RequestInfo | URL, init?: Request
     ['record_patient_vitals', 'record_patient_vitals_offline', 'vitals', (p, id) => ({ ...p, _id: id })],
     ['create_patient_appointment', 'create_patient_appointment_offline', 'appointment', (p, id) => ({ ...p, _id: id })],
     ['record_triage_assessment', 'record_triage_assessment_offline', 'triage', (p, id) => ({ ...p, _id: id })],
-    ['record_triage_assessment', 'record_triage_assessment_offline', 'triage', (p, id) => ({ ...p, _id: id })],
   ];
   for (const [source, target, kind, transform] of contracts) {
     if (explicitRpc(request, source)) {
