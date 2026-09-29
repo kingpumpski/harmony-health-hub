@@ -7,6 +7,7 @@ const migration = read('supabase/migrations/20260928170000_clinical_reference_va
 const coverageMigration = read('supabase/migrations/20260928183000_complete_triage_clinical_reference_coverage.sql');
 const bmiMigration = read('supabase/migrations/20260928210000_add_bmi_clinical_reference.sql');
 const triageBoundaryMigration = read('supabase/migrations/20260928224825_harden_triage_table_data_api_boundary.sql');
+const chart = read('src/components/triage/TriageHistoryChart.tsx');
 const form = read('src/components/triage/TriageRecordForm.tsx');
 const helper = read('src/lib/clinicalReferences.ts');
 const admin = read('src/pages/admin/ClinicalReferences.tsx');
@@ -41,6 +42,10 @@ for (const parameter of [
   );
 }
 
+assert.match(chart, /useClinicalReferences/);
+assert.match(chart, /bmi_adult_interpretation/);
+assert.match(chart, /oxygen_therapy_threshold_percent/);
+assert.doesNotMatch(chart, /y2=\\{18\\.5\\}|y2=\\{25\\}|y2=\\{30\\}|y2=\\{90\\}|y=\\{90\\}/);
 assert.match(helper, /clinical_reference_values/);
 assert.match(helper, /\['adult', 'all_ages'\]/);
 assert.match(helper, /population_scope === 'all_ages'/);
