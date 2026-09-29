@@ -102,9 +102,9 @@ const guardedRoutes = [
 ];
 
 for (const [href, roles] of guardedRoutes) {
-  const marker = `<Route path="${href}" element={<RoleGuard allowedRoles={${roles}}}>`;
   const normalizedApp = app.replace(/\s+/g, '');
-  if (!normalizedApp.includes(marker.replace(/\s+/g, ''))) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  const routeMarker = `<Routepath="${href}"element={<RoleGuardallowedRoles={${roles}}}>`;
+  if (!normalizedApp.includes(routeMarker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
 }
 
 const roleArrays = {
