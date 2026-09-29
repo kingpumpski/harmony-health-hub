@@ -218,9 +218,12 @@ jobs:
         run: node supabase/tests/database/claim_reconciliation_contract.mjs
       - name: Verify patient canonical insurer linkage contract
         run: node supabase/tests/database/patient_canonical_insurer_linkage_contract.mjs
-          node scripts/patient-canonical-insurer-ui-contract.mjs
-          node scripts/unindexed-foreign-key-contract.mjs
-          node scripts/claim-security-definer-contract.mjs
+      - name: Verify patient canonical insurer UI contract
+        run: node scripts/patient-canonical-insurer-ui-contract.mjs
+      - name: Verify unindexed foreign-key contract
+        run: node scripts/unindexed-foreign-key-contract.mjs
+      - name: Verify claim SECURITY DEFINER contract
+        run: node scripts/claim-security-definer-contract.mjs
       - name: Verify pharmacy POS sale linkage contract
         run: node supabase/tests/database/pharmacy_pos_sale_linkage_contract.mjs
       - name: Verify invoice payment state boundary contract
@@ -277,4 +280,7 @@ jobs:
         run: node scripts/security-definer-read-workspace-batch6-contract.mjs
 
       - name: Verify SECURITY DEFINER clinical context batch 7 contract
-        run: node scripts/security-definer-clinical-context-batch7-contract.mjs\n      - name: Verify SECURITY DEFINER mutation paths batch 8 contract\n        run: node scripts/security-definer-mutation-batch8-contract.mjs\n
+        run: node scripts/security-definer-clinical-context-batch7-contract.mjs
+
+      - name: Verify SECURITY DEFINER mutation paths batch 8 contract
+        run: node scripts/security-definer-mutation-batch8-contract.mjs
