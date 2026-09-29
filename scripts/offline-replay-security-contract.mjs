@@ -15,12 +15,24 @@ const sourceRequired = [
   "const OFFLINE_POSTGREST_TABLES = new Set(['patients']);",
 ];
 
+
+const triageInvariantMigration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260929060000_triage_server_vital_requirement_parity.sql'), 'utf8');
+
 const migrationRequired = [
   'REVOKE ALL ON FUNCTION public.record_triage_assessment_offline(',
   'GRANT EXECUTE ON FUNCTION public.record_triage_assessment_offline(',
   "v_priority = 'critical'",
   'WHERE id = _id',
   'already_recorded',
+];
+
+const triageInvariantRequired = [
+  'ALTER TABLE public.triage_assessments',
+  'triage_assessments_requires_measured_vital',
+  'systolic IS NOT NULL OR',
+  'oxygen_saturation IS NOT NULL OR',
+  'weight_kg IS NOT NULL OR',
+  'height_m IS NOT NULL',
 ];
 
 const replayStart = source.indexOf('async function replayMutation');
@@ -32,6 +44,7 @@ const replaySection = replayStart >= 0 && retryStart > replayStart
 const failures = [
   ...sourceRequired.filter((fragment) => !source.includes(fragment)),
   ...migrationRequired.filter((fragment) => !migration.includes(fragment)),
+  ...triageInvariantRequired.filter((fragment) => !triageInvariantMigration.includes(fragment)),
 ];
 
 if (!triageSource.includes("rpc('record_triage_assessment', payload)")) {
