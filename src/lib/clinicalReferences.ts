@@ -21,7 +21,8 @@ export type ClinicalReference = {
 export function useClinicalReferences(parameters: string[]) {
   const [references, setReferences] = useState<ClinicalReference[]>([]);
   const [loading, setLoading] = useState(true);
-  const parameterKey = parameters.join('|');\n  const parameterList = parameterKey ? parameterKey.split('|') : [];
+  const parameterKey = parameters.join('|');
+  const parameterList = parameterKey ? parameterKey.split('|') : [];
 
   useEffect(() => {
     let active = true;
