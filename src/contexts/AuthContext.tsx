@@ -186,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (import.meta.env.DEV) console.debug('[auth] logout:start');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    if (typeof window !== 'undefined' && session?.user?.id) window.sessionStorage.removeItem(activeRoleStorageKey(session.user.id));
     setUser(null);
     setSession(null);
     if (import.meta.env.DEV) console.debug('[auth] logout:complete');
