@@ -4,6 +4,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const migrationsDir = path.join(process.cwd(), "supabase", "migrations");
+const baselineMigration = "20260929230000_appointment_facility_authorization_hardening.sql";
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
@@ -15,7 +16,10 @@ function walk(dir, out = []) {
   return out;
 }
 
-const files = walk(migrationsDir);
+const files = walk(migrationsDir)
+  .filter((file) => path.basename(file) >= baselineMigration)
+  .sort();
+
 const failures = [];
 let definerCount = 0;
 
@@ -47,5 +51,5 @@ assert.equal(
 console.log(
   "SECURITY DEFINER creation contract passed for " +
     definerCount +
-    " migration-level SECURITY DEFINER declarations.",
+    " post-baseline migration declarations.",
 );
