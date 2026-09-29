@@ -13,7 +13,7 @@ assert.equal(manifest.version, 1);
 assert.equal(manifest.scope, "selected-high-risk-function-execute-contract");
 
 const files = fs.existsSync(migrationsDir)
-  ? fs.readdirSync(migrationsDir).filter((n) => n.endsWith(".sql"))
+  ? fs.readdirSync(migrationsDir).filter((n) => n.endsWith(".sql")).sort()
   : [];
 
 const source = files
@@ -22,20 +22,72 @@ const source = files
   .replace(/--.*$/gm, "");
 
 const compact = (s) => s.replace(/\s+/g, "").toLowerCase();
-const signatureArity = (signature) => signature.split(",").filter(Boolean).length;
 
-const declaredArities = (name) => {
+function splitParameters(value) {
+  const parts = [];
+  let start = 0;
+  let depth = 0;
+  let quote = null;
+
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    if (quote) {
+      if (ch === quote && value[i - 1] !== "\\") quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (ch === "," && depth === 0) {
+      parts.push(value.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+
+  const tail = value.slice(start).trim();
+  if (tail) parts.push(tail);
+  return parts;
+}
+
+function normalizeParameter(parameter) {
+  let value = parameter
+    .replace(/\b(?:INOUT|IN|OUT|VARIADIC)\b/gi, "")
+    .replace(/\bDEFAULT\b[\\s\\S]*$/i, "")
+    .replace(/=[\\s\\S]*$/i, "")
+    .trim();
+
+  // Migration declarations conventionally name parameters with identifiers such
+  // as _patient_id. Strip that identifier, then compare the exact PostgreSQL type.
+  value = value.replace(/^[a-zA-Z_][a-zA-Z0-9_]*\\s+/, "").trim();
+
+  return value.replace(/\\s+/g, " ").toLowerCase();
+}
+
+function signatureTypes(signature) {
+  return signature.split(",").map((value) => value.trim().toLowerCase());
+}
+
+const declarations = new Map();
+
+for (const name of Object.keys(manifest.functions)) {
   const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\$&");
   const re = new RegExp(
     "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
       escaped +
-      "\\s*\\(([^)]*)\\)",
+      "\\s*\\(([\\s\\S]*?)\\)",
     "gi",
   );
-  return [...source.matchAll(re)].map((match) =>
-    match[1].split(",").filter(Boolean).length,
-  );
-};
+
+  const signatures = [];
+  for (const match of source.matchAll(re)) {
+    const params = splitParameters(match[1]);
+    signatures.push(params.map(normalizeParameter));
+  }
+  declarations.set(name, signatures);
+}
 
 const sql = compact(source);
 
@@ -50,20 +102,24 @@ for (const [name, spec] of Object.entries(manifest.functions)) {
     name + ": selected contract must remain authenticated-only",
   );
 
-  const arities = declaredArities(name);
+  const declared = declarations.get(name) ?? [];
   assert.ok(
-    arities.length > 0,
+    declared.length > 0,
     name + ": function declaration must exist in migration history",
   );
 
   for (const signature of spec.signatures) {
+    const expectedTypes = signatureTypes(signature);
     assert.ok(
-      arities.includes(signatureArity(signature)),
+      declared.some((actualTypes) =>
+        actualTypes.length === expectedTypes.length &&
+        actualTypes.every((type, index) => type === expectedTypes[index]),
+      ),
       name +
         ": manifest signature " +
         signature +
-        " does not match any declared overload arity (" +
-        arities.join(",") +
+        " does not match any declared PostgreSQL parameter type signature (" +
+        declared.map((types) => types.join(",")).join(" | ") +
         ")",
     );
 
@@ -94,5 +150,5 @@ for (const [name, spec] of Object.entries(manifest.functions)) {
 }
 
 console.log(
-  `[function-privilege] checked ${Object.keys(manifest.functions).length} selected high-risk RPCs`,
+  `[function-privilege] checked ${Object.keys(manifest.functions).length} selected high-risk RPCs with exact PostgreSQL parameter-type signatures`,
 );
