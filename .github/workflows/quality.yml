@@ -67,6 +67,9 @@ jobs:
       - name: Security best-practice audit
         run: npm run test:security-best-practices
 
+      - name: RLS helper performance contract
+        run: npm run test:rls-helper-performance
+
       - name: Public view security contract
         run: npm run test:public-view-security
 
