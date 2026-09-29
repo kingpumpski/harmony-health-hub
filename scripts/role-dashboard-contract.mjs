@@ -13,6 +13,15 @@ if (!activeRoleMigration.includes('get_role_dashboard_summary_for_role(_requeste
 if (!activeRoleMigration.includes('Requested dashboard role is not assigned to the authenticated user')) throw new Error('Active dashboard role must be server-validated');
 if (!activeRoleMigration.includes('REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon')) throw new Error('Active dashboard function must not be executable anonymously');
 if (!activeRoleMigration.includes('GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated')) throw new Error('Active dashboard function must be authenticated-only');
+
+// The role page owns its visual hierarchy. Global dashboard chrome must not duplicate
+// headings, KPI/workspace cards, or the role-specific Quick Access section.
+if (dashboard.includes("import WorkflowSummary from '@/components/WorkflowSummary';")) throw new Error('Dashboard must not import the legacy global WorkflowSummary');
+if (dashboard.includes('<WorkflowSummary/>')) throw new Error('Dashboard must not append a second global Quick Access section');
+if (dashboard.includes('Role command center')) throw new Error('Dashboard must not add a duplicate role command-center heading');
+if (!dashboard.includes('aria-label="Active operational role"')) throw new Error('Multi-role users need an accessible active-role control');
+if (!dashboard.includes('Dashboard content, navigation and server-authorized workspace data follow this role.')) throw new Error('Active-role context must explain its server-authoritative effect');
+
 const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
 const expected=[
   ['admin','AdminDashboard'],
