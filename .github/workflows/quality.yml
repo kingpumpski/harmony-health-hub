@@ -58,6 +58,15 @@ jobs:
       - name: Public SECURITY DEFINER exposure contract
         run: npm run test:public-security-definer-exposure
 
+      - name: SECURITY DEFINER creation contract
+        run: npm run test:security-definer-creation
+
+      - name: Authorization boundary contracts
+        run: npm run test:authorization-boundaries
+
+      - name: Security best-practice audit
+        run: npm run test:security-best-practices
+
       - name: Public view security contract
         run: npm run test:public-view-security
 
