@@ -50,10 +50,19 @@ assert(
   "authenticated SECURITY DEFINER exposure contract: no new SECURITY DEFINER functions detected",
 );
 
-function hasExplicitRevoke(name) {
+function hasExplicitRevoke(name, role) {
+  const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\function hasExplicitRevoke(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
     "REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\." + escaped + "\\s*\\([^;]*\\)\\s+FROM\\s+PUBLIC\\s*,?\\s*anon",
+    "i",
+  ).test(allSource);
+}
+
+function hasAuthenticatedGrant(name) {");
+  return new RegExp(
+    "REVOKE\\s+ALL\\s+ON\\s+FUNCTION\\s+public\\." + escaped +
+      "\\s*\\([^;]*\\)\\s+FROM\\s+" + role,
     "i",
   ).test(allSource);
 }
@@ -76,14 +85,20 @@ function hasPublicGrant(name) {
 
 for (const declaration of declarations) {
   assert(
-    hasExplicitRevoke(declaration.name),
+    hasExplicitRevoke(declaration.name, "PUBLIC"),
     declaration.name + " introduced in " + declaration.migration +
-      " must explicitly revoke PUBLIC/anon EXECUTE",
+      " must explicitly revoke PUBLIC EXECUTE",
   );
   assert(
-    hasAuthenticatedGrant(declaration.name),
+    hasExplicitRevoke(declaration.name, "anon"),
     declaration.name + " introduced in " + declaration.migration +
-      " must explicitly grant authenticated EXECUTE",
+      " must explicitly revoke anon EXECUTE",
+  );
+  assert(
+    hasAuthenticatedGrant(declaration.name) ||
+      hasExplicitRevoke(declaration.name, "authenticated"),
+    declaration.name + " introduced in " + declaration.migration +
+      " must explicitly grant authenticated EXECUTE or explicitly revoke authenticated EXECUTE for non-API functions",
   );
   assert(
     !hasPublicGrant(declaration.name),
@@ -94,5 +109,5 @@ for (const declaration of declarations) {
 console.log(
   "Authenticated SECURITY DEFINER exposure contract passed: " +
     declarations.length +
-    " newly introduced SECURITY DEFINER functions require explicit PUBLIC/anon denial and authenticated grants.",
+    " newly introduced SECURITY DEFINER functions have explicit PUBLIC/anon denial and an explicit authenticated grant or denial.",
 );
