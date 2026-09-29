@@ -266,3 +266,5 @@ jobs:
         run: supabase test db --linked supabase/tests/database/notification_module_contract.sql
       - name: Verify canteen dietary operational contract
         run: node scripts/canteen-dietary-operational-contract.mjs
+      - name: Verify clinical SECURITY DEFINER search-path contract
+        run: node scripts/clinical-security-definer-contract.mjs
