@@ -10,7 +10,7 @@ export default function PatientDashboard() {
     const { user } = useAuth();
   const [cards,setCards]=useState<Card[]>([]); const [error,setError]=useState<string | null>(null);
   const [loading,setLoading]=useState(true);
-  const load=useCallback(async()=>{setLoading(true);setError(null);const {data,error:rpcError}=await (supabase as any).rpc('get_role_dashboard_summary_for_role', { _requested_role: user?.role });if(rpcError){setError(rpcError.message);setCards([])}else{setCards((data?.cards??[]) as Card[])}setLoading(false);},[]);
+  const load=useCallback(async()=>{setLoading(true);setError(null);const {data,error:rpcError}=await (supabase as any).rpc('get_role_dashboard_summary_for_role', { _requested_role: user?.role });if(rpcError){setError(rpcError.message);setCards([])}else{setCards((data?.cards??[]) as Card[])}setLoading(false);},[user?.role]);
   useEffect(()=>{void load()},[load]);
   const icons:Record<string,typeof Calendar>={appointments:Calendar,unpaid:CreditCard,notifications:BellRing,active_care:HeartPulse};
   return <div className="space-y-6 animate-fade-in">
