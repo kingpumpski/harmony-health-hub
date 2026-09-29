@@ -264,3 +264,5 @@ jobs:
       - name: Verify notification module database contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/notification_module_contract.sql
+      - name: Verify canteen dietary operational contract
+        run: node scripts/canteen-dietary-operational-contract.mjs
