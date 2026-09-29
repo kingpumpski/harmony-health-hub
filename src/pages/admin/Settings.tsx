@@ -3,16 +3,16 @@ import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, M
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { listFacilities, type HealthcareFacility } from '@/lib/reportsCenter';
 import {
   configureFacilityNotificationProvider,
+  configureEmailProvider,
   getFacilityNotificationConfig,
   initializeFacilityNotificationOnboarding,
-  listFacilities,
   listNotificationProviderSecretRequirements,
   type FacilityNotificationConfig,
-  type HealthcareFacility,
   type NotificationProviderSecretRequirement,
-} from '@/lib/reportsCenter';
+} from '@/lib/notificationSettings';
 
 type Config = {
  id:string; facility_name:string; facility_code:string|null; phone:string|null; email:string|null;
@@ -108,18 +108,24 @@ export default function Settings(){
    if(!facilityId)return;
    setEmailSaving(!test); setEmailTesting(test);
    try {
-     const {data:{session}}=await supabase.auth.getSession();
-     if(!session?.access_token) throw new Error('Authenticated session required.');
      const credentials=emailProvider==='smtp'
        ? {host:emailDraft.host,port:Number(emailDraft.port),secure:emailDraft.secure,username:emailDraft.username,password:emailDraft.password,from_email:emailDraft.from_email,from_name:emailDraft.from_name}
        : {api_key:emailDraft.api_key,from_email:emailDraft.from_email};
-     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email,priority:Number(emailDraft.priority||100),isPrimary:emailDraft.isPrimary})});
-     const result=await response.json().catch(()=>({}));
-     if(!response.ok) throw new Error(result.error??'Email provider configuration failed.');
-     setEmailStatus(result); toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
+     const result = await configureEmailProvider({
+       facilityId,
+       environment: emailEnvironment,
+       provider: emailProvider,
+       credentials,
+       test,
+       testRecipient: emailDraft.testRecipient || user?.email,
+       priority: Number(emailDraft.priority || 100),
+       isPrimary: emailDraft.isPrimary,
+     });
+     setEmailStatus(result);
+     toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
      await loadNotificationSettings(facilityId);
      if(test)setEmailDraft(d=>({...d,password:'',api_key:''}));
-   } catch(error){ toast.error(error instanceof Error?error.message:'Unable to configure email provider.'); }
+   } catch(error){ toast.error(error instanceof Error ? error.message:'Unable to configure email provider.'); }
    finally {setEmailSaving(false);setEmailTesting(false);}
  }
  async function saveNotification(){
@@ -220,7 +226,7 @@ export default function Settings(){
       <div className="grid gap-3 md:grid-cols-3">
         <select className="input-medical" value={emailProvider} onChange={e=>setEmailProvider(e.target.value as any)}><option value="resend">Resend</option><option value="smtp">Custom SMTP</option></select>
         <select className="input-medical" value={emailEnvironment} onChange={e=>setEmailEnvironment(e.target.value as any)}><option value="sandbox">Sandbox</option><option value="test">Test</option><option value="production">Production</option></select>
-        <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>\n        <input className="input-medical" type="email" placeholder="Test recipient email" value={emailDraft.testRecipient} onChange={e=>setEmailDraft({...emailDraft,testRecipient:e.target.value})}/>
+        <input className="input-medical" type="email" placeholder="From email" value={emailDraft.from_email} onChange={e=>setEmailDraft({...emailDraft,from_email:e.target.value})}/>        <input className="input-medical" type="email" placeholder="Test recipient email" value={emailDraft.testRecipient} onChange={e=>setEmailDraft({...emailDraft,testRecipient:e.target.value})}/>
         <input className="input-medical" type="number" min="0" max="10000" placeholder="Provider priority (lower first)" value={emailDraft.priority} onChange={e=>setEmailDraft({...emailDraft,priority:e.target.value})}/>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailDraft.isPrimary} onChange={e=>setEmailDraft({...emailDraft,isPrimary:e.target.checked})}/>Use as primary provider</label>
         <input className="input-medical" placeholder="From name" value={emailDraft.from_name} onChange={e=>setEmailDraft({...emailDraft,from_name:e.target.value})}/>
