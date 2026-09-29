@@ -19,7 +19,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { UserRole } from '@/types';
 
 export default function Dashboard(){
-  const {user}=useAuth();
+  const {user,switchRole}=useAuth();
   if(!user)return null;
   let dashboard;
   switch(String(user.role)){
@@ -51,7 +51,7 @@ export default function Dashboard(){
         <div className="flex shrink-0 flex-wrap gap-2">
           {user.roles.length > 1 && <label className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium">
             <span className="text-muted-foreground">Role</span>
-            <select aria-label="Active operational role" value={user.role} onChange={(event) => user.switchRole(event.target.value as UserRole)} className="bg-transparent font-medium outline-none">
+            <select aria-label="Active operational role" value={user.role} onChange={(event) => switchRole(event.target.value as UserRole)} className="bg-transparent font-medium outline-none">
               {user.roles.map((role) => <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>)}
             </select>
           </label>}
