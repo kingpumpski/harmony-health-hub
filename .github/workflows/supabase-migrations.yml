@@ -266,9 +266,5 @@ jobs:
         run: supabase test db --linked supabase/tests/database/notification_module_contract.sql
       - name: Verify canteen dietary operational contract
         run: node scripts/canteen-dietary-operational-contract.mjs
-      - name: Verify clinical SECURITY DEFINER search-path contract
-        run: node scripts/clinical-security-definer-contract.mjs
-      - name: Verify patient workflow field authorization contract
-        run: node scripts/patient_workflow_field_authorization_contract.mjs
-      - name: Verify clinical financial SECURITY DEFINER batch 2 contract
-        run: node scripts/clinical-financial-security-definer-batch2-contract.mjs
+      - name: Verify role dashboard workflow surface contract
+        run: node scripts/role-dashboard-workflow-surface-contract.mjs

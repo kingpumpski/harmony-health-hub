@@ -37,7 +37,7 @@ export default function Dashboard(){
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
   }
   const displayName=user.firstName || user.email.split('@')[0];
-  const showReferral=['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'].includes(user.role);
+  const showReferral=['admin','practitioner','nurse','midwife','specialist_nurse'].includes(user.role);
   const showSettlement=['admin','accountant'].includes(user.role);
   return <div className="space-y-1">
     <section className="mb-5 rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-sm sm:p-6">
@@ -54,9 +54,9 @@ export default function Dashboard(){
         </div>
       </div>
     </section>
-    <WorkflowSummary/>
     {showReferral && <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard/></div>}
     {showSettlement && <div className="mb-6"><FinancialSettlementCard/></div>}
     {dashboard}
+    <WorkflowSummary/>
   </div>;
 }
