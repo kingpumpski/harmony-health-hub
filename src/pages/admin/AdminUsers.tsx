@@ -49,7 +49,7 @@ export default function AdminUsers() {
     }
     setUsers(Array.isArray(data?.users) ? data.users : []);
     setLoading(false);
-  }, [canManage]);
+  }, []);
   useEffect(() => { if (canManage) void loadDirectory(); }, [canManage, loadDirectory]);
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault(); setCreating(true);
