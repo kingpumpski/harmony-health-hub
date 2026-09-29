@@ -36,7 +36,7 @@ for (const [role,component] of expected) {
   const token=role==="nurse"||role==="midwife"||role==="specialist_nurse"
     ? "case'nurse':case'midwife':case'specialist_nurse':dashboard=<NurseDashboard/>;break;"
     : `case'${role}':dashboard=<${component}/>;break;`;
-  if (!normalized.includes(token)) throw new Error(`Dashboard routing missing for ${role}`);
+  if (!normalized.includes(token.replace(/\\s+/g, ''))) throw new Error(`Dashboard routing missing for ${role}`);
 }
 if (dashboard.includes("if(user.role === 'it_admin') return <ITSupportWorkspace/>")) throw new Error('IT Admin must use the role dashboard route');
 if (dashboard.includes("case'front_desk':default:")) throw new Error('Dashboard default must not silently absorb unknown roles');
