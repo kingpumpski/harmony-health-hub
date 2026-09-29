@@ -1,7 +1,7 @@
 import type { UserRole } from '@/types';
 
 export type Permission =
-  | 'dashboard' | 'patients' | 'finance' | 'administration' | 'it_support' | 'registration' | 'appointments' | 'triage' | 'encounters' | 'encounters_amend'
+  | 'dashboard' | 'system_settings' | 'patients' | 'finance' | 'administration' | 'it_support' | 'registration' | 'appointments' | 'triage' | 'encounters' | 'encounters_amend'
   | 'clinical_operations' | 'inpatient' | 'ward' | 'handover' | 'emergency' | 'theatre' | 'transfusion'
   | 'claims' | 'reports' | 'report_submissions' | 'accounts_approvals' | 'tariff_adjustments'
   | 'department_queue' | 'laboratory' | 'laboratory_results' | 'radiology' | 'radiology_results' | 'pharmacy'
@@ -12,7 +12,7 @@ export type Permission =
   | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items';
 
 export const permissionByHref: Record<string, Permission> = {
-  '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
+  '/dashboard':'dashboard','/admin/settings':'system_settings','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
   '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
@@ -40,7 +40,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing','meal_orders'],
-  it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
+  it_admin: ['dashboard','system_settings','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {

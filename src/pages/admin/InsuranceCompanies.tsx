@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Building2, Pencil, Plus, RefreshCw, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,15 +15,15 @@ export default function InsuranceCompanies() {
   const [loading,setLoading] = useState(true);
   const [saving,setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!['admin','it_admin'].includes(user?.role ?? '')) return;
     setLoading(true);
     const { data,error } = await supabase.rpc('list_insurance_companies',{_include_inactive:true} as never);
     setLoading(false);
     if (error) { toast({title:'Insurance companies unavailable',description:error.message,variant:'destructive'}); return; }
     setRows((data ?? []) as InsuranceCompany[]);
-  };
-  useEffect(()=>{ void load(); },[user?.role]);
+  }, [user?.role]);
+  useEffect(()=>{ void load(); },[load]);
   const reset=()=>{setForm(empty);setEditing(null);};
   const save=async()=>{
     setSaving(true);

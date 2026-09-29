@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus, Pencil, Save, X } from 'lucide-react';
@@ -39,7 +39,7 @@ export default function AdminUsers() {
     }
     return fallback;
   };
-  const loadDirectory = async () => {
+  const loadDirectory = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { action: 'list_users' } });
     if (error || data?.error) {
@@ -49,8 +49,8 @@ export default function AdminUsers() {
     }
     setUsers(Array.isArray(data?.users) ? data.users : []);
     setLoading(false);
-  };
-  useEffect(() => { if (canManage) void loadDirectory(); }, [canManage]);
+  }, []);
+  useEffect(() => { if (canManage) void loadDirectory(); }, [canManage, loadDirectory]);
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault(); setCreating(true);
     const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { email: createEmail, firstName: createFirstName, lastName: createLastName, phone: createPhone, department: createDepartment, specialization: createSpecialization, role: createRole, onboarding, ...(onboarding === 'password' ? { password: createPassword } : {}) } });

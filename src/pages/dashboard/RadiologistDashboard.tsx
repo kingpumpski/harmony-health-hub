@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
@@ -12,9 +12,9 @@ export default function RadiologistDashboard() {
   const [orders, setOrders] = useState<ImagingOrder[]>([]);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
+  const previousIdsRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const load = async (announce = false) => {
+  const load = useCallback(async (announce = false) => {
     setLoading(true);
     setError(null);
     const [{ data: imaging, error: imagingError }, { data: notifications, error: notificationsError }] = await Promise.all([
@@ -23,18 +23,19 @@ export default function RadiologistDashboard() {
     ]);
     if (imagingError || notificationsError) { setError(imagingError?.message ?? notificationsError?.message ?? 'Unable to load radiology dashboard data.'); setOrders([]); setUnreadAlerts(0); setLoading(false); return; }
     const next = (imaging ?? []) as ImagingOrder[];
-    if (announce && previousIds.size > 0 && next.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
-    setPreviousIds(new Set(next.map((order) => order.id)));
+    if (announce && previousIdsRef.current.size > 0 && next.some((order) => !previousIdsRef.current.has(order.id))) playWorkflowSound('info');
+    previousIdsRef.current = new Set(next.map((order) => order.id));
     setOrders(next); setUnreadAlerts((notifications ?? []).filter((n: { is_read?: boolean; severity?: string }) => !n.is_read && String(n.severity ?? '').toLowerCase() === 'critical').length); setLoading(false);
-  };
-  useEffect(() => { void load(); }, []);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     const channel = supabase.channel('radiologist-dashboard-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => { if (payload.eventType === 'INSERT' && String((payload.new as { severity?: string }).severity ?? '').toLowerCase() === 'critical') playWorkflowSound('critical'); void load(); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, []);
+  }, [load]);
   const counters = useMemo<Record<StatusKey, number>>(() => ({ ready: orders.filter((o) => ['released', 'queued'].includes(o.status)).length, completed: orders.filter((o) => o.status === 'completed').length, urgent: orders.filter((o) => ['urgent', 'stat'].includes(o.priority) && o.status !== 'completed').length }), [orders]);
   const activeQueue = useMemo(() => orders.filter((o) => ['released', 'queued'].includes(o.status)).slice(0, 8), [orders]);
   const cards = [
@@ -43,7 +44,7 @@ export default function RadiologistDashboard() {
     { key: 'urgent' as StatusKey, label: 'Urgent / STAT', icon: AlertTriangle, tone: 'text-critical', surface: 'bg-critical/5' },
   ];
   return <div className="space-y-6 animate-fade-in">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="flex items-center gap-2 text-2xl font-heading font-bold"><ImageIcon className="h-6 w-6 text-primary" /> Radiologist Dashboard</h1><p className="text-muted-foreground">Live diagnostic imaging worklist, reporting and urgent-case monitoring.</p></div><div className="flex items-center gap-2"><Link to="/notifications" className="btn-secondary inline-flex items-center gap-2"><BellRing className="h-4 w-4" /> Alerts {unreadAlerts > 0 && <span className="rounded-full bg-critical px-2 py-0.5 text-xs text-critical-foreground">{unreadAlerts}</span>}</Link><button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" />{loading ? 'Refreshing…' : 'Refresh'}</button></div></header>
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="flex items-center gap-2 text-2xl font-heading font-bold"><ImageIcon className="h-6 w-6 text-primary" /> Radiologist Dashboard</h1><p className="text-muted-foreground">Live diagnostic imaging worklist, reporting and urgent-case monitoring.</p></div><div className="flex items-center gap-2"><Link to="/notifications" className="btn-secondary inline-flex items-center justify-center" aria-label="Notifications" title="Notifications"><BellRing className="h-4 w-4" /> Alerts {unreadAlerts > 0 && <span className="rounded-full bg-critical px-2 py-0.5 text-xs text-critical-foreground">{unreadAlerts}</span>}</Link><button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} className="btn-secondary inline-flex items-center justify-center" aria-label="Refresh dashboard" title="Refresh dashboard"><RefreshCw className="h-4 w-4" /></button></div></header>
     {error&&<div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-critical/30 bg-critical/5 p-4 text-sm"><div><p className="font-medium text-critical">Dashboard data unavailable</p><p className="mt-1 text-muted-foreground">{error}</p></div><button type="button" onClick={()=>{void load()}} className="btn-secondary">Retry</button></div>}
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">{cards.map((card) => { const Icon = card.icon; return <Link key={card.key} to="/radiology" className={`card-medical p-4 transition-all hover:-translate-y-1 ${card.surface}`}><div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">{card.label}</p><Icon className={`h-4 w-4 ${card.tone}`} /></div><p className={`mt-1 text-3xl font-bold ${card.tone} ${counters[card.key] > 0 && card.key !== 'completed' ? 'animate-pulse' : ''}`}>{counters[card.key]}</p><p className="mt-1 text-xs text-muted-foreground">Open radiology workflow</p></Link>; })}</section>
     {counters.urgent > 0 && <div className="flex items-center gap-2 rounded-xl border border-critical/30 bg-critical/5 p-3 text-sm"><BellRing className="h-4 w-4 text-critical" /><span className="font-medium">{counters.urgent} urgent/STAT case{counters.urgent === 1 ? '' : 's'} require radiology attention.</span><Link to="/radiology" className="ml-auto font-medium text-primary">Open queue</Link></div>}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -15,7 +15,7 @@ export default function PatientPortal() {
   const [reports, setReports] = useState<any[]>([]);
   const [requesting, setRequesting] = useState(false);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('ai-clinical-assist', { body: { mode: 'portal' } });
     if (error || data?.error) {
       toast({ title: 'Unable to load portal data', description: data?.error ?? error?.message ?? 'Portal workspace unavailable.', variant: 'destructive' });
@@ -27,12 +27,12 @@ export default function PatientPortal() {
     setInvoices(data.invoices ?? []);
     setReports(data.reports ?? []);
     return data;
-  };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     void loadReports();
-  }, [user?.id]);
+  }, [loadReports, user]);
 
   const requestAIReport = async () => {
     if (!patient) return;

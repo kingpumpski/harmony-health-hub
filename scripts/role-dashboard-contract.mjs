@@ -32,15 +32,26 @@ const expected=[
 ];
 
 for (const [role,component] of expected) {
+  const normalized = dashboard.replace(/\s+/g, '');
   const token=role==="nurse"||role==="midwife"||role==="specialist_nurse"
     ? "case'nurse':case'midwife':case'specialist_nurse':dashboard=<NurseDashboard/>;break;"
     : `case'${role}':dashboard=<${component}/>;break;`;
-  if (!dashboard.includes(token)) throw new Error(`Dashboard routing missing for ${role}`);
+  if (!normalized.includes(token.replace(/\s+/g, ''))) throw new Error(`Dashboard routing missing for ${role}`);
 }
 if (dashboard.includes("if(user.role === 'it_admin') return <ITSupportWorkspace/>")) throw new Error('IT Admin must use the role dashboard route');
 if (dashboard.includes("case'front_desk':default:")) throw new Error('Dashboard default must not silently absorb unknown roles');
-if (!dashboard.includes("case'front_desk':dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk route is missing');
+if (!dashboard.replace(/\s+/g, '').includes("case'front_desk':dashboard=<FrontDeskDashboard/>;break;")) throw new Error('Front desk route is missing');
 if (!dashboard.includes('Dashboard unavailable')) throw new Error('Unsupported roles must fail closed');
+if (dashboard.includes('WorkflowSummary')) throw new Error('Global WorkflowSummary must not be duplicated above role dashboards');
+if (dashboard.includes('Role command center')) throw new Error('Global role command center must not duplicate role dashboard hierarchy');
+if (!dashboard.includes('aria-label="Active operational role"')) throw new Error('Multi-role dashboard needs an accessible active-role control');
+const nurse=read('src/pages/dashboard/NurseDashboard.tsx');
+if (!nurse.includes("useState<'all' | 'critical' | 'stable'>('all')")) throw new Error('Nurse filter state must match rendered statuses');
+if (!nurse.includes("['all', 'critical', 'stable'] as const")) throw new Error('Nurse filter options must match rendered statuses');
+const radiologyTechnician=read('src/pages/dashboard/RadiologyTechnicianDashboard.tsx');
+if (!radiologyTechnician.includes("get_role_dashboard_summary_for_role")) throw new Error('Radiology technician dashboard must use the validated role-scoped summary');
+if (!radiologyTechnician.includes("[user?.role]")) throw new Error('Radiology technician dashboard must refresh when active role changes');
+
 for (const role of roles) {
   if (!permissions.includes(`  ${role}:`)) throw new Error(`Frontend fallback permission map missing ${role}`);
 }
@@ -71,4 +82,4 @@ console.log(`Role dashboard contract passed for ${roles.length} roles`);
 const authSource=read('src/contexts/AuthContext.tsx');
 if (!authSource.includes('activeRoleStorageKey')) throw new Error('Active role session persistence contract missing');
 if (!authSource.includes('roles.includes(persistedRole)')) throw new Error('Persisted active role must be revalidated against assigned roles');
-if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(session.user.id))')) throw new Error('Active role context must clear on logout');
+if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(currentUserId))')) throw new Error('Active role context must clear on logout');

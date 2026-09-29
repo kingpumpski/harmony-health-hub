@@ -183,14 +183,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const currentUserId = session?.user?.id;
     if (import.meta.env.DEV) console.debug('[auth] logout:start');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-    if (typeof window !== 'undefined' && session?.user?.id) window.sessionStorage.removeItem(activeRoleStorageKey(session.user.id));
+    if (typeof window !== 'undefined' && currentUserId) window.sessionStorage.removeItem(activeRoleStorageKey(currentUserId));
     setUser(null);
     setSession(null);
     if (import.meta.env.DEV) console.debug('[auth] logout:complete');
-  }, []);
+  }, [session?.user?.id]);
 
   const switchRole = useCallback((nextRole: UserRole) => {
     setUser((current) => {

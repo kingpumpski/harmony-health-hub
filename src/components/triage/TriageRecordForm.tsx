@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -76,7 +76,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
   const [saving, setSaving] = useState(false);
   const { byParameter, loading: referencesLoading } = useClinicalReferences([...REFERENCE_PARAMETERS]);
 
-  const normalReference = (parameter: string) => byParameter.get(parameter);
+  const normalReference = useCallback((parameter: string) => byParameter.get(parameter), [byParameter]);
   const bmiReference = normalReference('bmi_adult_interpretation');
 
   const alerts = useMemo(() => {
@@ -101,7 +101,7 @@ export default function TriageRecordForm({ patients = [], patientId, onSaved, on
       }
       return [];
     });
-  }, [form, byParameter]);
+  }, [form, normalReference]);
 
   const bmi = useMemo(() => {
     const weight = numberOrNull(form.weightKg);

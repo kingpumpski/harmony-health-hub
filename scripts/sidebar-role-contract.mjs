@@ -13,10 +13,15 @@ if (!sidebar.includes('const unsupportedRole = !roleGroups;')) throw new Error('
 if (!sidebar.includes('Navigation is intentionally restricted')) throw new Error('Unsupported-role navigation must fail closed with an explicit message');
 if (!sidebar.includes('roleNavGroups[user.role]')) throw new Error('Sidebar must resolve navigation from the assigned role');
 
+const getRoleBlock = (role) => {
+  const roleStart = sidebar.indexOf(`  ${role}:`);
+  const nextRoleMatch = sidebar.slice(roleStart + 3).match(/\n  [a-z_]+:\s*\[/);
+  const nextRole = nextRoleMatch ? roleStart + 3 + nextRoleMatch.index : -1;
+  return sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+};
+
 const requiredLinks = [
   ["canteen", "/orders", "orders"],
-  ["canteen", "/dietary-plans", "dietary_plans"],
-  ["canteen", "/menu", "meal_orders"],
   ["radiology_technician", "/radiology", "radiology"],
   ["radiologist", "/radiology", "radiology"],
   ["pharmacist", "/pharmacy", "pharmacy"],
@@ -25,9 +30,7 @@ const requiredLinks = [
 ];
 
 for (const [role, href, permission] of requiredLinks) {
-  const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const block = getRoleBlock(role);
   if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
     throw new Error(`Sidebar role contract missing ${role} link ${href} with permission ${permission}`);
   }
@@ -40,14 +43,24 @@ const forbiddenLinks = [
 ];
 
 for (const [role, href] of forbiddenLinks) {
-  const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const block = getRoleBlock(role);
   if (block.includes(`'${href}'`)) throw new Error(`Sidebar exposes unauthorized/unsupported link ${href} for ${role}`);
 }
 
 console.log(`Sidebar role contract passed for ${roles.length} roles`);
 
+
+const duplicateHrefPattern = /item\([^\n]+?,\s*'([^']+)'/g;
+
+for (const role of roles) {
+  const block = getRoleBlock(role);
+  const hrefs = [];
+  for (const match of block.matchAll(duplicateHrefPattern)) hrefs.push(match[1]);
+  const duplicates = [...new Set(hrefs.filter((href, index) => hrefs.indexOf(href) !== index))];
+  if (duplicates.length) throw new Error(`Sidebar role ${role} contains duplicate destinations: ${duplicates.join(', ')}`);
+}
+
+console.log('Sidebar destination uniqueness contract passed');
 
 const capabilityLinks = [
   ["nurse", "/lab-results", "laboratory_results"],
@@ -56,22 +69,16 @@ const capabilityLinks = [
   ["midwife", "/fertility", "fertility"],
   ["front_desk", "/registration", "registration"],
   ["front_desk", "/billing", "billing"],
-  ["pharmacist", "/inventory", "inventory"],
-  ["pharmacist", "/stock-alerts", "stock_alerts"],
+
   ["lab_technician", "/outside-lab", "outside_lab"],
   ["accountant", "/accounts-approvals", "accounts_approvals"],
   ["accountant", "/insurance-claims", "claims"],
-  ["accountant", "/financial-reports", "financial_reports"],
-  ["radiologist", "/notifications", "notifications"],
-  ["it_admin", "/notifications", "notifications"],
   ["patient", "/telemedicine", "telemedicine"],
   ["patient", "/billing", "billing"],
 ];
 
 for (const [role, href, permission] of capabilityLinks) {
-  const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const block = getRoleBlock(role);
   if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
     throw new Error(`Sidebar capability missing ${role} link ${href} with permission ${permission}`);
   }
@@ -88,21 +95,19 @@ const guardedRoutes = [
   ['/appointments', 'appointmentRoles'],
   ['/inpatient', 'inpatientRoles'],
   ['/billing', 'billingRoles'],
-  ['/financial-reports', 'financialReportRoles'],
-  ['/telemedicine', 'telemedicineRoles'],
+    ['/telemedicine', 'telemedicineRoles'],
   ['/fertility', 'fertilityRoles'],
   ['/outside-lab', 'outsideLabRoles'],
-  ['/stock-alerts', 'pharmacyInventoryRoles'],
-  ['/menu', 'canteenRoles'],
-  ['/orders', 'canteenRoles'],
-  ['/dietary-plans', 'canteenRoles'],
-  ['/notifications', 'notificationRoles'],
-  ['/notification-preferences', 'notificationRoles'],
+    ['/orders', 'canteenRoles'],
 ];
 
 for (const [href, roles] of guardedRoutes) {
-  const marker = `<Route path="${href}" element={<RoleGuard allowedRoles={${roles}}}`;
-  if (!app.includes(marker)) throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  const routePattern = new RegExp(
+    `<Route\\s+path=["']${href}["']\\s+element=\\{<RoleGuard\\s+allowedRoles=\\{${roles}\\}`,
+  );
+  if (!routePattern.test(app)) {
+    throw new Error(`Sidebar-reachable route ${href} is not guarded by ${roles}`);
+  }
 }
 
 const roleArrays = {

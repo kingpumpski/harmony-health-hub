@@ -49,11 +49,23 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: Navigation and header UX contract
+        run: node scripts/navigation-header-ux-contract.mjs
+
+      - name: Role dashboard contract
+        run: npm run test:role-dashboards
+
+      - name: Sidebar role contract
+        run: npm run test:sidebar-roles
+
       - name: Offline replay security contract
         run: npm run test:offline-replay
 
       - name: Clinical reference contract checks
         run: npm run test:clinical-references
+
+      - name: Notification provider security contract
+        run: npm run test:notification-provider-security
 
       - name: Production build
         run: npm run build

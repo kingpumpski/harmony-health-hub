@@ -18,7 +18,8 @@
     "test:role-dashboards": "node scripts/role-dashboard-contract.mjs",
     "test:sidebar-roles": "node scripts/sidebar-role-contract.mjs",
     "test:triage": "node scripts/triage-contract.mjs",
-    "test:clinical-references": "node scripts/clinical-reference-contract.mjs"
+    "test:clinical-references": "node scripts/clinical-reference-contract.mjs",
+    "test:notification-provider-security": "node scripts/notification-provider-security-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
