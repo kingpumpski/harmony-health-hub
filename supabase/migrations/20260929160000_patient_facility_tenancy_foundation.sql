@@ -34,8 +34,9 @@ ON public.patient_facility_access
 FOR SELECT
 TO authenticated
 USING (
-  public.has_facility_access((SELECT auth.uid()), facility_id)
+  public.has_role((SELECT auth.uid()), 'admin')
   OR public.has_role((SELECT auth.uid()), 'it_admin')
+  OR facility_id = public.hms_current_active_facility_id()
 );
 
 DROP POLICY IF EXISTS "patient facility access admin write" ON public.patient_facility_access;
@@ -84,11 +85,8 @@ AS $function$
       OR EXISTS (
         SELECT 1
         FROM public.patient_facility_access pfa
-        JOIN public.facility_memberships fm
-          ON fm.facility_id = pfa.facility_id
-         AND fm.user_id = (SELECT auth.uid())
-         AND fm.is_active = true
         WHERE pfa.patient_id = _patient_id
+          AND pfa.facility_id = public.hms_current_active_facility_id()
           AND pfa.access_status = 'active'
       )
     );
