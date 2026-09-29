@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -60,22 +60,7 @@ export default function Settings(){
  const [emailStatus,setEmailStatus]=useState<any>(null);
 
 
- useEffect(()=>{void load()},[]);
- async function load(){
-   setLoading(true);
-   const [{data,error}, facilityResult] = await Promise.all([
-     db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override,require_principal_diagnosis_for_final,inherit_inpatient_diagnoses,notification_sound_enabled').limit(1).maybeSingle(),
-     listFacilities().catch(()=>[]),
-   ]);
-   if(error) toast.error(error.message);
-   setConfig(data as Config|null);
-   setFacilities(facilityResult);
-   const initial = facilityResult[0]?.id ?? '';
-   setFacilityId(initial);
-   setLoading(false);
-   if(initial) void loadNotificationSettings(initial);
- }
- async function loadNotificationSettings(id:string){
+ const loadNotificationSettings=useCallback(async(id:string)=>{
    setNotificationLoading(true);
    try {
      const [cfg, requirements, connections] = await Promise.all([
@@ -94,7 +79,22 @@ export default function Settings(){
    } catch(error) {
      toast.error(error instanceof Error ? error.message : 'Unable to load notification settings.');
    } finally { setNotificationLoading(false); }
- }
+ }, []);
+ const load=useCallback(async()=>{
+   setLoading(true);
+   const [{data,error}, facilityResult] = await Promise.all([
+     db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override,require_principal_diagnosis_for_final,inherit_inpatient_diagnoses,notification_sound_enabled').limit(1).maybeSingle(),
+     listFacilities().catch(()=>[]),
+   ]);
+   if(error) toast.error(error.message);
+   setConfig(data as Config|null);
+   setFacilities(facilityResult);
+   const initial = facilityResult[0]?.id ?? '';
+   setFacilityId(initial);
+   setLoading(false);
+   if(initial) void loadNotificationSettings(initial);
+ }, [loadNotificationSettings]);
+ useEffect(()=>{void load()},[load]);
  async function save(){
    if(!config)return;
    setSaving(true);
