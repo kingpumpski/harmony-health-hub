@@ -4,8 +4,15 @@ const read=(path)=>fs.readFileSync(path,'utf8');
 const dashboard=read('src/pages/Dashboard.tsx');
 const permissions=read('src/lib/permissions.ts');
 const migration=read('supabase/migrations/20260926233000_role_dashboard_server_summary.sql');
+const activeRoleMigration=read('supabase/migrations/20260929203000_active_dashboard_role_context.sql');
+const auth=read('src/contexts/AuthContext.tsx');
 
 if (!migration.includes('SECURITY INVOKER')) throw new Error('Dashboard summary must remain RLS-aware');
+if (!auth.includes('current.roles.includes(nextRole)')) throw new Error('Active role switching must be limited to assigned roles');
+if (!activeRoleMigration.includes('get_role_dashboard_summary_for_role(_requested_role text DEFAULT NULL)')) throw new Error('Validated active-role dashboard function is missing');
+if (!activeRoleMigration.includes('Requested dashboard role is not assigned to the authenticated user')) throw new Error('Active dashboard role must be server-validated');
+if (!activeRoleMigration.includes('REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon')) throw new Error('Active dashboard function must not be executable anonymously');
+if (!activeRoleMigration.includes('GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated')) throw new Error('Active dashboard function must be authenticated-only');
 const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
 const expected=[
   ['admin','AdminDashboard'],
