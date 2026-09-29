@@ -11,6 +11,9 @@ assert.equal(manifest.scope,"selected-high-risk-function-execute-contract");
 const files=fs.existsSync(migrationsDir)?fs.readdirSync(migrationsDir).filter(n=>n.endsWith(".sql")):[];
 const source=files.map(n=>fs.readFileSync(path.join(migrationsDir,n),"utf8")).join("\n").replace(/--.*$/gm,"");
 const compact=(s)=>s.replace(/\s+/g,"").toLowerCase();
+const signatureArity=(signature)=>signature.split(",").filter(Boolean).length;
+const declaredArities=(name)=>{ const escaped=name.replace(/[.*+?^$()|[\\]\\\\]/g,"\\const compact=(s)=>s.replace(/\s+/g,"").toLowerCase();
+"); const re=new RegExp("CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\."+escaped+"\\s*\\(([^)]*)\\)","gi"); return [...source.matchAll(re)].map(m=>m[1].split(",").filter(Boolean).length); };
 const sql=compact(source);
 for(const [name,spec] of Object.entries(manifest.functions)){
  assert.ok(Array.isArray(spec.signatures)&&spec.signatures.length>0,`${name}: signatures required`);
