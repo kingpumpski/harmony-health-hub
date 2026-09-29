@@ -224,10 +224,15 @@ REVOKE ALL ON TABLE public.patient_facility_access FROM authenticated;
 GRANT SELECT ON TABLE public.patient_facility_access TO authenticated;
 
 REVOKE ALL ON FUNCTION public.hms_current_active_facility_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.hms_current_active_facility_id() FROM anon;
 REVOKE ALL ON FUNCTION public.hms_patient_has_facility_access(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.hms_patient_has_facility_access(uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.hms_assert_patient_facility_access(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.hms_assert_patient_facility_access(uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.link_patient_to_current_facility(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.link_patient_to_current_facility(uuid, text) FROM anon;
 REVOKE ALL ON FUNCTION public.auto_link_patient_to_active_facility() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.auto_link_patient_to_active_facility() FROM anon;
 
 GRANT EXECUTE ON FUNCTION public.hms_current_active_facility_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.hms_patient_has_facility_access(uuid) TO authenticated;
