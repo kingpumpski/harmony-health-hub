@@ -180,6 +180,7 @@ for (const pattern of [
   /SET search_path = ''/i,
   /REVOKE ALL ON TABLE public\.patient_facility_access FROM anon/i,
   /REVOKE ALL ON TABLE public\.patient_facility_access FROM authenticated/i,
+  /facility_id\s*=\s*\(select public\.hms_current_active_facility_id\(\)\)/i,
   /GRANT SELECT ON TABLE public\.patient_facility_access TO authenticated/i,
   /REVOKE ALL ON FUNCTION public\.auto_link_patient_to_active_facility\(\) FROM PUBLIC/i,
 ]) {
