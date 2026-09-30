@@ -26,8 +26,9 @@ const requiredLinks = [
 
 for (const [role, href, permission] of requiredLinks) {
   const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const remainder = sidebar.slice(roleStart + 3);
+  const nextRoleOffset = remainder.search(/\n  [a-z_]+: \[/);
+  const block = sidebar.slice(roleStart, nextRoleOffset === -1 ? sidebar.length : roleStart + 3 + nextRoleOffset);
   const canonicalItem = role === 'canteen' && href === '/orders' && permission === 'orders' && sidebar.includes("item(FileText, 'Meal Orders', '/orders', 'orders')");
   if (!canonicalItem && (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`))) {
     throw new Error(`Sidebar role contract missing ${role} link ${href} with permission ${permission}`);
@@ -42,8 +43,9 @@ const forbiddenLinks = [
 
 for (const [role, href] of forbiddenLinks) {
   const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const remainder = sidebar.slice(roleStart + 3);
+  const nextRoleOffset = remainder.search(/\n  [a-z_]+: \[/);
+  const block = sidebar.slice(roleStart, nextRoleOffset === -1 ? sidebar.length : roleStart + 3 + nextRoleOffset);
   if (block.includes(`'${href}'`)) throw new Error(`Sidebar exposes unauthorized/unsupported link ${href} for ${role}`);
 }
 
@@ -71,8 +73,9 @@ const capabilityLinks = [
 
 for (const [role, href, permission] of capabilityLinks) {
   const roleStart = sidebar.indexOf(`  ${role}:`);
-  const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
-  const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
+  const remainder = sidebar.slice(roleStart + 3);
+  const nextRoleOffset = remainder.search(/\n  [a-z_]+: \[/);
+  const block = sidebar.slice(roleStart, nextRoleOffset === -1 ? sidebar.length : roleStart + 3 + nextRoleOffset);
   if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
     throw new Error(`Sidebar capability missing ${role} link ${href} with permission ${permission}`);
   }
