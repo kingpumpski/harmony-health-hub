@@ -68,9 +68,9 @@ const tenancyAssertions = [
 ];
 
 const resourceLineagePatterns = [
-  /public\\.has_facility_access\\s*\\(/i,
-  /public\\.current_user_facility_id\\s*\\(/i,
-  /public\\.hms_current_active_facility_id\\s*\\(/i,
+  /public\.has_facility_access\s*\(/i,
+  /public\.current_user_facility_id\s*\(/i,
+  /public\.hms_current_active_facility_id\s*\(/i,
 ];
 
 for (const [name] of Object.entries(targets)) {
