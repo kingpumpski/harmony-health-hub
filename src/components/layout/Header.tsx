@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu, X } from "lucide-react";
+import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu, X, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ const roleLabels: Record<UserRole, string> = {
 
 interface HeaderProps { onMenu?: () => void }
 interface NotifRow { id: string; title: string; message: string; severity: string; category: string | null; link: string | null; is_read: boolean; created_at: string }
+interface FacilityContextRow { facility_id: string; facility_name: string; facility_code: string | null; facility_type: string | null; is_active: boolean }
 const sevIcon = (s: string) => s === "critical" ? <AlertTriangle className="h-4 w-4 text-critical animate-pulse" /> : s === "warning" ? <AlertCircle className="h-4 w-4 text-warning" /> : s === "success" ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Info className="h-4 w-4 text-info" />;
 
 export default function Header({ onMenu }: HeaderProps) {
@@ -34,6 +35,9 @@ export default function Header({ onMenu }: HeaderProps) {
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [notificationAttention, setNotificationAttention] = useState(false);
+  const [facilities, setFacilities] = useState<FacilityContextRow[]>([]);
+  const [activeFacilityId, setActiveFacilityId] = useState("");
+  const [facilityLoading, setFacilityLoading] = useState(false);
   const notificationIdsRef = useRef<Set<string>>(new Set());
   const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +66,33 @@ export default function Header({ onMenu }: HeaderProps) {
     setNotifications(rows);
     if (!hadInitialized && unreadRows.length > 0) setNotificationAttention(true);
   }, [user?.id, user?.role]);
+
+  const loadFacilityContext = useCallback(async () => {
+    if (!user?.id) return;
+    const [{ data: rows }, { data: current }] = await Promise.all([
+      db.rpc("get_user_facilities"),
+      db.rpc("get_current_facility_context"),
+    ]);
+    const nextFacilities = Array.isArray(rows) ? rows as FacilityContextRow[] : [];
+    const currentRow = Array.isArray(current) ? current[0] as FacilityContextRow | undefined : current as FacilityContextRow | null;
+    setFacilities(nextFacilities);
+    setActiveFacilityId(currentRow?.facility_id ?? "");
+  }, [user?.id]);
+  const selectFacility = useCallback(async (facilityId: string) => {
+    if (!facilityId || facilityId === activeFacilityId) return;
+    setFacilityLoading(true);
+    const { data, error } = await db.rpc("set_active_facility_context", { _facility_id: facilityId });
+    setFacilityLoading(false);
+    if (error) { console.error("Unable to change facility context", error); return; }
+    setActiveFacilityId(data?.id ?? facilityId);
+    window.dispatchEvent(new CustomEvent("harmony:facility-context-changed", { detail: { facilityId: data?.id ?? facilityId } }));
+  }, [activeFacilityId]);
+  useEffect(() => { void loadFacilityContext(); }, [loadFacilityContext]);
+  useEffect(() => {
+    const refresh = () => void loadFacilityContext();
+    window.addEventListener("harmony:facility-context-changed", refresh);
+    return () => window.removeEventListener("harmony:facility-context-changed", refresh);
+  }, [loadFacilityContext]);
 
   const unread = notifications.filter((n) => !n.is_read).length;
   const hasCritical = notifications.some((n) => !n.is_read && ["critical", "warning", "high"].includes(String(n.severity).toLowerCase()));

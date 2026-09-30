@@ -1,5 +1,1 @@
 project_id = "ygqoptvezotdqhtimdkr"
-
-# User-facing notification provider configuration is administrator-only.
-[functions.notification-provider-config]
-verify_jwt = true

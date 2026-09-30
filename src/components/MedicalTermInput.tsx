@@ -19,10 +19,6 @@ export default function MedicalTermInput({ value, onChange, placeholder, classNa
   const [recording, setRecording] = useState(false);
   const [catalogue, setCatalogue] = useState<DiagnosisSuggestion[]>([]);
   const recognitionRef = useRef<any>(null);
-  const valueRef = useRef(value);
-  const onChangeRef = useRef(onChange);
-  valueRef.current = value;
-  onChangeRef.current = onChange;
   const localSuggestions = diagnosisOnly ? searchDiagnosisTerms(value) : searchTerms(value).map((label) => ({ label, code: '', source: 'ICD-10' as const }));
   const suggestions = diagnosisOnly
     ? (catalogue.length > 0 ? catalogue : localSuggestions).filter((item) => `${item.code} ${item.label}`.toLowerCase().includes(value.trim().toLowerCase())).slice(0, 10)
@@ -56,8 +52,7 @@ export default function MedicalTermInput({ value, onChange, placeholder, classNa
       rec.lang = 'en-US';
       rec.onresult = (ev: any) => {
         const txt = Array.from(ev.results).map((r: any) => r[0].transcript).join(' ');
-        const currentValue = valueRef.current;
-        onChangeRef.current((currentValue ? currentValue + ' ' : '') + txt);
+        onChange((value ? value + ' ' : '') + txt);
       };
       rec.onend = () => setRecording(false);
       recognitionRef.current = rec;

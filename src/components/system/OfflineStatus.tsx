@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { getOfflineMutations, subscribeToOfflineSync, syncOfflineMutations, type OfflineOperationEvent } from '@/lib/offlineSync';
 
@@ -16,9 +16,9 @@ export default function OfflineStatus() {
   const [syncing, setSyncing] = useState(false);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => setPending((await getOfflineMutations()).length), []);
+  const refresh = async () => setPending((await getOfflineMutations()).length);
 
-  const synchronize = useCallback(async () => {
+  const synchronize = async () => {
     if (!navigator.onLine) return;
     setSyncing(true);
     try {
@@ -27,7 +27,7 @@ export default function OfflineStatus() {
       setSyncing(false);
       await refresh();
     }
-  }, [refresh]);
+  };
 
   useEffect(() => {
     const onOnline = () => {
@@ -77,7 +77,7 @@ export default function OfflineStatus() {
       window.clearInterval(retryTimer);
       window.clearInterval(messageTimer);
     };
-  }, [refresh, synchronize]);
+  }, []);
 
   if (online && pending === 0 && !syncing && !operationMessage) return null;
 

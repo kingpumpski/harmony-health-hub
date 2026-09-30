@@ -8,6 +8,11 @@ on:
         required: true
         default: validate
         type: choice
+      confirm_production_apply:
+        description: 'For apply mode only, enter APPLY_PRODUCTION to acknowledge a production schema change'
+        required: true
+        default: ''
+        type: string
         options:
           - validate
           - apply
@@ -16,9 +21,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-production-migrations
+  cancel-in-progress: false
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -35,6 +45,9 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
 
+      - name: Enforce repository project-integrity gate
+        run: npm run test:project-integrity
+
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
@@ -45,8 +58,13 @@ jobs:
         if: ${{ inputs.mode == 'validate' }}
         run: supabase db push --linked --dry-run
 
-      - name: Apply migrations
+      - name: Require explicit production apply confirmation
         if: ${{ inputs.mode == 'apply' }}
+        run: |
+          test "${{ inputs.confirm_production_apply }}" = "APPLY_PRODUCTION"
+
+      - name: Apply migrations
+        if: ${{ inputs.mode == 'apply' && inputs.confirm_production_apply == 'APPLY_PRODUCTION' }}
         run: supabase db push --linked
 
       - name: Verify database lint

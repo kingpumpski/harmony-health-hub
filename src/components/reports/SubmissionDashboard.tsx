@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Loader2, RefreshCw, Send, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { listSubmissions, markSubmissionsSubmitted, type ReportSubmission } from '@/lib/reportsCenter';
@@ -16,7 +16,7 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async (showError = true) => {
+  async function load(showError = true) {
     setLoading(true);
     try {
       const submissions = await listSubmissions(facilityId, period);
@@ -26,9 +26,9 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
     } finally {
       setLoading(false);
     }
-  }, [facilityId, period]);
+  }
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [facilityId, period]);
 
   const pending = rows.filter((row) => row.status === 'pending').length;
   const overdue = rows.filter((row) => row.status === 'overdue').length;

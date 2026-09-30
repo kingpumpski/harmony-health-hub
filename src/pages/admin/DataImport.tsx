@@ -1,5 +1,5 @@
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Papa from 'papaparse';
 import { Database, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, RefreshCw, UserCheck, CheckCircle2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,12 +55,12 @@ export default function DataImport() {
   const [candidates, setCandidates] = useState<Record<string, PatientCandidate[]>>({});
   const [migrationBusy, setMigrationBusy] = useState<string | null>(null);
 
-  const refreshBatches = useCallback(async () => {
+  const refreshBatches = async () => {
     if (user?.role !== 'admin') return;
     const { data: workspace, error } = await getOperationalWorkspace('data_migration', 20); const data = (workspace as any)?.batches ?? [];
     if (error) return toast({ title: 'Migration workspace unavailable', description: error.message, variant: 'destructive' });
     setBatches((data ?? []) as MigrationBatch[]);
-  }, [user?.role]);
+  };
 
   const loadRows = async (batchId: string) => {
     setSelectedBatch(batchId);
@@ -70,7 +70,7 @@ export default function DataImport() {
     setMigrationRows((data ?? []) as MigrationRow[]);
   };
 
-  useEffect(() => { void refreshBatches(); }, [refreshBatches]);
+  useEffect(() => { void refreshBatches(); }, [user?.id, user?.role]);
 
   if (user?.role !== 'admin') return <div className="p-8 text-center"><AlertTriangle className="w-10 h-10 text-warning mx-auto mb-2" /><h2 className="font-semibold text-xl">Admin only</h2><p className="text-muted-foreground">Bulk database and migration imports require administrator access.</p></div>;
 

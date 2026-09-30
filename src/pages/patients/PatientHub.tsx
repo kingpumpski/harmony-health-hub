@@ -237,7 +237,120 @@ function VitalsTab({ patientId, canWrite, onSaved }: any) {
   </div>;
 }
 
-function EncountersTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({chief_complaint:'',notes:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {data,error}=await(supabase as any).rpc('create_encounter_workflow',{_patient_id:patientId,_symptoms:form.chief_complaint,_clerking_notes:form.notes||null});if(error)return toast.error(error.message);setForm({chief_complaint:'',notes:''});toast.success(`Encounter ${data?.encounter_id??''} created`);onSaved();};return <div className="space-y-5"><Section title="Encounter history">{rows.length?<div className="space-y-2">{rows.map((r:any)=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-2"><strong>{r.chief_complaint||'Clinical encounter'}</strong><span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span></div><p className="mt-2 text-sm text-muted-foreground">{r.notes||'No notes recorded.'}</p></div>)}</div>:<EmptyState label="encounters"/>}</Section>{canWrite&&<Section title="Start encounter"><form onSubmit={submit} className="space-y-4"><input required placeholder="Chief complaint" value={form.chief_complaint} onChange={e=>setForm({...form,chief_complaint:e.target.value})} className="input-medical w-full"/><textarea placeholder="Initial clinical notes" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className="input-medical min-h-24 w-full"/><button className="btn-primary">Start encounter</button></form></Section>}</div>; }
+function EncountersTab({ patientId, rows, canWrite, onSaved }: any) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ chief_complaint: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+
+  const openEncounter = (encounterId?: string) => {
+    const query = encounterId ? `?patient=${encodeURIComponent(patientId)}&encounter=${encodeURIComponent(encounterId)}` : `?patient=${encodeURIComponent(patientId)}`;
+    navigate(`/encounters${query}`);
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!form.chief_complaint.trim()) {
+      toast.error('Chief complaint / presenting problem is required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await (supabase as any).rpc('create_encounter_workflow', {
+        _patient_id: patientId,
+        _symptoms: form.chief_complaint.trim(),
+        _clerking_notes: form.notes.trim() || null,
+      });
+      if (error) throw error;
+      setForm({ chief_complaint: '', notes: '' });
+      toast.success(`Encounter ${data?.id ? 'created' : 'started'} as a draft. Continue clerking, diagnosis and treatment in the Encounter workspace.`);
+      onSaved();
+      if (data?.id) openEncounter(data.id);
+    } catch (error: any) {
+      toast.error(error.message ?? 'Could not start encounter');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <Section
+        title="Encounter history"
+        action={
+          <button type="button" onClick={() => openEncounter()} className="btn-secondary inline-flex items-center gap-2">
+            <Stethoscope className="w-4 h-4" />
+            Open Encounter workspace
+          </button>
+        }
+      >
+        {rows.length ? (
+          <div className="space-y-3">
+            {rows.map((r: any) => (
+              <article key={r.id} className="rounded-xl border p-4 hover:border-primary/40 transition-colors">
+                <button type="button" onClick={() => openEncounter(r.id)} className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <strong>{r.chief_complaint || r.symptoms || 'Clinical encounter'}</strong>
+                    <span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span>
+                  </div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3 text-xs">
+                    <span><b>Status:</b> <span className="capitalize">{r.status || 'draft'}</span></span>
+                    <span><b>Principal diagnosis:</b> {r.principal_diagnosis || 'Not yet recorded'}</span>
+                    <span><b>Plan:</b> {r.treatment_plan || 'Not yet recorded'}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{r.clerking_notes || r.notes || 'No clerking notes recorded.'}</p>
+                </button>
+                {r.status !== 'completed' && r.status !== 'cancelled' && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+                    <span className="text-xs text-muted-foreground">Draft documentation can be resumed in the full encounter workspace.</span>
+                    <button type="button" onClick={() => openEncounter(r.id)} className="btn-primary inline-flex items-center gap-2">
+                      <Stethoscope className="w-4 h-4" />
+                      Continue encounter
+                    </button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState label="encounters" />
+        )}
+      </Section>
+
+      {canWrite && (
+        <Section title="Start encounter">
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Chief complaint / presenting problem</label>
+              <input
+                required
+                placeholder="What brings the patient for care?"
+                value={form.chief_complaint}
+                onChange={e => setForm({ ...form, chief_complaint: e.target.value })}
+                className="input-medical mt-1 w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Initial clerking notes <span className="font-normal text-muted-foreground">(optional)</span></label>
+              <textarea
+                placeholder="Initial history or clinical notes"
+                value={form.notes}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                className="input-medical mt-1 min-h-24 w-full"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={saving} className="btn-primary inline-flex items-center gap-2">
+                <Stethoscope className="w-4 h-4" />
+                {saving ? 'Starting…' : 'Start draft encounter'}
+              </button>
+              <span className="text-xs text-muted-foreground">The draft remains server-authorized and opens in the full workflow so diagnosis, prescriptions, treatment and finalization stay attached to the same encounter.</span>
+            </div>
+          </form>
+        </Section>
+      )}
+    </div>
+  );
+}
 
 function LabsTab({ patientId, rows, canWrite, onSaved }: any) { const [form,setForm]=useState({test_name:'',clinical_notes:''}); const submit=async(e:FormEvent)=>{e.preventDefault();const {data,error}=await(supabase as any).rpc('create_lab_order_with_payment_gate',{_patient_id:patientId,_test_name:form.test_name,_test_category:'general',_priority:'routine',_clinical_notes:form.clinical_notes||null,_amount:0});if(error)return toast.error(error.message);setForm({test_name:'',clinical_notes:''});toast.success(`Lab order ${data?.lab_order_id??''} created`);onSaved();};return <div className="space-y-5"><Section title="Laboratory orders">{rows.length?<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Created</th><th className="p-2">Test</th><th className="p-2">Status</th><th className="p-2">Payment</th></tr></thead><tbody>{rows.map((r:any)=><tr key={r.id} className="border-b"><td className="p-2">{formatDate(r.created_at)}</td><td className="p-2">{r.test_name||r.test_type||'Laboratory test'}</td><td className="p-2 capitalize">{r.status||'—'}</td><td className="p-2 capitalize">{r.payment_status||'—'}</td></tr>)}</tbody></table></div>:<EmptyState label="lab orders"/>}</Section>{canWrite&&<Section title="Create lab order"><form onSubmit={submit} className="space-y-4"><input required placeholder="Test name" value={form.test_name} onChange={e=>setForm({...form,test_name:e.target.value})} className="input-medical w-full"/><textarea placeholder="Clinical notes / indication" value={form.clinical_notes} onChange={e=>setForm({...form,clinical_notes:e.target.value})} className="input-medical min-h-20 w-full"/><button className="btn-primary">Create lab order</button></form></Section>}</div>; }
 
