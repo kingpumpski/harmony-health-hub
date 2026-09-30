@@ -45,7 +45,7 @@ const entries = Object.entries(manifest.functions);
 assert(entries.length > 0, "patient-facility boundary manifest must not be empty");
 
 for (const [name, status] of entries) {
-  assert.match(status, /^(pending_tenancy_enforcement|enforced|exempt)$/);
+  assert.match(status, /^(pending_tenancy_enforcement|hardened_pending_isolation_evidence|enforced|exempt)$/);
   assert.match(
     source,
     new RegExp(`(?:CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\$&")})`, "i"),
