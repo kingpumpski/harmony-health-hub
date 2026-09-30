@@ -189,13 +189,14 @@ RETURNS TABLE(
   referral_id UUID, patient_id UUID, patient_name TEXT, telephone TEXT,
   specialty TEXT, appointment_date TIMESTAMPTZ, referred_at TIMESTAMPTZ, status TEXT
 )
-LANGUAGE sql SECURITY DEFINER STABLE SET search_path=public AS $$
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path='' AS $
   SELECT r.id,r.patient_id,concat(p.first_name,' ',p.last_name),p.phone,r.specialty,
          r.appointment_date,r.created_at,r.status
   FROM public.patient_referrals r
   JOIN public.patients p ON p.id=r.patient_id
   WHERE r.status IN ('requested','accepted','scheduled')
     AND r.specialty IS NOT NULL
+    AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.is_clinical_staff(auth.uid()))
   ORDER BY r.appointment_date NULLS LAST,r.created_at ASC;
 $$;
 REVOKE ALL ON FUNCTION public.get_pending_specialist_referrals() FROM PUBLIC;
