@@ -1,6 +1,5 @@
-import { Activity, Clock3, ShieldCheck } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import WorkflowSummary from '@/components/WorkflowSummary';
 import SpecialistReferralCard from '@/components/SpecialistReferralCard';
 import FinancialSettlementCard from '@/components/FinancialSettlementCard';
 import FrontDeskDashboard from './dashboard/FrontDeskDashboard';
@@ -40,30 +39,32 @@ export default function Dashboard(){
   const displayName=user.firstName || user.email.split('@')[0];
   const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(user.role);
   const showSettlement=['admin','accountant'].includes(user.role);
-  return <div className="space-y-1">
-    <section className="mb-5 rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Role command center</p>
-          <h1 className="mt-1 text-xl font-heading font-bold tracking-tight sm:text-2xl">Good to see you, {displayName}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Your role-aware workspace is ready. Use the active cards and shortcuts to move directly into today's work.</p>
+  return (
+    <div className="space-y-5">
+      {user.roles.length > 1 && (
+        <div className="flex justify-end">
+          <label className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium shadow-sm">
+            <span className="text-muted-foreground">Operational role</span>
+            <span className="relative">
+              <select
+                aria-label="Active operational role"
+                value={user.role}
+                onChange={(event) => switchRole(event.target.value as UserRole)}
+                className="appearance-none bg-transparent pr-6 font-medium capitalize outline-none"
+              >
+                {user.roles.map((role) => (
+                  <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            </span>
+          </label>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {user.roles.length > 1 && <label className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium">
-            <span className="text-muted-foreground">Role</span>
-            <select aria-label="Active operational role" value={user.role} onChange={(event) => switchRole(event.target.value as UserRole)} className="bg-transparent font-medium outline-none">
-              {user.roles.map((role) => <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>)}
-            </select>
-          </label>}
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium"><Activity className="h-3.5 w-3.5 text-primary"/>Live workspace</span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium"><ShieldCheck className="h-3.5 w-3.5 text-success"/>Access controlled</span>
-          <span className="hidden items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium sm:inline-flex"><Clock3 className="h-3.5 w-3.5 text-muted-foreground"/>Today</span>
-        </div>
-      </div>
-    </section>
-    {showReferral && <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard/></div>}
-    {showSettlement && <div className="mb-6"><FinancialSettlementCard/></div>}
-    {dashboard}
-    <WorkflowSummary/>
-  </div>;
+      )}
+
+      {showReferral && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard /></div>}
+      {showSettlement && <FinancialSettlementCard />}
+      {dashboard}
+    </div>
+  );
 }
