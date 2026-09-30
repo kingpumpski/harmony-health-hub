@@ -21,7 +21,7 @@ This is deliberately additive to the function-specific authorization contracts. 
 
 ## Current production interpretation
 
-The current Supabase Security Advisor reports 207 authenticated-callable SECURITY DEFINER functions. These are existing application RPCs and are not being mass-revoked because doing so would break intended workflows. The correct remediation path is function-by-function review and explicit least-privilege contracts, followed by moving functions to SECURITY INVOKER or a non-exposed schema when the elevated boundary is not required.
+The current Supabase Security Advisor reports a large set of authenticated-callable SECURITY DEFINER functions (212 findings in the 2026-09-30 live audit). These are existing application RPCs and are not being mass-revoked because doing so would break intended workflows. The correct remediation path is function-by-function review and explicit least-privilege contracts, followed by moving functions to SECURITY INVOKER or a non-exposed schema when the elevated boundary is not required.
 
 Supabase recommends SECURITY INVOKER by default and an empty search_path for functions that must use SECURITY DEFINER.
 
@@ -35,3 +35,4 @@ Do not apply the patient/facility tenancy enforcement migration to production un
 4. same-facility workflows continue to succeed;
 5. concurrency/row-lock regression tests pass;
 6. Security Advisor is re-run after migration application.
+7. Auth leaked-password protection is reviewed separately; it is currently reported as disabled in the live project and is not changed by this migration branch.
