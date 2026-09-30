@@ -250,9 +250,10 @@ export default function NurseDashboard() {
           <div className="p-5 space-y-3">
             {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
             {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
+          <div className="flex justify-end gap-2 border-t border-border pt-3"><button type="button" className="btn-secondary" onClick={() => acknowledgeMedicationAlert(String(medTarget.id))}>Acknowledge alert</button><Link to="/medications" className="btn-primary">Open medication administration</Link></div>
           </div>
         </div>
-      <div className="flex justify-end gap-2 border-t border-border pt-3"><button type="button" className="btn-secondary" onClick={() => acknowledgeMedicationAlert(String(medTarget.id))}>Acknowledge alert</button><Link to="/medications" className="btn-primary">Open medication administration</Link></div></div>}
+      </div>}
       {noteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="nursing-note-title">
         <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-xl">
           <div className="flex items-center justify-between border-b border-border p-5">
