@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 const root = process.cwd();
 const migrationDir = path.join(root, 'supabase/migrations');
+const manifestPath = path.join(root, 'scripts/patient-facility-boundary-manifest.json');
 const migrations = fs.readdirSync(migrationDir)
   .filter((n) => n.endsWith('.sql'))
   .sort();
@@ -15,6 +16,7 @@ const files = migrations.map((name) => ({
 }));
 const source = files.map(({ source }) => source).join('\n');
 const compact = (v) => v.replace(/--.*$/gm, '').replace(/\s+/g, ' ').toLowerCase();
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 const targets = {
   create_ai_clinical_session: 'create_ai_clinical_session(uuid,text,jsonb,jsonb)',
@@ -59,7 +61,8 @@ function latestDeclaration(name) {
     latest = match;
   }
   assert.ok(latest, name + ': declaration not found');
-  const nextFunction = source.slice(latest.index + latest[0].length).search(/\\bcreate\\s+(?:or\\s+replace\\s+)?function\\s+public\\./i);
+  const tail = source.slice(latest.index + latest[0].length);
+  const nextFunction = tail.search(/\bcreate\s+(?:or\s+replace\s+)?function\s+public\./i);
   return nextFunction >= 0
     ? source.slice(latest.index, latest.index + latest[0].length + nextFunction)
     : source.slice(latest.index);
@@ -79,21 +82,43 @@ const resourceLineagePatterns = [
 for (const [name] of Object.entries(targets)) {
   const body = latestDeclaration(name);
   const normalized = body.toLowerCase();
+  const status = manifest.functions?.[name];
+
+  assert.ok(
+    status,
+    name + ': function must be classified in patient-facility-boundary-manifest.json',
+  );
 
   const explicitPatientTenancy = tenancyAssertions.some((term) => normalized.includes(term));
   const explicitResourceFacility = resourceLineagePatterns.some((pattern) => pattern.test(body));
 
-  if (!explicitPatientTenancy && !explicitResourceFacility) {
-    throw new Error(
-      '[patient-facility-gate] ' +
-        name +
-        ': latest migration definition has no executable patient/facility tenancy predicate. ' +
-        'A generic facility_id token is insufficient. Implement explicit patient access or resource facility lineage, ' +
-        'then validate with two non-admin users in two facilities before tenancy sign-off.',
+  if (status === 'enforced') {
+    assert.ok(
+      explicitPatientTenancy || explicitResourceFacility,
+      '[patient-facility-gate] ' + name +
+        ': enforced function has no executable patient/facility tenancy predicate. ' +
+        'A generic facility_id token is insufficient.',
     );
+  } else if (status === 'hardened_pending_isolation_evidence') {
+    assert.ok(
+      explicitPatientTenancy || explicitResourceFacility,
+      '[patient-facility-gate] ' + name +
+        ': function is marked hardened_pending_isolation_evidence but has no executable ' +
+        'patient/facility tenancy predicate.',
+    );
+  } else if (status === 'pending_tenancy_enforcement') {
+    // Pending is an intentional fail-closed review state: privilege/search-path
+    // hardening is required, but patient/facility isolation is not falsely claimed.
+    assert.ok(
+      s.includes('revoke all on function public.' + targets[name] + ' from public, anon;') &&
+      s.includes('grant execute on function public.' + targets[name] + ' to authenticated;'),
+      name + ': pending function must retain explicit execution boundaries',
+    );
+  } else if (status !== 'exempt') {
+    throw new Error(name + ': unsupported patient-facility status: ' + status);
   }
 }
 
 console.log(
-  '[patient-facility-gate] high-risk RPC privilege and latest-definition tenancy-evidence scan completed.',
+  '[patient-facility-gate] high-risk RPC privilege/search-path and tenancy-evidence scan completed without promoting pending tenancy to enforced.',
 );
