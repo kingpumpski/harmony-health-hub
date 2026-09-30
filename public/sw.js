@@ -1,5 +1,5 @@
 const BASE_PATH = '/harmony-health-hub';
-const CACHE_NAME = 'harmony-health-hub-shell-v13';
+const CACHE_NAME = 'harmony-health-hub-shell-v14';
 const SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
