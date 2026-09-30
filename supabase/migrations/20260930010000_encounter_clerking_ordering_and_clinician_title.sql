@@ -20,7 +20,7 @@ create or replace function public.save_encounter_clerking(
   _follow_up_date date default null
 ) returns public.encounters
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
@@ -61,7 +61,7 @@ create or replace function public.create_encounter_lab_order(
   _clinical_notes text default null
 ) returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
@@ -111,7 +111,7 @@ create or replace function public.create_encounter_imaging_order(
   _clinical_indication text default null
 ) returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
@@ -161,7 +161,7 @@ create or replace function public.create_encounter_service_order(
   _notes text default null
 ) returns jsonb
 language plpgsql security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
