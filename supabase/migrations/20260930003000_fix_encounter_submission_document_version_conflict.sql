@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.submit_encounter_workflow(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO pg_catalog, public
+set search_path = ''
 AS $function$
 declare
   v_enc public.encounters%rowtype;
