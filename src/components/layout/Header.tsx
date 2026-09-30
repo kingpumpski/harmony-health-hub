@@ -80,6 +80,9 @@ export default function Header({ onMenu }: HeaderProps) {
 
   useEffect(() => {
     void loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
     const query = searchTerm.trim();
     if (!query) { setSearchResults([]); setIsSearching(false); return; }
     let active = true;
@@ -89,7 +92,7 @@ export default function Header({ onMenu }: HeaderProps) {
       void searchGlobalWorkspace(query, roles, user?.permissions ?? []).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [searchTerm, user?.role, user?.roles, user?.permissions, loadNotifications]);
+  }, [searchTerm, user?.role, user?.roles, user?.permissions]);
 
   useEffect(() => {
     const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
