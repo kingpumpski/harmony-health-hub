@@ -20,7 +20,7 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 const targets = {
   create_ai_clinical_session: 'create_ai_clinical_session(uuid,text,jsonb,jsonb)',
-  create_lab_order_with_payment_gate: 'create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric,uuid)',
+  create_lab_order_with_payment_gate: 'create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric)',
   create_imaging_order_with_payment_gate: 'create_imaging_order_with_payment_gate(uuid,uuid,text,text,text,text,text,numeric)',
   create_insurance_claim_draft: 'create_insurance_claim_draft(uuid,text,text,numeric,uuid)',
   create_pharmacy_pos_sale: 'create_pharmacy_pos_sale(uuid,uuid,integer)',
