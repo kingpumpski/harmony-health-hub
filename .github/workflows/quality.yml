@@ -66,6 +66,9 @@ jobs:
 
       - name: Authorization boundary contracts
         run: npm run test:authorization-boundaries
+      - name: Project integrity release gate
+        run: npm run test:project-integrity
+
 
       - name: Security best-practice audit
         run: npm run test:security-best-practices
