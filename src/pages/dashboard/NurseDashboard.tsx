@@ -200,8 +200,9 @@ export default function NurseDashboard() {
               const patientCode = person?.patient_code ?? '—';
               const patientHref = `/patients/${patient.patient_id}?admission=${patient.id}`;
               return (
-                <div key={patient.id ?? index} role="link" tabIndex={0} aria-label={`Open current treatment record for ${patientNameValue}`} onClick={() => navigate(patientHref)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(patientHref); } }} className={cn('block cursor-pointer p-4 transition-colors hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset', statusTone(patient.status))}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                <div key={patient.id ?? index} className={cn('relative p-4 transition-colors hover:bg-muted/30 focus-within:ring-2 focus-within:ring-primary focus-within:ring-inset', statusTone(patient.status))}>
+                  <Link to={patientHref} aria-label={`Open current treatment record for ${patientNameValue}`} className="absolute inset-0 z-0 rounded-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset" />
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="text-center px-3 py-2 bg-muted rounded-lg shrink-0"><p className="text-xs text-muted-foreground">Bed</p><p className="font-bold text-sm">{patient.bed_number ?? patient.bed ?? '—'}</p></div>
                       <div className="min-w-0">
@@ -213,10 +214,10 @@ export default function NurseDashboard() {
                         {patient.status === 'critical' && <span className="badge-critical pulse-critical inline-flex mt-1"><AlertTriangle className="w-3 h-3 mr-1" />Clinical review</span>}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className="btn-secondary text-sm py-1.5" onClick={(event) => { event.stopPropagation(); setNoteTarget(patient); }}><FileText className="w-4 h-4" /> Notes</button>
-                      <Link to={`/vitals?patient=${patient.patient_id}`} className="btn-secondary text-sm py-1.5" onClick={(event) => event.stopPropagation()}><HeartPulse className="w-4 h-4" /> Vitals</Link>
-                      <Link to={`/medications?patient=${patient.patient_id}`} className="btn-ghost text-sm py-1.5" onClick={(event) => event.stopPropagation()}><Syringe className="w-4 h-4" /> Meds</Link>
+                    <div className="pointer-events-auto flex flex-wrap gap-2">
+                      <button type="button" className="btn-secondary text-sm py-1.5" onClick={() => setNoteTarget(patient)}><FileText className="w-4 h-4" /> Notes</button>
+                      <Link to={`/vitals?patient=${patient.patient_id}`} className="btn-secondary text-sm py-1.5"><HeartPulse className="w-4 h-4" /> Vitals</Link>
+                      <Link to={`/medications?patient=${patient.patient_id}`} className="btn-ghost text-sm py-1.5"><Syringe className="w-4 h-4" /> Meds</Link>
                     </div>
                   </div>
                 </div>
