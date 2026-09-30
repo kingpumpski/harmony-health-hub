@@ -12,7 +12,7 @@ if (evidence.environment !== "not_configured" || evidence.status !== "not_run") 
 }
 
 const tenancy = read("supabase/migrations/20260929160000_patient_facility_tenancy_foundation.sql");
-if (!tenancy.includes("Do not apply this migration to production")) {
+if (!tenancy.includes("Intentionally NOT applied to production")) {
   fail("patient/facility tenancy foundation must retain its explicit non-production gate");
 }
 if (/ALTER TABLE public\.patients\s+ENABLE ROW LEVEL SECURITY/i.test(tenancy)) {
