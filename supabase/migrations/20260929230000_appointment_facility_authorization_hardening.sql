@@ -116,12 +116,13 @@ BEGIN
     RAISE EXCEPTION 'Patient facility access denied';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.patients
-    WHERE id = _patient_id
-      AND COALESCE(status, 'active') <> 'inactive'
-  ) THEN
+  PERFORM 1
+  FROM public.patients
+  WHERE id = _patient_id
+    AND COALESCE(status, 'active') <> 'inactive'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'Active patient does not exist';
   END IF;
 
