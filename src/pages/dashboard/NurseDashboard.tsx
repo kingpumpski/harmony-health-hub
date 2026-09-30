@@ -179,13 +179,6 @@ export default function NurseDashboard() {
         <StatCard title="Nursing Queue" value={queue.length} change="Waiting / claimed" changeType="neutral" icon={Users} iconColor="text-primary" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link to="/nursing-handover" className="card-medical p-4 bg-info/5 hover:bg-info/10 transition-all hover:-translate-y-0.5"><BellRing className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Handover</p><p className="text-2xl font-bold tabular-nums">{pendingHandovers.length}</p></Link>
-        <Link to="/medications" className="card-medical p-4 bg-warning/5 hover:bg-warning/10 transition-all hover:-translate-y-0.5"><Syringe className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Medication due</p><p className="text-2xl font-bold tabular-nums">{dueMeds.length}</p></Link>
-        <Link to="/vitals" className="card-medical p-4 bg-critical/5 hover:bg-critical/10 transition-all hover:-translate-y-0.5"><Activity className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Critical review</p><p className="text-2xl font-bold tabular-nums">{criticalPatients.length}</p></Link>
-        <Link to="/ward-bed-board" className="card-medical p-4 bg-primary/5 hover:bg-primary/10 transition-all hover:-translate-y-0.5"><BedDouble className="w-4 h-4 mb-2" /><p className="text-xs text-muted-foreground">Ward / beds</p><p className="text-sm font-semibold mt-1">Open bed board →</p></Link>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className="lg:col-span-2 card-medical">
           <div className="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
