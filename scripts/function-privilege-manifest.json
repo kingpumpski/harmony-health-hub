@@ -37,7 +37,7 @@
       "requires_anon_revoke": true
     },
     "create_lab_order_with_payment_gate": {
-      "signatures": ["uuid,text,text,text,text,numeric,uuid"],
+      "signatures": ["uuid,text,text,text,text,numeric"],
       "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
