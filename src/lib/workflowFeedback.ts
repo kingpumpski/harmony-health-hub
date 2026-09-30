@@ -84,3 +84,11 @@ export function notificationSoundKind(notification: {
   if (severity === 'success') return 'success';
   return 'info';
 }
+
+
+/** Repeating high-priority feedback. Returns a cleanup function so callers can stop it when the workflow is acknowledged. */
+export function playWorkflowSoundLoop(kind: WorkflowSound = 'critical', intervalMs = 1200) {
+  playWorkflowSound(kind);
+  const timer = window.setInterval(() => playWorkflowSound(kind), intervalMs);
+  return () => window.clearInterval(timer);
+}
