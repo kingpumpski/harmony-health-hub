@@ -82,6 +82,10 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.get_laboratory_workspace(integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_laboratory_workspace(integer) FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_laboratory_workspace(integer) TO authenticated;
+
 REVOKE ALL ON FUNCTION public.enter_lab_result_structured(uuid,jsonb,text,text,boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.enter_lab_result_structured(uuid,jsonb,text,text,boolean) FROM anon;
 GRANT EXECUTE ON FUNCTION public.enter_lab_result_structured(uuid,jsonb,text,text,boolean) TO authenticated;
