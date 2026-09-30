@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const sidebar = fs.readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-const roles = ['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
+const roles = ['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin','system_superuser'];
 
 for (const role of roles) {
   if (!sidebar.includes(`  ${role}:`)) throw new Error(`Sidebar navigation missing role: ${role}`);
@@ -22,6 +22,9 @@ const requiredLinks = [
   ["pharmacist", "/pharmacy", "pharmacy"],
   ["lab_technician", "/laboratory", "laboratory"],
   ["it_admin", "/it-support", "it_support"],
+  ["system_superuser", "/admin/settings", "system_settings"],
+  ["system_superuser", "/admin/users", "users"],
+  ["system_superuser", "/admin/facility-sharing", "facility_sharing"],
 ];
 
 for (const [role, href, permission] of requiredLinks) {
