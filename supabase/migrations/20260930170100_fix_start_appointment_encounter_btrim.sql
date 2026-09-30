@@ -101,4 +101,4 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.start_appointment_encounter(uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.start_appointment_encounter(uuid, text, text) TO authenticated;
-NOTIFY pgrST, 'reload schema';
+NOTIFY pgrst, 'reload schema';
