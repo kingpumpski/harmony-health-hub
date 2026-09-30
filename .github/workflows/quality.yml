@@ -49,36 +49,40 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: Navigation and header UX contract
+        run: node scripts/navigation-header-ux-contract.mjs
+
+      - name: Role dashboard contract
+        run: npm run test:role-dashboards
+
+      - name: Sidebar role contract
+        run: npm run test:sidebar-roles
+
       - name: Offline replay security contract
         run: npm run test:offline-replay
 
       - name: Clinical reference contract checks
         run: npm run test:clinical-references
 
+      - name: Notification provider security contract
+        run: npm run test:notification-provider-security
+
       - name: Public SECURITY DEFINER exposure contract
         run: npm run test:public-security-definer-exposure
-
       - name: SECURITY DEFINER creation contract
         run: npm run test:security-definer-creation
-
       - name: Authenticated SECURITY DEFINER exposure contract
         run: npm run test:authenticated-security-definer-exposure
-
       - name: Authorization boundary contracts
         run: npm run test:authorization-boundaries
       - name: Project integrity release gate
         run: npm run test:project-integrity
-
-
       - name: Security best-practice audit
         run: npm run test:security-best-practices
-
       - name: RLS helper performance contract
         run: npm run test:rls-helper-performance
-
       - name: Public view security contract
         run: npm run test:public-view-security
-
       - name: Dependency security contract
         run: npm run test:dependency-security
 
