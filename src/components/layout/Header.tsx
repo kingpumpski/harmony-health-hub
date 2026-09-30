@@ -26,7 +26,6 @@ export default function Header({ onMenu }: HeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -37,6 +36,7 @@ export default function Header({ onMenu }: HeaderProps) {
   const notificationIdsRef = useRef<Set<string>>(new Set());
   const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const accountContainerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +70,7 @@ export default function Header({ onMenu }: HeaderProps) {
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) { setSearchOpen(false); setSearchTerm(""); setSearchResults([]); }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) setSearchResults([]);
       if (notificationContainerRef.current && !notificationContainerRef.current.contains(target)) setShowNotifications(false);
       if (accountContainerRef.current && !accountContainerRef.current.contains(target)) setShowAccount(false);
     };
@@ -81,7 +81,7 @@ export default function Header({ onMenu }: HeaderProps) {
   useEffect(() => {
     void loadNotifications();
     const query = searchTerm.trim();
-    if (!searchOpen || !query) { setSearchResults([]); setIsSearching(false); return; }
+    if (!query) { setSearchResults([]); setIsSearching(false); return; }
     let active = true;
     setIsSearching(true);
     const roles = user?.roles ?? (user?.role ? [user.role] : []);
@@ -89,7 +89,19 @@ export default function Header({ onMenu }: HeaderProps) {
       void searchGlobalWorkspace(query, roles, user?.permissions ?? []).then(results => { if (active) setSearchResults(results); }).finally(() => { if (active) setIsSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [searchOpen, searchTerm, user?.role, user?.roles, user?.permissions, loadNotifications]);
+  }, [searchTerm, user?.role, user?.roles, user?.permissions, loadNotifications]);
+
+  useEffect(() => {
+    const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalSearchShortcut);
+    return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
+  }, []);
 
   useEffect(() => {
     if (!user?.id || user.role === "it_admin") return;
@@ -98,18 +110,33 @@ export default function Header({ onMenu }: HeaderProps) {
   }, [loadNotifications, user?.id, user?.role]);
 
   if (!user) return null;
-  const closeSearch = () => { setSearchOpen(false); setSearchTerm(""); setSearchResults([]); };
+  const closeSearch = () => { setSearchResults([]); };
 
   return <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-5 lg:px-7">
     <div className="flex min-h-11 items-center gap-3">
       <button type="button" onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
       <div className="hidden min-w-0 flex-1 sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Harmony Health Hub</p><h2 className="truncate text-sm font-semibold">{pageLabel}</h2></div>
-      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-        <div ref={searchContainerRef} className="relative">
-          <button type="button" onClick={() => { setSearchOpen(v => !v); setShowNotifications(false); setShowAccount(false); }} className={cn("rounded-xl p-2 hover:bg-muted", searchOpen && "bg-muted")} aria-label="Global search" aria-expanded={searchOpen}><Search className="h-5 w-5 text-muted-foreground" /></button>
-          {searchOpen && <div className="absolute right-0 z-50 mt-2 w-[min(30rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-elevated">
-            <form onSubmit={e => e.preventDefault()} className="border-b p-3"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input autoFocus value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search modules, features, patients, labs, diagnostics, documents or finance…" className="input-medical h-10 w-full rounded-xl pl-9 pr-9" aria-label="Global search input" />{searchTerm && <button type="button" onClick={() => { setSearchTerm(""); setSearchResults([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 hover:bg-muted" aria-label="Clear search"><X className="h-4 w-4" /></button>}</div></form>
-            {searchTerm.trim() && <div className="max-h-[min(28rem,65vh)] overflow-auto p-2">{isSearching ? <p className="p-4 text-center text-sm text-muted-foreground">Searching…</p> : searchResults.length ? searchResults.map(r => <Link key={`${r.kind}:${r.id}`} to={r.href} onClick={closeSearch} className="block rounded-xl p-3 hover:bg-muted/60"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">{r.kind}</span><div className="min-w-0"><p className="text-sm font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.subtitle}</p></div></div></Link>) : <p className="p-4 text-center text-sm text-muted-foreground">No matching modules, features or records found.</p>}</div>}
+      <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
+        <div ref={searchContainerRef} className="relative min-w-0 flex-1 max-w-[400px] sm:mr-1 lg:mr-2">
+          <form onSubmit={e => e.preventDefault()} className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={searchInputRef}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search modules, features, patients, labs, diagnostics, documents or finance…"
+              className="input-medical h-10 w-full rounded-xl pl-9 pr-20"
+              aria-label="Global search"
+              aria-controls="global-search-results"
+              autoComplete="off"
+            />
+            {searchTerm ? (
+              <button type="button" onClick={() => { setSearchTerm(""); setSearchResults([]); searchInputRef.current?.focus(); }} className="absolute right-12 top-1/2 -translate-y-1/2 rounded-lg p-1 hover:bg-muted" aria-label="Clear search"><X className="h-4 w-4" /></button>
+            ) : null}
+            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-flex">Ctrl K</kbd>
+          </form>
+          {searchTerm.trim() && <div id="global-search-results" className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[min(28rem,65vh)] overflow-auto rounded-2xl border border-border bg-card p-2 shadow-elevated">
+            {isSearching ? <p className="p-4 text-center text-sm text-muted-foreground">Searching…</p> : searchResults.length ? searchResults.map(r => <Link key={${r.kind} + ":" + r.id} to={r.href} onClick={closeSearch} className="block rounded-xl p-3 hover:bg-muted/60"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">{r.kind}</span><div className="min-w-0"><p className="text-sm font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.subtitle}</p></div></div></Link>) : <p className="p-4 text-center text-sm text-muted-foreground">No matching modules, features or records found.</p>}
           </div>}
         </div>
         <div ref={notificationContainerRef} className="relative">
