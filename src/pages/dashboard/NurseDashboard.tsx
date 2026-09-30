@@ -67,12 +67,14 @@ export default function NurseDashboard() {
         playWorkflowSound('critical');
         if ('Notification' in window && Notification.permission === 'granted') {
           const first = attention[0];
-          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${patientName(first.patient_id)}.`, tag: 'hms-medication-due' });
+          const person = patients.find((item) => item.id === first.patient_id);
+          const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
+          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due' });
         }
       }
     }, 15000);
     return () => window.clearInterval(timer);
-  }, [medications, medAlertEnabled]);
+  }, [medications, medAlertEnabled, patients]);
   useEffect(() => {
     const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medication_administrations' }, () => { playWorkflowSound('info'); void load(true); })
