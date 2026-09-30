@@ -30,7 +30,6 @@ export default function NurseDashboard() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [medTarget, setMedTarget] = useState<DashboardRow | null>(null);
   const [medAlertEnabled, setMedAlertEnabled] = useState(false);
-  const [acknowledgedMedicationIds, setAcknowledgedMedicationIds] = useState<Set<string>>(() => new Set());
   const stopMedicationAlertRef = useRef<(() => void) | null>(null);
   const notifiedMedicationIdsRef = useRef<Set<string>>(new Set());
 
@@ -60,7 +59,7 @@ export default function NurseDashboard() {
     const evaluate = () => {
       const now = Date.now();
       const attention = medications.filter((m) => {
-        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at || acknowledgedMedicationIds.has(String(m.id))) return false;
+        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at || m.alert_acknowledged_at) return false;
         const dueAt = new Date(m.scheduled_at).getTime();
         const dueWindow = Number(m.due_window_minutes ?? 30) * 60_000;
         return dueAt >= now - dueWindow && dueAt <= now + 5 * 60_000;
@@ -89,7 +88,7 @@ export default function NurseDashboard() {
       window.clearInterval(timer);
       if (stopMedicationAlertRef.current) { stopMedicationAlertRef.current(); stopMedicationAlertRef.current = null; }
     };
-  }, [medications, medAlertEnabled, patients, acknowledgedMedicationIds]);
+  }, [medications, medAlertEnabled, patients]);
   useEffect(() => {
     const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medication_administrations' }, () => { playWorkflowSound('info'); void load(true); })
@@ -116,14 +115,16 @@ export default function NurseDashboard() {
   const unreadAdmissionAlerts = useMemo(() => workflowNotifications.filter(n => !n.is_read && /new inpatient admission/i.test(String(n.title ?? ''))), [workflowNotifications]);
 
   const refresh = () => { void load(); };
-  const acknowledgeMedicationAlert = (id: string) => {
-    setAcknowledgedMedicationIds((current) => {
-      const next = new Set(current);
-      next.add(id);
-      return next;
-    });
+  const acknowledgeMedicationAlert = async (id: string) => {
+    const { error } = await (supabase as any).rpc('acknowledge_medication_alert', { _record_id: id });
+    if (error) {
+      toast.error(error.message ?? 'Unable to acknowledge medication alert');
+      return;
+    }
     notifiedMedicationIdsRef.current.delete(id);
     toast.success('Medication alert acknowledged. The dose remains visible until administered, held, refused, or omitted.');
+    await load(true);
+    setMedTarget(null);
   };
   const saveNursingNote = async () => {
     if (!noteTarget?.patient_id || !noteTarget?.id || !noteForm.note_text.trim()) {
@@ -250,7 +251,7 @@ export default function NurseDashboard() {
           <div className="p-5 space-y-3">
             {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
             {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
-          <div className="flex justify-end gap-2 border-t border-border pt-3"><button type="button" className="btn-secondary" onClick={() => acknowledgeMedicationAlert(String(medTarget.id))}>Acknowledge alert</button><Link to="/medications" className="btn-primary">Open medication administration</Link></div>
+          <div className="flex justify-end gap-2 border-t border-border pt-3"><button type="button" className="btn-secondary" onClick={() => void acknowledgeMedicationAlert(String(medTarget.id))}>Acknowledge alert</button><Link to="/medications" className="btn-primary">Open medication administration</Link></div>
           </div>
         </div>
       </div>}
