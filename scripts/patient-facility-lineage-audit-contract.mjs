@@ -59,7 +59,10 @@ function latestDeclaration(name) {
     latest = match;
   }
   assert.ok(latest, name + ': declaration not found');
-  return source.slice(latest.index, latest.index + 20000);
+  const nextFunction = source.slice(latest.index + latest[0].length).search(/\\bcreate\\s+(?:or\\s+replace\\s+)?function\\s+public\\./i);
+  return nextFunction >= 0
+    ? source.slice(latest.index, latest.index + latest[0].length + nextFunction)
+    : source.slice(latest.index);
 }
 
 const tenancyAssertions = [
