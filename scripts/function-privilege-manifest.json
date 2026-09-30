@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 1,
   "scope": "selected-high-risk-function-execute-contract",
   "policy": "Selected high-risk application RPCs must have an explicit authenticated EXECUTE grant and an explicit PUBLIC/anon revoke in migration history. This manifest is additive and does not replace function-specific authorization review.",
   "functions": {
