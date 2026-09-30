@@ -969,9 +969,11 @@ CREATE OR REPLACE FUNCTION public.create_patient_admission(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO pg_catalog, public
-AS $$
+SET search_path = ''
+AS $
 BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
   RETURN public.create_admission_workflow(
     _patient_id,
     _ward,
