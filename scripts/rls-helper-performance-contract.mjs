@@ -35,7 +35,7 @@ for (const name of files) {
     .replace(/--.*$/gm, "");
   const policies = [
     ...source.matchAll(
-      /(?:CREATE|ALTER)\s+POLICY[\s\S]*?(?=(?:CREATE|ALTER)\s+POLICY|$)/gi,
+      /(?:CREATE|ALTER)\s+POLICY[\s\S]*?;/gi,
     ),
   ];
 

@@ -13,7 +13,7 @@ const MODULES: SearchModule[] = [
   { title:'Appointments', description:'Appointment schedule and treatment worklist', href:'/appointments', keywords:['appointment','schedule','visit','booking'] },
   { title:'Triage & Vitals', description:'Triage assessments, observations and vital alerts', href:'/vitals', keywords:['triage','vitals','observations','critical','alert'] },
   { title:'Encounters', description:'Clinical encounters, diagnoses, treatment and amendments', href:'/encounters', keywords:['encounter','consultation','diagnosis','treatment','clinical note'] },
-  { title:'Clinical Operations', description:'Permission-aware clinical workflow hub', href:'/clinical-operations', keywords:['clinical operations','workflow','theatre','maternity','transfusion','procedures','anaesthesia'] },
+  { title:'Healthcare', description:'Permission-aware healthcare workflow hub', href:'/clinical-operations', keywords:['clinical operations','workflow','theatre','maternity','transfusion','procedures','anaesthesia'] },
   { title:'Inpatient', description:'Admissions, movements, ward and bed management', href:'/inpatient', keywords:['inpatient','admission','ward','bed','movement','transfer','discharge'] },
   { title:'Nursing Handover', description:'Shift handover and inpatient nursing workflow', href:'/nursing-handover', keywords:['nursing','handover','shift','care plan'], roles:['admin','nurse','midwife','specialist_nurse'] },
   { title:'Laboratory', description:'Lab orders, samples and results', href:'/laboratory', keywords:['laboratory','lab','test','sample','result','pathology'], roles:['admin',...CLINICAL_ROLES,'front_desk'] },

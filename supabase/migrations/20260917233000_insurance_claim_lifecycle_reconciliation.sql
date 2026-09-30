@@ -90,11 +90,13 @@ CREATE OR REPLACE FUNCTION public.transition_insurance_claim(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   v_status TEXT := COALESCE(NULLIF(_status,''), NULLIF(_to_status,''));
 BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'accountant')) THEN RAISE EXCEPTION 'Insurance claim transition is not permitted'; END IF;
   IF v_status IS NULL THEN
     RAISE EXCEPTION 'Claim status is required';
   END IF;

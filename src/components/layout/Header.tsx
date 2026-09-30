@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu, X, Building2 } from "lucide-react";
+import { Bell, Search, Moon, Sun, AlertTriangle, AlertCircle, Info, CheckCircle2, Settings, LogOut, UserRound, Clock3, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +14,11 @@ const db = supabase as any;
 const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
   radiologist: "Radiologist", radiology_technician: "Radiology Technician", lab_technician: "Lab Technician", pharmacist: "Pharmacist", accountant: "Accounts Officer",
-  front_desk: "Front Desk Officer", canteen: "Canteen Staff", patient: "Patient", it_admin: "IT Admin",
+  front_desk: "Front Desk Officer", canteen: "Canteen Staff", patient: "Patient", it_admin: "IT Admin", system_superuser: "System Superuser",
 };
 
 interface HeaderProps { onMenu?: () => void }
 interface NotifRow { id: string; title: string; message: string; severity: string; category: string | null; link: string | null; is_read: boolean; created_at: string }
-interface FacilityContextRow { facility_id: string; facility_name: string; facility_code: string | null; facility_type: string | null; is_active: boolean }
 const sevIcon = (s: string) => s === "critical" ? <AlertTriangle className="h-4 w-4 text-critical animate-pulse" /> : s === "warning" ? <AlertCircle className="h-4 w-4 text-warning" /> : s === "success" ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Info className="h-4 w-4 text-info" />;
 
 export default function Header({ onMenu }: HeaderProps) {
@@ -35,9 +34,6 @@ export default function Header({ onMenu }: HeaderProps) {
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [notificationAttention, setNotificationAttention] = useState(false);
-  const [facilities, setFacilities] = useState<FacilityContextRow[]>([]);
-  const [activeFacilityId, setActiveFacilityId] = useState("");
-  const [facilityLoading, setFacilityLoading] = useState(false);
   const notificationIdsRef = useRef<Set<string>>(new Set());
   const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -66,33 +62,6 @@ export default function Header({ onMenu }: HeaderProps) {
     setNotifications(rows);
     if (!hadInitialized && unreadRows.length > 0) setNotificationAttention(true);
   }, [user?.id, user?.role]);
-
-  const loadFacilityContext = useCallback(async () => {
-    if (!user?.id) return;
-    const [{ data: rows }, { data: current }] = await Promise.all([
-      db.rpc("get_user_facilities"),
-      db.rpc("get_current_facility_context"),
-    ]);
-    const nextFacilities = Array.isArray(rows) ? rows as FacilityContextRow[] : [];
-    const currentRow = Array.isArray(current) ? current[0] as FacilityContextRow | undefined : current as FacilityContextRow | null;
-    setFacilities(nextFacilities);
-    setActiveFacilityId(currentRow?.facility_id ?? "");
-  }, [user?.id]);
-  const selectFacility = useCallback(async (facilityId: string) => {
-    if (!facilityId || facilityId === activeFacilityId) return;
-    setFacilityLoading(true);
-    const { data, error } = await db.rpc("set_active_facility_context", { _facility_id: facilityId });
-    setFacilityLoading(false);
-    if (error) { console.error("Unable to change facility context", error); return; }
-    setActiveFacilityId(data?.id ?? facilityId);
-    window.dispatchEvent(new CustomEvent("harmony:facility-context-changed", { detail: { facilityId: data?.id ?? facilityId } }));
-  }, [activeFacilityId]);
-  useEffect(() => { void loadFacilityContext(); }, [loadFacilityContext]);
-  useEffect(() => {
-    const refresh = () => void loadFacilityContext();
-    window.addEventListener("harmony:facility-context-changed", refresh);
-    return () => window.removeEventListener("harmony:facility-context-changed", refresh);
-  }, [loadFacilityContext]);
 
   const unread = notifications.filter((n) => !n.is_read).length;
   const hasCritical = notifications.some((n) => !n.is_read && ["critical", "warning", "high"].includes(String(n.severity).toLowerCase()));
@@ -150,7 +119,7 @@ export default function Header({ onMenu }: HeaderProps) {
         <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="rounded-xl p-2 hover:bg-muted" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-5 w-5 text-muted-foreground" /> : <Moon className="h-5 w-5 text-muted-foreground" />}</button>
         <div ref={accountContainerRef} className="relative">
           <button type="button" onClick={() => { setShowAccount(v => !v); setShowNotifications(false); setSearchOpen(false); }} className="rounded-xl p-1.5 hover:bg-muted" aria-label="Account menu"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{(user.firstName?.[0] || "U").toUpperCase()}{(user.lastName?.[0] || "").toUpperCase()}</div></button>
-          {showAccount && <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="border-b p-4"><p className="text-sm font-semibold">{user.firstName} {user.lastName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p><p className="mt-1 text-xs text-primary">{roleLabels[user.role]}</p></div><div className="p-2"><Link to="/profile" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><UserRound className="h-4 w-4" />My profile & workspace</Link>{(user.role === "admin" || user.role === "it_admin") && <><Link to="/admin/settings" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />System settings</Link>{user.role === "admin" && <Link to="/admin/shifts" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Clock3 className="h-4 w-4" />Staff shifts</Link>}</>}<button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-critical hover:bg-critical/10"><LogOut className="h-4 w-4" />Sign out</button></div></div>}
+          {showAccount && <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="border-b p-4"><p className="text-sm font-semibold">{user.firstName} {user.lastName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p><p className="mt-1 text-xs text-primary">{roleLabels[user.role]}</p></div><div className="p-2"><Link to="/profile" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><UserRound className="h-4 w-4" />My profile & workspace</Link><Link to="/profile#preferences" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />Account preferences</Link>{(user.role === "admin" || user.role === "it_admin") && <><Link to="/admin/settings" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Settings className="h-4 w-4" />System settings</Link>{user.role === "admin" && <Link to="/admin/shifts" onClick={() => setShowAccount(false)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted"><Clock3 className="h-4 w-4" />Staff shifts</Link>}</>}<button type="button" onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-critical hover:bg-critical/10"><LogOut className="h-4 w-4" />Sign out</button></div></div>}
         </div>
       </div>
     </div>

@@ -25,7 +25,7 @@ The following functions are intentionally outside the Data API execution surface
 - `service_order_event_trigger()` — `INTERNAL_TRIGGER`
 - `link_invoice_item_service_order()` — `INTERNAL_TRIGGER`
 - `generate_patient_code()` — `INTERNAL_TRIGGER`
-- `record_system_audit(text,text,text,uuid,text,jsonb)` — `INTERNAL_TRIGGER`
+- `record_system_audit(text,text,text,uuid,text,jsonb)` — `AUTHENTICATED_AUDIT_RPC`
 - `notify_due_medications()` — `INTERNAL_SCHEDULER`
 - `lock_overdue_medication_slots()` — `INTERNAL_SCHEDULER`
 - `has_role(uuid, public.app_role)` — `AUTH_HELPER`
@@ -46,6 +46,10 @@ The following are not classified as internal-only merely because Supabase report
 - Pharmacy workflow RPCs — `APPLICATION_RPC`
 - Insurance claim mutation RPCs — `APPLICATION_RPC`
 - Imaging lifecycle RPCs — `APPLICATION_RPC`
+- `save_encounter_clerking(uuid,text,text,text,text,text,text,text,date)` — `APPLICATION_RPC`, creator/admin ownership boundary
+- `create_encounter_lab_order(uuid,text,text,text)` — `APPLICATION_RPC`, attending clinical actor + encounter ownership boundary
+- `create_encounter_imaging_order(uuid,text,text,text,text,text)` — `APPLICATION_RPC`, attending clinical actor + encounter ownership boundary
+- `create_encounter_service_order(uuid,text,text)` — `APPLICATION_RPC`, attending clinical actor + encounter ownership boundary
 
 ## Reconciliation policy
 

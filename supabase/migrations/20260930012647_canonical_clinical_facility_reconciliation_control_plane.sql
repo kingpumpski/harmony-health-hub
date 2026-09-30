@@ -4,7 +4,7 @@ BEGIN;
 -- This does not enable the deferred two-facility isolation model.
 
 CREATE OR REPLACE FUNCTION public.current_user_facility_id()
-RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'pg_catalog, public'
+RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER set search_path = ''
 AS $function$
   SELECT COALESCE(
     (SELECT uaf.facility_id
@@ -37,7 +37,7 @@ RETURNS TABLE(
   timezone text,
   currency text
 )
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE sql STABLE SECURITY DEFINER set search_path = ''
 AS $function$
   SELECT
     hf.id,
@@ -64,7 +64,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.get_user_facilities()
 RETURNS TABLE(facility_id uuid,facility_name text,facility_code text,facility_type text,is_active boolean)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE plpgsql STABLE SECURITY DEFINER set search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid();
 BEGIN
@@ -81,7 +81,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.set_active_facility_context(_facility_id uuid)
 RETURNS public.healthcare_facilities
-LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE plpgsql SECURITY DEFINER set search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); result public.healthcare_facilities;
 BEGIN
@@ -97,7 +97,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.ensure_encounter_facility_attribution(_encounter_id uuid)
 RETURNS public.encounters
-LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE plpgsql SECURITY DEFINER set search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_enc public.encounters; v_patient_facility uuid;
 BEGIN
@@ -117,7 +117,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.create_encounter_workflow(_patient_id uuid,_symptoms text DEFAULT NULL::text,_clerking_notes text DEFAULT NULL::text)
 RETURNS public.encounters
-LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE plpgsql SECURITY DEFINER set search_path = ''
 AS $function$
 DECLARE result public.encounters; uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_admission_id uuid; v_initial_encounter_id uuid; v_inherit boolean:=true; v_patient_facility uuid;
 BEGIN
@@ -145,7 +145,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(_encounter_id uuid,_diagnosis text,_icd_code text DEFAULT NULL::text)
 RETURNS public.diagnoses
-LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public'
+LANGUAGE plpgsql SECURITY DEFINER set search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); result public.diagnoses; normalized_code text:=NULLIF(pg_catalog.upper(pg_catalog.btrim(_icd_code)),''); v_enc public.encounters;
 BEGIN

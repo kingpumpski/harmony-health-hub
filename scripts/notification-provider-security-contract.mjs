@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+const read = (p) => fs.readFileSync(p, 'utf8');
+const migration = read('supabase/migrations/20260925210500_notification_provider_priority_control_plane.sql');
+const onboarding = read('supabase/migrations/20260925182000_notification_facility_onboarding_reconciliation.sql');
+const settings = read('src/pages/admin/Settings.tsx');
+const scheduler = read('supabase/functions/notification-scheduler/index.ts');
+const send = read('supabase/functions/notifications-send/index.ts');
+const drain = read('supabase/functions/notify-queue-drain/index.ts');
+const failures = [];
+const check = (name, condition) => { if (!condition) failures.push(name); };
+check('provider priority and primary controls exist', migration.includes('priority integer not null default 100') && migration.includes('is_primary boolean not null default false') && migration.includes('facility_notification_provider_primary_uq'));
+check('facility onboarding has provider readiness controls', onboarding.includes('facility_notification_provider_connections') && onboarding.includes('mark_facility_notification_production_ready') && onboarding.includes('verify_facility_notification_provider'));
+check('provider secrets use references rather than direct UI persistence', onboarding.includes('secret_reference') && settings.includes('secretReference'));
+check('scheduler preserves facility scope', scheduler.includes('facility_id'));
+check('send endpoint accepts facility scope', send.includes('facility_id'));
+check('queue drain enforces facility configuration', drain.includes('facility_notification_config') && drain.includes('kill_switch') && drain.includes('rolloutAllows'));
+if (failures.length) { console.error('Notification provider security contract failures:'); failures.forEach((x) => console.error('- '+x)); process.exitCode=1; } else console.log('Notification provider security contract passed.');

@@ -1,0 +1,8 @@
+create index if not exists facility_data_sharing_agreements_created_by_idx
+  on public.facility_data_sharing_agreements(created_by);
+create index if not exists facility_data_sharing_agreements_facility_a_approved_by_idx
+  on public.facility_data_sharing_agreements(facility_a_approved_by);
+create index if not exists facility_data_sharing_agreements_facility_b_approved_by_idx
+  on public.facility_data_sharing_agreements(facility_b_approved_by);
+create index if not exists facility_data_sharing_agreements_revoked_by_idx
+  on public.facility_data_sharing_agreements(revoked_by);

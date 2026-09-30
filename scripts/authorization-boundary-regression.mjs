@@ -13,6 +13,10 @@ function walk(dir) {
   }
 }
 for (const root of roots) walk(path.join(process.cwd(), root));
+const sqlSource = files
+  .filter((file) => file.endsWith(".sql"))
+  .map((file) => fs.readFileSync(file, "utf8"))
+  .join("\n");
 const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 
 const contracts = [
@@ -24,9 +28,15 @@ const contracts = [
 ];
 
 for (const [name, tokens] of contracts) {
-  const index = source.toLowerCase().indexOf(`function public.${name}`.toLowerCase());
-  assert(index >= 0, `authorization contract function missing: ${name}`);
-  const section = source.slice(index, index + 12000).toLowerCase();
+  const normalizedSql = sqlSource.toLowerCase();
+  const definitionPattern = new RegExp(
+    `(?:create\\s+(?:or\\s+replace\\s+)?function)\\s+public\\.${name}\\b`,
+    "g",
+  );
+  const matches = [...normalizedSql.matchAll(definitionPattern)];
+  assert(matches.length > 0, `authorization contract function missing: ${name}`);
+  const index = matches.at(-1).index;
+  const section = normalizedSql.slice(index, index + 12000);
   for (const token of tokens) {
     assert(section.includes(token.toLowerCase()), `${name}: missing ${token}`);
   }

@@ -4,10 +4,10 @@ CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(
   _study_name TEXT DEFAULT 'General study',_body_site TEXT DEFAULT NULL,
   _priority TEXT DEFAULT 'routine',_clinical_indication TEXT DEFAULT NULL,_amount NUMERIC DEFAULT 0
 )
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE uid UUID:=auth.uid(); eid UUID; iid UUID; sid UUID; st TEXT; es TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
  IF _patient_id IS NULL OR NULLIF(btrim(_study_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and study name are required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF _encounter_id IS NOT NULL THEN
