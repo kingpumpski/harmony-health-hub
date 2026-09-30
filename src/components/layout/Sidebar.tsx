@@ -1,7 +1,8 @@
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Bell, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, LogOut, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
+import { Activity, BarChart3, Bell, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
@@ -16,27 +17,27 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
     { label: 'Business & Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports'), item(CreditCard, 'Finance', '/finance', 'finance')] },
-    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
   ],
   practitioner: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
+    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results')] },
     { label: 'Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports')] },
   ],
   nurse: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
+    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory_results')] },
   ],
   specialist_nurse: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
+    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory Results', '/lab-results', 'laboratory_results')] },
   ],
   midwife: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Stethoscope, 'Clinical Operations', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
+    { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Maternal Care', icon: HeartPulse, items: [item(HeartPulse, 'Maternity', '/maternity', 'maternity'), item(HeartPulse, 'Fertility', '/fertility', 'fertility')] },
   ],
   front_desk: [
@@ -46,7 +47,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   pharmacist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy'), item(Pill, 'Inventory', '/inventory', 'inventory'), item(Bell, 'Stock Alerts', '/stock-alerts', 'stock_alerts')] },
+    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
   ],
   lab_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
@@ -55,30 +56,35 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims'), item(CreditCard, 'Financial Reports', '/financial-reports', 'financial_reports')] },
+    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims')] },
     { label: 'Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports')] },
   ],
   radiology_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Users, 'Patients', '/patients', 'patients'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'Imaging', icon: ScanLine, items: [item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Users, 'Patients', '/patients', 'patients')] },
   ],
   radiologist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology')] },
+  ],
+  system_superuser: [
+    { label: 'Platform', icon: ShieldCheck, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(Users, 'User Management', '/admin/users', 'users'), item(ShieldCheck, 'Facility Data Sharing', '/admin/facility-sharing', 'facility_sharing')] },
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Meal Services', icon: Users, items: [item(FileText, 'Meal Orders', '/orders', 'orders'), item(FileText, 'Dietary Plans', '/dietary-plans', 'dietary_plans'), item(Calendar, 'Menu', '/menu', 'meal_orders')] },
+    { label: 'Meal Services', icon: Users, items: [item(FileText, 'Meal Orders', '/orders', 'orders'), item(Calendar, 'Menu', '/menu', 'meal_orders')] },
   ],
   patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Telemedicine', '/telemedicine', 'telemedicine'), item(CreditCard, 'Billing', '/billing', 'billing'), item(Calendar, 'Meal Menu', '/menu', 'meal_orders')] }],
 };
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [online, setOnline] = React.useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
+  React.useEffect(() => { const onOnline = () => setOnline(true); const onOffline = () => setOnline(false); window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline); return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); }; }, []);
   const location = useLocation();
   if (!user) return null;
 
@@ -106,7 +112,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </div>
 
         <div className="border-b border-sidebar-border px-4 py-3">
-          {!collapsed ? <div className="flex items-center gap-2 rounded-xl bg-sidebar-accent/70 px-3 py-2"><Activity className="h-4 w-4 text-sidebar-primary" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">Workspace</p><p className="truncate text-xs font-medium">Clinical operations</p></div></div> : <div className="flex justify-center"><Activity className="h-5 w-5 text-sidebar-primary" /></div>}
+          {!collapsed ? <div className="flex items-center gap-2 rounded-xl bg-sidebar-accent/70 px-3 py-2"><Activity className="h-4 w-4 text-sidebar-primary" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">Workspace</p><p className="truncate text-xs font-medium">Healthcare</p></div></div> : <div className="flex justify-center"><Activity className="h-5 w-5 text-sidebar-primary" /></div>}
         </div>
 
         <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4">
@@ -138,14 +144,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          {!collapsed && <Link to="/profile" onClick={onMobileClose} className="mb-2 flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 hover:bg-sidebar-accent">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent font-medium">{(user.firstName?.[0] || user.email[0]).toUpperCase()}{(user.lastName?.[0] || '').toUpperCase()}</div>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{user.firstName} {user.lastName}</p><p className="truncate text-xs capitalize text-sidebar-foreground/55">{user.role.replaceAll('_', ' ')}</p></div>
-            <ChevronRight className="h-4 w-4 text-sidebar-foreground/40" />
-          </Link>}
-          <button type="button" onClick={() => void logout()} title="Sign out" className={cn('nav-link w-full text-sidebar-foreground/70 hover:text-sidebar-foreground', collapsed && 'justify-center px-2')}><LogOut className="h-[18px] w-[18px] shrink-0" />{!collapsed && <span>Sign out</span>}</button>
-        </div>
-      </aside>
+          <div className={cn("rounded-xl bg-sidebar-accent/70 px-3 py-2", collapsed && "px-2")}>
+            <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-[10px] font-bold uppercase">{user.role.replaceAll('_', ' ').slice(0, 2)}</div>
+              {!collapsed && <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold capitalize">{user.role.replaceAll('_', ' ')}</p>
+                <div className="mt-1 flex items-center gap-1.5 text-[10px] text-sidebar-foreground/60">{online ? <Cloud className="h-3 w-3 text-sidebar-primary" /> : <CloudOff className="h-3 w-3 text-warning" />}<span>{online ? 'Online' : 'Offline mode'}</span></div>
+              </div>}
+              {collapsed && (online ? <Cloud className="h-4 w-4 text-sidebar-primary" /> : <CloudOff className="h-4 w-4 text-warning" />)}
+            </div>
+          </div>
+        </div>    </aside>
     </>
   );
 }
