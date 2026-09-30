@@ -30,7 +30,9 @@ export default function NurseDashboard() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [medTarget, setMedTarget] = useState<DashboardRow | null>(null);
   const [medAlertEnabled, setMedAlertEnabled] = useState(false);
+  const [acknowledgedMedicationIds, setAcknowledgedMedicationIds] = useState<Set<string>>(() => new Set());
   const stopMedicationAlertRef = useRef<(() => void) | null>(null);
+  const notifiedMedicationIdsRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -58,7 +60,7 @@ export default function NurseDashboard() {
     const evaluate = () => {
       const now = Date.now();
       const attention = medications.filter((m) => {
-        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at) return false;
+        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at || acknowledgedMedicationIds.has(String(m.id))) return false;
         const dueAt = new Date(m.scheduled_at).getTime();
         const dueWindow = Number(m.due_window_minutes ?? 30) * 60_000;
         return dueAt >= now - dueWindow && dueAt <= now + 5 * 60_000;
@@ -67,10 +69,14 @@ export default function NurseDashboard() {
         if (!stopMedicationAlertRef.current) stopMedicationAlertRef.current = playWorkflowSoundLoop('critical');
         try { navigator.vibrate?.([400, 150, 400, 150, 700]); } catch {}
         if ('Notification' in window && Notification.permission === 'granted') {
-          const first = attention[0];
-          const person = patients.find((item) => item.id === first.patient_id);
-          const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
-          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due', renotify: true });
+          const fresh = attention.filter((m) => !notifiedMedicationIdsRef.current.has(String(m.id)));
+          if (fresh.length) {
+            const first = fresh[0];
+            const person = patients.find((item) => item.id === first.patient_id);
+            const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
+            new Notification('Medication due', { body: `${fresh.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due', renotify: true });
+            fresh.forEach((m) => notifiedMedicationIdsRef.current.add(String(m.id)));
+          }
         }
       } else if (stopMedicationAlertRef.current) {
         stopMedicationAlertRef.current();
@@ -83,7 +89,7 @@ export default function NurseDashboard() {
       window.clearInterval(timer);
       if (stopMedicationAlertRef.current) { stopMedicationAlertRef.current(); stopMedicationAlertRef.current = null; }
     };
-  }, [medications, medAlertEnabled, patients]);
+  }, [medications, medAlertEnabled, patients, acknowledgedMedicationIds]);
   useEffect(() => {
     const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medication_administrations' }, () => { playWorkflowSound('info'); void load(true); })
@@ -110,6 +116,15 @@ export default function NurseDashboard() {
   const unreadAdmissionAlerts = useMemo(() => workflowNotifications.filter(n => !n.is_read && /new inpatient admission/i.test(String(n.title ?? ''))), [workflowNotifications]);
 
   const refresh = () => { void load(); };
+  const acknowledgeMedicationAlert = (id: string) => {
+    setAcknowledgedMedicationIds((current) => {
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
+    notifiedMedicationIdsRef.current.delete(id);
+    toast.success('Medication alert acknowledged. The dose remains visible until administered, held, refused, or omitted.');
+  };
   const saveNursingNote = async () => {
     if (!noteTarget?.patient_id || !noteTarget?.id || !noteForm.note_text.trim()) {
       toast.error('Enter the nursing note before saving.');
