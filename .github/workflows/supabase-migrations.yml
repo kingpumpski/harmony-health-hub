@@ -46,6 +46,9 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
 
+      - name: Enforce repository project-integrity gate
+        run: npm run test:project-integrity
+
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
