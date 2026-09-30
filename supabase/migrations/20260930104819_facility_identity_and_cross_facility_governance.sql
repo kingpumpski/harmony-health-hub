@@ -55,13 +55,13 @@ revoke all on function private.current_user_has_facility_data_scope(uuid,text) f
 grant usage on schema private to authenticated;
 grant execute on function private.current_user_has_facility_data_scope(uuid,text) to authenticated;
 
-create or replace function public.has_facility_access(_user_id uuid,_facility_id uuid) returns boolean language sql stable security definer set search_path='pg_catalog','public' as $$
+create or replace function public.has_facility_access(_user_id uuid,_facility_id uuid) returns boolean language sql stable security definer set search_path = '' as $$
 select exists(select 1 from public.user_roles ur where ur.user_id=_user_id and ur.role='system_superuser'::public.app_role)
 or exists(select 1 from public.user_active_facilities uaf join public.facility_memberships fm on fm.user_id=uaf.user_id and fm.facility_id=uaf.facility_id and fm.is_active=true join public.healthcare_facilities hf on hf.id=uaf.facility_id and hf.is_active=true where uaf.user_id=_user_id and uaf.facility_id=_facility_id)
 or ((select count(*) from public.facility_memberships fm where fm.user_id=_user_id and fm.is_active=true)=1 and exists(select 1 from public.facility_memberships fm join public.healthcare_facilities hf on hf.id=fm.facility_id and hf.is_active=true where fm.user_id=_user_id and fm.facility_id=_facility_id and fm.is_active=true));
 $$;
 
-create or replace function public.current_user_has_facility_access(_facility_id uuid) returns boolean language sql stable security definer set search_path='pg_catalog','public' as $$
+create or replace function public.current_user_has_facility_access(_facility_id uuid) returns boolean language sql stable security definer set search_path = '' as $$
 select public.has_facility_access(auth.uid(),_facility_id) or (auth.uid() is not null and private.current_user_has_facility_data_scope(_facility_id,'patient_read'));
 $$;
 
@@ -69,7 +69,7 @@ revoke insert,update,delete on table public.user_active_facilities from authenti
 drop policy if exists memberships_read on public.facility_memberships;
 create policy memberships_read on public.facility_memberships for select to authenticated using (user_id=(select auth.uid()) or public.current_user_has_role('system_superuser') or (public.current_user_has_role('admin') and facility_id=public.current_user_facility_id()));
 
-create or replace function public.set_user_facility_context(_user_id uuid,_facility_id uuid) returns void language plpgsql security definer set search_path='pg_catalog','public' as $$
+create or replace function public.set_user_facility_context(_user_id uuid,_facility_id uuid) returns void language plpgsql security definer set search_path = '' as $$
 begin
  if auth.uid() is null or not public.current_user_has_role('system_superuser') then raise exception 'System Superuser access required'; end if;
  if not exists(select 1 from public.facility_memberships fm where fm.user_id=_user_id and fm.facility_id=_facility_id and fm.is_active=true) then raise exception 'User is not an active member of the target facility'; end if;
@@ -78,7 +78,7 @@ end; $$;
 revoke all on function public.set_user_facility_context(uuid,uuid) from public;
 grant execute on function public.set_user_facility_context(uuid,uuid) to authenticated;
 
-create or replace function public.create_facility_data_sharing_agreement(_facility_a_id uuid,_facility_b_id uuid,_purpose text,_effective_from timestamptz,_effective_to timestamptz,_scopes text[]) returns uuid language plpgsql security definer set search_path='pg_catalog','public' as $$
+create or replace function public.create_facility_data_sharing_agreement(_facility_a_id uuid,_facility_b_id uuid,_purpose text,_effective_from timestamptz,_effective_to timestamptz,_scopes text[]) returns uuid language plpgsql security definer set search_path = '' as $$
 declare v_id uuid; v_scope text;
 begin
  if auth.uid() is null or not public.current_user_has_role('system_superuser') then raise exception 'System Superuser access required'; end if;
@@ -97,7 +97,7 @@ end; $$;
 revoke all on function public.create_facility_data_sharing_agreement(uuid,uuid,text,timestamptz,timestamptz,text[]) from public;
 grant execute on function public.create_facility_data_sharing_agreement(uuid,uuid,text,timestamptz,timestamptz,text[]) to authenticated;
 
-create or replace function public.approve_facility_data_sharing_agreement(_agreement_id uuid) returns void language plpgsql security definer set search_path='pg_catalog','public' as $$
+create or replace function public.approve_facility_data_sharing_agreement(_agreement_id uuid) returns void language plpgsql security definer set search_path = '' as $$
 declare v_a uuid;v_b uuid;v_facility uuid;
 begin
  if auth.uid() is null then raise exception 'Authentication required'; end if;
@@ -116,7 +116,7 @@ end; $$;
 revoke all on function public.approve_facility_data_sharing_agreement(uuid) from public;
 grant execute on function public.approve_facility_data_sharing_agreement(uuid) to authenticated;
 
-create or replace function public.revoke_facility_data_sharing_agreement(_agreement_id uuid,_reason text) returns void language plpgsql security definer set search_path='pg_catalog','public' as $$
+create or replace function public.revoke_facility_data_sharing_agreement(_agreement_id uuid,_reason text) returns void language plpgsql security definer set search_path = '' as $$
 begin
  if auth.uid() is null or not public.current_user_has_role('system_superuser') then raise exception 'System Superuser access required'; end if;
  if coalesce(trim(_reason),'')='' then raise exception 'Revocation reason is required'; end if;
