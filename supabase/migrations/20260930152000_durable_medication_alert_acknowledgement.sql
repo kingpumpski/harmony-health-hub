@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION public.acknowledge_medication_alert(_record_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
