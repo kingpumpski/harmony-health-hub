@@ -24,9 +24,11 @@ const contracts = [
 ];
 
 for (const [name, tokens] of contracts) {
-  const index = source.toLowerCase().indexOf(`function public.${name}`.toLowerCase());
+  const marker = `function public.${name}`.toLowerCase();
+  const normalizedSource = source.toLowerCase();
+  const index = normalizedSource.lastIndexOf(marker);
   assert(index >= 0, `authorization contract function missing: ${name}`);
-  const section = source.slice(index, index + 12000).toLowerCase();
+  const section = normalizedSource.slice(index, index + 12000);
   for (const token of tokens) {
     assert(section.includes(token.toLowerCase()), `${name}: missing ${token}`);
   }
