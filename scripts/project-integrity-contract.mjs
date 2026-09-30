@@ -8,7 +8,7 @@ const fail = (message) => {
 
 const facilityContext = read("supabase/migrations/20260930012647_canonical_clinical_facility_reconciliation_control_plane.sql");
 const facilityCleanup = read("supabase/migrations/20260930013000_remove_deferred_facility_reconciliation_control_plane.sql");
-for (const token of ["get_user_facilities", "set_active_facility_context", "ensure_encounter_facility_attribution", "INSERT INTO public.encounters(patient_id,facility_id"]) {
+for (const token of ["get_user_facilities", "get_current_facility_context", "set_active_facility_context", "ensure_encounter_facility_attribution", "INSERT INTO public.encounters(patient_id,facility_id"]) {
   if (!facilityContext.includes(token)) fail(`facility-context integrity guard missing: ${token}`);
 }
 if (!facilityCleanup.includes("DROP TABLE IF EXISTS public.clinical_facility_reconciliation")) fail("deferred facility reconciliation cleanup must remain versioned");
