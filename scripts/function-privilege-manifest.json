@@ -1,35 +1,29 @@
 {
-  "version": 1,
+  "version": 2,
   "scope": "selected-high-risk-function-execute-contract",
   "policy": "Selected high-risk application RPCs must have an explicit authenticated EXECUTE grant and an explicit PUBLIC/anon revoke in migration history. This manifest is additive and does not replace function-specific authorization review.",
   "functions": {
+    "create_ai_clinical_session": {
+      "signatures": ["uuid,text,jsonb,jsonb"],
+      "allowed_execute_roles": ["authenticated"],
+      "requires_public_revoke": true,
+      "requires_anon_revoke": true
+    },
     "create_imaging_order_with_payment_gate": {
-      "signatures": [
-        "uuid,uuid,text,text,text,text,text,numeric"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["uuid,uuid,text,text,text,text,text,numeric"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
     "create_insurance_claim_draft": {
-      "signatures": [
-        "uuid,text,text,numeric,uuid"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["uuid,text,text,numeric,uuid"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
     "create_pharmacy_pos_sale": {
-      "signatures": [
-        "uuid,uuid,integer"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["uuid,uuid,integer"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
@@ -38,39 +32,31 @@
         "uuid,timestamptz,text,text",
         "uuid,timestamptz,text,text,text,uuid"
       ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
     "create_lab_order_with_payment_gate": {
-      "signatures": [
-        "uuid,text,text,text,text,numeric,uuid"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["uuid,text,text,text,text,numeric,uuid"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
     "update_patient_workflow": {
-      "signatures": [
-        "uuid,jsonb"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["uuid,jsonb"],
+      "allowed_execute_roles": ["authenticated"],
+      "requires_public_revoke": true,
+      "requires_anon_revoke": true
+    },
+    "upload_patient_document_metadata": {
+      "signatures": ["uuid,text,text,text,text,bigint,text"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     },
     "search_patient_directory": {
-      "signatures": [
-        "text,integer"
-      ],
-      "allowed_execute_roles": [
-        "authenticated"
-      ],
+      "signatures": ["text,integer"],
+      "allowed_execute_roles": ["authenticated"],
       "requires_public_revoke": true,
       "requires_anon_revoke": true
     }
