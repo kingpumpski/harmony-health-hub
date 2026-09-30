@@ -31,6 +31,7 @@ export default function NurseDashboard() {
   const [medTarget, setMedTarget] = useState<DashboardRow | null>(null);
   const [medAlertEnabled, setMedAlertEnabled] = useState(false);
   const stopMedicationAlertRef = useRef<(() => void) | null>(null);
+  const notifiedMedicationIdsRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -58,7 +59,7 @@ export default function NurseDashboard() {
     const evaluate = () => {
       const now = Date.now();
       const attention = medications.filter((m) => {
-        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at) return false;
+        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at || m.alert_acknowledged_at) return false;
         const dueAt = new Date(m.scheduled_at).getTime();
         const dueWindow = Number(m.due_window_minutes ?? 30) * 60_000;
         return dueAt >= now - dueWindow && dueAt <= now + 5 * 60_000;
@@ -67,10 +68,14 @@ export default function NurseDashboard() {
         if (!stopMedicationAlertRef.current) stopMedicationAlertRef.current = playWorkflowSoundLoop('critical');
         try { navigator.vibrate?.([400, 150, 400, 150, 700]); } catch {}
         if ('Notification' in window && Notification.permission === 'granted') {
-          const first = attention[0];
-          const person = patients.find((item) => item.id === first.patient_id);
-          const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
-          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due', renotify: true });
+          const fresh = attention.filter((m) => !notifiedMedicationIdsRef.current.has(String(m.id)));
+          if (fresh.length) {
+            const first = fresh[0];
+            const person = patients.find((item) => item.id === first.patient_id);
+            const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
+            new Notification('Medication due', { body: `${fresh.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due', renotify: true });
+            fresh.forEach((m) => notifiedMedicationIdsRef.current.add(String(m.id)));
+          }
         }
       } else if (stopMedicationAlertRef.current) {
         stopMedicationAlertRef.current();
@@ -110,6 +115,17 @@ export default function NurseDashboard() {
   const unreadAdmissionAlerts = useMemo(() => workflowNotifications.filter(n => !n.is_read && /new inpatient admission/i.test(String(n.title ?? ''))), [workflowNotifications]);
 
   const refresh = () => { void load(); };
+  const acknowledgeMedicationAlert = async (id: string) => {
+    const { error } = await (supabase as any).rpc('acknowledge_medication_alert', { _record_id: id });
+    if (error) {
+      toast.error(error.message ?? 'Unable to acknowledge medication alert');
+      return;
+    }
+    notifiedMedicationIdsRef.current.delete(id);
+    toast.success('Medication alert acknowledged. The dose remains visible until administered, held, refused, or omitted.');
+    await load(true);
+    setMedTarget(null);
+  };
   const saveNursingNote = async () => {
     if (!noteTarget?.patient_id || !noteTarget?.id || !noteForm.note_text.trim()) {
       toast.error('Enter the nursing note before saving.');
@@ -235,6 +251,7 @@ export default function NurseDashboard() {
           <div className="p-5 space-y-3">
             {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
             {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
+          <div className="flex justify-end gap-2 border-t border-border pt-3"><button type="button" className="btn-secondary" onClick={() => void acknowledgeMedicationAlert(String(medTarget.id))}>Acknowledge alert</button><Link to="/medications" className="btn-primary">Open medication administration</Link></div>
           </div>
         </div>
       </div>}
