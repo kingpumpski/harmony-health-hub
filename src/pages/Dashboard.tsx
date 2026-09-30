@@ -36,7 +36,6 @@ export default function Dashboard(){
     case'front_desk':dashboard=<FrontDeskDashboard/>;break;
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
   }
-  const displayName=user.firstName || user.email.split('@')[0];
   const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(user.role);
   const showSettlement=['admin','accountant'].includes(user.role);
   return (
