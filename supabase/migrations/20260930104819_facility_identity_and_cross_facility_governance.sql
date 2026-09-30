@@ -41,9 +41,9 @@ grant select on public.facility_data_sharing_agreements to authenticated;
 grant select on public.facility_data_sharing_agreement_scopes to authenticated;
 
 drop policy if exists facility_data_sharing_agreements_read on public.facility_data_sharing_agreements;
-create policy facility_data_sharing_agreements_read on public.facility_data_sharing_agreements for select to authenticated using (public.current_user_has_role('system_superuser') or facility_a_id=public.current_user_facility_id() or facility_b_id=public.current_user_facility_id());
+create policy facility_data_sharing_agreements_read on public.facility_data_sharing_agreements for select to authenticated using ((select public.current_user_has_role('system_superuser')) or facility_a_id=(select public.current_user_facility_id()) or facility_b_id=(select public.current_user_facility_id()));
 drop policy if exists facility_data_sharing_agreement_scopes_read on public.facility_data_sharing_agreement_scopes;
-create policy facility_data_sharing_agreement_scopes_read on public.facility_data_sharing_agreement_scopes for select to authenticated using (public.current_user_has_role('system_superuser') or exists(select 1 from public.facility_data_sharing_agreements a where a.id=agreement_id and (a.facility_a_id=public.current_user_facility_id() or a.facility_b_id=public.current_user_facility_id())));
+create policy facility_data_sharing_agreement_scopes_read on public.facility_data_sharing_agreement_scopes for select to authenticated using ((select public.current_user_has_role('system_superuser')) or exists(select 1 from public.facility_data_sharing_agreements a where a.id=agreement_id and (a.facility_a_id=(select public.current_user_facility_id()) or a.facility_b_id=(select public.current_user_facility_id()))));
 
 create or replace function private.current_user_has_facility_data_scope(_target_facility_id uuid,_scope_code text) returns boolean language sql stable security definer set search_path='' as $$
 select auth.uid() is not null and _target_facility_id is not null and (
@@ -67,7 +67,7 @@ $$;
 
 revoke insert,update,delete on table public.user_active_facilities from authenticated;
 drop policy if exists memberships_read on public.facility_memberships;
-create policy memberships_read on public.facility_memberships for select to authenticated using (user_id=(select auth.uid()) or public.current_user_has_role('system_superuser') or (public.current_user_has_role('admin') and facility_id=public.current_user_facility_id()));
+create policy memberships_read on public.facility_memberships for select to authenticated using (user_id=(select auth.uid()) or (select public.current_user_has_role('system_superuser')) or ((select public.current_user_has_role('admin')) and facility_id=(select public.current_user_facility_id())));
 
 create or replace function public.set_user_facility_context(_user_id uuid,_facility_id uuid) returns void language plpgsql security definer set search_path = '' as $$
 begin
