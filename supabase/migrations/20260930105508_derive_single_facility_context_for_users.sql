@@ -1,6 +1,6 @@
 create or replace function public.get_user_facilities()
 returns table(facility_id uuid,facility_name text,facility_code text,facility_type text,is_active boolean)
-language plpgsql stable security definer set search_path='pg_catalog','public'
+language plpgsql stable security definer set search_path = ''
 as $$
 declare uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id();
 begin
