@@ -1,5 +1,5 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,16 +13,16 @@ export default function Monitoring() {
   const [vitals, setVitals] = useState<Vital[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     setLoading(true);
     const query = supabase.from('vital_signs').select('id, patient_id, systolic, diastolic, heart_rate, temperature, oxygen_saturation, recorded_at').order('recorded_at', { ascending: false }).limit(100);
     const { data, error } = patientId ? await query.eq('patient_id', patientId) : await query;
     if (error) toast.error(error.message); else setVitals((data ?? []) as Vital[]);
     setLoading(false);
-  }, [patientId]);
+  };
 
   useEffect(() => { void searchPatientDirectory('', 300).then(({ data, error }) => ({ data, error })).then(({ data, error }) => { if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]); }); }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [patientId]);
 
   const names = new Map(patients.map((p) => [p.id, `${p.first_name} ${p.last_name}`]));
   return <div className="space-y-6 animate-fade-in">

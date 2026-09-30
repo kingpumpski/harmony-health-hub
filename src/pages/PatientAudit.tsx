@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,7 @@ export default function PatientAudit() {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     if (!patientId) return;
     setLoading(true);
     const { data, error } = await (supabase as any)
@@ -32,7 +32,9 @@ export default function PatientAudit() {
     if (error) toast.error(error.message);
     else setRows((data ?? []) as AuditRow[]);
     setLoading(false);
-  }, [patientId]);
+  };
+
+  useEffect(() => { void load(); }, [patientId]);
 
   const columns = useMemo(() => [
     {

@@ -67,5 +67,24 @@ jobs:
       - name: Notification provider security contract
         run: npm run test:notification-provider-security
 
+      - name: Public SECURITY DEFINER exposure contract
+        run: npm run test:public-security-definer-exposure
+      - name: SECURITY DEFINER creation contract
+        run: npm run test:security-definer-creation
+      - name: Authenticated SECURITY DEFINER exposure contract
+        run: npm run test:authenticated-security-definer-exposure
+      - name: Authorization boundary contracts
+        run: npm run test:authorization-boundaries
+      - name: Project integrity release gate
+        run: npm run test:project-integrity
+      - name: Security best-practice audit
+        run: npm run test:security-best-practices
+      - name: RLS helper performance contract
+        run: npm run test:rls-helper-performance
+      - name: Public view security contract
+        run: npm run test:public-view-security
+      - name: Dependency security contract
+        run: npm run test:dependency-security
+
       - name: Production build
         run: npm run build

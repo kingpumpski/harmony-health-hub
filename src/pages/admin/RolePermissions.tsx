@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Save, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +24,7 @@ export default function RolePermissions() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     if (user?.role !== 'admin') return;
     setLoading(true);
     const [{ data: permissions, error: permissionError }, { data: mappings, error: mappingError }] = await Promise.all([
@@ -40,9 +40,9 @@ export default function RolePermissions() {
     const mapped = new Set((mappings ?? []).map(row => row.permission_key));
     setSelected(selectedRole === 'admin' ? new Set((permissions ?? []).map(row => row.permission_key)) : (mapped.size ? mapped : new Set(getDefaultPermissions(selectedRole))));
     setLoading(false);
-  }, [selectedRole, user?.role]);
+  };
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [selectedRole, user?.role]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, PermissionRow[]>();

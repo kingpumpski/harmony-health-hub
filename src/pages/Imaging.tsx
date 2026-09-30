@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -25,9 +25,9 @@ export default function Imaging() {
   const [reports, setReports] = useState<Record<string, { report: string; impression: string }>>({});
   const [filter, setFilter] = useState<QueueFilter>('all');
   const [loading, setLoading] = useState(false);
-  const previousIdsRef = useRef<Set<string>>(new Set());
+  const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async (announce = false) => {
+  const load = async (announce = false) => {
     if (!user?.id) return;
     setLoading(true);
     const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
@@ -38,12 +38,12 @@ export default function Imaging() {
     }
     const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
     const nextOrders = workspace.orders ?? [];
-    if (announce && previousIdsRef.current.size > 0 && nextOrders.some((order) => !previousIdsRef.current.has(order.id))) playWorkflowSound('info');
-    previousIdsRef.current = new Set(nextOrders.map((order) => order.id));
+    if (announce && previousIds.size > 0 && nextOrders.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
+    setPreviousIds(new Set(nextOrders.map((order) => order.id)));
     setPatients(workspace.patients ?? []);
     setOrders(nextOrders);
     setLoading(false);
-  }, [user?.id]);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +52,7 @@ export default function Imaging() {
     void load();
     const refreshTimer = window.setInterval(() => void load(true), 30000);
     return () => window.clearInterval(refreshTimer);
-  }, [user, load]);
+  }, [user]);
 
   const counters = useMemo(() => ({
     awaiting_release: orders.filter((order) => ['pending_payment_approval', 'pending_payment'].includes(order.status)).length,
