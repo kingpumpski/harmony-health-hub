@@ -6,7 +6,7 @@
 
 ALTER FUNCTION public.create_ai_clinical_session(uuid,text,jsonb,jsonb)
   SET search_path = pg_catalog, public;
-ALTER FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric,uuid)
+ALTER FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric)
   SET search_path = pg_catalog, public;
 ALTER FUNCTION public.create_imaging_order_with_payment_gate(uuid,uuid,text,text,text,text,text,numeric)
   SET search_path = pg_catalog, public;
@@ -24,8 +24,8 @@ ALTER FUNCTION public.search_patient_directory(text,integer)
 REVOKE ALL ON FUNCTION public.create_ai_clinical_session(uuid,text,jsonb,jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_ai_clinical_session(uuid,text,jsonb,jsonb) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric,uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric,uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.create_imaging_order_with_payment_gate(uuid,uuid,text,text,text,text,text,numeric) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_imaging_order_with_payment_gate(uuid,uuid,text,text,text,text,text,numeric) TO authenticated;
