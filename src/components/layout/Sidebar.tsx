@@ -56,7 +56,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims')] },
+    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims'), item(BarChart3, 'Financial Reports', '/financial-reports', 'financial_reports')] },
     { label: 'Reporting', icon: BarChart3, items: [item(BarChart3, 'Reports Center', '/reports', 'reports')] },
   ],
   radiology_technician: [
