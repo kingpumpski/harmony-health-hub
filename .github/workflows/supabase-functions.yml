@@ -20,9 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
+      # Pin the setup action and CLI version so deployment does not depend on
+      # resolving a moving "latest" release during CI. This avoids GitHub
+      # release API rate limits and makes the deployment toolchain reproducible.
+      - uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.117.0
 
       - name: Validate deployment credentials
         run: test -n "$SUPABASE_ACCESS_TOKEN"
