@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.get_laboratory_workspace(_limit integer DEFAUL
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
-SET search_path = pg_catalog, public
+set search_path = ''
 AS $$
 DECLARE result jsonb; v_department text;
 BEGIN
@@ -44,7 +44,7 @@ CREATE OR REPLACE FUNCTION public.enter_lab_result_structured(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+set search_path = ''
 AS $$
 DECLARE
   uid uuid := auth.uid();
