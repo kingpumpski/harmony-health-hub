@@ -38,7 +38,8 @@
     "test:security-definer-creation": "node scripts/security-definer-creation-contract.mjs",
     "test:authenticated-security-definer-exposure": "node scripts/authenticated-security-definer-exposure-contract.mjs",
     "test:rls-helper-performance": "node scripts/rls-helper-performance-contract.mjs",
-    "test:project-integrity": "node scripts/project-integrity-contract.mjs"
+    "test:project-integrity": "node scripts/project-integrity-contract.mjs",
+    "test:notification-provider-security": "node scripts/notification-provider-security-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -114,4 +115,4 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"
   }
-}\n
+}
