@@ -11,7 +11,7 @@ create or replace function public.update_encounter_draft_workflow(
 returns public.encounters
 language plpgsql
 security definer
-set search_path = pg_catalog, public
+set search_path = ''
 as $function$
 declare
   uid uuid := auth.uid();
