@@ -430,6 +430,13 @@ assert(notificationProviderMigration.includes('erase_notification_history'), 'No
 assert(notificationProviderMigration.includes('notification.audit_erasure'), 'Notification erasure must use a controlled audit exception');
 assert(notificationProviderMigration.includes('DELETE FROM public.notifications'), 'Notification erasure must remove in-app notification records');
 
+const facilityContextMigration = read('supabase/migrations/20260930012647_canonical_clinical_facility_reconciliation_control_plane.sql');
+const headerSource = read('src/components/layout/Header.tsx');
+assert('clinical facility context control plane is restored', facilityContextMigration.includes('get_user_facilities') && facilityContextMigration.includes('set_active_facility_context') && facilityContextMigration.includes('ensure_encounter_facility_attribution'), 'clinical workflows require the facility context control plane');
+assert('facility context remains explicit in the UI', headerSource.includes('get_user_facilities') && headerSource.includes('set_active_facility_context') && headerSource.includes('Active facility'), 'Header must expose the active facility context');
+assert('encounter creation carries facility attribution', facilityContextMigration.includes('INSERT INTO public.encounters(patient_id,facility_id'), 'new encounters must receive facility attribution');
+assert('diagnosis creation can reconcile legacy encounter attribution', facilityContextMigration.includes('v_enc:=public.ensure_encounter_facility_attribution(_encounter_id)') && facilityContextMigration.includes('facility_id)'), 'diagnosis workflow must reconcile missing encounter facility attribution');
+
 const notificationProviderPriorityMigration = read('supabase/migrations/20260925210500_notification_provider_priority_control_plane.sql');
 assert('notification provider priority control is versioned', notificationProviderPriorityMigration.includes('priority integer not null default 100') && notificationProviderPriorityMigration.includes('is_primary boolean not null default false') && notificationProviderPriorityMigration.includes('facility_notification_provider_primary_uq'), 'notification provider routing must have deterministic priority and single-primary controls');
 const notificationSettingsSource = read('src/pages/admin/Settings.tsx');
