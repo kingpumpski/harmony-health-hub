@@ -47,7 +47,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   pharmacist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
+    { label: 'Medicines', icon: Pill, items: [item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy'), item(Pill, 'Inventory', '/inventory', 'inventory'), item(Bell, 'Stock Alerts', '/stock-alerts', 'stock_alerts')] },
   ],
   lab_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
