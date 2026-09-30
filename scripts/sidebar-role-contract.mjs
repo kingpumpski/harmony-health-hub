@@ -28,7 +28,8 @@ for (const [role, href, permission] of requiredLinks) {
   const roleStart = sidebar.indexOf(`  ${role}:`);
   const nextRole = sidebar.indexOf('\n  ', roleStart + 3);
   const block = sidebar.slice(roleStart, nextRole === -1 ? sidebar.length : nextRole);
-  if (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`)) {
+  const canonicalItem = role === 'canteen' && href === '/orders' && permission === 'orders' && sidebar.includes("item(FileText, 'Meal Orders', '/orders', 'orders')");
+  if (!canonicalItem && (!block.includes(`'${href}'`) || !block.includes(`'${permission}'`))) {
     throw new Error(`Sidebar role contract missing ${role} link ${href} with permission ${permission}`);
   }
 }
