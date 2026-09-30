@@ -25,6 +25,43 @@ AS $function$
   );
 $function$;
 
+CREATE OR REPLACE FUNCTION public.get_current_facility_context()
+RETURNS TABLE(
+  facility_id uuid,
+  facility_name text,
+  facility_code text,
+  facility_type text,
+  district text,
+  region text,
+  dhims2_uid text,
+  timezone text,
+  currency text
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='pg_catalog, public'
+AS $function$
+  SELECT
+    hf.id,
+    hf.name,
+    hf.facility_code,
+    hf.facility_type,
+    hf.district,
+    hf.region,
+    hf.dhims2_uid,
+    COALESCE(fc.timezone,'Africa/Accra'),
+    COALESCE(fc.currency,'GHS')
+  FROM public.healthcare_facilities hf
+  LEFT JOIN LATERAL (
+    SELECT timezone, currency
+    FROM public.facility_configuration
+    ORDER BY created_at ASC
+    LIMIT 1
+  ) fc ON true
+  WHERE hf.id=public.current_user_facility_id()
+    AND hf.is_active=true
+    AND auth.uid() IS NOT NULL
+  LIMIT 1;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.get_user_facilities()
 RETURNS TABLE(facility_id uuid,facility_name text,facility_code text,facility_type text,is_active boolean)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='pg_catalog, public'
@@ -124,11 +161,13 @@ END;
 $function$;
 
 REVOKE ALL ON TABLE public.user_active_facilities FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.get_current_facility_context() FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.get_user_facilities() FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.set_active_facility_context(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.ensure_encounter_facility_attribution(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.create_encounter_workflow(uuid,text,text) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.add_encounter_diagnosis(uuid,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_current_facility_context() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_facilities() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.set_active_facility_context(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ensure_encounter_facility_attribution(uuid) TO authenticated;
