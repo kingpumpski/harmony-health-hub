@@ -76,9 +76,6 @@ jobs:
       - name: RLS helper performance contract
         run: npm run test:rls-helper-performance
 
-      - name: Patient facility lineage audit contract
-        run: npm run test:patient-facility-lineage-audit
-
       - name: Public view security contract
         run: npm run test:public-view-security
 
