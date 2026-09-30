@@ -25,7 +25,7 @@ const normalizedSql = sqlSource.toLowerCase();
 for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
 
-  if (/\\bauth\\.role\\s*\\(/i.test(source)) {
+  if (/\bauth\.role\s*\(/i.test(source)) {
     findings.push({
       file,
       rule: "no-auth-role",
@@ -36,12 +36,12 @@ for (const file of files) {
   // auth.users metadata may be used to populate a profile, but must not be
   // used as an authorization/RLS decision. Only inspect actual policy bodies.
   const policyBodies = source.match(
-    /create\\s+policy[\\s\\S]*?(?=create\\s+policy|alter\\s+table|create\\s+(?:or\\s+replace\\s+)?function|$)/gi,
+    /create\s+policy[\s\S]*?(?=create\s+policy|alter\s+table|create\s+(?:or\s+replace\s+)?function|$)/gi,
   ) ?? [];
   for (const policy of policyBodies) {
     if (
       /raw_user_meta_data|user_metadata/i.test(policy) &&
-      /using\\s*\\(|with\\s+check\\s*\\(/i.test(policy)
+      /using\s*\(|with\s+check\s*\(/i.test(policy)
     ) {
       findings.push({
         file,
@@ -56,7 +56,7 @@ for (const file of files) {
 // ALTER FUNCTION can safely add search_path to an earlier SECURITY DEFINER.
 const definitions = [
   ...normalizedSql.matchAll(
-    /create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.([a-z0-9_]+)\\s*\\([\\s\\S]*?\\)\\s*returns[\\s\\S]*?security\\s+definer/gi,
+    /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z0-9_]+)\s*\([\s\S]*?\)\s*returns[\s\S]*?security\s+definer/gi,
   ),
 ];
 for (const match of definitions) {
@@ -64,13 +64,13 @@ for (const match of definitions) {
   const definitionIndex = match.index ?? 0;
   const remainder = normalizedSql.slice(definitionIndex);
   const nextFunction = remainder.search(
-    /create\\s+(?:or\\s+replace\\s+)?function\\s+public\\./i,
+    /create\s+(?:or\s+replace\s+)?function\s+public\./i,
   );
   const block = nextFunction > 0 ? remainder.slice(0, nextFunction) : remainder;
-  const hasInlineSearchPath = /set\\s+search_path\\s*=/i.test(block);
+  const hasInlineSearchPath = /set\s+search_path\s*=/i.test(block);
   const overridePattern = new RegExp(
-    "alter\\\\s+function\\\\s+public\\\\." + functionName +
-      "\\\\b[\\s\\S]*?set\\\\s+search_path\\\\s*=",
+    "alter\\s+function\\s+public\\." + functionName +
+      "\\b[\s\S]*?set\\s+search_path\\s*=",
     "i",
   );
   const hasLaterOverride = overridePattern.test(normalizedSql.slice(definitionIndex));
