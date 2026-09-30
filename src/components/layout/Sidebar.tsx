@@ -65,14 +65,14 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   radiologist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology')] },
+    { label: 'Clinical', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
   ],
   system_superuser: [
     { label: 'Platform', icon: ShieldCheck, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(Users, 'User Management', '/admin/users', 'users'), item(ShieldCheck, 'Facility Data Sharing', '/admin/facility-sharing', 'facility_sharing')] },
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
+    { label: 'System Configuration', icon: Settings, items: [item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
