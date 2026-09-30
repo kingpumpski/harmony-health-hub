@@ -39,6 +39,14 @@ const forbiddenLinks = [
   ["radiology_technician", "/clinical-results"],
   ["radiologist", "/clinical-results"],
   ["radiologist", "/lab-results"],
+  ["practitioner", "/radiology"],
+  ["practitioner", "/reports"],
+  ["nurse", "/reports"],
+  ["specialist_nurse", "/reports"],
+  ["midwife", "/reports"],
+  ["lab_technician", "/reports"],
+  ["accountant", "/reports"],
+  ["it_admin", "/admin/insurance-companies"],
 ];
 
 for (const [role, href] of forbiddenLinks) {
@@ -65,8 +73,9 @@ const capabilityLinks = [
   ["accountant", "/accounts-approvals", "accounts_approvals"],
   ["accountant", "/insurance-claims", "claims"],
   ["accountant", "/financial-reports", "financial_reports"],
-  ["radiologist", "/notifications", "notifications"],
   ["it_admin", "/notifications", "notifications"],
+  ["practitioner", "/lab-results", "laboratory"],
+  ["practitioner", "/clinical-results", "radiology_results"],
   ["patient", "/telemedicine", "telemedicine"],
   ["patient", "/billing", "billing"],
 ];
