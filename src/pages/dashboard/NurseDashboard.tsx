@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users, X, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { playWorkflowSound } from '@/lib/workflowFeedback';
+import { playWorkflowSound, playWorkflowSoundLoop } from '@/lib/workflowFeedback';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -30,6 +30,7 @@ export default function NurseDashboard() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [medTarget, setMedTarget] = useState<DashboardRow | null>(null);
   const [medAlertEnabled, setMedAlertEnabled] = useState(false);
+  const stopMedicationAlertRef = useRef<(() => void) | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -54,26 +55,34 @@ export default function NurseDashboard() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const timer = window.setInterval(() => {
+    const evaluate = () => {
       const now = Date.now();
       const attention = medications.filter((m) => {
         if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at) return false;
         const dueAt = new Date(m.scheduled_at).getTime();
-        return dueAt >= now - (Number(m.due_window_minutes ?? 30) * 60_000) && dueAt <= now + 5 * 60_000;
+        const dueWindow = Number(m.due_window_minutes ?? 30) * 60_000;
+        return dueAt >= now - dueWindow && dueAt <= now + 5 * 60_000;
       });
-      if (!attention.length) return;
-      if (medAlertEnabled) {
+      if (medAlertEnabled && attention.length) {
+        if (!stopMedicationAlertRef.current) stopMedicationAlertRef.current = playWorkflowSoundLoop('critical');
         try { navigator.vibrate?.([400, 150, 400, 150, 700]); } catch {}
-        playWorkflowSound('critical');
         if ('Notification' in window && Notification.permission === 'granted') {
           const first = attention[0];
           const person = patients.find((item) => item.id === first.patient_id);
           const name = person ? `${person.first_name} ${person.last_name}` : 'the patient';
-          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due' });
+          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${name}.`, tag: 'hms-medication-due', renotify: true });
         }
+      } else if (stopMedicationAlertRef.current) {
+        stopMedicationAlertRef.current();
+        stopMedicationAlertRef.current = null;
       }
-    }, 15000);
-    return () => window.clearInterval(timer);
+    };
+    evaluate();
+    const timer = window.setInterval(evaluate, 15000);
+    return () => {
+      window.clearInterval(timer);
+      if (stopMedicationAlertRef.current) { stopMedicationAlertRef.current(); stopMedicationAlertRef.current = null; }
+    };
   }, [medications, medAlertEnabled, patients]);
   useEffect(() => {
     const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
@@ -230,8 +239,8 @@ export default function NurseDashboard() {
         <div className="w-full max-w-xl rounded-2xl bg-card border border-border shadow-xl">
           <div className="flex items-center justify-between border-b border-border p-5"><div><h2 id="due-med-title" className="font-semibold">Medication due now</h2><p className="text-xs text-muted-foreground">{patientName(medTarget.patient_id)} · current due window only</p></div><button type="button" className="p-2 rounded-lg hover:bg-muted" aria-label="Close medication due view" onClick={() => setMedTarget(null)}><X className="w-4 h-4" /></button></div>
           <div className="p-5 space-y-3">
-            {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && Math.abs(new Date(m.scheduled_at).getTime() - Date.now()) <= Number(m.due_window_minutes ?? 30) * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
-            {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && Math.abs(new Date(m.scheduled_at).getTime() - Date.now()) <= Number(m.due_window_minutes ?? 30) * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
+            {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
+            {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && new Date(m.scheduled_at).getTime() >= Date.now() - Number(m.due_window_minutes ?? 30) * 60_000 && new Date(m.scheduled_at).getTime() <= Date.now() + 5 * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
           </div>
         </div>
       </div>}
