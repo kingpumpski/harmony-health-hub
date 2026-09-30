@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users } from 'lucide-react';
+import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users, X, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,9 @@ export default function NurseDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'critical' | 'attention'>('all');
+  const [noteTarget, setNoteTarget] = useState<DashboardRow | null>(null);
+  const [noteForm, setNoteForm] = useState({ note_text: '', assessment: '', intervention: '', evaluation: '' });
+  const [noteSaving, setNoteSaving] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -74,6 +77,31 @@ export default function NurseDashboard() {
   const unreadAdmissionAlerts = useMemo(() => workflowNotifications.filter(n => !n.is_read && /new inpatient admission/i.test(String(n.title ?? ''))), [workflowNotifications]);
 
   const refresh = () => { void load(); };
+  const saveNursingNote = async () => {
+    if (!noteTarget?.patient_id || !noteTarget?.id || !noteForm.note_text.trim()) {
+      toast.error('Enter the nursing note before saving.');
+      return;
+    }
+    setNoteSaving(true);
+    const { error } = await (supabase as any).rpc('create_nursing_note', {
+      _patient_id: noteTarget.patient_id,
+      _note_text: noteForm.note_text.trim(),
+      _note_type: 'progress',
+      _assessment: noteForm.assessment.trim() || null,
+      _intervention: noteForm.intervention.trim() || null,
+      _evaluation: noteForm.evaluation.trim() || null,
+      _encounter_id: null,
+      _admission_id: noteTarget.id,
+    });
+    setNoteSaving(false);
+    if (error) {
+      toast.error(error.message ?? 'Unable to save nursing note');
+      return;
+    }
+    toast.success('Nursing note saved to the current admission.');
+    setNoteTarget(null);
+    setNoteForm({ note_text: '', assessment: '', intervention: '', evaluation: '' });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -123,14 +151,35 @@ export default function NurseDashboard() {
             <div className="flex gap-2">{(['all', 'critical', 'attention'] as const).map(f => <button key={f} onClick={() => setFilter(f)} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium capitalize', filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{f}</button>)}</div>
           </div>
           <div className="divide-y divide-border">
-            {inpatientRows.filter(p => filter === 'all' || p.status === filter).map((patient, index) => (
-              <div key={patient.id ?? index} className={cn('p-4 transition-colors hover:bg-muted/30', statusTone(patient.status))}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3"><div className="text-center px-3 py-2 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Bed</p><p className="font-bold text-sm">{patient.bed_number ?? patient.bed ?? '—'}</p></div><div><p className="font-medium">{patientName(patient.patient_id)}</p><p className="text-xs text-muted-foreground">{patient.patient_id ?? 'Patient record'} · {patient.ward ?? patient.ward_name ?? 'Ward'}</p>{patient.status === 'critical' && <span className="badge-critical pulse-critical inline-flex mt-1"><AlertTriangle className="w-3 h-3 mr-1" />Clinical review</span>}</div></div>
-                  <div className="flex gap-2"><Link to="/vitals" className="btn-secondary text-sm py-1.5"><HeartPulse className="w-4 h-4" /> Vitals</Link><Link to="/medications" className="btn-ghost text-sm py-1.5"><Syringe className="w-4 h-4" /> Meds</Link></div>
-                </div>
-              </div>
-            ))}
+            {inpatientRows.filter(p => filter === 'all' || p.status === filter).map((patient, index) => {
+              const person = patients.find((item) => item.id === patient.patient_id);
+              const latestVital = triage.filter((item) => item.patient_id === patient.patient_id).sort((a,b) => new Date(b.recorded_at ?? b.created_at ?? 0).getTime() - new Date(a.recorded_at ?? a.created_at ?? 0).getTime())[0];
+              const patientNameValue = person ? `${person.first_name} ${person.last_name}` : patientName(patient.patient_id);
+              const patientCode = person?.patient_code ?? '—';
+              const patientHref = `/patients/${patient.patient_id}?admission=${patient.id}`;
+              return (
+                <Link key={patient.id ?? index} to={patientHref} className={cn('block p-4 transition-colors hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset', statusTone(patient.status))}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="text-center px-3 py-2 bg-muted rounded-lg shrink-0"><p className="text-xs text-muted-foreground">Bed</p><p className="font-bold text-sm">{patient.bed_number ?? patient.bed ?? '—'}</p></div>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{patientNameValue}</p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                          <span>ID: {patientCode}</span><span aria-hidden="true">·</span><span>Ward: {patient.ward ?? patient.ward_name ?? 'Ward'}</span><span aria-hidden="true">·</span><span>Bed: {patient.bed_number ?? patient.bed ?? '—'}</span>
+                        </div>
+                        {latestVital?.recorded_at && <p className="mt-1 text-[11px] text-muted-foreground">Last vitals: {new Date(latestVital.recorded_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+                        {patient.status === 'critical' && <span className="badge-critical pulse-critical inline-flex mt-1"><AlertTriangle className="w-3 h-3 mr-1" />Clinical review</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2" onClick={(event) => event.preventDefault()}>
+                      <button type="button" className="btn-secondary text-sm py-1.5" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setNoteTarget(patient); }}><FileText className="w-4 h-4" /> Notes</button>
+                      <span className="btn-secondary text-sm py-1.5"><HeartPulse className="w-4 h-4" /> Vitals</span>
+                      <span className="btn-ghost text-sm py-1.5"><Syringe className="w-4 h-4" /> Meds</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
             {!inpatientRows.length && <div className="p-8 text-center text-sm text-muted-foreground">No active inpatients are currently available.</div>}
           </div>
         </section>
@@ -144,6 +193,23 @@ export default function NurseDashboard() {
         </section>
       </div>
 
+      {noteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="nursing-note-title">
+        <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-xl">
+          <div className="flex items-center justify-between border-b border-border p-5">
+            <div><h2 id="nursing-note-title" className="font-semibold">Nursing note</h2><p className="text-xs text-muted-foreground">{patientName(noteTarget.patient_id)} · current admission only</p></div>
+            <button type="button" className="p-2 rounded-lg hover:bg-muted" aria-label="Close nursing note" onClick={() => setNoteTarget(null)}><X className="w-4 h-4" /></button>
+          </div>
+          <div className="space-y-4 p-5">
+            <textarea className="input-medical min-h-28 w-full" placeholder="Progress note, observation or intervention performed" value={noteForm.note_text} onChange={(e) => setNoteForm((v) => ({ ...v, note_text: e.target.value }))} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <textarea className="input-medical min-h-24 w-full" placeholder="Assessment" value={noteForm.assessment} onChange={(e) => setNoteForm((v) => ({ ...v, assessment: e.target.value }))} />
+              <textarea className="input-medical min-h-24 w-full" placeholder="Intervention" value={noteForm.intervention} onChange={(e) => setNoteForm((v) => ({ ...v, intervention: e.target.value }))} />
+              <textarea className="input-medical min-h-24 w-full" placeholder="Evaluation" value={noteForm.evaluation} onChange={(e) => setNoteForm((v) => ({ ...v, evaluation: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setNoteTarget(null)}>Cancel</button><button type="button" className="btn-primary inline-flex items-center gap-2" disabled={noteSaving || !noteForm.note_text.trim()} onClick={() => void saveNursingNote()}><Save className="w-4 h-4" />{noteSaving ? 'Saving…' : 'Save note'}</button></div>
+          </div>
+        </div>
+      </div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Handover & continuity</h2><p className="text-sm text-muted-foreground">Unacknowledged handovers remain visible until acknowledged.</p></div><Link to="/nursing-handover" className="text-sm text-primary">Open</Link></div><p className="text-3xl font-bold tabular-nums">{pendingHandovers.length}</p><p className="text-xs text-muted-foreground mt-1">pending acknowledgement</p></section>
         <section className="card-medical p-5"><div className="flex justify-between items-start mb-3"><div><h2 className="font-semibold">Nursing service queue</h2><p className="text-sm text-muted-foreground">Patients awaiting or already claimed by nursing.</p></div><Link to="/department-queue" className="text-sm text-primary">Open queue</Link></div><p className="text-3xl font-bold tabular-nums">{queue.length}</p><p className="text-xs text-muted-foreground mt-1">active queue items</p></section>
