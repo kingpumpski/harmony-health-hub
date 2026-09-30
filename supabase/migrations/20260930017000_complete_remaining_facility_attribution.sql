@@ -63,13 +63,13 @@ BEGIN
     EXECUTE format('CREATE TRIGGER enforce_remaining_facility_lineage BEFORE INSERT OR UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.enforce_remaining_facility_lineage()',t);
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
     EXECUTE format('DROP POLICY IF EXISTS remaining_facility_select ON public.%I',t);
-    EXECUTE format('CREATE POLICY remaining_facility_select ON public.%I AS RESTRICTIVE FOR SELECT TO authenticated USING ((facility_id IS NOT NULL AND public.current_user_has_facility_access(facility_id)) OR (facility_id IS NULL AND (public.current_user_has_role(''admin''::public.app_role) OR public.current_user_has_role(''it_admin''::public.app_role))))',t);
+    EXECUTE format('CREATE POLICY remaining_facility_select ON public.%I AS RESTRICTIVE FOR SELECT TO authenticated USING ((facility_id IS NOT NULL AND (select public.current_user_has_facility_access(facility_id))) OR (facility_id IS NULL AND ((select public.current_user_has_role(''admin''::public.app_role)) OR (select public.current_user_has_role(''it_admin''::public.app_role)))))',t);
     EXECUTE format('DROP POLICY IF EXISTS remaining_facility_insert ON public.%I',t);
-    EXECUTE format('CREATE POLICY remaining_facility_insert ON public.%I AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (facility_id IS NOT NULL AND public.current_user_has_facility_access(facility_id))',t);
+    EXECUTE format('CREATE POLICY remaining_facility_insert ON public.%I AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (facility_id IS NOT NULL AND (select public.current_user_has_facility_access(facility_id)))',t);
     EXECUTE format('DROP POLICY IF EXISTS remaining_facility_update ON public.%I',t);
-    EXECUTE format('CREATE POLICY remaining_facility_update ON public.%I AS RESTRICTIVE FOR UPDATE TO authenticated USING ((facility_id IS NOT NULL AND public.current_user_has_facility_access(facility_id)) OR (facility_id IS NULL AND (public.current_user_has_role(''admin''::public.app_role) OR public.current_user_has_role(''it_admin''::public.app_role)))) WITH CHECK (facility_id IS NOT NULL AND public.current_user_has_facility_access(facility_id))',t);
+    EXECUTE format('CREATE POLICY remaining_facility_update ON public.%I AS RESTRICTIVE FOR UPDATE TO authenticated USING ((facility_id IS NOT NULL AND (select public.current_user_has_facility_access(facility_id))) OR (facility_id IS NULL AND ((select public.current_user_has_role(''admin''::public.app_role)) OR (select public.current_user_has_role(''it_admin''::public.app_role))))) WITH CHECK (facility_id IS NOT NULL AND (select public.current_user_has_facility_access(facility_id)))',t);
     EXECUTE format('DROP POLICY IF EXISTS remaining_facility_delete ON public.%I',t);
-    EXECUTE format('CREATE POLICY remaining_facility_delete ON public.%I AS RESTRICTIVE FOR DELETE TO authenticated USING (facility_id IS NOT NULL AND public.current_user_has_facility_access(facility_id))',t);
+    EXECUTE format('CREATE POLICY remaining_facility_delete ON public.%I AS RESTRICTIVE FOR DELETE TO authenticated USING (facility_id IS NOT NULL AND (select public.current_user_has_facility_access(facility_id)))',t);
   END LOOP;
 END $$;
 
