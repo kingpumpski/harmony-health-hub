@@ -62,7 +62,7 @@ for (const name of patientScoped) {
   const body = bodyAfterDeclaration(name).toLowerCase();
   const hasLineage = facilityEvidence.some((term) => body.includes(term));
   if (!hasLineage) {
-    console.warn('[patient-facility-gate] ' + name + ': no facility-lineage predicate found in the first function body window; keep this RPC blocked from tenancy sign-off until explicit two-facility evidence exists.');
+    throw new Error('[patient-facility-gate] ' + name + ': no facility-lineage predicate found; tenancy sign-off is blocked until explicit facility lineage is implemented and two-facility regression evidence exists.');
   }
 }
 
