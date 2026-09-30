@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, Calendar, ClipboardCheck, Clock3, Image as ImageIcon, FlaskConical, Stethoscope, Users, BellRing } from 'lucide-react';
+import { AlertTriangle, BedDouble, Calendar, ClipboardCheck, Clock3, Image as ImageIcon, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
@@ -19,7 +19,7 @@ export default function PractitionerDashboard() {
     setLoading(true);
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const end = new Date(); end.setHours(23, 59, 59, 999);
-    const [appointments, emergency, admissions, icu, alerts, notifications, labOrders, imagingOrders, serviceOrders] = await Promise.all([
+    const [appointments, emergency, admissions, _icu, alerts, notifications, labOrders, imagingOrders, _serviceOrders] = await Promise.all([
       getOperationalWorkspace('appointments', 200),
       getOperationalWorkspace('emergency', 100),
       supabase.from('admissions').select('id', { count: 'exact', head: true }).eq('status', 'admitted'),
@@ -34,7 +34,7 @@ export default function PractitionerDashboard() {
     if (emergency.error) toast({ title: 'Emergency counters unavailable', description: emergency.error.message, variant: 'destructive' });
     if (admissions.error) toast({ title: 'Inpatient counter unavailable', description: admissions.error.message, variant: 'destructive' });
     if (alerts.error) toast({ title: 'Critical alert counter unavailable', description: alerts.error.message, variant: 'destructive' });
-    if (labOrders.error || imagingOrders.error || serviceOrders.error) toast({ title: 'Department counters partially unavailable', description: 'Some diagnostic/service counters could not be refreshed.', variant: 'destructive' });
+    if (labOrders.error || imagingOrders.error || _serviceOrders.error) toast({ title: 'Department counters partially unavailable', description: 'Some diagnostic counters could not be refreshed.', variant: 'destructive' });
     const rows = Array.isArray(appointments.data) ? appointments.data as Array<{ scheduled_at?: string; status?: string; treatment_status?: string }> : [];
     const today = rows.filter((a) => { const t = new Date(a.scheduled_at ?? '').getTime(); return t >= start.getTime() && t <= end.getTime(); });
     const active = today.filter((a) => !['completed', 'cancelled', 'no_show'].includes(String(a.treatment_status ?? a.status ?? 'scheduled')));
