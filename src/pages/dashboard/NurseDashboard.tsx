@@ -28,6 +28,8 @@ export default function NurseDashboard() {
   const [noteTarget, setNoteTarget] = useState<DashboardRow | null>(null);
   const [noteForm, setNoteForm] = useState({ note_text: '', assessment: '', intervention: '', evaluation: '' });
   const [noteSaving, setNoteSaving] = useState(false);
+  const [medTarget, setMedTarget] = useState<DashboardRow | null>(null);
+  const [medAlertEnabled, setMedAlertEnabled] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -51,6 +53,26 @@ export default function NurseDashboard() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      const attention = medications.filter((m) => {
+        if (m.status !== 'scheduled' || m.locked_at || !m.scheduled_at) return false;
+        const dueAt = new Date(m.scheduled_at).getTime();
+        return dueAt >= now - (Number(m.due_window_minutes ?? 30) * 60_000) && dueAt <= now + 5 * 60_000;
+      });
+      if (!attention.length) return;
+      if (medAlertEnabled) {
+        try { navigator.vibrate?.([400, 150, 400, 150, 700]); } catch {}
+        playWorkflowSound('critical');
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const first = attention[0];
+          new Notification('Medication due', { body: `${attention.length} medication dose(s) require attention for ${patientName(first.patient_id)}.`, tag: 'hms-medication-due' });
+        }
+      }
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [medications, medAlertEnabled]);
   useEffect(() => {
     const channel = supabase.channel(`nurse-dashboard-${user?.id ?? 'station'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medication_administrations' }, () => { playWorkflowSound('info'); void load(true); })
@@ -115,7 +137,16 @@ export default function NurseDashboard() {
         <div className="flex flex-wrap gap-2">
           <Link to="/nursing-handover" className="btn-secondary"><FileText className="w-4 h-4" /> Nursing Handover</Link>
           <Link to="/vitals" className="btn-primary"><HeartPulse className="w-4 h-4" /> Record Vitals</Link>
-          <button onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
+          <button type="button" onClick={async () => {
+            if ('Notification' in window && Notification.permission !== 'granted') {
+              const permission = await Notification.requestPermission();
+              if (permission !== 'granted') { toast.info('System medication notifications remain disabled.'); return; }
+            }
+            setMedAlertEnabled(true);
+            playWorkflowSound('critical');
+            toast.success('Medication alerts enabled for this nursing session.');
+          }} className={cn('btn-secondary', medAlertEnabled && 'border-primary/40 bg-primary/5')}><Pill className="w-4 h-4" /> {medAlertEnabled ? 'Alerts enabled' : 'Enable med alerts'}</button>
+          <button type="button" onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
         </div>
       </div>
 
@@ -187,12 +218,21 @@ export default function NurseDashboard() {
         <section className="card-medical">
           <div className="p-5 border-b border-border flex items-center justify-between"><div><h2 className="font-semibold">Medication Schedule</h2><p className="text-xs text-muted-foreground">Live MAR slots</p></div><Link to="/medications" className="text-sm text-primary">Open MAR</Link></div>
           <div className="divide-y divide-border max-h-[28rem] overflow-y-auto">
-            {dueMeds.slice(0, 20).map((med, index) => <div key={med.id ?? index} className={cn('p-4', overdueMeds.some(x => x.id === med.id) && 'bg-critical/5')}><div className="flex items-start justify-between gap-2"><div><p className="font-medium text-sm">{med.medication_name}</p><p className="text-xs text-muted-foreground">{patientName(med.patient_id)} · {med.dose ?? 'dose not recorded'}</p></div><span className={cn('badge-status', overdueMeds.some(x => x.id === med.id) ? 'badge-critical pulse-critical' : 'badge-warning')}>{med.scheduled_at ? new Date(med.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Due'}</span></div></div>)}
+            {dueMeds.slice(0, 20).map((med, index) => <div key={med.id ?? index} className={cn('p-4', overdueMeds.some(x => x.id === med.id) && 'bg-critical/5')}><div className="flex items-start justify-between gap-2"><button type="button" className="text-left" onClick={() => setMedTarget(med)}><p className="font-medium text-sm">{med.medication_name}</p><p className="text-xs text-muted-foreground">{patientName(med.patient_id)} · {med.dose ?? 'dose not recorded'}</p></button><span className={cn('badge-status', overdueMeds.some(x => x.id === med.id) ? 'badge-critical pulse-critical' : 'badge-warning')}>{med.scheduled_at ? new Date(med.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Due'}</span></div></div>)}
             {!dueMeds.length && <div className="p-8 text-center text-sm text-muted-foreground">No medication administrations are currently due.</div>}
           </div>
         </section>
       </div>
 
+      {medTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="due-med-title">
+        <div className="w-full max-w-xl rounded-2xl bg-card border border-border shadow-xl">
+          <div className="flex items-center justify-between border-b border-border p-5"><div><h2 id="due-med-title" className="font-semibold">Medication due now</h2><p className="text-xs text-muted-foreground">{patientName(medTarget.patient_id)} · current due window only</p></div><button type="button" className="p-2 rounded-lg hover:bg-muted" aria-label="Close medication due view" onClick={() => setMedTarget(null)}><X className="w-4 h-4" /></button></div>
+          <div className="p-5 space-y-3">
+            {dueMeds.filter((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && Math.abs(new Date(m.scheduled_at).getTime() - Date.now()) <= Number(m.due_window_minutes ?? 30) * 60_000).map((m) => <div key={m.id} className="rounded-xl border p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{m.medication_name}</p><p className="text-xs text-muted-foreground">{m.dose ?? 'Dose not recorded'} · {m.route ?? 'Route not recorded'}</p></div><Link to="/medications" className="btn-primary text-sm">Open administration</Link></div>)}
+            {!dueMeds.some((m) => m.patient_id === medTarget.patient_id && m.scheduled_at && Math.abs(new Date(m.scheduled_at).getTime() - Date.now()) <= Number(m.due_window_minutes ?? 30) * 60_000) && <p className="text-sm text-muted-foreground">No medication is inside the current due window. Later scheduled doses are intentionally hidden.</p>}
+          </div>
+        </div>
+      </div>}
       {noteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="nursing-note-title">
         <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-xl">
           <div className="flex items-center justify-between border-b border-border p-5">
