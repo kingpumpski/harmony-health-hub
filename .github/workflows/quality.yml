@@ -61,6 +61,9 @@ jobs:
       - name: SECURITY DEFINER creation contract
         run: npm run test:security-definer-creation
 
+      - name: Authenticated SECURITY DEFINER exposure contract
+        run: npm run test:authenticated-security-definer-exposure
+
       - name: Authorization boundary contracts
         run: npm run test:authorization-boundaries
 
