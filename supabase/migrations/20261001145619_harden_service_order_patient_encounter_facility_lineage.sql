@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.validate_service_order_encounter()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_patient_facility uuid;
