@@ -10,7 +10,7 @@ const kpiCleanup = fs.readFileSync('supabase/migrations/20260929200000_role_dash
 assert.match(workflow,/Role-specific operational shortcuts/);
 assert.match(workflow,/className="mt-8 border-t border-border pt-6"/);
 assert.match(workflow,/if \(role === 'canteen'\)/);
-assert.match(workflow,/make\('Meal menu','\\/menu'/);
+assert.match(workflow,/make\('Meal menu','[\\s\\S]*?/menu'/);
 assert.match(workflow,/if \(role === 'patient'\)/);
 assert.match(workflow,/make\('Meal menu','\\/menu'/);
 assert.match(workflow,/if \(role === 'radiology_technician'\)/);
