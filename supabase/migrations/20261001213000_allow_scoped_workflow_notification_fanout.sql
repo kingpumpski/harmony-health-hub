@@ -78,9 +78,16 @@ BEGIN
           OR has_role(auth.uid(), 'specialist_nurse'::app_role)
         ))
       OR (normalized_category = 'payment'
-        AND requested_role IN ('accountant'::app_role, 'front_desk'::app_role)
+        AND requested_role IN ('accountant'::app_role, 'front_desk'::app_role, 'lab_technician'::app_role, 'practitioner'::app_role, 'nurse'::app_role, 'midwife'::app_role, 'specialist_nurse'::app_role, 'radiologist'::app_role, 'radiology_technician'::app_role, 'pharmacist'::app_role)
         AND (
-          has_role(auth.uid(), 'accountant'::app_role)
+          has_role(auth.uid(), 'practitioner'::app_role)
+          OR has_role(auth.uid(), 'nurse'::app_role)
+          OR has_role(auth.uid(), 'midwife'::app_role)
+          OR has_role(auth.uid(), 'specialist_nurse'::app_role)
+          OR has_role(auth.uid(), 'lab_technician'::app_role)
+          OR has_role(auth.uid(), 'radiologist'::app_role)
+          OR has_role(auth.uid(), 'pharmacist'::app_role)
+          OR has_role(auth.uid(), 'accountant'::app_role)
           OR has_role(auth.uid(), 'front_desk'::app_role)
         ))
       OR (normalized_category = 'lab'
