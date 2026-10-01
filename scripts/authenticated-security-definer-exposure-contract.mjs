@@ -39,12 +39,18 @@ assert(
   "authenticated SECURITY DEFINER exposure contract: no SECURITY DEFINER functions detected",
 );
 
-function functionChunk(name) {
-  const marker = "FUNCTION public." + name + "(";
-  const start = allSource.indexOf(marker);
-  if (start < 0) return "";
-  const next = allSource.indexOf("CREATE OR REPLACE FUNCTION", start + marker.length);
-  return allSource.slice(start, next < 0 ? allSource.length : next);
+function functionChunk(name, signature) {
+  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
+  const normalizedSignature = signature.trim().replace(/\s+/g, "\\s+");
+  const declaration = new RegExp(
+    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
+      escapedName +
+      "\\s*\\(" +
+      normalizedSignature +
+      "\\)[\\s\\S]*?(?=CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.|$)",
+    "i",
+  ).exec(allSource);
+  return declaration?.[0] ?? "";
 }
 
 function hasExplicitRevoke(name, role) {
@@ -80,8 +86,8 @@ function hasPublicGrant(name) {
   ).test(allSource);
 }
 
-function hasAuthorizationGuard(name) {
-  const chunk = functionChunk(name);
+function hasAuthorizationGuard(name, signature) {
+  const chunk = functionChunk(name, signature);
   return [
     "auth.uid()",
     "current_user_role(",
@@ -116,7 +122,7 @@ for (const declaration of declarations) {
   );
   if (hasAuthenticatedGrant(declaration.name)) {
     assert(
-      hasAuthorizationGuard(declaration.name),
+      hasAuthorizationGuard(declaration.name, declaration.signature),
       declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard",
     );
   }
