@@ -23,12 +23,20 @@ const sources = files.map((name) => ({
 const allSource = sources.map(({ sql }) => sql).join("\n");
 
 function functionDeclarations(sql) {
-  const pattern = /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.([a-z0-9_]+)\\s*\\(([^)]*)\\)[\\s\\S]*?SECURITY\\s+DEFINER[\\s\\S]*?(?=CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.|$)/gi;
-  return [...sql.matchAll(pattern)].map((match) => ({
-    name: match[1],
-    signature: match[2],
-    source: match[0],
-  }));
+  const headerPattern = /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.([a-z0-9_]+)\\s*\\(([^)]*)\\)/gi;
+  return [...sql.matchAll(headerPattern)].flatMap((match) => {
+    const start = match.index;
+    const nextMatch = /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\./gi;
+    nextMatch.lastIndex = start + match[0].length;
+    const next = nextMatch.exec(sql);
+    const source = sql.slice(start, next ? next.index : sql.length);
+    if (!/SECURITY\\s+DEFINER/i.test(source)) return [];
+    return [{
+      name: match[1],
+      signature: match[2],
+      source,
+    }];
+  });
 }
 
 const declarations = sources.flatMap(({ name, sql }) =>
