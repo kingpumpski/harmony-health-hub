@@ -56,17 +56,12 @@ export default function OperationalHandoffPanel() {
 
   useEffect(() => {
     void load();
-    if (!user || user.role === 'it_admin') return;
-    const channel = supabase
-      .channel(`operational-handoffs-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
-      .subscribe();
+    // Poll through the server-scoped RPC rather than subscribing to the raw
+    // notifications table. This prevents realtime payloads from bypassing the
+    // role/facility filtering enforced by get_workflow_notifications().
     const timer = window.setInterval(() => void load(), 60000);
-    return () => {
-      void supabase.removeChannel(channel);
-      window.clearInterval(timer);
-    };
-  }, [load, user]);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   const unread = useMemo(() => items.filter((item) => !item.is_read), [items]);
   const critical = useMemo(() => unread.filter((item) => item.severity === 'critical'), [unread]);
@@ -82,9 +77,7 @@ export default function OperationalHandoffPanel() {
           <div className="rounded-xl bg-primary/10 p-2 text-primary"><MessageSquare className="h-5 w-5" aria-hidden="true" /></div>
           <div className="min-w-0">
             <h2 id="operational-handoff-heading" className="font-semibold">Shared workflow communication</h2>
-            <p className="text-xs text-muted-foreground">
-              Role-scoped handoffs and operational alerts for {roleLabel}.
-            </p>
+            <p className="text-xs text-muted-foreground">Role-scoped handoffs and operational alerts for {roleLabel}.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
