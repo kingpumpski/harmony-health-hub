@@ -65,8 +65,11 @@ function hasAuthenticatedGrant(name) {
   ).test(allSource);
 }
 
-function hasAuthorizationGuard(name) {
-  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\function hasPublicGrant(name) {");
+function hasAuthorizationGuard() {
+  return /(?:auth\.uid\(\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\(|is_clinical_staff\(|has_role\()/i.test(allSource);
+}
+
+function hasPublicGrant(name) {");
   return new RegExp(
     "(auth\\\\.uid\\\\(\\\\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\\\\(|is_clinical_staff\\\\(|has_role\\\\()",
     "i",
