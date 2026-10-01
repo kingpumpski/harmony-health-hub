@@ -63,6 +63,9 @@ export default function Settings(){
  const [emailSaving,setEmailSaving]=useState(false);
  const [emailTesting,setEmailTesting]=useState(false);
  const [emailStatus,setEmailStatus]=useState<any>(null);
+ const [testMode,setTestMode]=useState<{enabled:boolean;environment:string;updated_at:string}|null>(null);
+ const [testModeReason,setTestModeReason]=useState('');
+ const [testModeSaving,setTestModeSaving]=useState(false);
 
 
  useEffect(()=>{void load()},[]);
@@ -96,8 +99,44 @@ export default function Settings(){
    const initial = facilityResult[0]?.id ?? '';
    setFacilityId(initial);
    setLoading(false);
+   if(canSwitchTestMode) void loadTestMode();
    if(initial) void loadNotificationSettings(initial);
    if(canControlTestMode) void loadEnvironmentMode();
+ }
+ async function loadTestMode(){
+   try {
+     const {data,error}=await db.rpc('get_hms_test_runtime_status');
+     if(error) throw new Error(error.message);
+     const row=Array.isArray(data) ? data[0] : data;
+     setTestMode(row ?? null);
+   } catch(error) {
+     toast.error(error instanceof Error ? error.message : 'Unable to read environment mode.');
+   }
+ }
+ async function switchTestMode(enabled:boolean){
+   if(!canSwitchTestMode || !testMode) return;
+   if(testMode.environment !== 'test'){
+     toast.error('The connected deployment is production-locked. Test mode cannot be enabled here.');
+     return;
+   }
+   const reason=testModeReason.trim();
+   if(!reason){
+     toast.error('Enter a reason before switching environment mode.');
+     return;
+   }
+   const action=enabled ? 'enable TEST MODE' : 'return to PRODUCTION MODE';
+   if(!window.confirm(`Confirm ${action}? This changes facility-access behavior for designated test accounts.`)) return;
+   setTestModeSaving(true);
+   try {
+     const {data,error}=await db.rpc('set_hms_test_runtime',{_enabled:enabled,_reason:reason});
+     if(error) throw new Error(error.message);
+     const row=Array.isArray(data) ? data[0] : data;
+     setTestMode(row ?? {...testMode,enabled});
+     setTestModeReason('');
+     toast.success(enabled ? 'TEST MODE enabled.' : 'PRODUCTION MODE enabled.');
+   } catch(error) {
+     toast.error(error instanceof Error ? error.message : 'Unable to change environment mode.');
+   } finally { setTestModeSaving(false); }
  }
  async function loadNotificationSettings(id:string){
    setNotificationLoading(true);
@@ -191,6 +230,23 @@ export default function Settings(){
    <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><SettingsIcon className="w-6 h-6 text-primary"/>System Settings</h1>
    <p className="text-muted-foreground">Central configuration and operational control plane for administrators and IT administrators.</p>
   </header>
+
+  {canSwitchTestMode && testMode && <section className={`rounded-3xl border p-5 space-y-4 ${testMode.enabled ? 'border-warning/50 bg-warning/5' : 'border-border bg-card'}`}>
+   <div className="flex items-start justify-between gap-4">
+    <div>
+     <div className="flex items-center gap-2"><ShieldAlert className={`w-5 h-5 ${testMode.enabled ? 'text-warning' : 'text-primary'}`}/><h2 className="font-semibold">Environment Mode</h2></div>
+     <p className="text-sm text-muted-foreground mt-1">Super-admin control for the explicit role-testing environment. This switch is available only when the database deployment is marked <b>TEST</b>; production deployments remain locked.</p>
+    </div>
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${testMode.enabled ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{testMode.enabled ? 'TEST MODE' : 'PRODUCTION MODE'}</span>
+   </div>
+   <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
+    <label className="text-sm space-y-1"><span>Reason for this change</span><input className="input-medical w-full" placeholder="e.g. Role testing for appointment workflow" value={testModeReason} onChange={e=>setTestModeReason(e.target.value)} disabled={testModeSaving}/></label>
+    <button type="button" disabled={testModeSaving || testMode.environment !== 'test'} onClick={()=>void switchTestMode(!testMode.enabled)} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${testMode.enabled ? 'btn-secondary' : 'btn-primary'}`}>
+      {testModeSaving ? 'Switching…' : testMode.enabled ? 'Switch to Production Mode' : 'Switch to Test Mode'}
+    </button>
+   </div>
+   <p className="text-xs text-muted-foreground">Deployment guard: <b>{testMode.environment.toUpperCase()}</b>. Last changed: {testMode.updated_at ? new Date(testMode.updated_at).toLocaleString() : '—'}.</p>
+  </section>
 
   <section className="card-medical rounded-3xl p-5 space-y-5">
    <div className="grid gap-4 md:grid-cols-2">{fields.map(key=><label key={key} className="text-sm space-y-1 block"><span className="capitalize">{key.replaceAll('_',' ')}</span><input className="input-medical w-full" value={config[key]??''} onChange={e=>setConfig({...config,[key]:e.target.value})}/></label>)}
