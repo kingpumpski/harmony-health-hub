@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle, CheckCircle2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
 interface ResultRow {
   id: string;
@@ -26,15 +27,25 @@ export default function ClinicalResults() {
   const [results, setResults] = useState<ResultRow[]>([]);
   const [notifications, setNotifications] = useState<ResultNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [modalityFilter, setModalityFilter] = useState('all');
+  const [appliedFilters, setAppliedFilters] = useState({ review: 'all', priority: 'all', modality: 'all' });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
-    const [{ data: imaging }, { data: notes }] = await Promise.all([
+    const [{ data: imaging, error: imagingError }, { data: notes }] = await Promise.all([
       supabase.from('imaging_orders').select('id,patient_id,study_name,modality,priority,report,impression,encounter_id,created_at,updated_at,patients(first_name,last_name)').eq('requested_by', user.id).eq('status', 'completed').order('updated_at', { ascending: false }).limit(100),
       (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
-    setResults((imaging ?? []) as ResultRow[]);
+    if (imagingError) {
+      toast({ title: 'Radiology results unavailable', description: imagingError.message, variant: 'destructive' });
+      setResults([]);
+    } else {
+      setResults((imaging ?? []) as ResultRow[]);
+    }
     setNotifications((notes ?? []) as ResultNotification[]);
     setLoading(false);
   }, [user?.id]);
@@ -44,15 +55,14 @@ export default function ClinicalResults() {
     if (!user?.id) return;
     const channel = supabase.channel(`clinical-results-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, user?.id]);
 
-  const unreadResultIds = useMemo(() => new Set(notifications.map((n) => n.related_entity_id).filter(Boolean) as string[]), [notifications]);
+  const unreadResultIds = useMemo(() => new Set(notifications.filter((n) => !n.is_read).map((n) => n.related_entity_id).filter(Boolean) as string[]), [notifications]);
 
   const acknowledge = async (resultId: string) => {
-    const matching = notifications.filter((n) => n.related_entity_id === resultId);
+    const matching = notifications.filter((n) => n.related_entity_id === resultId && !n.is_read);
     if (!matching.length) return;
     const { error } = await (supabase as any).rpc('mark_notifications_read', { _notification_ids: matching.map((n) => n.id) });
     if (error) {
@@ -64,6 +74,16 @@ export default function ClinicalResults() {
     toast({ title: 'Radiology result acknowledged' });
     void load();
   };
+
+  const modalities = useMemo(() => Array.from(new Set(results.map((r) => r.modality).filter(Boolean))).sort(), [results]);
+  const visibleResults = useMemo(() => results.filter((result) => {
+    const reviewMatches = appliedFilters.review === 'all'
+      || (appliedFilters.review === 'pending' && unreadResultIds.has(result.id))
+      || (appliedFilters.review === 'acknowledged' && !unreadResultIds.has(result.id));
+    const priorityMatches = appliedFilters.priority === 'all' || result.priority.toLowerCase() === appliedFilters.priority;
+    const modalityMatches = appliedFilters.modality === 'all' || result.modality === appliedFilters.modality;
+    return reviewMatches && priorityMatches && modalityMatches;
+  }), [results, appliedFilters, unreadResultIds]);
 
   if (!user) return null;
   const pendingCount = results.filter((r) => unreadResultIds.has(r.id)).length;
@@ -92,46 +112,89 @@ export default function ClinicalResults() {
         </div>
       ) : undefined}
       listTitle="Radiology results worklist"
-      listDescription="Completed reports remain visible with their clinical impression and acknowledgement state."
-      listMeta={`${results.length} result${results.length === 1 ? '' : 's'}`}
+      listDescription="A compact clinical review table keeps patient identity, study status, workflow progress and actions visible without project-management fields."
+      listMeta={`${visibleResults.length} shown · ${results.length} total`}
       loading={loading}
-      empty={results.length === 0}
-      emptyTitle="No completed radiology results"
-      emptyDescription="Completed diagnostic imaging assigned to your workflow will appear here."
+      empty={visibleResults.length === 0}
+      emptyTitle="No radiology results match"
+      emptyDescription="Adjust the clinical filters or wait for a completed diagnostic result assigned to your workflow."
     >
-      {results.map((result) => {
-        const unread = unreadResultIds.has(result.id);
-        const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
-        return (
-          <article key={result.id} className={`p-5 space-y-4 ${unread ? 'bg-primary/5' : ''}`}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-semibold">{result.study_name} · {result.modality}</h2>
-                  {unread && <span className="rounded-full bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning">Needs acknowledgement</span>}
-                  {urgent && <span className="rounded-full bg-critical/10 px-2.5 py-1 text-[10px] font-semibold text-critical">Urgent / STAT</span>}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">{result.patients?.first_name} {result.patients?.last_name} · {result.priority} · Completed {new Date(result.updated_at).toLocaleString()}</p>
-              </div>
-              {unread ? (
-                <button type="button" onClick={() => void acknowledge(result.id)} className="btn-primary inline-flex items-center gap-2 text-xs shrink-0">
-                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Acknowledge result
-                </button>
-              ) : <span className="badge-success shrink-0">Acknowledged</span>}
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <section className="rounded-xl border border-border p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p>
-              </section>
-              <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p>
-              </section>
-            </div>
-          </article>
-        );
-      })}
+      <ClinicalDataTable
+        title="Diagnostic imaging results"
+        description="Use clinical filters to narrow the review queue. Patient and study information remains specific to the medical workflow."
+        meta={`${visibleResults.length} result${visibleResults.length === 1 ? '' : 's'}`}
+        filters={[
+          { label: 'Review state', value: reviewFilter, onChange: setReviewFilter, options: [{ value: 'all', label: 'All review states' }, { value: 'pending', label: 'Needs acknowledgement' }, { value: 'acknowledged', label: 'Acknowledged' }] },
+          { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
+          { label: 'Modality', value: modalityFilter, onChange: setModalityFilter, options: [{ value: 'all', label: 'All modalities' }, ...modalities.map((value) => ({ value, label: value }))] },
+        ]}
+        onSearch={() => setAppliedFilters({ review: reviewFilter, priority: priorityFilter, modality: modalityFilter })}
+        loading={loading}
+        empty={visibleResults.length === 0}
+        emptyMessage="No completed radiology results match the selected clinical filters."
+      >
+        <thead>
+          <tr>
+            <th scope="col">Patient</th>
+            <th scope="col">Study</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Status</th>
+            <th scope="col">Workflow progress</th>
+            <th scope="col">Report date</th>
+            <th scope="col" className="text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleResults.map((result) => {
+            const unread = unreadResultIds.has(result.id);
+            const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
+            return (
+              <>
+                <tr key={result.id} className={unread ? 'bg-warning/5' : undefined}>
+                  <td>
+                    <div className="min-w-[170px]">
+                      <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Patient record · {result.patient_id.slice(0, 8)}</p>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="min-w-[190px]">
+                      <p className="font-medium">{result.study_name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{result.modality}</p>
+                    </div>
+                  </td>
+                  <td>{urgent ? <ClinicalStatusBadge status={result.priority} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
+                  <td><ClinicalStatusBadge status={unread ? 'pending' : 'acknowledged'} /></td>
+                  <td><ClinicalProgressBar value={100} label="Completed" /></td>
+                  <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(result.updated_at).toLocaleString()}</td>
+                  <td>
+                    <div className="flex min-w-[190px] justify-end gap-2">
+                      <ClinicalTableAction label={expandedId === result.id ? 'Hide report' : 'View report'} onClick={() => setExpandedId(expandedId === result.id ? null : result.id)} />
+                      {unread && <ClinicalTableAction label="Acknowledge" icon="acknowledge" onClick={() => void acknowledge(result.id)} />}
+                    </div>
+                  </td>
+                </tr>
+                {expandedId === result.id && (
+                  <tr key={`${result.id}-details`} className="bg-muted/20">
+                    <td colSpan={7}>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <section className="rounded-xl border border-border bg-background p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p>
+                        </section>
+                        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p>
+                        </section>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            );
+          })}
+        </tbody>
+      </ClinicalDataTable>
     </OperationalWorklistShell>
   );
 }
