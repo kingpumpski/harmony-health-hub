@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CheckCircle2, CircleDot, Clock3, Eye, AlertCircle, Filter, ChevronDown } from 'lucide-react';
 
 export type ClinicalStatus = 'completed' | 'approved' | 'started' | 'pending' | 'urgent' | 'critical' | 'cancelled' | 'in_progress' | 'ordered' | 'sample_collected' | 'released' | 'acknowledged';
