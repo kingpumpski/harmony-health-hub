@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, FlaskConical, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,8 +142,8 @@ export default function LaboratoryResults() {
                 ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}`
                 : result.result_text ?? result.result_data?.value ?? 'Result recorded';
               return (
-                <>
-                  <tr key={result.id} className={result.is_abnormal ? 'bg-critical/5' : undefined}>
+                <Fragment key={result.id}>
+                  <tr className={result.is_abnormal ? 'bg-critical/5' : undefined}>
                     <td>
                       <div className="min-w-[170px]">
                         <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
@@ -212,7 +212,7 @@ export default function LaboratoryResults() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
