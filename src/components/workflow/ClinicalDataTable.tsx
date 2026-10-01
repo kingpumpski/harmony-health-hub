@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CheckCircle2, CircleDot, Clock3, Eye, AlertCircle } from 'lucide-react';
+import { CheckCircle2, CircleDot, Clock3, Eye, AlertCircle, Filter, ChevronDown } from 'lucide-react';
 
 export type ClinicalStatus = 'completed' | 'approved' | 'started' | 'pending' | 'urgent' | 'critical' | 'cancelled' | 'in_progress' | 'ordered' | 'sample_collected' | 'released' | 'acknowledged';
 
@@ -97,6 +97,7 @@ export default function ClinicalDataTable({
   emptyMessage = 'No clinical records match the selected filters.',
   meta,
 }: ClinicalDataTableProps) {
+  const [filterOpen, setFilterOpen] = useState(false);
   return (
     <section className="clinical-data-table card-medical overflow-hidden" aria-labelledby="clinical-data-table-title">
       <div className="clinical-table-heading">
@@ -107,8 +108,18 @@ export default function ClinicalDataTable({
         {meta && <div className="text-xs text-muted-foreground">{meta}</div>}
       </div>
 
-      {filters.length > 0 && (
-        <div className="clinical-table-filters" role="search" aria-label={`${title} filters`}>
+      {(filters.length > 0 || onSearch) && (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border px-4 py-3 sm:px-5">
+          {filters.length > 0 && <button type="button" onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen} className="btn-secondary inline-flex items-center gap-2">
+            <Filter className="h-4 w-4" aria-hidden="true" /> Filter
+            {filters.some((filter) => filter.value && !['all'].includes(filter.value)) && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filterOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>}
+          {onSearch && <button type="button" onClick={() => { onSearch(); setFilterOpen(false); }} className="clinical-search-button">{searchLabel}</button>}
+        </div>
+      )}
+      {filters.length > 0 && filterOpen && (
+        <div className="clinical-table-filters border-b border-border bg-muted/20" role="search" aria-label={`${title} filters`}>
           <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {filters.map((filter) => (
               <label key={filter.label} className="clinical-filter-field">
@@ -119,7 +130,7 @@ export default function ClinicalDataTable({
               </label>
             ))}
           </div>
-          {onSearch && <button type="button" onClick={onSearch} className="clinical-search-button">{searchLabel}</button>}
+          {onSearch && <div className="flex justify-end pt-3"><button type="button" onClick={() => { onSearch(); setFilterOpen(false); }} className="clinical-search-button">Apply filters</button></div>}
         </div>
       )}
 
