@@ -147,8 +147,8 @@ export default function ClinicalResults() {
               const unread = unreadResultIds.has(result.id);
               const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
               return (
-                <>
-                  <tr key={result.id} className={unread ? 'bg-warning/5' : undefined}>
+                <Fragment key={result.id}>
+                  <tr className={unread ? 'bg-warning/5' : undefined}>
                     <td>
                       <div className="min-w-[170px]">
                         <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
@@ -188,7 +188,7 @@ export default function ClinicalResults() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
