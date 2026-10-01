@@ -43,7 +43,6 @@
     "test:notification-provider-security": "node scripts/notification-provider-security-contract.mjs",
     "test:new-security-definer-authorization": "node scripts/new-security-definer-authorization-contract.mjs",
     "test:legacy-lineage-security": "node scripts/legacy-lineage-security-contract.mjs",
-    "test:clinical-results-production": "node scripts/clinical-results-production-contract.mjs",
     "test:clinical-results-production": "node scripts/clinical-results-production-contract.mjs"
   },
   "dependencies": {
