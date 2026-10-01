@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BellRing, CreditCard, Package, Pill, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, BellRing, CreditCard, Package, Pill, RefreshCw, Search, ShoppingCart, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -45,6 +45,8 @@ export default function Pharmacy() {
   const [appliedInventoryStock, setAppliedInventoryStock] = useState('all');
   const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null>(null);
   const [expandedPosId, setExpandedPosId] = useState<string | null>(null);
+  const [prescriptionColumns, setPrescriptionColumns] = useState({ medication: false, dosage: false, status: false });
+  const [columnsOpen, setColumnsOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,7 +164,7 @@ export default function Pharmacy() {
           {tab === 'dispense' && (
             <ClinicalDataTable
               title="Prescription dispensing"
-              description="Patient, medicine, dispensing state, workflow progress and authorised action remain visible in a compact clinical queue."
+              description="Patient ID, patient name and timestamp remain visible by default. Optional clinical columns can be enabled without changing the operational workflow."
               meta={`${visiblePrescriptions.length} prescriptions · ${plans.length} prepared`}
               filters={[
                 { label: 'Patient', value: patientId, onChange: setPatientId, options: [{ value: '', label: 'All active prescriptions' }, ...patients.map((patient) => ({ value: patient.id, label: `${patient.first_name} ${patient.last_name} · ${patient.patient_code}` }))] },
@@ -172,13 +174,17 @@ export default function Pharmacy() {
               loading={loading}
               empty={false}
             >
+
+              <div className="relative -mt-2 mb-2 flex justify-end">
+                <button type="button" className="btn-ghost inline-flex items-center gap-2 text-xs" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((open) => !open)}><Settings2 className="h-4 w-4" aria-hidden="true" /> Columns</button>
+                {columnsOpen && <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-background p-3 shadow-lg">
+                  {Object.entries({ medication: 'Medication', dosage: 'Dosage / frequency', status: 'Status' }).map(([key,label]) => <label key={key} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={Boolean(prescriptionColumns[key as keyof typeof prescriptionColumns])} onChange={() => setPrescriptionColumns((current) => ({ ...current, [key]: !current[key as keyof typeof current] }))} />{label}</label>)}
+                </div>}
+              </div>
               <thead>
                 <tr>
-                  <th scope="col">Patient</th>
-                  <th scope="col">Medication</th>
-                  <th scope="col">Directions</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Workflow progress</th>
+                  <th scope="col">No.</th><th scope="col">Patient ID</th><th scope="col">Full Name</th><th scope="col">Timestamp</th>
+                  {prescriptionColumns.medication && <th scope="col">Medication</th>}{prescriptionColumns.dosage && <th scope="col">Dosage</th>}{prescriptionColumns.status && <th scope="col">Status</th>}
                   <th scope="col" className="text-right">Action</th>
                 </tr>
               </thead>
@@ -188,12 +194,9 @@ export default function Pharmacy() {
                   return (
                     <Fragment key={prescription.id}>
                       <tr>
-                        <td><div className="min-w-[160px]"><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</p></div></td>
-                        <td><div className="min-w-[170px]"><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></div></td>
-                        <td><div className="min-w-[180px] text-xs text-muted-foreground">{prescription.dosage ?? 'Dose not specified'} · {prescription.frequency ?? 'Frequency not specified'}{prescription.duration ? ` · ${prescription.duration}` : ''}</div></td>
-                        <td><ClinicalStatusBadge status={prescription.status} /></td>
-                        <td><ClinicalProgressBar value={25} label="Preparation" /></td>
-                        <td><div className="flex min-w-[220px] justify-end gap-2"><ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
+                    <td>{visiblePrescriptions.indexOf(prescription) + 1}</td><td className="font-mono text-xs">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{new Date((prescription as any).created_at ?? Date.now()).toLocaleString()}</td>
+                    {prescriptionColumns.medication && <td><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></td>}{prescriptionColumns.dosage && <td className="text-xs">{prescription.dosage ?? '—'} · {prescription.frequency ?? '—'}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={prescription.status} /></td>}
+                    <td><div className="flex min-w-[220px] justify-end gap-2"><ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
                       </tr>
                       {expandedPrescriptionId === prescription.id && (
                         <tr key={`${prescription.id}-details`} className="bg-muted/20">
