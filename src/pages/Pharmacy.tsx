@@ -162,6 +162,12 @@ export default function Pharmacy() {
       listContent={(
         <div>
           {tab === 'dispense' && (
+            <div className="relative mb-2 flex justify-end">
+              <button type="button" className="btn-ghost inline-flex items-center gap-2 text-xs" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((open) => !open)}><Settings2 className="h-4 w-4" aria-hidden="true" /> Columns</button>
+              {columnsOpen && <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-background p-3 shadow-lg">
+                {Object.entries({ medication: 'Medication', dosage: 'Dosage / frequency', status: 'Status' }).map(([key,label]) => <label key={key} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={Boolean(prescriptionColumns[key as keyof typeof prescriptionColumns])} onChange={() => setPrescriptionColumns((current) => ({ ...current, [key]: !current[key as keyof typeof current] }))} />{label}</label>)}
+              </div>}
+            </div>
             <ClinicalDataTable
               title="Prescription dispensing"
               description="Patient ID, patient name and timestamp remain visible by default. Optional clinical columns can be enabled without changing the operational workflow."
@@ -174,13 +180,6 @@ export default function Pharmacy() {
               loading={loading}
               empty={false}
             >
-
-              <div className="relative -mt-2 mb-2 flex justify-end">
-                <button type="button" className="btn-ghost inline-flex items-center gap-2 text-xs" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((open) => !open)}><Settings2 className="h-4 w-4" aria-hidden="true" /> Columns</button>
-                {columnsOpen && <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-background p-3 shadow-lg">
-                  {Object.entries({ medication: 'Medication', dosage: 'Dosage / frequency', status: 'Status' }).map(([key,label]) => <label key={key} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={Boolean(prescriptionColumns[key as keyof typeof prescriptionColumns])} onChange={() => setPrescriptionColumns((current) => ({ ...current, [key]: !current[key as keyof typeof current] }))} />{label}</label>)}
-                </div>}
-              </div>
               <thead>
                 <tr>
                   <th scope="col">No.</th><th scope="col">Patient ID</th><th scope="col">Full Name</th><th scope="col">Timestamp</th>
