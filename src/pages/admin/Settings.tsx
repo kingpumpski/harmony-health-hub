@@ -108,14 +108,14 @@ export default function Settings(){
    if(!facilityId)return;
    setEmailSaving(!test); setEmailTesting(test);
    try {
-     const {data:{session}}=await supabase.auth.getSession();
-     if(!session?.access_token) throw new Error('Authenticated session required.');
      const credentials=emailProvider==='smtp'
        ? {host:emailDraft.host,port:Number(emailDraft.port),secure:emailDraft.secure,username:emailDraft.username,password:emailDraft.password,from_email:emailDraft.from_email,from_name:emailDraft.from_name}
        : {api_key:emailDraft.api_key,from_email:emailDraft.from_email};
-     const response=await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-provider-config`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email,priority:Number(emailDraft.priority||100),isPrimary:emailDraft.isPrimary})});
-     const result=await response.json().catch(()=>({}));
-     if(!response.ok) throw new Error(result.error??'Email provider configuration failed.');
+     const {data:result,error:invokeError}=await supabase.functions.invoke('notification-provider-config',{
+       body:{facilityId,environment:emailEnvironment,provider:emailProvider,credentials,test,testRecipient:emailDraft.testRecipient||user?.email,priority:Number(emailDraft.priority||100),isPrimary:emailDraft.isPrimary},
+     });
+     if(invokeError) throw new Error(invokeError.message || 'Email provider configuration failed.');
+     if(result?.error) throw new Error(String(result.error));
      setEmailStatus(result); toast.success(test?'Email provider verified and test sent.':'Email provider configuration saved.');
      await loadNotificationSettings(facilityId);
      if(test)setEmailDraft(d=>({...d,password:'',api_key:''}));
