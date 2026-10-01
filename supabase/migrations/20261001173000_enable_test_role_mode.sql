@@ -77,7 +77,7 @@ insert into public.healthcare_facilities
 select
   'Harmony Health Hub Test Facility',
   'TEST-0001',
-  'Hospital',
+  'other',
   'Test Environment',
   'Test Environment',
   true
