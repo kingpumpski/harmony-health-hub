@@ -175,7 +175,7 @@ export default function WorklistDataTable<T>({
             })}
           </tbody>
         </table>
-        {!visibleRows.length && <div className="px-5 py-12 text-center text-sm text-muted-foreground">{emptyMessage}</div>}
+        {!loading && !visibleRows.length && <div className="px-5 py-12 text-center text-sm text-muted-foreground">{emptyMessage}</div>}
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
