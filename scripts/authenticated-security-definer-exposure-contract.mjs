@@ -67,12 +67,25 @@ function hasExplicitRevoke(name, role) {
 
 function hasAuthenticatedGrant(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  return new RegExp(
+  const grantPattern = new RegExp(
     "GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\." +
       escaped +
       "\\s*\\([^;]*\\)\\s+TO\\s+authenticated",
-    "i",
-  ).test(allSource);
+    "gi",
+  );
+  const revokePattern = new RegExp(
+    "REVOKE\\s+(?:ALL|EXECUTE)\\s+ON\\s+FUNCTION\\s+public\\." +
+      escaped +
+      "\\s*\\([^;]*\\)\\s+FROM\\s+([^;]+)",
+    "gi",
+  );
+  const grants = [...allSource.matchAll(grantPattern)];
+  const revokes = [...allSource.matchAll(revokePattern)].filter((match) =>
+    match[1].split(",").map((value) => value.trim().toLowerCase()).includes("authenticated"),
+  );
+  const lastGrant = grants.at(-1)?.index ?? -1;
+  const lastRevoke = revokes.at(-1)?.index ?? -1;
+  return lastGrant > lastRevoke;
 }
 
 function hasPublicGrant(name) {
