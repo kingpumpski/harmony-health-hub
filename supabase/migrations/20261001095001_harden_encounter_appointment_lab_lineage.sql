@@ -2,7 +2,7 @@
 -- laboratory, and prescription workflows.
 
 CREATE OR REPLACE FUNCTION public.create_appointment_workflow(_patient_id uuid,_scheduled_at timestamptz,_department text,_reason text DEFAULT NULL)
-RETURNS public.appointments LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS public.appointments LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; result public.appointments;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -20,7 +20,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.save_encounter_draft(_encounter_id uuid,_symptoms text DEFAULT NULL,_clerking_notes text DEFAULT NULL,_treatment_plan text DEFAULT NULL)
-RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v public.encounters; v_patient_facility uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -36,7 +36,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.save_encounter_clerking(_encounter_id uuid,_chief_complaint text DEFAULT NULL,_symptoms text DEFAULT NULL,_history_of_present_illness text DEFAULT NULL,_clerking_notes text DEFAULT NULL,_assessment text DEFAULT NULL,_plan text DEFAULT NULL,_treatment_plan text DEFAULT NULL,_follow_up_date date DEFAULT NULL)
-RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v public.encounters; v_patient_facility uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -52,7 +52,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.complete_encounter_workflow(_encounter_id uuid)
-RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v public.encounters; v_patient_facility uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -70,7 +70,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.create_encounter_prescription(_encounter_id uuid,_medication text,_dosage text DEFAULT NULL,_frequency text DEFAULT NULL,_duration text DEFAULT NULL,_diagnosis_id uuid DEFAULT NULL)
-RETURNS public.prescriptions LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS public.prescriptions LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_enc public.encounters%ROWTYPE; v_patient_facility uuid; v_facility uuid:=public.current_user_facility_id(); result public.prescriptions;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -90,7 +90,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.create_lab_order_with_payment_gate(_patient_id uuid,_test_name text,_test_category text DEFAULT NULL,_priority text DEFAULT 'routine',_clinical_notes text DEFAULT NULL,_amount numeric DEFAULT 0,_encounter_id uuid DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_lab_order_id uuid; v_service_order_id uuid; v_requires_payment boolean:=coalesce(_amount,0)>0; v_service_status text:=case when coalesce(_amount,0)>0 then 'pending_payment_approval' else 'released' end;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -111,7 +111,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.collect_lab_sample(_lab_order_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); o public.lab_orders%ROWTYPE; g public.service_orders%ROWTYPE;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
@@ -128,7 +128,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.enter_lab_result_structured(_lab_order_id uuid,_parameter_results jsonb,_result_text text DEFAULT NULL,_interpretation text DEFAULT NULL,_is_abnormal boolean DEFAULT false)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog, public' AS $function$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); o public.lab_orders%ROWTYPE; c public.lab_test_catalogue%ROWTYPE; rid uuid; required_code text;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician')) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
