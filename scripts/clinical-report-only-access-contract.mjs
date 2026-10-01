@@ -31,6 +31,10 @@ const imagingReportRpc = migration.slice(
   migration.indexOf('REVOKE ALL ON FUNCTION public.get_clinician_imaging_results')
 );
 
+assert('laboratory worklist excludes cancelled and payment-pending orders',
+  labWorkspace.includes("o.status <> 'cancelled'") && labWorkspace.includes("so.status = 'pending_payment_approval'") && labWorkspace.includes("so.order_type = 'lab'"));
+assert('imaging worklist excludes payment-pending orders',
+  imagingWorkspace.includes("io.status IN ('released', 'in_progress', 'completed')"));
 assert('laboratory operational workspace is restricted to administrators and lab technicians',
   labWorkspace.includes("public.has_role(auth.uid(), 'admin')") &&
   labWorkspace.includes("public.has_role(auth.uid(), 'lab_technician')") &&
@@ -76,6 +80,7 @@ assert('laboratory result approval is restricted to lab technicians and administ
   approveLab.includes("public.has_role(uid, 'lab_technician')") &&
   approveLab.includes("public.has_role(uid, 'admin')") &&
   !approveLab.includes("public.has_role(uid, 'practitioner')") &&
+  approveLab.includes('r.patient_id IS DISTINCT FROM o.patient_id') &&
   approveLab.includes("'/lab-results'"));
 
 assert('report RPCs are not executable by anonymous callers',
