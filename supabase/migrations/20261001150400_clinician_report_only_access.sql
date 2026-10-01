@@ -62,7 +62,14 @@ BEGIN
       FROM (
         SELECT id, patient_id, test_name, test_category, priority, status,
                created_at, clinical_notes, lab_test_catalogue_id
-        FROM public.lab_orders
+        FROM public.lab_orders o
+        WHERE o.status <> 'cancelled'
+          AND NOT EXISTS (
+            SELECT 1 FROM public.service_orders so
+            WHERE so.related_entity_id = o.id
+              AND so.order_type = 'lab'
+              AND so.status = 'pending_payment_approval'
+          )
         ORDER BY created_at DESC
         LIMIT _limit
       ) o
@@ -148,7 +155,7 @@ BEGIN
                ) AS patient
         FROM public.imaging_orders io
         JOIN public.patients p ON p.id = io.patient_id
-        WHERE io.status <> 'cancelled'
+        WHERE io.status IN ('released', 'in_progress', 'completed')
         ORDER BY io.created_at DESC
         LIMIT _limit
       ) x
@@ -536,6 +543,7 @@ DECLARE
   uid uuid := auth.uid();
   r public.lab_results%ROWTYPE;
   o public.lab_orders%ROWTYPE;
+  encounter_patient_id uuid;
 BEGIN
   IF uid IS NULL OR NOT (
     public.has_role(uid, 'admin')
@@ -551,6 +559,17 @@ BEGIN
   SELECT * INTO o FROM public.lab_orders WHERE id = r.lab_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
   IF o.status <> 'completed' THEN RAISE EXCEPTION 'Laboratory order must be completed before result approval'; END IF;
+
+  IF r.patient_id IS NULL OR o.patient_id IS NULL OR r.patient_id IS DISTINCT FROM o.patient_id THEN
+    RAISE EXCEPTION 'Laboratory result and order patient context do not match';
+  END IF;
+
+  IF o.encounter_id IS NOT NULL THEN
+    SELECT e.patient_id INTO encounter_patient_id FROM public.encounters e WHERE e.id = o.encounter_id;
+    IF encounter_patient_id IS NULL OR encounter_patient_id IS DISTINCT FROM o.patient_id THEN
+      RAISE EXCEPTION 'Laboratory order encounter does not belong to patient';
+    END IF;
+  END IF;
 
   UPDATE public.lab_results
   SET status = 'approved', approved_by = uid, approved_at = now(), updated_at = now()
