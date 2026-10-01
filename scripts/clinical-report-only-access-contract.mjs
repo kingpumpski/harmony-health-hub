@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
-const migrationPath = 'supabase/migrations/20261001150400_clinician_report_only_access.sql';
+const migrationPath = 'supabase/migrations/20261001152635_clinician_report_only_access.sql';
 const migration = read(migrationPath);
 const app = read('src/App.tsx');
 const sidebar = read('src/components/layout/Sidebar.tsx');
