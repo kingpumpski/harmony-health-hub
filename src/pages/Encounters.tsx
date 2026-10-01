@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
+import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
 
 interface Patient {
   id: string;
@@ -250,6 +251,14 @@ export default function Encounters() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [filterName, setFilterName] = useState("");
+  const [filterEncounterId, setFilterEncounterId] = useState("");
+  const [filterPractitioner, setFilterPractitioner] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState({ name: "", encounterId: "", practitioner: "", status: "all", from: "", to: "" });
   const activePatientId = selected?.patient_id || patientId;
 
   const loadAll = async () => {
@@ -261,6 +270,7 @@ export default function Encounters() {
     ]);
       setPatients((pts ?? []) as Patient[]);
       setEncounters((encs ?? []) as Encounter[]);
+      setLastUpdated(new Date());
     } finally {
       setLoading(false);
     }
@@ -281,7 +291,15 @@ export default function Encounters() {
     setServiceOrders((services ?? []) as ServiceOrder[]);
   };
 
-  useEffect(() => { void loadAll(); }, []);
+  useEffect(() => {
+    void loadAll();
+    const channel = supabase.channel(`encounter-history-${user?.id ?? "anonymous"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "encounters" }, () => { void loadAll(); })
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") toast({ title: "Live encounter updates unavailable", description: "Use Refresh to synchronize the list.", variant: "destructive" });
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.id]);
   useEffect(() => {
     const id = searchParams.get("encounter");
     const p = searchParams.get("patient");
@@ -451,6 +469,59 @@ export default function Encounters() {
   const completedCount = encounters.filter((item) => item.status === "completed").length;
   const admittedCount = encounters.filter((item) => Boolean(item.admission_id)).length;
   const todayCount = encounters.filter((item) => new Date(item.created_at).toDateString() === new Date().toDateString()).length;
+  const visibleEncounters = useMemo(() => {
+    const nameQuery = appliedFilters.name.trim().toLowerCase();
+    const encounterQuery = appliedFilters.encounterId.trim().toLowerCase();
+    const practitionerQuery = appliedFilters.practitioner.trim().toLowerCase();
+    const isClinician = user?.roles?.includes("practitioner");
+    return encounters.filter((item) => {
+      // Keep the clinician's default worklist limited to encounters assigned to them.
+      if (isClinician && item.practitioner_id !== user?.id) return false;
+      const patient = patients.find((candidate) => candidate.id === item.patient_id);
+      const patientName = `${patient?.first_name ?? ""} ${patient?.last_name ?? ""}`.toLowerCase();
+      if (nameQuery && !patientName.includes(nameQuery)) return false;
+      if (encounterQuery && !item.id.toLowerCase().includes(encounterQuery)) return false;
+      const practitionerName = item.practitioner_id === user?.id ? "you" : item.practitioner_id ? "assigned clinician" : "unassigned";
+      if (practitionerQuery && !practitionerName.includes(practitionerQuery)) return false;
+      if (appliedFilters.status !== "all") {
+        const status = item.version_no && item.version_no > 1 ? "amended" : item.status === "completed" ? "closed" : item.admission_id ? "active" : "draft";
+        if (status !== appliedFilters.status) return false;
+      }
+      const date = new Date(item.created_at).getTime();
+      if (appliedFilters.from && date < new Date(`${appliedFilters.from}T00:00:00`).getTime()) return false;
+      if (appliedFilters.to && date > new Date(`${appliedFilters.to}T23:59:59.999`).getTime()) return false;
+      return true;
+    });
+  }, [appliedFilters, encounters, patients, user?.id, user?.roles]); 
+  const encounterColumns: WorklistColumn<Encounter>[] = [
+    { key: "title", label: "Title", sortValue: (item) => patients.find((p) => p.id === item.patient_id)?.last_name ?? "", render: (item) => {
+      const patient = patients.find((p) => p.id === item.patient_id);
+      return <div className="min-w-0"><p className="font-semibold text-foreground">{patient ? `${patient.first_name} ${patient.last_name}` : "Patient record"}</p><p className="mt-0.5 max-w-[280px] truncate text-xs text-muted-foreground">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p></div>;
+    }},
+    { key: "status", label: "Status", sortValue: (item) => item.status, render: (item) => {
+      const status = item.version_no && item.version_no > 1 ? "Amended" : item.status === "completed" ? "Closed" : item.admission_id ? "Active" : "Draft";
+      const tone = status === "Closed" ? "bg-success/10 text-success" : status === "Amended" ? "bg-warning/10 text-warning" : status === "Active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
+      return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{status}</span>;
+    }},
+    { key: "date", label: "Encounter date", sortValue: (item) => new Date(item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap">{new Date(item.created_at).toLocaleDateString()}</span> },
+    { key: "practitioner", label: "Practitioner", sortValue: (item) => item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned", render: (item) => <span className="text-muted-foreground">{item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned"}</span> },
+    { key: "reference", label: "Encounter ID", sortValue: (item) => item.id, render: (item) => <span className="font-mono text-xs text-muted-foreground" title={item.id}>{item.id.slice(0, 8).toUpperCase()}</span> },
+    { key: "relative", label: "Last modified", sortValue: (item) => new Date(item.submitted_at ?? item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap text-xs text-muted-foreground">{encounterAge(item.submitted_at ?? item.created_at)}</span> },
+    { key: "notes", label: "Notes", sortValue: (item) => [item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length, render: (item) => <span className="inline-flex min-w-7 justify-center rounded-full bg-muted px-2 py-1 text-xs">{[item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length}</span> },
+  ];
+  const encounterFilters: WorklistFilter[] = [
+    { key: "name", label: "Patient name", value: filterName, onChange: setFilterName, placeholder: "Search patient name" },
+    { key: "encounter", label: "Encounter ID", value: filterEncounterId, onChange: setFilterEncounterId, placeholder: "Search encounter reference" },
+    { key: "practitioner", label: "Practitioner", value: filterPractitioner, onChange: setFilterPractitioner, placeholder: "You / assigned / unassigned" },
+    { key: "status", label: "Encounter status", value: filterStatus, onChange: setFilterStatus, options: [{ value: "all", label: "All statuses" }, { value: "active", label: "Active / admitted" }, { value: "closed", label: "Closed" }, { value: "amended", label: "Amended" }, { value: "draft", label: "Draft" }] },
+    { key: "from", label: "From date", value: filterFrom, onChange: setFilterFrom, type: "date" },
+    { key: "to", label: "To date", value: filterTo, onChange: setFilterTo, type: "date" },
+  ];
+  const applyEncounterFilters = () => setAppliedFilters({ name: filterName, encounterId: filterEncounterId, practitioner: filterPractitioner, status: filterStatus, from: filterFrom, to: filterTo });
+  const resetEncounterFilters = () => {
+    setFilterName(""); setFilterEncounterId(""); setFilterPractitioner(""); setFilterStatus("all"); setFilterFrom(""); setFilterTo("");
+    setAppliedFilters({ name: "", encounterId: "", practitioner: "", status: "all", from: "", to: "" });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -510,45 +581,29 @@ export default function Encounters() {
           </section>
         )}
         listTitle="Recent encounter worklist"
-        listDescription="Select a complete row to open the clinical document. Finalized encounters remain versioned and auditable."
-        listMeta={`${encounters.length} recent record${encounters.length === 1 ? "" : "s"}`}
+        listDescription="Select a row to open the clinical document. Finalized encounters remain versioned and auditable."
+        listMeta={`${visibleEncounters.length} matching record${visibleEncounters.length === 1 ? "" : "s"}`}
         loading={loading}
-        empty={encounters.length === 0}
+        empty={visibleEncounters.length === 0}
         emptyTitle="No recent encounters"
-        emptyDescription="Create a new encounter draft above or use the encounter history action when records become available."
+        emptyDescription="Create a new encounter draft above or adjust the worklist filters."
+        bareList
       >
-        {encounters.map((item) => {
-          const p = patients.find((x) => x.id === item.patient_id);
-          const active = selected?.id === item.id;
-          const creator = item.practitioner_id === user?.id ? "You" : "Clinical staff";
-          return (
-            <button type="button" key={item.id} onClick={() => selectEncounter(item)} className={`w-full p-4 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 ${active ? "bg-primary/5" : ""}`} aria-label={`Open encounter for ${p ? `${p.first_name} ${p.last_name}` : "patient record"}`}>
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1.8fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_auto] md:items-center">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{p ? `${p.first_name} ${p.last_name}` : "Patient record"}</p>
-                    {item.admission_id && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Admitted</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground truncate">{p?.patient_code ?? item.patient_id}</p>
-                  <p className="mt-2 text-xs text-muted-foreground truncate">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</p>
-                  <p className="text-sm">{new Date(item.created_at).toLocaleDateString()}</p>
-                  <p className="text-[10px] text-muted-foreground">{encounterAge(item.created_at)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Created by</p>
-                  <p className="text-sm">{creator}</p>
-                  <p className="text-[10px] text-muted-foreground">Version {item.version_no ?? 1}</p>
-                </div>
-                <div className="flex md:justify-end">
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${item.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{item.status}</span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+        <WorklistDataTable
+          title="Patient Encounter"
+          description="Historical and current encounters available to your role. Clinical record access remains governed by server-side permissions."
+          rows={visibleEncounters}
+          columns={encounterColumns}
+          getRowId={(item) => item.id}
+          filters={encounterFilters}
+          onApplyFilters={applyEncounterFilters}
+          onResetFilters={resetEncounterFilters}
+          onRefresh={() => { void loadAll(); }}
+          refreshing={loading}
+          lastUpdated={lastUpdated}
+          emptyMessage="No encounters match the selected filters."
+          rowActions={(item) => <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => selectEncounter(item)}>View</button>}
+        />
       </OperationalWorklistShell>
 
       {isHistoryOpen && (
@@ -560,7 +615,7 @@ export default function Encounters() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               <div className="overflow-hidden rounded-2xl border border-border">
-                {encounters.map((item) => {
+                {visibleEncounters.map((item) => {
                   const p = patients.find((x) => x.id === item.patient_id);
                   const creator = item.practitioner_id === user?.id ? "You" : "Clinical staff";
                   return <button type="button" key={item.id} onClick={() => selectEncounter(item)} className="grid w-full grid-cols-1 gap-3 border-b border-border p-4 text-left last:border-b-0 hover:bg-muted/40 focus-visible:bg-muted/40 md:grid-cols-[minmax(0,1.6fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_90px]">
