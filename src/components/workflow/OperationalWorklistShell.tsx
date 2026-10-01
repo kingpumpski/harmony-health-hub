@@ -18,6 +18,7 @@ interface OperationalWorklistShellProps {
   emptyIcon?: ElementType;
   emptyTitle?: string;
   emptyDescription?: string;
+  listContent?: ReactNode;
   children: ReactNode;
 }
 
@@ -37,6 +38,7 @@ export default function OperationalWorklistShell({
   emptyIcon: EmptyIcon = Icon,
   emptyTitle = 'No records found',
   emptyDescription = 'Records will appear here when they are available.',
+  listContent,
   children,
 }: OperationalWorklistShellProps) {
   return (
@@ -74,7 +76,7 @@ export default function OperationalWorklistShell({
           </div>
           {listMeta && <div className="text-xs text-muted-foreground">{listMeta}</div>}
         </div>
-        {loading ? (
+        {listContent ? listContent : loading ? (
           <div className="space-y-2 p-4" aria-live="polite">
             <div className="h-20 animate-pulse rounded-xl bg-muted" />
             <div className="h-20 animate-pulse rounded-xl bg-muted" />
