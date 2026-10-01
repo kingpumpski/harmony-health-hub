@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.assert_patient_facility_context(_patient_id uu
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -28,7 +28,7 @@ CREATE OR REPLACE FUNCTION public.create_ai_clinical_session(_patient_id uuid, _
  RETURNS ai_clinical_sessions
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); result public.ai_clinical_sessions;
 BEGIN
@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION public.create_ai_report_request(_patient_id uuid, _re
  RETURNS ai_report_requests
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_report public.ai_report_requests; v_type text:=lower(pg_catalog.btrim(coalesce(_report_type,'medical_summary')));
 BEGIN
@@ -66,7 +66,7 @@ CREATE OR REPLACE FUNCTION public.create_appointment_workflow(_patient_id uuid, 
  RETURNS appointments
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE result public.appointments; patient_facility uuid; uid uuid:=auth.uid(); active_facility uuid:=public.current_user_facility_id();
 BEGIN
@@ -88,7 +88,7 @@ CREATE OR REPLACE FUNCTION public.create_encounter_prescription(_encounter_id uu
  RETURNS prescriptions
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); result public.prescriptions; v_encounter public.encounters%ROWTYPE;
 BEGIN
@@ -109,7 +109,7 @@ CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id uuid, _doc
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_id uuid;
 BEGIN
@@ -127,7 +127,7 @@ CREATE OR REPLACE FUNCTION public.get_ai_clinical_context(_patient_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE v_patient jsonb; v_result jsonb;
 BEGIN
@@ -158,7 +158,7 @@ CREATE OR REPLACE FUNCTION public.get_attending_patient_history(_patient_id uuid
  RETURNS jsonb
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE r jsonb; uid uuid:=auth.uid();
 BEGIN
@@ -173,7 +173,7 @@ CREATE OR REPLACE FUNCTION public.get_billing_window(_patient_id uuid, _at times
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
+ SET search_path = ''
 AS $function$
 DECLARE v_patient public.patients; v_encounter uuid; v_invoice uuid; v_start timestamptz:=date_trunc('day',coalesce(_at,now())); v_end timestamptz:=date_trunc('day',coalesce(_at,now()))+interval '1 day'-interval '1 microsecond'; v_insured boolean:=false; v_insurer text; v_insurer_id uuid; v_credit numeric:=0; v_total numeric:=0; v_insurance numeric:=0; v_topup numeric:=0; v_items jsonb; v_account_id text;
 BEGIN
