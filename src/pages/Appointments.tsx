@@ -51,6 +51,18 @@ const consultationTypes = [
 
 const activeStatuses = new Set(['scheduled', 'claimed', 'in_progress']);
 
+function workflowErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  const normalized = message.toLowerCase();
+  if (normalized.includes('facility attribution is unresolved') || normalized.includes('unresolved')) {
+    return 'This historical record has no verified facility attribution. An administrator or IT administrator must reconcile the record with documented evidence before clinical processing can continue.';
+  }
+  if (normalized.includes('different facility context') || normalized.includes('belongs to another facility')) {
+    return 'This record belongs to another facility context and cannot be processed from the current facility.';
+  }
+  return message || 'The requested workflow action could not be completed.';
+}
+
 export default function Appointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -143,7 +155,7 @@ export default function Appointments() {
       _practitioner_id: clinicianId,
     } as never);
     setSaving(false);
-    if (error) return toast({ title: 'Failed to schedule appointment', description: error.message, variant: 'destructive' });
+    if (error) return toast({ title: 'Failed to schedule appointment', description: workflowErrorMessage(error), variant: 'destructive' });
     const created = data as unknown as Appointment;
     const patient = patientMap.get(pid);
     const clinician = clinicianMap.get(clinicianId);
@@ -171,7 +183,7 @@ export default function Appointments() {
     setClaiming(true);
     const { error } = await supabase.rpc('claim_appointment' as never, { _appointment_id: appointment.id } as never);
     setClaiming(false);
-    if (error) { toast({ title: 'Could not assign appointment', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast({ title: 'Could not assign appointment', description: workflowErrorMessage(error), variant: 'destructive' }); return false; }
     playWorkflowSound('success');
     toast({ title: 'Appointment assigned to you', description: 'You can now start the clinical encounter.' });
     await load(true);
