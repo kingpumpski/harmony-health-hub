@@ -374,7 +374,7 @@ RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 DECLARE
   uid uuid := auth.uid();
   o public.imaging_orders;
@@ -430,7 +430,7 @@ BEGIN
 
   RETURN o;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.start_imaging_order(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.start_imaging_order(uuid) TO authenticated;
@@ -446,7 +446,7 @@ RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 DECLARE
   uid uuid := auth.uid();
   o public.imaging_orders;
@@ -526,7 +526,7 @@ BEGIN
 
   RETURN o;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.complete_imaging_order(uuid, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.complete_imaging_order(uuid, text, text) TO authenticated;
@@ -538,7 +538,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 DECLARE
   uid uuid := auth.uid();
   r public.lab_results%ROWTYPE;
@@ -617,7 +617,7 @@ BEGIN
     'status', 'approved'
   );
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.approve_lab_result(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.approve_lab_result(uuid) TO authenticated;
