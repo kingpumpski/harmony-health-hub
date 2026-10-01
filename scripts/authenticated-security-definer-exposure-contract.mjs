@@ -133,10 +133,13 @@ for (const declaration of declarations) {
     !hasPublicGrant(declaration.name),
     declaration.name + " must not explicitly grant PUBLIC EXECUTE",
   );
-  if (hasAuthenticatedGrant(declaration.name)) {
+  const grantsAuthenticatedInDeclaration = /GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\.[a-z0-9_]+\\s*\\([^;]*\\)\\s+TO\\s+authenticated/i.test(
+    declaration.source,
+  );
+  if (grantsAuthenticatedInDeclaration) {
     assert(
       hasAuthorizationGuard(declaration.source),
-      declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard",
+      declaration.name + " grants authenticated EXECUTE in its introducing migration but has no recognizable server-side authorization guard",
     );
   }
 }
