@@ -177,4 +177,20 @@ for (const token of [
   assert(encounterImagingMigration.includes(token), `Missing encounter/imaging facility boundary: ${token}`);
 }
 
+
+const serviceOrderMigration = fs.readFileSync(
+  'supabase/migrations/20261001170000_harden_service_order_facility_lineage.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.validate_service_order_encounter()',
+  'Patient facility attribution is unresolved; reconcile the patient before creating a service order',
+  'Encounter facility attribution is unresolved; reconcile the encounter before creating a service order',
+  'Service order, encounter, and patient facility lineage must match',
+  'REVOKE ALL ON FUNCTION public.validate_service_order_encounter() FROM PUBLIC, anon, authenticated',
+  "tgname = 'service_order_encounter_guard'",
+]) {
+  assert(serviceOrderMigration.includes(token), `Missing service-order facility boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
