@@ -195,7 +195,7 @@ for (const token of [
 
 
 const outsideLabMigration = fs.readFileSync(
-  'supabase/migrations/20261001173000_harden_outside_lab_document_facility_context.sql',
+  'supabase/migrations/20261001151540_harden_outside_lab_document_facility_context.sql',
   'utf8',
 );
 for (const token of [
@@ -212,7 +212,7 @@ for (const token of [
 }
 
 const insuranceClaimMigration = fs.readFileSync(
-  'supabase/migrations/20261001173100_harden_insurance_claim_facility_context.sql',
+  'supabase/migrations/20261001151542_harden_insurance_claim_facility_context.sql',
   'utf8',
 );
 for (const token of [
