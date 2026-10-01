@@ -37,7 +37,7 @@ export default function ClinicalResults() {
     if (!user?.id) return;
     setLoading(true);
     const [{ data: imaging, error: imagingError }, { data: notes }] = await Promise.all([
-      supabase.from('imaging_orders').select('id,patient_id,study_name,modality,priority,report,impression,encounter_id,created_at,updated_at,patients(first_name,last_name)').eq('requested_by', user.id).eq('status', 'completed').order('updated_at', { ascending: false }).limit(100),
+      (supabase as any).rpc('get_clinician_imaging_results', { _limit: 200 }),
       (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
     if (imagingError) {
