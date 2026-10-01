@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync(
-  'supabase/migrations/20261001094000_harden_legacy_lineage_and_clinical_rpc_boundaries.sql',
+  'supabase/migrations/20261001094358_harden_legacy_lineage_and_clinical_rpc_boundaries.sql',
   'utf8',
 );
 
@@ -56,7 +56,7 @@ for (const token of [
 }
 
 const acuteMigration = fs.readFileSync(
-  'supabase/migrations/20261001113000_harden_acute_clinical_facility_lineage.sql',
+  'supabase/migrations/20261001095700_harden_acute_clinical_facility_lineage.sql',
   'utf8',
 );
 for (const token of [
@@ -78,7 +78,7 @@ for (const token of [
 }
 
 const wrapperMigration = fs.readFileSync(
-  'supabase/migrations/20261001123000_harden_legacy_clinical_wrapper_facility_context.sql',
+  'supabase/migrations/20261001100909_harden_legacy_clinical_wrapper_facility_context.sql',
   'utf8',
 );
 for (const token of [
@@ -93,7 +93,7 @@ for (const token of [
 }
 
 const patientReadMigration = fs.readFileSync(
-  'supabase/migrations/20261001140000_harden_patient_read_facility_context.sql',
+  'supabase/migrations/20261001102111_harden_patient_read_facility_context.sql',
   'utf8',
 );
 for (const token of [
@@ -108,7 +108,7 @@ for (const token of [
 }
 
 const acuteMutationMigration = fs.readFileSync(
-  'supabase/migrations/20261001141000_harden_admission_and_imaging_facility_context.sql',
+  'supabase/migrations/20261001102129_harden_admission_and_imaging_facility_context.sql',
   'utf8',
 );
 for (const token of [
@@ -124,7 +124,7 @@ for (const token of [
 }
 
 const clinicalAiMigration = fs.readFileSync(
-  'supabase/migrations/20261001143000_harden_patient_clinical_ai_billing_context.sql',
+  'supabase/migrations/20261001102331_harden_patient_clinical_ai_billing_context.sql',
   'utf8',
 );
 for (const token of [
@@ -142,7 +142,7 @@ for (const token of [
 }
 
 const appointmentStartMigration = fs.readFileSync(
-  'supabase/migrations/20261001150000_harden_start_appointment_encounter_facility_context.sql',
+  'supabase/migrations/20261001104509_harden_start_appointment_encounter_facility_context.sql',
   'utf8',
 );
 for (const token of [
@@ -159,7 +159,7 @@ for (const token of [
 
 
 const encounterImagingMigration = fs.readFileSync(
-  'supabase/migrations/20261001151500_harden_encounter_submit_imaging_facility_context.sql',
+  'supabase/migrations/20261001104701_harden_encounter_submit_imaging_facility_context.sql',
   'utf8',
 );
 for (const token of [
