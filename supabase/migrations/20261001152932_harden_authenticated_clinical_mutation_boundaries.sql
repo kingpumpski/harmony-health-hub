@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.claim_appointment(_appointment_id uuid)
 RETURNS public.appointments
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -66,7 +66,7 @@ CREATE OR REPLACE FUNCTION public.update_appointment_workflow(
 RETURNS public.appointments
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -123,7 +123,7 @@ CREATE OR REPLACE FUNCTION public.assign_ward_bed(_bed_id uuid,_patient_id uuid,
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid:=auth.uid();
@@ -169,7 +169,7 @@ CREATE OR REPLACE FUNCTION public.approve_lab_result(_lab_result_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid:=auth.uid();
@@ -231,7 +231,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   r public.medication_administrations%ROWTYPE;
@@ -332,7 +332,7 @@ CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id uu
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid:=auth.uid();
