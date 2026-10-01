@@ -274,4 +274,43 @@ for (const token of [
   assert(pharmacyPosMigration.includes(token), `Missing pharmacy POS facility boundary: ${token}`);
 }
 
+
+const radiologistDashboardMigration = fs.readFileSync(
+  'supabase/migrations/20261001101432_repair_radiologist_dashboard_aggregation.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.get_role_dashboard_summary_for_role',
+  "v_role = 'radiologist'",
+  "v_role = 'radiology_technician'",
+  'REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated',
+]) {
+  assert(radiologistDashboardMigration.includes(token), `Missing radiologist dashboard migration contract: ${token}`);
+}
+
+const clinicianReportsMigration = fs.readFileSync(
+  'supabase/migrations/20261001152635_clinician_report_only_access.sql',
+  'utf8',
+);
+for (const token of [
+  "permission_key = 'reports' AND is_active",
+  "VALUES ('practitioner'), ('lab_technician')",
+  "rp.permission_key = 'reports'",
+]) {
+  assert(clinicianReportsMigration.includes(token), `Missing clinician report-only access contract: ${token}`);
+}
+
+const practitionerPharmacyMigration = fs.readFileSync(
+  'supabase/migrations/20261001152820_remove_practitioner_pharmacy_permission.sql',
+  'utf8',
+);
+for (const token of [
+  "role = 'practitioner'::public.app_role",
+  "permission_key = 'pharmacy'",
+  'DELETE FROM public.role_permissions',
+]) {
+  assert(practitionerPharmacyMigration.includes(token), `Missing practitioner pharmacy least-privilege contract: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
