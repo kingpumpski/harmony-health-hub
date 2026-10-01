@@ -24,7 +24,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path TO 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   v_limit integer := greatest(1, least(coalesce(_limit,300),500));
