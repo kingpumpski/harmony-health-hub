@@ -65,6 +65,14 @@ function hasAuthenticatedGrant(name) {
   ).test(allSource);
 }
 
+function hasAuthorizationGuard(name) {
+  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\function hasPublicGrant(name) {");
+  return new RegExp(
+    "(auth\\\\.uid\\\\(\\\\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\\\\(|is_clinical_staff\\\\(|has_role\\\\()",
+    "i",
+  ).test(allSource);
+}
+
 function hasPublicGrant(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
@@ -96,6 +104,12 @@ for (const declaration of declarations) {
     !hasPublicGrant(declaration.name),
     declaration.name + " must not explicitly grant PUBLIC EXECUTE",
   );
+  if (hasAuthenticatedGrant(declaration.name)) {
+    assert(
+      hasAuthorizationGuard(declaration.name),
+      declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard (auth.uid/current-user role/facility/clinical-role helper)",
+    );
+  }
 }
 
 console.log(
