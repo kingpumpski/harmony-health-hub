@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Bell, Building2, Save, Settings as SettingsIcon, ShieldAlert, Wrench, Mail, Send, Eye, EyeOff, RefreshCw, FlaskConical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +39,12 @@ const channels = [
 
 export default function Settings(){
  const { user } = useAuth();
- const canConfigure = user?.role === 'admin' || user?.role === 'it_admin';
+ const canConfigure = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser';
+ const canControlTestMode = user?.role === 'system_superuser';
+ const [environmentMode,setEnvironmentMode]=useState<{enabled:boolean;updated_at:string|null} | null>(null);
+ const [environmentModeLoading,setEnvironmentModeLoading]=useState(false);
+ const [environmentModeSaving,setEnvironmentModeSaving]=useState(false);
+ const [environmentModeReason,setEnvironmentModeReason]=useState('');
  const [config,setConfig]=useState<Config|null>(null);
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState(false);
@@ -61,6 +66,24 @@ export default function Settings(){
 
 
  useEffect(()=>{void load()},[]);
+ async function loadEnvironmentMode(){
+   if(!canControlTestMode)return;
+   setEnvironmentModeLoading(true);
+   try { const {data,error}=await db.rpc('get_hms_test_runtime_status'); if(error)throw new Error(error.message); const row=Array.isArray(data)?data[0]:data; setEnvironmentMode(row ? {enabled:Boolean(row.enabled),updated_at:row.updated_at ?? null} : null); }
+   catch(error) { toast.error(error instanceof Error ? error.message : 'Unable to load environment mode.'); }
+   finally { setEnvironmentModeLoading(false); }
+ }
+ async function changeEnvironmentMode(nextEnabled:boolean){
+   if(!canControlTestMode)return;
+   const reason=environmentModeReason.trim(); if(!reason){ toast.error('Enter a reason before switching environment mode.'); return; }
+   const label=nextEnabled?'TEST MODE':'LIVE MODE';
+   if(!window.confirm('Switch Harmony Health Hub to '+label+'? This changes how facility access is resolved for designated test users.'))return;
+   setEnvironmentModeSaving(true);
+   try { const {data,error}=await db.rpc('set_hms_test_runtime',{_enabled:nextEnabled,_reason:reason}); if(error)throw new Error(error.message); const row=Array.isArray(data)?data[0]:data; setEnvironmentMode(row ? {enabled:Boolean(row.enabled),updated_at:row.updated_at ?? null} : {enabled:nextEnabled,updated_at:new Date().toISOString()}); setEnvironmentModeReason(''); toast.success('Environment switched to '+label+'.'); }
+   catch(error) { toast.error(error instanceof Error ? error.message : 'Unable to change environment mode.'); }
+   finally { setEnvironmentModeSaving(false); }
+ }
+
  async function load(){
    setLoading(true);
    const [{data,error}, facilityResult] = await Promise.all([
@@ -74,6 +97,7 @@ export default function Settings(){
    setFacilityId(initial);
    setLoading(false);
    if(initial) void loadNotificationSettings(initial);
+   if(canControlTestMode) void loadEnvironmentMode();
  }
  async function loadNotificationSettings(id:string){
    setNotificationLoading(true);
@@ -158,9 +182,9 @@ export default function Settings(){
    if(!notification)return;
    setNotification({...notification,enabled_channels:{...notification.enabled_channels,[code]:value}});
  }
- if(!canConfigure)return <div className="p-6 text-sm text-muted-foreground">System Settings are restricted to administrators and IT administrators.</div>;
- if(loading)return <div className="p-6 text-sm text-muted-foreground">Loading facility configuration…</div>;
- if(!config)return <div className="card-medical p-6 text-sm text-muted-foreground">No facility configuration is available. Apply the approved configuration migration before using this page.</div>;
+ if(!canConfigure)return <div className="p-6 text-sm text-muted-foreground">System Settings are restricted to administrators, IT administrators and system super administrators.</div>;
+ if(loading)return <div className="p-6 text-sm text-muted-foreground">Loading system configuration…</div>;
+ if(!config && !canControlTestMode)return <div className="card-medical p-6 text-sm text-muted-foreground">No facility configuration is available. Apply the approved configuration migration before using this page.</div>;
 
  return <div className="space-y-6 animate-fade-in">
   <header>
@@ -253,6 +277,25 @@ export default function Settings(){
     <button disabled={notificationSaving} onClick={()=>void saveNotification()} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4"/>{notificationSaving?'Saving…':'Save notification settings'}</button>
    </> : <div className="text-sm text-muted-foreground">No notification configuration is available for this facility.</div>}
   </section>
+
+  {canControlTestMode && <section className="card-medical rounded-3xl border-2 border-warning/40 bg-warning/5 p-5 space-y-5">
+   <div className="flex gap-3">
+    <div className="rounded-xl bg-warning/15 p-2"><FlaskConical className="w-5 h-5 text-warning"/></div>
+    <div className="flex-1"><h2 className="font-semibold">Environment Mode</h2><p className="text-sm text-muted-foreground mt-1">System Super Admin control for the temporary test-user facility bypass. This switch is audited and is not a substitute for separate test and production deployments.</p></div>
+    <span className={environmentMode?.enabled ? "rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning" : "rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success"}>{environmentModeLoading ? 'Loading…' : environmentMode?.enabled ? 'TEST MODE' : 'LIVE MODE'}</span>
+   </div>
+   <div className="rounded-2xl border bg-background/70 p-4 space-y-4">
+    <div className="flex items-center justify-between gap-4">
+     <div><p className="font-medium">{environmentMode?.enabled ? 'Test mode is ON' : 'Live mode is ON'}</p><p className="text-xs text-muted-foreground mt-1">{environmentMode?.enabled ? 'Designated test users can operate through TEST-0001 without normal facility membership.' : 'Normal facility-membership enforcement is active.'}</p></div>
+     <button type="button" role="switch" aria-checked={Boolean(environmentMode?.enabled)} disabled={environmentModeLoading||environmentModeSaving} onClick={()=>void changeEnvironmentMode(!Boolean(environmentMode?.enabled))} className={environmentMode?.enabled ? "relative h-7 w-12 rounded-full bg-warning transition disabled:opacity-50" : "relative h-7 w-12 rounded-full bg-muted transition disabled:opacity-50"}>
+      <span className={environmentMode?.enabled ? "absolute left-6 top-1 h-5 w-5 rounded-full bg-white shadow transition" : "absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition"} />
+     </button>
+    </div>
+    <label className="block text-sm space-y-1"><span>Reason for next switch <b className="text-destructive">*</b></span><input className="input-medical w-full" placeholder="e.g. QA testing of appointment and patient workflows" value={environmentModeReason} onChange={e=>setEnvironmentModeReason(e.target.value)} /></label>
+    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{environmentMode?.updated_at ? 'Last changed: '+new Date(environmentMode.updated_at).toLocaleString() : 'No mode change recorded yet.'}</span><span>Every change is written to the environment-mode audit log.</span></div>
+    {environmentMode?.enabled && <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs"><b>Testing mode active.</b> Turn this off before treating this deployment as a production environment.</div>}
+   </div>
+  </section>}
 
   <section className="card-medical p-5"><div className="flex gap-3"><Building2 className="w-5 h-5 text-primary"/><div><h2 className="font-semibold">Operational configuration</h2><p className="text-sm text-muted-foreground mt-1">Service tariffs, laboratory catalogues, staff administration and deeper troubleshooting remain in their dedicated administrative/IT modules. This page provides the shared system control plane.</p></div></div></section>
  </div>
