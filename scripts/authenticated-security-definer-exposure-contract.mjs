@@ -65,8 +65,20 @@ function hasAuthenticatedGrant(name) {
   ).test(allSource);
 }
 
-function hasAuthorizationGuard() {
+function hasAuthorizationGuard(name) {
+  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\function hasAuthorizationGuard() {
   return /(?:auth\.uid\(\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\(|is_clinical_staff\(|has_role\()/i.test(allSource);
+}");
+  const pattern = new RegExp(
+    "CREATE\\\\s+(?:OR\\\\s+REPLACE\\\\s+)?FUNCTION\\\\s+public\\\\." +
+      escaped +
+      "\\\\s*\\\\([^)]*\\\\)[\\\\s\\\\S]*?(?=CREATE\\\\s+(?:OR\\\\s+REPLACE\\\\s+)?FUNCTION|$)",
+    "i",
+  );
+  const match = allSource.match(pattern);
+  return match
+    ? /(?:auth\\.uid\\(\\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\\(|is_clinical_staff\\(|has_role\\()/i.test(match[0])
+    : false;
 }
 
 function hasPublicGrant(name) {");
