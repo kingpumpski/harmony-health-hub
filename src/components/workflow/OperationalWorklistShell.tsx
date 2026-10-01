@@ -19,6 +19,7 @@ interface OperationalWorklistShellProps {
   emptyTitle?: string;
   emptyDescription?: string;
   children: ReactNode;
+  listContent?: ReactNode;
   bareList?: boolean;
 }
 
@@ -39,6 +40,7 @@ export default function OperationalWorklistShell({
   emptyTitle = 'No records found',
   emptyDescription = 'Records will appear here when they are available.',
   children,
+  listContent,
   bareList = false,
 }: OperationalWorklistShellProps) {
   return (
@@ -91,7 +93,7 @@ export default function OperationalWorklistShell({
             </div>
             {listMeta && <div className="text-xs text-muted-foreground">{listMeta}</div>}
           </div>
-          {loading ? (
+          {listContent ? listContent : loading ? (
             <div className="space-y-2 p-4" aria-live="polite">
               <div className="h-20 animate-pulse rounded-xl bg-muted" />
               <div className="h-20 animate-pulse rounded-xl bg-muted" />
