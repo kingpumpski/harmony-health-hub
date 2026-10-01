@@ -14,7 +14,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -67,7 +67,7 @@ RETURNS TABLE(coverage_type text,payer_name text)
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
