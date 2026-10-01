@@ -9,6 +9,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
 interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
 interface LabCatalogueItem {
@@ -54,6 +55,11 @@ export default function Laboratory() {
   const [numericValue, setNumericValue] = useState('');
   const [interpretation, setInterpretation] = useState('');
   const [isAbnormal, setIsAbnormal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [resultFilter, setResultFilter] = useState('all');
+  const [appliedFilters, setAppliedFilters] = useState({ status: 'all', priority: 'all', result: 'all' });
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const previousQueueTotal = useRef(0);
   const hasLoadedQueue = useRef(false);
 
@@ -333,58 +339,142 @@ export default function Laboratory() {
             </form>
           </section>
         )}
-        listTitle="Laboratory worklist"
-        listDescription="Orders remain in one operational queue with payment state, specimen progress, results and clinical-attention context visible."
+        listTitle="Laboratory results & worklist"
+        listDescription="Orders, specimen progress, result state and approval actions are presented in one clinical table."
         listMeta={`${orders.length} order${orders.length === 1 ? '' : 's'}`}
-        loading={loading}
-        empty={orders.length === 0}
-        emptyTitle="No laboratory orders"
-        emptyDescription="Create a laboratory order above or open the workspace from an encounter when diagnostic testing is required."
-      >
-        {orders.map((o) => {
-          const p = patients.find((x) => x.id === o.patient_id);
-          const result = resultsByOrder[o.id];
-          const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id);
-          return (
-            <div id={`lab-order-${o.id}`} key={o.id} className={`p-4 transition-colors ${attentionOrderId === o.id ? 'bg-primary/5' : ''}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{o.test_name}</p>
-                    {attentionOrderId === o.id && <span className="text-[10px] uppercase tracking-wide rounded-full bg-primary/10 px-2 py-0.5 text-primary">Clinical attention</span>}
-                    {o.priority !== 'routine' && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">{o.priority.toUpperCase()}</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'} · {o.test_category ?? 'Uncategorised'} · {new Date(o.created_at).toLocaleString()}</p>
-                  {item?.specimen_type && <p className="mt-1 text-xs text-muted-foreground">Specimen: {item.specimen_type}{item.reference_text ? ` · Reference: ${item.reference_text}` : ''}</p>}
-                </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${o.status === 'approved' ? 'bg-success/15 text-success' : o.status === 'completed' ? 'bg-info/15 text-info' : o.status === 'sample_collected' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{o.status.replace('_', ' ')}</span>
-              </div>
-              {result?.is_abnormal && <div className="mt-2 flex items-center gap-2 text-critical text-xs animate-pulse"><AlertTriangle className="w-3 h-3" aria-hidden="true" /> Abnormal result flagged — clinical attention required</div>}
-              {attentionResultId === result?.id && <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">Opened from a clinical result notification. Review this laboratory result and acknowledge the attention item when your review is complete.</div>}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {o.status === 'ordered' && <button type="button" onClick={() => void collectSample(o.id)} className="btn-ghost text-xs">Collect sample</button>}
-                {o.status === 'sample_collected' && <button type="button" onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}
-                {o.status === 'completed' && result && <button type="button" onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" aria-hidden="true" /> Approve & notify</button>}
-                {o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Approved</span>}
-              </div>
-              {resultFor === o.id && <div className="mt-3 space-y-2 border-t pt-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} aria-label="Numeric result" />
-                  {item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}
-                </div>
-                <textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" aria-label="Result values or narrative" />
-                <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
-                <div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div>
-              </div>}
-              {result && o.status !== 'sample_collected' && <div className="mt-3 text-xs bg-muted/30 rounded-lg p-2">
-                <p><strong>Result:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>
-                {result.reference_low !== null || result.reference_high !== null ? <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p> : null}
-                {result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}
-              </div>}
-            </div>
-          );
-        })}
+        loading={false}
+        empty={false}
+        listContent={(
+          <ClinicalDataTable
+            title="Laboratory results"
+            description="Filter by clinical workflow state, priority and result availability. Use the action column for the next authorised laboratory step."
+            meta={`${orders.length} order${orders.length === 1 ? '' : 's'}`}
+            filters={[
+              { label: 'Order status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'all', label: 'All statuses' }, { value: 'ordered', label: 'Ordered' }, { value: 'sample_collected', label: 'Sample collected' }, { value: 'completed', label: 'Completed' }, { value: 'approved', label: 'Approved' }] },
+              { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
+              { label: 'Result state', value: resultFilter, onChange: setResultFilter, options: [{ value: 'all', label: 'All results' }, { value: 'with_result', label: 'Result entered' }, { value: 'awaiting_result', label: 'Awaiting result' }, { value: 'abnormal', label: 'Abnormal results' }] },
+            ]}
+            onSearch={() => setAppliedFilters({ status: statusFilter, priority: priorityFilter, result: resultFilter })}
+            loading={loading}
+            empty={false}
+          >
+            <thead>
+              <tr>
+                <th scope="col">Patient</th>
+                <th scope="col">Laboratory test</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Status</th>
+                <th scope="col">Workflow progress</th>
+                <th scope="col">Result</th>
+                <th scope="col">Ordered</th>
+                <th scope="col" className="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.filter((o) => {
+                const result = resultsByOrder[o.id];
+                const statusOk = appliedFilters.status === 'all' || o.status === appliedFilters.status;
+                const priorityOk = appliedFilters.priority === 'all' || o.priority === appliedFilters.priority;
+                const resultOk = appliedFilters.result === 'all'
+                  || (appliedFilters.result === 'with_result' && !!result)
+                  || (appliedFilters.result === 'awaiting_result' && !result)
+                  || (appliedFilters.result === 'abnormal' && !!result?.is_abnormal);
+                return statusOk && priorityOk && resultOk;
+              }).map((o) => {
+                const p = patients.find((x) => x.id === o.patient_id);
+                const result = resultsByOrder[o.id];
+                const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id);
+                const progress = o.status === 'approved' ? 100 : o.status === 'completed' ? 80 : o.status === 'sample_collected' ? 55 : 25;
+                return (
+                  <>
+                    <tr key={o.id} id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
+                      <td>
+                        <div className="min-w-[170px]">
+                          <p className="font-semibold">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{p?.patient_code ?? o.patient_id.slice(0, 8)}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="min-w-[180px]">
+                          <p className="font-medium">{o.test_name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{o.test_category ?? 'Uncategorised'}{item?.specimen_type ? ` · ${item.specimen_type}` : ''}</p>
+                        </div>
+                      </td>
+                      <td>{o.priority === 'routine' ? <ClinicalStatusBadge status="started" label="Routine" /> : <ClinicalStatusBadge status={o.priority} label={o.priority.toUpperCase()} />}</td>
+                      <td><ClinicalStatusBadge status={o.status} /></td>
+                      <td><ClinicalProgressBar value={progress} label={progress === 100 ? 'Complete' : 'In workflow'} /></td>
+                      <td>
+                        {result ? (
+                          <div className="max-w-[170px]">
+                            <p className={`font-medium ${result.is_abnormal ? 'text-critical' : ''}`}>{result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? 'Result entered')}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{result.is_abnormal ? 'Abnormal' : result.status.replace('_', ' ')}</p>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">Awaiting result</span>}
+                      </td>
+                      <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</td>
+                      <td>
+                        <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
+                          <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
+                          {o.status === 'ordered' && <ClinicalTableAction label="Collect sample" onClick={() => void collectSample(o.id)} />}
+                          {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); setResultFor(o.id); }} />}
+                          {o.status === 'completed' && result && <ClinicalTableAction label="Approve" icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedOrderId === o.id && (
+                      <tr key={`${o.id}-details`} className="bg-muted/20">
+                        <td colSpan={8}>
+                          <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                            <section className="rounded-xl border border-border bg-background p-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clinical result</p>
+                                  <p className="mt-1 font-medium">{o.test_name}</p>
+                                </div>
+                                <ClinicalStatusBadge status={result?.status ?? o.status} />
+                              </div>
+                              {result ? (
+                                <div className="mt-3 space-y-1 text-sm">
+                                  <p><strong>Value:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>
+                                  {(result.reference_low !== null || result.reference_high !== null) && <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p>}
+                                  {result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}
+                                  {result.is_abnormal && <p className="mt-2 inline-flex items-center rounded-full bg-critical/10 px-2.5 py-1 text-xs font-semibold text-critical">Abnormal result · clinical attention required</p>}
+                                </div>
+                              ) : <p className="mt-3 text-sm text-muted-foreground">No result has been entered for this laboratory order.</p>}
+                            </section>
+                            <section className="rounded-xl border border-border bg-background p-4">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workflow action</p>
+                              {resultFor === o.id && o.status === 'sample_collected' ? (
+                                <div className="mt-3 space-y-2">
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} aria-label="Numeric result" />
+                                    {item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}
+                                  </div>
+                                  <textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" aria-label="Result values or narrative" />
+                                  <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
+                                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
+                                  <div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit result</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div>
+                                </div>
+                              ) : (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {o.status === 'ordered' && <button type="button" onClick={() => void collectSample(o.id)} className="btn-secondary text-xs">Collect sample</button>}
+                                  {o.status === 'sample_collected' && <button type="button" onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}
+                                  {o.status === 'completed' && result && <button type="button" onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" aria-hidden="true" /> Approve & notify</button>}
+                                  {o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Approved</span>}
+                                </div>
+                              )}
+                              {attentionResultId === result?.id && <p className="mt-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">Opened from a clinical result notification. Review this result and complete the authorised workflow action.</p>}
+                            </section>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })}
+            </tbody>
+          </ClinicalDataTable>
+        )}
       </OperationalWorklistShell>
       {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
     </>
