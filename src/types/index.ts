@@ -12,7 +12,8 @@ export type UserRole =
   | 'front_desk'
   | 'canteen'
   | 'patient'
-  | 'it_admin';
+  | 'it_admin'
+  | 'system_superuser';
 
 export interface User {
   id: string;
