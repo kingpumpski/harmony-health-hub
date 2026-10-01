@@ -179,7 +179,7 @@ for (const token of [
 
 
 const serviceOrderMigration = fs.readFileSync(
-  'supabase/migrations/20261001170000_harden_service_order_facility_lineage.sql',
+  'supabase/migrations/20261001145619_harden_service_order_patient_encounter_facility_lineage.sql',
   'utf8',
 );
 for (const token of [
