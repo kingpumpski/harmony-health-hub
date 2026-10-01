@@ -62,7 +62,14 @@ BEGIN
       FROM (
         SELECT id, patient_id, test_name, test_category, priority, status,
                created_at, clinical_notes, lab_test_catalogue_id
-        FROM public.lab_orders
+        FROM public.lab_orders o
+        WHERE o.status <> 'cancelled'
+          AND NOT EXISTS (
+            SELECT 1 FROM public.service_orders so
+            WHERE so.related_entity_id = o.id
+              AND so.order_type = 'lab'
+              AND so.status = 'pending_payment_approval'
+          )
         ORDER BY created_at DESC
         LIMIT _limit
       ) o
@@ -92,7 +99,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $$
 DECLARE
   result jsonb;
@@ -148,7 +155,7 @@ BEGIN
                ) AS patient
         FROM public.imaging_orders io
         JOIN public.patients p ON p.id = io.patient_id
-        WHERE io.status <> 'cancelled'
+        WHERE io.status IN ('released', 'in_progress', 'completed')
         ORDER BY io.created_at DESC
         LIMIT _limit
       ) x
@@ -173,7 +180,6 @@ SET search_path = ''
 AS $$
 DECLARE
   uid uuid := auth.uid();
-  v_facility uuid;
   result jsonb;
 BEGIN
   IF uid IS NULL THEN
@@ -190,7 +196,6 @@ BEGIN
     RAISE EXCEPTION 'Clinical report access is not permitted';
   END IF;
 
-  v_facility := public.current_user_facility_id();
   _limit := LEAST(GREATEST(COALESCE(_limit, 100), 1), 300);
 
   SELECT COALESCE(jsonb_agg(row_data ORDER BY approved_at DESC), '[]'::jsonb)
@@ -209,7 +214,7 @@ BEGIN
         'clinical_notes', o.clinical_notes,
         'result_data', r.result_data,
         'parameter_results', r.parameter_results,
-        'result_text', COALESCE(NULLIF(r.result, ''), r.result_data ->> 'value'),
+        'result_text', r.result_data ->> 'value',
         'interpretation', r.interpretation,
         'is_abnormal', COALESCE(r.is_abnormal, false),
         'status', r.status,
@@ -267,7 +272,6 @@ SET search_path = ''
 AS $$
 DECLARE
   uid uuid := auth.uid();
-  v_facility uuid;
   result jsonb;
 BEGIN
   IF uid IS NULL THEN
@@ -284,7 +288,6 @@ BEGIN
     RAISE EXCEPTION 'Clinical report access is not permitted';
   END IF;
 
-  v_facility := public.current_user_facility_id();
   _limit := LEAST(GREATEST(COALESCE(_limit, 100), 1), 300);
 
   SELECT COALESCE(jsonb_agg(row_data ORDER BY updated_at DESC), '[]'::jsonb)
@@ -362,5 +365,261 @@ VALUES
   ('specialist_nurse', 'laboratory_results'),
   ('specialist_nurse', 'radiology_results')
 ON CONFLICT DO NOTHING;
+
+
+-- Only the imaging team can claim acquisition work. Clinicians can order studies
+-- and review completed reports, but cannot move department work through its queue.
+CREATE OR REPLACE FUNCTION public.start_imaging_order(_imaging_order_id uuid)
+RETURNS public.imaging_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  uid uuid := auth.uid();
+  o public.imaging_orders;
+  s public.service_orders;
+  es text;
+BEGIN
+  IF uid IS NULL OR NOT (
+    public.has_role(uid, 'admin')
+    OR public.has_role(uid, 'radiologist')
+    OR public.has_role(uid, 'radiology_technician')
+  ) THEN
+    RAISE EXCEPTION 'Radiology operational role required';
+  END IF;
+
+  SELECT * INTO o FROM public.imaging_orders WHERE id = _imaging_order_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Imaging order not found'; END IF;
+  IF o.status <> 'released' THEN RAISE EXCEPTION 'Imaging order must be released before it can start'; END IF;
+
+  IF o.encounter_id IS NOT NULL THEN
+    SELECT status INTO es FROM public.encounters WHERE id = o.encounter_id;
+    IF es IN ('completed', 'cancelled') THEN
+      RAISE EXCEPTION 'Cannot start imaging for a closed encounter';
+    END IF;
+  END IF;
+
+  IF o.service_order_id IS NULL THEN
+    UPDATE public.imaging_orders
+    SET status = 'in_progress', performed_by = uid, updated_at = now()
+    WHERE id = o.id
+    RETURNING * INTO o;
+    RETURN o;
+  END IF;
+
+  SELECT * INTO s FROM public.service_orders WHERE id = o.service_order_id FOR UPDATE;
+  IF NOT FOUND OR s.patient_id <> o.patient_id OR s.related_entity_id <> o.id OR s.department <> 'imaging' THEN
+    RAISE EXCEPTION 'Imaging service order linkage is invalid';
+  END IF;
+  IF s.status <> 'released' THEN RAISE EXCEPTION 'Linked service order must be released before imaging can start'; END IF;
+
+  UPDATE public.service_orders
+  SET status = 'in_progress', started_at = COALESCE(started_at, now()), updated_at = now()
+  WHERE id = s.id;
+
+  UPDATE public.department_queues
+  SET status = 'claimed', claimed_by = uid, assigned_to = uid,
+      claimed_at = COALESCE(claimed_at, now()), updated_at = now()
+  WHERE service_order_id = s.id;
+
+  UPDATE public.imaging_orders
+  SET status = 'in_progress', performed_by = uid, updated_at = now()
+  WHERE id = o.id
+  RETURNING * INTO o;
+
+  RETURN o;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.start_imaging_order(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.start_imaging_order(uuid) TO authenticated;
+
+-- Report completion/approval belongs to the radiologist (or administrator), not
+-- the ordering clinician or acquisition technician.
+CREATE OR REPLACE FUNCTION public.complete_imaging_order(
+  _imaging_order_id uuid,
+  _report text,
+  _impression text
+)
+RETURNS public.imaging_orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  uid uuid := auth.uid();
+  o public.imaging_orders;
+  s public.service_orders;
+  es text;
+BEGIN
+  IF uid IS NULL OR NOT (
+    public.has_role(uid, 'admin')
+    OR public.has_role(uid, 'radiologist')
+  ) THEN
+    RAISE EXCEPTION 'Radiologist approval role required';
+  END IF;
+  IF NULLIF(btrim(COALESCE(_report, '')), '') IS NULL
+     AND NULLIF(btrim(COALESCE(_impression, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'A report or impression is required before completion';
+  END IF;
+
+  SELECT * INTO o FROM public.imaging_orders WHERE id = _imaging_order_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Imaging order not found'; END IF;
+  IF o.status <> 'in_progress' THEN RAISE EXCEPTION 'Imaging order must be in progress before completion'; END IF;
+
+  IF o.encounter_id IS NOT NULL THEN
+    SELECT status INTO es FROM public.encounters WHERE id = o.encounter_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Linked encounter not found'; END IF;
+    IF es IN ('completed', 'cancelled') THEN
+      RAISE EXCEPTION 'Cannot complete imaging for a completed or cancelled encounter';
+    END IF;
+  END IF;
+
+  IF o.service_order_id IS NOT NULL THEN
+    SELECT * INTO s FROM public.service_orders WHERE id = o.service_order_id FOR UPDATE;
+    IF NOT FOUND OR s.patient_id <> o.patient_id OR s.related_entity_id <> o.id OR s.department <> 'imaging' THEN
+      RAISE EXCEPTION 'Imaging service order linkage is invalid';
+    END IF;
+    IF s.status <> 'in_progress' THEN RAISE EXCEPTION 'Linked service order must be in progress before imaging completion'; END IF;
+
+    UPDATE public.service_orders SET status = 'completed', completed_at = now(), updated_at = now() WHERE id = s.id;
+    UPDATE public.department_queues SET status = 'completed', completed_at = now(), updated_at = now() WHERE service_order_id = s.id;
+  END IF;
+
+  UPDATE public.imaging_orders
+  SET report = NULLIF(btrim(COALESCE(_report, '')), ''),
+      impression = NULLIF(btrim(COALESCE(_impression, '')), ''),
+      status = 'completed',
+      updated_at = now()
+  WHERE id = o.id
+  RETURNING * INTO o;
+
+  IF o.requested_by IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.notifications
+    WHERE recipient_user_id = o.requested_by
+      AND related_entity_id = o.id
+      AND category = 'other'
+      AND title = 'Radiology report ready'
+  ) THEN
+    INSERT INTO public.notifications(
+      recipient_user_id, title, message, severity, category, link,
+      related_patient_id, related_entity_id, metadata
+    ) VALUES (
+      o.requested_by,
+      'Radiology report ready',
+      format('The %s report for this patient is complete and ready for clinical review.', o.study_name),
+      CASE WHEN lower(COALESCE(o.priority, 'routine')) IN ('urgent', 'stat') THEN 'warning' ELSE 'info' END,
+      'other',
+      '/clinical-results',
+      o.patient_id,
+      o.id,
+      jsonb_build_object(
+        'workflow', 'imaging_result_review',
+        'imaging_order_id', o.id,
+        'encounter_id', o.encounter_id,
+        'service_order_id', o.service_order_id,
+        'priority', o.priority
+      )
+    );
+  END IF;
+
+  RETURN o;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.complete_imaging_order(uuid, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_imaging_order(uuid, text, text) TO authenticated;
+
+-- Laboratory approval is reserved for the laboratory team and administrators.
+-- The ordering clinician receives a notification linking to the report-only page.
+CREATE OR REPLACE FUNCTION public.approve_lab_result(_lab_result_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  uid uuid := auth.uid();
+  r public.lab_results%ROWTYPE;
+  o public.lab_orders%ROWTYPE;
+  encounter_patient_id uuid;
+BEGIN
+  IF uid IS NULL OR NOT (
+    public.has_role(uid, 'admin')
+    OR public.has_role(uid, 'lab_technician')
+  ) THEN
+    RAISE EXCEPTION 'Laboratory approval role required';
+  END IF;
+
+  SELECT * INTO r FROM public.lab_results WHERE id = _lab_result_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory result not found'; END IF;
+  IF r.status <> 'completed' THEN RAISE EXCEPTION 'Only completed results can be approved'; END IF;
+
+  SELECT * INTO o FROM public.lab_orders WHERE id = r.lab_order_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
+  IF o.status <> 'completed' THEN RAISE EXCEPTION 'Laboratory order must be completed before result approval'; END IF;
+
+  IF r.patient_id IS NULL OR o.patient_id IS NULL OR r.patient_id IS DISTINCT FROM o.patient_id THEN
+    RAISE EXCEPTION 'Laboratory result and order patient context do not match';
+  END IF;
+
+  IF o.encounter_id IS NOT NULL THEN
+    SELECT e.patient_id INTO encounter_patient_id FROM public.encounters e WHERE e.id = o.encounter_id;
+    IF encounter_patient_id IS NULL OR encounter_patient_id IS DISTINCT FROM o.patient_id THEN
+      RAISE EXCEPTION 'Laboratory order encounter does not belong to patient';
+    END IF;
+  END IF;
+
+  UPDATE public.lab_results
+  SET status = 'approved', approved_by = uid, approved_at = now(), updated_at = now()
+  WHERE id = r.id AND status = 'completed';
+
+  UPDATE public.lab_orders
+  SET status = 'approved', updated_at = now()
+  WHERE id = o.id AND status = 'completed';
+
+  IF o.ordered_by IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.notifications
+    WHERE recipient_user_id = o.ordered_by
+      AND related_entity_id = o.id
+      AND category = 'diagnostic_result'
+      AND title = 'Laboratory result ready'
+      AND is_read = false
+  ) THEN
+    INSERT INTO public.notifications(
+      recipient_user_id, title, message, severity, category, link,
+      related_patient_id, related_entity_id, metadata
+    ) VALUES (
+      o.ordered_by,
+      'Laboratory result ready',
+      format('The %s laboratory result is approved and ready for clinical review.', o.test_name),
+      CASE WHEN COALESCE(r.is_abnormal, false) THEN 'critical' ELSE 'info' END,
+      'diagnostic_result',
+      '/lab-results',
+      o.patient_id,
+      o.id,
+      jsonb_build_object(
+        'workflow', 'lab_result_review',
+        'lab_result_id', r.id,
+        'lab_order_id', o.id,
+        'encounter_id', o.encounter_id,
+        'is_abnormal', COALESCE(r.is_abnormal, false),
+        'requires_acknowledgement', true
+      )
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'lab_result_id', r.id,
+    'lab_order_id', o.id,
+    'encounter_id', o.encounter_id,
+    'status', 'approved'
+  );
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.approve_lab_result(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.approve_lab_result(uuid) TO authenticated;
 
 COMMIT;
