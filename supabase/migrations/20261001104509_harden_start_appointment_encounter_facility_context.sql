@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.start_appointment_encounter(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_user uuid := auth.uid();
