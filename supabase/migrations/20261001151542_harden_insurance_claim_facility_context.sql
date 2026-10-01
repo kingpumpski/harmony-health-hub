@@ -26,7 +26,7 @@ BEGIN
   END IF;
   IF v_invoice IS NULL THEN RAISE EXCEPTION 'An invoice is required before creating an insurance claim'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.invoices WHERE id=v_invoice AND patient_id=_patient_id AND facility_id=v_facility) THEN
-    RAISE EXCEPTION 'Invoice does not belong to the patient facility';
+    RAISE EXCEPTION 'Invoice does not belong to patient';
   END IF;
   SELECT p.insurance_company_id INTO v_company FROM public.patients p WHERE p.id=_patient_id;
   IF v_company IS NULL THEN
