@@ -39,4 +39,21 @@ assert(
   'Encounter attribution helper must remain non-public',
 );
 
+
+const mutationMigration = fs.readFileSync(
+  'supabase/migrations/20261001101500_harden_authenticated_clinical_mutation_boundaries.sql',
+  'utf8',
+);
+for (const token of [
+  'Appointment or patient belongs to a different facility context',
+  'Bed or patient belongs to a different facility context',
+  'Laboratory result belongs to a different facility context',
+  'Medication administration belongs to a different facility context',
+  'Medication prescription facility lineage is unresolved or mismatched',
+  'REVOKE ALL ON FUNCTION public.claim_appointment(uuid) FROM PUBLIC,anon',
+  'REVOKE ALL ON FUNCTION public.transition_medication_administration(uuid,text,text,text,uuid) FROM PUBLIC,anon',
+]) {
+  assert(mutationMigration.includes(token), `Missing mutation boundary: ${token}`);
+}
 console.log('Legacy lineage and clinical RPC security contract passed.');
+
