@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.create_patient_referral_workflow(_patient_id uuid,_destination text,_specialty text DEFAULT NULL::text,_reason text DEFAULT NULL::text,_urgency text DEFAULT 'routine'::text,_clinical_summary text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $function$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_id uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -23,7 +23,7 @@ BEGIN
 END;$function$;
 
 CREATE OR REPLACE FUNCTION public.schedule_patient_referral_workflow(_referral_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $function$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); r public.patient_referrals%ROWTYPE; v_patient_facility uuid; existing uuid; aid uuid; dept text;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
