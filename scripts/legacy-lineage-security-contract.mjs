@@ -193,4 +193,38 @@ for (const token of [
   assert(serviceOrderMigration.includes(token), `Missing service-order facility boundary: ${token}`);
 }
 
+
+const outsideLabMigration = fs.readFileSync(
+  'supabase/migrations/20261001173000_harden_outside_lab_document_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.register_outside_lab_document',
+  'public.assert_patient_facility_context(_patient_id)',
+  'outside_lab_documents(patient_id,facility_id,document_type,title,storage_path,mime_type,uploaded_by)',
+  'Storage path must be scoped to the patient',
+  'CREATE OR REPLACE FUNCTION public.complete_outside_lab_ai_analysis',
+  'Outside-lab document facility lineage is unresolved or inconsistent',
+  'REVOKE ALL ON FUNCTION public.register_outside_lab_document(uuid,text,text,text,text) FROM PUBLIC, anon',
+  'REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(uuid,text) FROM PUBLIC, anon',
+]) {
+  assert(outsideLabMigration.includes(token), `Missing outside-lab facility boundary: ${token}`);
+}
+
+const insuranceClaimMigration = fs.readFileSync(
+  'supabase/migrations/20261001173100_harden_insurance_claim_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft',
+  'v_facility := public.assert_patient_facility_context(_patient_id)',
+  'i.patient_id=_patient_id AND i.facility_id=v_facility',
+  'INSERT INTO public.insurance_claims(invoice_id,patient_id,facility_id',
+  'insurance_claim_draft_created',
+  'REVOKE ALL ON FUNCTION public.create_insurance_claim_draft(uuid,text,text,numeric,uuid) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.create_insurance_claim_draft(uuid,text,text,numeric,uuid) TO authenticated',
+]) {
+  assert(insuranceClaimMigration.includes(token), `Missing insurance-claim facility boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
