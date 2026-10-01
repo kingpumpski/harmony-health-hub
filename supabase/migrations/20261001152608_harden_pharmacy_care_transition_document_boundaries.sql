@@ -5,7 +5,7 @@ BEGIN;
 -- reproduces the authorization and facility-lineage controls in a fresh environment.
 
 CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing(_prescription_id uuid,_inventory_id uuid,_quantity integer,_notes text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE p public.prescriptions;i public.pharmacy_inventory;existing public.pharmacy_dispensing_plans;plan_id uuid;order_id uuid;price numeric;encounter_status text;uid uuid:=auth.uid();pf uuid;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
@@ -29,7 +29,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE p public.pharmacy_dispensing_plans;i public.pharmacy_inventory;r public.prescriptions;so public.service_orders;uid uuid:=auth.uid();pf uuid;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
@@ -49,7 +49,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_care_transition_workflow(_patient_id uuid,_transition_type text,_destination text DEFAULT NULL::text,_summary text DEFAULT NULL::text,_medications_reconciled boolean DEFAULT false,_follow_up_required boolean DEFAULT false,_follow_up_date date DEFAULT NULL::date,_instructions text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_id uuid;pf uuid;uid uuid:=auth.uid();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -64,7 +64,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.upload_patient_document_metadata(_patient_id uuid,_document_type text,_file_name text,_storage_path text,_mime_type text DEFAULT NULL::text,_file_size bigint DEFAULT NULL::bigint,_notes text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE uid uuid:=auth.uid();v_id uuid;pf uuid;v_type text:=NULLIF(pg_catalog.btrim(COALESCE(_document_type,'')),'');v_name text:=NULLIF(pg_catalog.btrim(COALESCE(_file_name,'')),'');v_path text:=NULLIF(pg_catalog.btrim(COALESCE(_storage_path,'')),'');v_prefix text;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
