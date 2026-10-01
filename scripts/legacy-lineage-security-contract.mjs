@@ -229,7 +229,7 @@ for (const token of [
 
 
 const internalTriggerMigration = fs.readFileSync(
-  'supabase/migrations/20261001152100_lock_internal_trigger_function_execute_grants.sql',
+  'supabase/migrations/20261001152358_lock_internal_trigger_function_execute_grants.sql',
   'utf8',
 );
 for (const token of [
