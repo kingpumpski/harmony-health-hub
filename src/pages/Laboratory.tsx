@@ -475,6 +475,7 @@ export default function Laboratory() {
             </tbody>
           </ClinicalDataTable>
         )}
+      >
       </OperationalWorklistShell>
       {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
     </>
