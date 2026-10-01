@@ -124,4 +124,23 @@ for (const token of [
   assert(acuteMutationMigration.includes(token), `Missing admission/imaging facility boundary: ${token}`);
 }
 
+
+const clinicalAiMigration = fs.readFileSync(
+  'supabase/migrations/20261001143000_harden_patient_clinical_ai_billing_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.create_appointment_workflow(_patient_id uuid',
+  'CREATE OR REPLACE FUNCTION public.create_ai_clinical_session(_patient_id uuid',
+  'CREATE OR REPLACE FUNCTION public.get_ai_clinical_context(_patient_id uuid)',
+  'CREATE OR REPLACE FUNCTION public.get_attending_patient_history(_patient_id uuid',
+  'CREATE OR REPLACE FUNCTION public.get_billing_window(_patient_id uuid',
+  'CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id uuid',
+  'CREATE OR REPLACE FUNCTION public.create_encounter_prescription(_encounter_id uuid',
+  'PERFORM public.assert_patient_facility_context',
+  'REVOKE ALL ON FUNCTION public.get_ai_clinical_context(uuid) FROM PUBLIC,anon',
+]) {
+  assert(clinicalAiMigration.includes(token), `Missing patient clinical AI boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
