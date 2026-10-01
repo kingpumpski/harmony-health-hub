@@ -1,5 +1,5 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -386,8 +386,8 @@ export default function Laboratory() {
                 const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id);
                 const progress = o.status === 'approved' ? 100 : o.status === 'completed' ? 80 : o.status === 'sample_collected' ? 55 : 25;
                 return (
-                  <>
-                    <tr key={o.id} id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
+                  <Fragment key={o.id}>
+                    <tr id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
                       <td>
                         <div className="min-w-[170px]">
                           <p className="font-semibold">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</p>
@@ -469,7 +469,7 @@ export default function Laboratory() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
