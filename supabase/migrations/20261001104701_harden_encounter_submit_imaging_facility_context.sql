@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.submit_encounter_workflow(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_enc public.encounters%rowtype;
@@ -87,7 +87,7 @@ CREATE OR REPLACE FUNCTION public.start_imaging_order(_imaging_order_id uuid)
 RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); o public.imaging_orders; s public.service_orders; es text; v_patient_facility uuid;
 BEGIN
@@ -118,7 +118,7 @@ CREATE OR REPLACE FUNCTION public.complete_imaging_order(_imaging_order_id uuid,
 RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); o public.imaging_orders; s public.service_orders; es text; v_patient_facility uuid;
 BEGIN
