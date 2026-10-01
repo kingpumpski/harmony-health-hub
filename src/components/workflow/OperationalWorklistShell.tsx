@@ -19,6 +19,7 @@ interface OperationalWorklistShellProps {
   emptyTitle?: string;
   emptyDescription?: string;
   children: ReactNode;
+  bareList?: boolean;
 }
 
 export default function OperationalWorklistShell({
@@ -38,6 +39,7 @@ export default function OperationalWorklistShell({
   emptyTitle = 'No records found',
   emptyDescription = 'Records will appear here when they are available.',
   children,
+  bareList = false,
 }: OperationalWorklistShellProps) {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -66,30 +68,46 @@ export default function OperationalWorklistShell({
 
       {beforeList}
 
-      <section className="card-medical overflow-hidden p-0" aria-labelledby={`${title.toLowerCase().replace(/\\s+/g, '-')}-worklist-heading`}>
-        <div className="flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 id={`${title.toLowerCase().replace(/\\s+/g, '-')}-worklist-heading`} className="font-semibold">{listTitle}</h2>
-            {listDescription && <p className="text-xs text-muted-foreground">{listDescription}</p>}
-          </div>
-          {listMeta && <div className="text-xs text-muted-foreground">{listMeta}</div>}
-        </div>
-        {loading ? (
+      {bareList ? (
+        loading ? (
           <div className="space-y-2 p-4" aria-live="polite">
             <div className="h-20 animate-pulse rounded-xl bg-muted" />
             <div className="h-20 animate-pulse rounded-xl bg-muted" />
             <div className="h-20 animate-pulse rounded-xl bg-muted" />
           </div>
         ) : empty ? (
-          <div className="px-5 py-14 text-center">
+          <section className="card-medical px-5 py-14 text-center">
             <EmptyIcon className="mx-auto mb-2 h-9 w-9 text-muted-foreground" aria-hidden="true" />
             <p className="font-medium">{emptyTitle}</p>
             <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
+          </section>
+        ) : children
+      ) : (
+        <section className="card-medical overflow-hidden p-0" aria-labelledby={`${title.toLowerCase().replace(/\\s+/g, '-')}-worklist-heading`}>
+          <div className="flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id={`${title.toLowerCase().replace(/\\s+/g, '-')}-worklist-heading`} className="font-semibold">{listTitle}</h2>
+              {listDescription && <p className="text-xs text-muted-foreground">{listDescription}</p>}
+            </div>
+            {listMeta && <div className="text-xs text-muted-foreground">{listMeta}</div>}
           </div>
-        ) : (
-          <div className="divide-y divide-border">{children}</div>
-        )}
-      </section>
+          {loading ? (
+            <div className="space-y-2 p-4" aria-live="polite">
+              <div className="h-20 animate-pulse rounded-xl bg-muted" />
+              <div className="h-20 animate-pulse rounded-xl bg-muted" />
+              <div className="h-20 animate-pulse rounded-xl bg-muted" />
+            </div>
+          ) : empty ? (
+            <div className="px-5 py-14 text-center">
+              <EmptyIcon className="mx-auto mb-2 h-9 w-9 text-muted-foreground" aria-hidden="true" />
+              <p className="font-medium">{emptyTitle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">{children}</div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
