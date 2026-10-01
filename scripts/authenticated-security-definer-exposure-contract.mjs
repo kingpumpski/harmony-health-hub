@@ -39,7 +39,8 @@ assert(
   "authenticated SECURITY DEFINER exposure contract: no SECURITY DEFINER functions detected",
 );
 
-function functionChunk(name, signature) {
+function functionChunk(name) {
+  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\function functionChunk(name, signature) {
   const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   const normalizedSignature = signature.trim().replace(/\s+/g, "\\s+");
   const declaration = new RegExp(
@@ -51,6 +52,19 @@ function functionChunk(name, signature) {
     "i",
   ).exec(allSource);
   return declaration?.[0] ?? "";
+}");
+  const declaration = new RegExp(
+    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
+      escapedName +
+      "\\s*\\(",
+    "i",
+  ).exec(allSource);
+  if (!declaration) return "";
+  const start = declaration.index;
+  const next = allSource.slice(start + declaration[0].length).search(
+    /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\./i,
+  );
+  return allSource.slice(start, next < 0 ? allSource.length : start + declaration[0].length + next);
 }
 
 function hasExplicitRevoke(name, role) {
@@ -122,7 +136,7 @@ for (const declaration of declarations) {
   );
   if (hasAuthenticatedGrant(declaration.name)) {
     assert(
-      hasAuthorizationGuard(declaration.name, declaration.signature),
+      hasAuthorizationGuard(declaration.name),
       declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard",
     );
   }
