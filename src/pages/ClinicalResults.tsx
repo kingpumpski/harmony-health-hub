@@ -193,6 +193,8 @@ export default function ClinicalResults() {
             })}
           </tbody>
         </ClinicalDataTable>
-      )}    </OperationalWorklistShell>
+      )}
+      >
+      </OperationalWorklistShell>
   );
 }
