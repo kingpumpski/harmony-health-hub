@@ -7,6 +7,7 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  id?: string;
   className?: string;
   enableVoice?: boolean;
   multiline?: boolean;
@@ -14,7 +15,7 @@ interface Props {
   onDiagnosisSelect?: (suggestion: DiagnosisSuggestion) => void;
 }
 
-export default function MedicalTermInput({ value, onChange, placeholder, className, enableVoice = true, multiline, diagnosisOnly = false, onDiagnosisSelect }: Props) {
+export default function MedicalTermInput({ value, onChange, placeholder, id, className, enableVoice = true, multiline, diagnosisOnly = false, onDiagnosisSelect }: Props) {
   const [open, setOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [catalogue, setCatalogue] = useState<DiagnosisSuggestion[]>([]);
@@ -69,6 +70,7 @@ export default function MedicalTermInput({ value, onChange, placeholder, classNa
   return (
     <div className="relative">
       <InputEl
+        id={id}
         value={value}
         onChange={(e: any) => { onChange(e.target.value); setOpen(true); }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
