@@ -186,8 +186,8 @@ export default function Pharmacy() {
                 {visiblePrescriptions.filter((prescription) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'prescription').map((prescription) => {
                   const choices = alternatives[prescription.id] ?? [];
                   return (
-                    <>
-                      <tr key={prescription.id}>
+                    <Fragment key={prescription.id}>
+                      <tr>
                         <td><div className="min-w-[160px]"><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</p></div></td>
                         <td><div className="min-w-[170px]"><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></div></td>
                         <td><div className="min-w-[180px] text-xs text-muted-foreground">{prescription.dosage ?? 'Dose not specified'} · {prescription.frequency ?? 'Frequency not specified'}{prescription.duration ? ` · ${prescription.duration}` : ''}</div></td>
@@ -205,7 +205,7 @@ export default function Pharmacy() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
                 {plans.filter((plan) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'ready').map((plan) => (
