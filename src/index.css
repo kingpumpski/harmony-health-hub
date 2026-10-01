@@ -233,6 +233,103 @@
     @apply transition-colors hover:bg-muted/30;
   }
 
+  .clinical-data-table-grid {
+    @apply w-full min-w-[920px] text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .clinical-data-table-grid thead {
+    background: hsl(var(--muted) / 0.55);
+  }
+
+  .clinical-data-table-grid th {
+    @apply px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .clinical-data-table-grid td {
+    @apply px-5 py-4 align-middle;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  .clinical-data-table-grid tbody tr {
+    @apply transition-colors;
+  }
+
+  .clinical-data-table-grid tbody tr:hover {
+    background: #F9FAFB;
+  }
+
+  .dark .clinical-data-table-grid th,
+  .dark .clinical-data-table-grid td {
+    border-bottom-color: hsl(var(--border));
+  }
+
+  .dark .clinical-data-table-grid tbody tr:hover {
+    background: hsl(var(--muted) / 0.55);
+  }
+
+  .clinical-table-heading {
+    @apply flex flex-col gap-2 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .clinical-table-filters {
+    @apply flex flex-col gap-3 border-b border-border bg-background/80 p-4 sm:flex-row sm:items-end;
+  }
+
+  .clinical-filter-field {
+    @apply block text-xs font-semibold text-foreground;
+  }
+
+  .clinical-filter-field > span {
+    @apply mb-1 block text-muted-foreground;
+  }
+
+  .clinical-search-button {
+    @apply inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .clinical-status-badge {
+    @apply inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none;
+  }
+
+  .clinical-status-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .clinical-status-info {
+    @apply bg-info/10 text-info;
+  }
+
+  .clinical-status-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .clinical-status-critical {
+    @apply bg-critical/10 text-critical;
+  }
+
+  .clinical-status-neutral {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .clinical-progress-track {
+    @apply h-1.5 overflow-hidden rounded-full bg-info/15;
+  }
+
+  .clinical-progress-value {
+    @apply block h-full rounded-full bg-info transition-[width] duration-300;
+  }
+
+  .clinical-table-action {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .clinical-row-link {
+    @apply inline-flex items-center gap-1 rounded-md font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
   .pulse-critical {
     animation: pulse-critical 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
