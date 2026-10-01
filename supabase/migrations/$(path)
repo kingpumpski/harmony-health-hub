@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION public.create_workflow_notification(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path TO ''
 AS $function$
 DECLARE
   new_id uuid;

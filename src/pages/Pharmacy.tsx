@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BellRing, CreditCard, Package, Pill, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, BellRing, CreditCard, Package, Pill, RefreshCw, Search, ShoppingCart, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -10,8 +10,8 @@ import OperationalWorklistShell from '@/components/workflow/OperationalWorklistS
 
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
-type Prescription = { id: string; patient_id: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
-type Plan = { id: string; medication_name: string; prepared_quantity: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
+type Prescription = { id: string; patient_id: string; created_at?: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
+type Plan = { id: string; created_at?: string; medication_name: string; prepared_quantity: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
 type Alternative = Pick<InventoryItem, 'id' | 'drug_name' | 'brand_name' | 'generic_name' | 'strength' | 'form' | 'supplier' | 'stock_quantity' | 'unit_price'>;
 type PosSale = { id: string; medication: string; quantity: number; total_amount: number; status: string; service_order_id: string | null };
 const db = supabase as any;
@@ -45,6 +45,8 @@ export default function Pharmacy() {
   const [appliedInventoryStock, setAppliedInventoryStock] = useState('all');
   const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null>(null);
   const [expandedPosId, setExpandedPosId] = useState<string | null>(null);
+  const [prescriptionColumns, setPrescriptionColumns] = useState({ medication: false, dosage: false, status: false });
+  const [columnsOpen, setColumnsOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -160,9 +162,16 @@ export default function Pharmacy() {
       listContent={(
         <div>
           {tab === 'dispense' && (
+            <>
+            <div className="relative mb-2 flex justify-end">
+              <button type="button" className="btn-ghost inline-flex items-center gap-2 text-xs" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((open) => !open)}><Settings2 className="h-4 w-4" aria-hidden="true" /> Columns</button>
+              {columnsOpen && <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-background p-3 shadow-lg">
+                {Object.entries({ medication: 'Medication', dosage: 'Dosage / frequency', status: 'Status' }).map(([key,label]) => <label key={key} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={Boolean(prescriptionColumns[key as keyof typeof prescriptionColumns])} onChange={() => setPrescriptionColumns((current) => ({ ...current, [key]: !current[key as keyof typeof current] }))} />{label}</label>)}
+              </div>}
+            </div>
             <ClinicalDataTable
               title="Prescription dispensing"
-              description="Patient, medicine, dispensing state, workflow progress and authorised action remain visible in a compact clinical queue."
+              description="Patient ID, patient name and timestamp remain visible by default. Optional clinical columns can be enabled without changing the operational workflow."
               meta={`${visiblePrescriptions.length} prescriptions · ${plans.length} prepared`}
               filters={[
                 { label: 'Patient', value: patientId, onChange: setPatientId, options: [{ value: '', label: 'All active prescriptions' }, ...patients.map((patient) => ({ value: patient.id, label: `${patient.first_name} ${patient.last_name} · ${patient.patient_code}` }))] },
@@ -174,11 +183,8 @@ export default function Pharmacy() {
             >
               <thead>
                 <tr>
-                  <th scope="col">Patient</th>
-                  <th scope="col">Medication</th>
-                  <th scope="col">Directions</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Workflow progress</th>
+                  <th scope="col">No.</th><th scope="col">Patient ID</th><th scope="col">Full Name</th><th scope="col">Timestamp</th>
+                  {prescriptionColumns.medication && <th scope="col">Medication</th>}{prescriptionColumns.dosage && <th scope="col">Dosage</th>}{prescriptionColumns.status && <th scope="col">Status</th>}
                   <th scope="col" className="text-right">Action</th>
                 </tr>
               </thead>
@@ -188,12 +194,9 @@ export default function Pharmacy() {
                   return (
                     <Fragment key={prescription.id}>
                       <tr>
-                        <td><div className="min-w-[160px]"><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</p></div></td>
-                        <td><div className="min-w-[170px]"><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></div></td>
-                        <td><div className="min-w-[180px] text-xs text-muted-foreground">{prescription.dosage ?? 'Dose not specified'} · {prescription.frequency ?? 'Frequency not specified'}{prescription.duration ? ` · ${prescription.duration}` : ''}</div></td>
-                        <td><ClinicalStatusBadge status={prescription.status} /></td>
-                        <td><ClinicalProgressBar value={25} label="Preparation" /></td>
-                        <td><div className="flex min-w-[220px] justify-end gap-2"><ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
+                    <td>{visiblePrescriptions.indexOf(prescription) + 1}</td><td className="font-mono text-xs">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(prescription.created_at ?? Date.now()).toLocaleString()}</td>
+                    {prescriptionColumns.medication && <td><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></td>}{prescriptionColumns.dosage && <td className="text-xs">{prescription.dosage ?? '—'} · {prescription.frequency ?? '—'}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={prescription.status} /></td>}
+                    <td><div className="flex min-w-[220px] justify-end gap-2"><ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
                       </tr>
                       {expandedPrescriptionId === prescription.id && (
                         <tr key={`${prescription.id}-details`} className="bg-muted/20">
@@ -210,16 +213,14 @@ export default function Pharmacy() {
                 })}
                 {plans.filter((plan) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'ready').map((plan) => (
                   <tr key={plan.id}>
-                    <td><div className="min-w-[160px]"><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{plan.patients?.patient_code ?? 'Prepared order'}</p></div></td>
-                    <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>
-                    <td className="text-xs text-muted-foreground">Payment/release gate satisfied before dispensing.</td>
-                    <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>
-                    <td><ClinicalProgressBar value={90} label="Ready" /></td>
+                    <td>{plans.indexOf(plan) + 1}</td><td className="font-mono text-xs">{plan.patients?.patient_code ?? 'Prepared order'}</td><td><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{plan.created_at ? new Date(plan.created_at).toLocaleString() : '—'}</td>
+                    {prescriptionColumns.medication && <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>}{prescriptionColumns.dosage && <td className="text-xs">Prepared quantity: {plan.prepared_quantity}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>}
                     <td><div className="flex justify-end"><ClinicalTableAction label="Dispense" icon="acknowledge" onClick={() => void dispense(plan)} disabled={!['released', 'in_progress'].includes(plan.service_order_status ?? '')} /></div></td>
                   </tr>
                 ))}
               </tbody>
             </ClinicalDataTable>
+            </>
           )}
 
           {tab === 'pos' && (

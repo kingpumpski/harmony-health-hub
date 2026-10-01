@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+const clinical=fs.readFileSync('src/pages/ClinicalResults.tsx','utf8');
+const lab=fs.readFileSync('src/pages/LaboratoryResults.tsx','utf8');
+const pharmacy=fs.readFileSync('src/pages/Pharmacy.tsx','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261001230000_clinical_results_production_tranche.sql','utf8');
+const assert=(ok,msg)=>{if(!ok) throw new Error(msg)};
+for(const needle of ['S/N','Patient ID','Diagnoses','Prescriber','Audit timestamp','postgres_changes','acknowledge_imaging_result']) assert(clinical.includes(needle),`Radiology contract missing: ${needle}`);
+for(const needle of ['S/N','Patient ID','Diagnoses','Prescriber','postgres_changes','acknowledge_lab_result']) assert(lab.includes(needle),`Laboratory contract missing: ${needle}`);
+for(const needle of ['No.','Patient ID','Full Name','Timestamp','Settings2','prescriptionColumns']) assert(pharmacy.includes(needle),`Pharmacy contract missing: ${needle}`);
+for(const needle of ['acknowledged_at','acknowledged_by','WHERE d.encounter_id=io.encounter_id','WHERE d.encounter_id=o.encounter_id','current_user_has_facility_access','REVOKE ALL ON FUNCTION public.acknowledge_imaging_result(uuid) FROM PUBLIC,anon']) assert(migration.includes(needle),`Security/audit migration contract missing: ${needle}`);
+console.log('Clinical results and pharmacy production contract passed');
