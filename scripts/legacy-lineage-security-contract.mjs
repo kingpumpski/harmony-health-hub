@@ -92,7 +92,6 @@ for (const token of [
   assert(wrapperMigration.includes(token), `Missing legacy wrapper boundary: ${token}`);
 }
 
-
 const patientReadMigration = fs.readFileSync(
   'supabase/migrations/20261001140000_harden_patient_read_facility_context.sql',
   'utf8',
@@ -124,7 +123,6 @@ for (const token of [
   assert(acuteMutationMigration.includes(token), `Missing admission/imaging facility boundary: ${token}`);
 }
 
-
 const clinicalAiMigration = fs.readFileSync(
   'supabase/migrations/20261001143000_harden_patient_clinical_ai_billing_context.sql',
   'utf8',
@@ -141,6 +139,22 @@ for (const token of [
   'REVOKE ALL ON FUNCTION public.get_ai_clinical_context(uuid) FROM PUBLIC,anon',
 ]) {
   assert(clinicalAiMigration.includes(token), `Missing patient clinical AI boundary: ${token}`);
+}
+
+const appointmentStartMigration = fs.readFileSync(
+  'supabase/migrations/20261001150000_harden_start_appointment_encounter_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'SET search_path = pg_catalog, public',
+  'v_is_privileged boolean := public.has_role(v_user, \'admin\'::public.app_role) OR public.has_role(v_user, \'it_admin\'::public.app_role)',
+  'Patient facility attribution is unresolved; reconcile the patient before starting the appointment',
+  'Appointment belongs to a different facility context',
+  'Encounter patient does not match appointment patient',
+  'REVOKE ALL ON FUNCTION public.start_appointment_encounter(uuid,text,text) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.start_appointment_encounter(uuid,text,text) TO authenticated',
+]) {
+  assert(appointmentStartMigration.includes(token), `Missing appointment-start boundary: ${token}`);
 }
 
 console.log('Legacy lineage and clinical RPC security contract passed.');
