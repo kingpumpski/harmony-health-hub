@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.assert_patient_facility_context(_patient_id uuid)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); patient_facility uuid; active_facility uuid:=public.current_user_facility_id();
 BEGIN
@@ -18,7 +18,7 @@ END; $function$;
 REVOKE ALL ON FUNCTION public.assert_patient_facility_context(uuid) FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_patient_admission_history(_patient_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE v_role text;
 BEGIN
@@ -30,7 +30,7 @@ BEGIN
 END $function$;
 
 CREATE OR REPLACE FUNCTION public.get_patient_appointments(_patient_id uuid,_limit integer DEFAULT 100)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
@@ -42,7 +42,7 @@ END $function$;
 
 CREATE OR REPLACE FUNCTION public.get_patient_bmi_context(_patient_id uuid)
 RETURNS TABLE(bmi numeric,category text,weight_kg numeric,height_m numeric,recorded_at timestamptz)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $function$
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -53,7 +53,7 @@ END; $function$;
 
 CREATE OR REPLACE FUNCTION public.get_patient_directory_record(_patient_id uuid)
 RETURNS TABLE(id uuid,patient_code text,first_name text,last_name text,phone text,ghana_card_number text,status text,insurance_provider text,insurance_number text)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE can_sensitive boolean;
 BEGIN
@@ -65,7 +65,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.get_patient_hub_clinical_snapshot(_patient_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); is_core boolean; is_lab boolean; is_pharmacy boolean;
 BEGIN
@@ -82,7 +82,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.get_patient_invoices(_patient_id uuid,_limit integer DEFAULT 100)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
