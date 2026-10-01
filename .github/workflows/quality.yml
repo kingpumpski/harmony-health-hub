@@ -49,6 +49,9 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: Clinical report-only access contract
+        run: npm run test:clinical-report-access
+
       - name: Navigation and header UX contract
         run: node scripts/navigation-header-ux-contract.mjs
 
