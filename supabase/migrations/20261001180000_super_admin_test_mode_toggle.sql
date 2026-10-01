@@ -26,7 +26,7 @@ returns table(enabled boolean, environment text, updated_at timestamptz)
 language plpgsql
 stable
 security definer
-set search_path = 'pg_catalog, public'
+set search_path = ''
 as $$
 begin
   if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
@@ -44,7 +44,7 @@ create or replace function public.set_hms_test_runtime(_enabled boolean,_reason 
 returns table(enabled boolean, environment text, updated_at timestamptz)
 language plpgsql
 security definer
-set search_path = 'pg_catalog, public'
+set search_path = ''
 as $$
 declare v_previous boolean; v_environment text;
 begin
