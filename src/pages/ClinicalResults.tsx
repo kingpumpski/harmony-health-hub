@@ -112,89 +112,87 @@ export default function ClinicalResults() {
         </div>
       ) : undefined}
       listTitle="Radiology results worklist"
-      listDescription="A compact clinical review table keeps patient identity, study status, workflow progress and actions visible without project-management fields."
+      listDescription="Completed reports remain visible with clinical status, workflow progress and auditable actions."
       listMeta={`${visibleResults.length} shown · ${results.length} total`}
-      loading={loading}
-      empty={visibleResults.length === 0}
-      emptyTitle="No radiology results match"
-      emptyDescription="Adjust the clinical filters or wait for a completed diagnostic result assigned to your workflow."
-    >
-      <ClinicalDataTable
-        title="Diagnostic imaging results"
-        description="Use clinical filters to narrow the review queue. Patient and study information remains specific to the medical workflow."
-        meta={`${visibleResults.length} result${visibleResults.length === 1 ? '' : 's'}`}
-        filters={[
-          { label: 'Review state', value: reviewFilter, onChange: setReviewFilter, options: [{ value: 'all', label: 'All review states' }, { value: 'pending', label: 'Needs acknowledgement' }, { value: 'acknowledged', label: 'Acknowledged' }] },
-          { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
-          { label: 'Modality', value: modalityFilter, onChange: setModalityFilter, options: [{ value: 'all', label: 'All modalities' }, ...modalities.map((value) => ({ value, label: value }))] },
-        ]}
-        onSearch={() => setAppliedFilters({ review: reviewFilter, priority: priorityFilter, modality: modalityFilter })}
-        loading={loading}
-        empty={visibleResults.length === 0}
-        emptyMessage="No completed radiology results match the selected clinical filters."
-      >
-        <thead>
-          <tr>
-            <th scope="col">Patient</th>
-            <th scope="col">Study</th>
-            <th scope="col">Priority</th>
-            <th scope="col">Status</th>
-            <th scope="col">Workflow progress</th>
-            <th scope="col">Report date</th>
-            <th scope="col" className="text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleResults.map((result) => {
-            const unread = unreadResultIds.has(result.id);
-            const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
-            return (
-              <>
-                <tr key={result.id} className={unread ? 'bg-warning/5' : undefined}>
-                  <td>
-                    <div className="min-w-[170px]">
-                      <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Patient record · {result.patient_id.slice(0, 8)}</p>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="min-w-[190px]">
-                      <p className="font-medium">{result.study_name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{result.modality}</p>
-                    </div>
-                  </td>
-                  <td>{urgent ? <ClinicalStatusBadge status={result.priority} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
-                  <td><ClinicalStatusBadge status={unread ? 'pending' : 'acknowledged'} /></td>
-                  <td><ClinicalProgressBar value={100} label="Completed" /></td>
-                  <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(result.updated_at).toLocaleString()}</td>
-                  <td>
-                    <div className="flex min-w-[190px] justify-end gap-2">
-                      <ClinicalTableAction label={expandedId === result.id ? 'Hide report' : 'View report'} onClick={() => setExpandedId(expandedId === result.id ? null : result.id)} />
-                      {unread && <ClinicalTableAction label="Acknowledge" icon="acknowledge" onClick={() => void acknowledge(result.id)} />}
-                    </div>
-                  </td>
-                </tr>
-                {expandedId === result.id && (
-                  <tr key={`${result.id}-details`} className="bg-muted/20">
-                    <td colSpan={7}>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <section className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p>
-                        </section>
-                        <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p>
-                        </section>
+      loading={false}
+      empty={false}
+      listContent={(
+        <ClinicalDataTable
+          title="Diagnostic imaging results"
+          description="Use clinical filters to narrow the review queue. Patient and study information remains specific to the medical workflow."
+          meta={`${visibleResults.length} result${visibleResults.length === 1 ? '' : 's'}`}
+          filters={[
+            { label: 'Review state', value: reviewFilter, onChange: setReviewFilter, options: [{ value: 'all', label: 'All review states' }, { value: 'pending', label: 'Needs acknowledgement' }, { value: 'acknowledged', label: 'Acknowledged' }] },
+            { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
+            { label: 'Modality', value: modalityFilter, onChange: setModalityFilter, options: [{ value: 'all', label: 'All modalities' }, ...modalities.map((value) => ({ value, label: value }))] },
+          ]}
+          onSearch={() => setAppliedFilters({ review: reviewFilter, priority: priorityFilter, modality: modalityFilter })}
+          loading={loading}
+          empty={visibleResults.length === 0}
+          emptyMessage="No completed radiology results match the selected clinical filters."
+        >
+          <thead>
+            <tr>
+              <th scope="col">Patient</th>
+              <th scope="col">Study</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Status</th>
+              <th scope="col">Workflow progress</th>
+              <th scope="col">Report date</th>
+              <th scope="col" className="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleResults.map((result) => {
+              const unread = unreadResultIds.has(result.id);
+              const urgent = ['urgent', 'stat'].includes(result.priority.toLowerCase());
+              return (
+                <>
+                  <tr key={result.id} className={unread ? 'bg-warning/5' : undefined}>
+                    <td>
+                      <div className="min-w-[170px]">
+                        <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Patient record · {result.patient_id.slice(0, 8)}</p>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="min-w-[190px]">
+                        <p className="font-medium">{result.study_name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{result.modality}</p>
+                      </div>
+                    </td>
+                    <td>{urgent ? <ClinicalStatusBadge status={result.priority} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
+                    <td><ClinicalStatusBadge status={unread ? 'pending' : 'acknowledged'} /></td>
+                    <td><ClinicalProgressBar value={100} label="Completed" /></td>
+                    <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(result.updated_at).toLocaleString()}</td>
+                    <td>
+                      <div className="flex min-w-[190px] justify-end gap-2">
+                        <ClinicalTableAction label={expandedId === result.id ? 'Hide report' : 'View report'} onClick={() => setExpandedId(expandedId === result.id ? null : result.id)} />
+                        {unread && <ClinicalTableAction label="Acknowledge" icon="acknowledge" onClick={() => void acknowledge(result.id)} />}
                       </div>
                     </td>
                   </tr>
-                )}
-              </>
-            );
-          })}
-        </tbody>
-      </ClinicalDataTable>
-    </OperationalWorklistShell>
+                  {expandedId === result.id && (
+                    <tr key={`${result.id}-details`} className="bg-muted/20">
+                      <td colSpan={7}>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <section className="rounded-xl border border-border bg-background p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm">{result.report || 'No narrative report entered.'}</p>
+                          </section>
+                          <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Impression</p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm font-medium">{result.impression || 'No impression entered.'}</p>
+                          </section>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </ClinicalDataTable>
+      )}    </OperationalWorklistShell>
   );
 }
