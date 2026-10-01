@@ -92,4 +92,36 @@ for (const token of [
   assert(wrapperMigration.includes(token), `Missing legacy wrapper boundary: ${token}`);
 }
 
+
+const patientReadMigration = fs.readFileSync(
+  'supabase/migrations/20261001140000_harden_patient_read_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.assert_patient_facility_context(_patient_id uuid)',
+  'Patient facility attribution is unresolved',
+  'Patient belongs to a different facility context',
+  'CREATE OR REPLACE FUNCTION public.get_patient_hub_clinical_snapshot(_patient_id uuid)',
+  'CREATE OR REPLACE FUNCTION public.get_patient_current_treatment_snapshot(_patient_id uuid,_admission_id uuid)',
+  'REVOKE ALL ON FUNCTION public.assert_patient_facility_context(uuid) FROM PUBLIC,anon,authenticated',
+]) {
+  assert(patientReadMigration.includes(token), `Missing patient read facility boundary: ${token}`);
+}
+
+const acuteMutationMigration = fs.readFileSync(
+  'supabase/migrations/20261001141000_harden_admission_and_imaging_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.create_admission_workflow(_patient_id uuid,_ward text',
+  'INSERT INTO public.admissions(patient_id,ward,bed,reason,admitted_by,status,admitted_at,facility_id)',
+  'CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(_patient_id uuid',
+  'INSERT INTO public.imaging_orders(patient_id,encounter_id,modality,study_name,body_site,priority,clinical_indication,amount,status,requested_by,facility_id)',
+  'Patient belongs to a different facility context',
+  'REVOKE ALL ON FUNCTION public.create_admission_workflow(uuid,text,text,text) FROM PUBLIC,anon',
+  'REVOKE ALL ON FUNCTION public.create_imaging_order_with_payment_gate(uuid,uuid,text,text,text,text,text,numeric) FROM PUBLIC,anon',
+]) {
+  assert(acuteMutationMigration.includes(token), `Missing admission/imaging facility boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
