@@ -1,6 +1,6 @@
 create or replace function public.get_appointment_clinicians()
 returns table(id uuid, first_name text, last_name text, department text, specialization text, clinician_role text)
-language plpgsql stable security definer set search_path='pg_catalog, public'
+language plpgsql stable security definer set search_path = ''
 as $function$
 declare
   v_user uuid := auth.uid();
@@ -51,7 +51,7 @@ returns table(
   department text, reason text, status text, attending_officer_id uuid, treatment_status text,
   treatment_notes text
 )
-language plpgsql stable security definer set search_path='pg_catalog, public'
+language plpgsql stable security definer set search_path = ''
 as $function$
 declare
   v_limit integer := greatest(1, least(coalesce(_limit,300),500));
