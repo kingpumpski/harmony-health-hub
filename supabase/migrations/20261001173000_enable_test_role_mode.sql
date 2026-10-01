@@ -90,7 +90,7 @@ returns uuid
 language sql
 stable
 security definer
-set search_path = 'pg_catalog, public'
+set search_path = ''
 as $$
   select case
     when public.hms_current_user_is_test_user()
@@ -126,7 +126,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = 'pg_catalog, public'
+set search_path = ''
 as $$
   select
     (
@@ -172,7 +172,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = 'pg_catalog, public'
+set search_path = ''
 as $$
   select
     (
