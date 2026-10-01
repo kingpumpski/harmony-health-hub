@@ -162,6 +162,7 @@ export default function Pharmacy() {
       listContent={(
         <div>
           {tab === 'dispense' && (
+            <>
             <div className="relative mb-2 flex justify-end">
               <button type="button" className="btn-ghost inline-flex items-center gap-2 text-xs" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((open) => !open)}><Settings2 className="h-4 w-4" aria-hidden="true" /> Columns</button>
               {columnsOpen && <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-background p-3 shadow-lg">
@@ -222,6 +223,7 @@ export default function Pharmacy() {
                 ))}
               </tbody>
             </ClinicalDataTable>
+            </>
           )}
 
           {tab === 'pos' && (
