@@ -39,7 +39,6 @@ assert(
   'Encounter attribution helper must remain non-public',
 );
 
-
 const mutationMigration = fs.readFileSync(
   'supabase/migrations/20261001101500_harden_authenticated_clinical_mutation_boundaries.sql',
   'utf8',
@@ -55,5 +54,27 @@ for (const token of [
 ]) {
   assert(mutationMigration.includes(token), `Missing mutation boundary: ${token}`);
 }
-console.log('Legacy lineage and clinical RPC security contract passed.');
 
+const acuteMigration = fs.readFileSync(
+  'supabase/migrations/20261001113000_harden_acute_clinical_facility_lineage.sql',
+  'utf8',
+);
+for (const token of [
+  'public.enforce_clinical_facility_lineage()',
+  'public.enforce_ai_clinical_event_facility()',
+  'trg_enforce_imaging_facility_lineage',
+  'trg_enforce_emergency_facility_lineage',
+  'trg_enforce_theatre_facility_lineage',
+  'trg_enforce_transfusion_facility_lineage',
+  'trg_enforce_admission_facility_lineage',
+  'trg_enforce_ai_session_facility_lineage',
+  'trg_enforce_ai_event_facility_lineage',
+  'Clinical record facility does not match patient facility',
+  'Patient facility attribution is unresolved',
+  'AI clinical event belongs to a different facility context',
+  'REVOKE ALL ON FUNCTION public.enforce_clinical_facility_lineage() FROM PUBLIC,anon',
+]) {
+  assert(acuteMigration.includes(token), `Missing acute clinical lineage guard: ${token}`);
+}
+
+console.log('Legacy lineage and clinical RPC security contract passed.');
