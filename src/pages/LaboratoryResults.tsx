@@ -23,6 +23,10 @@ interface LabReportRow {
   status: string;
   entered_at: string;
   approved_at: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  prescriber_name: string | null;
+  diagnoses: Array<{ id: string; diagnosis: string; icd_code: string | null; is_principal: boolean }>;
   numeric_value: number | null;
   unit: string | null;
   reference_low: number | null;
@@ -39,6 +43,7 @@ export default function LaboratoryResults() {
   const [interpretationFilter, setInterpretationFilter] = useState('all');
   const [appliedFilters, setAppliedFilters] = useState({ priority: 'all', interpretation: 'all' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -64,7 +69,12 @@ export default function LaboratoryResults() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    if (!user?.id) return;
+    const channel = supabase.channel(`lab-results-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_results' }, () => { setRealtimeUpdatedAt(new Date()); void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [load, user?.id]);
 
   const visibleResults = useMemo(() => results.filter((result) => {
     const priorityMatches = appliedFilters.priority === 'all'
@@ -74,6 +84,13 @@ export default function LaboratoryResults() {
       || (appliedFilters.interpretation === 'normal' && !result.is_abnormal);
     return priorityMatches && interpretationMatches;
   }), [results, appliedFilters]);
+
+  const acknowledge = async (resultId: string) => {
+    const { error } = await (supabase as any).rpc('acknowledge_lab_result', { _result_id: resultId });
+    if (error) { toast({ title: 'Could not acknowledge result', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Laboratory result acknowledged' });
+    void load();
+  };
 
   const abnormalCount = results.filter((result) => result.is_abnormal).length;
   const urgentCount = results.filter((result) => ['urgent', 'stat'].includes(result.priority.toLowerCase())).length;
@@ -105,7 +122,7 @@ export default function LaboratoryResults() {
       ]}
       listTitle="Approved laboratory reports"
       listDescription="This is a read-only clinical results view. Pending orders and unapproved results are not included."
-      listMeta={`${visibleResults.length} shown · ${results.length} approved`}
+      listMeta={`${visibleResults.length} shown · ${results.length} approved${realtimeUpdatedAt ? ` · Updated ${realtimeUpdatedAt.toLocaleTimeString()}` : ''}`}
       loading={loading}
       empty={visibleResults.length === 0}
       emptyTitle="No approved laboratory results"
@@ -126,12 +143,7 @@ export default function LaboratoryResults() {
         >
           <thead>
             <tr>
-              <th scope="col">Patient</th>
-              <th scope="col">Laboratory test</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Result</th>
-              <th scope="col">Approval status</th>
-              <th scope="col">Approved</th>
+              <th scope="col">S/N</th><th scope="col">Patient ID</th><th scope="col">Full Name</th><th scope="col">Service</th><th scope="col">Diagnoses</th><th scope="col">Prescriber</th><th scope="col">Result</th><th scope="col">Status</th><th scope="col">Approved</th>
               <th scope="col" className="text-right">Action</th>
             </tr>
           </thead>
@@ -144,18 +156,7 @@ export default function LaboratoryResults() {
               return (
                 <Fragment key={result.id}>
                   <tr className={result.is_abnormal ? 'bg-critical/5' : undefined}>
-                    <td>
-                      <div className="min-w-[170px]">
-                        <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{result.patients?.patient_code ?? result.patient_id.slice(0, 8)}</p>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="min-w-[180px]">
-                        <p className="font-medium">{result.test_name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{result.test_category ?? 'Laboratory'}{result.encounter_id ? ' · Linked encounter' : ''}</p>
-                      </div>
-                    </td>
+                    <td>{visibleResults.indexOf(result) + 1}</td><td className="font-mono text-xs">{result.patients?.patient_code ?? result.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p></td><td><p className="font-medium">{result.test_name}</p><p className="text-xs text-muted-foreground">{result.test_category ?? 'Laboratory'}</p></td><td className="text-xs">{result.diagnoses.length ? result.diagnoses.map((d) => <div key={d.id}>{d.is_principal ? 'Principal: ' : ''}{d.diagnosis}{d.icd_code ? ` (${d.icd_code})` : ''}</div>) : <span className="text-muted-foreground">No current encounter diagnosis</span>}</td><td className="text-sm">{result.prescriber_name ?? '—'}</td>
                     <td>{['urgent', 'stat'].includes(priority) ? <ClinicalStatusBadge status={priority} label={priority.toUpperCase()} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
                     <td>
                       <div className="min-w-[140px]">
@@ -163,20 +164,16 @@ export default function LaboratoryResults() {
                         {result.is_abnormal && <p className="mt-0.5 text-xs font-medium text-critical">{result.abnormal_flag ?? 'Abnormal result'}</p>}
                       </div>
                     </td>
-                    <td><ClinicalStatusBadge status="approved" /></td>
-                    <td className="whitespace-nowrap text-xs text-muted-foreground">{result.approved_at ? new Date(result.approved_at).toLocaleString() : 'Approval timestamp unavailable'}</td>
-                    <td>
+                    <td><ClinicalStatusBadge status={result.acknowledged_at ? 'acknowledged' : 'approved'} /></td><td className="whitespace-nowrap text-xs text-muted-foreground">{result.approved_at ? new Date(result.approved_at).toLocaleString() : 'Approval timestamp unavailable'}</td><td>
                       <div className="flex min-w-[140px] justify-end">
-                        <ClinicalTableAction
-                          label={expandedId === result.id ? 'Hide report' : 'View report'}
-                          onClick={() => setExpandedId(expandedId === result.id ? null : result.id)}
-                        />
+                        <ClinicalTableAction label={expandedId === result.id ? 'Hide report' : 'View report'} onClick={() => setExpandedId(expandedId === result.id ? null : result.id)} />
+                        {!result.acknowledged_at && <ClinicalTableAction label="Acknowledge" icon="acknowledge" onClick={() => void acknowledge(result.id)} />}
                       </div>
                     </td>
                   </tr>
                   {expandedId === result.id && (
                     <tr key={`${result.id}-details`} className="bg-muted/20">
-                      <td colSpan={7}>
+                      <td colSpan={10}>
                         <div className="grid gap-3 lg:grid-cols-2">
                           <section className="rounded-xl border border-border bg-background p-4">
                             <div className="flex items-center justify-between gap-2">
