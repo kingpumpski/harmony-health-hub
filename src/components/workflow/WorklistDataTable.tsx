@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, RefreshCw, Settings2, X } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, RefreshCw, Settings2, X, Check } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface WorklistColumn<T> {
   key: string;
@@ -35,6 +36,8 @@ interface WorklistDataTableProps<T> {
   pageSize?: number;
   emptyMessage?: string;
   rowActions?: (row: T) => ReactNode;
+  /** Stable workspace identifier. Preferences are isolated by active user role + workspace. */
+  columnPreferenceKey?: string;
 }
 
 function formatUpdatedAt(value?: Date | null) {
@@ -58,7 +61,9 @@ export default function WorklistDataTable<T>({
   pageSize = 20,
   emptyMessage = 'No records match the current filters.',
   rowActions,
+  columnPreferenceKey,
 }: WorklistDataTableProps<T>) {
+  const { user } = useAuth();
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<string>(columns.find((column) => column.key === 'relative' && column.sortValue)?.key ?? columns.find((column) => column.sortValue)?.key ?? '');
@@ -66,9 +71,40 @@ export default function WorklistDataTable<T>({
   const [page, setPage] = useState(0);
   const [view, setView] = useState<'list' | 'compact'>('list');
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const [columnMenuOpen, setColumnMenuOpen] = useState(false);
+  const preferenceKey = useMemo(() => `hms.worklist.columns:${user?.id ?? 'anonymous'}:${user?.role ?? 'unknown'}:${columnPreferenceKey ?? title}`, [columnPreferenceKey, title, user?.id, user?.role]);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() => columns.map((column) => column.key));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(preferenceKey) ?? 'null');
+      if (Array.isArray(saved)) {
+        const valid = columns.filter((column) => saved.includes(column.key)).map((column) => column.key);
+        setVisibleColumnKeys(valid.length ? valid : columns.map((column) => column.key));
+      } else {
+        setVisibleColumnKeys(columns.map((column) => column.key));
+      }
+    } catch {
+      setVisibleColumnKeys(columns.map((column) => column.key));
+    }
+  }, [columns, preferenceKey]);
+
+  const visibleColumns = useMemo(() => columns.filter((column) => visibleColumnKeys.includes(column.key)), [columns, visibleColumnKeys]);
+  const toggleColumn = (key: string) => setVisibleColumnKeys((current) => {
+    const next = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
+    if (next.length === 0) return current;
+    if (typeof window !== 'undefined') window.localStorage.setItem(preferenceKey, JSON.stringify(next));
+    return next;
+  });
+  const resetColumns = () => {
+    const next = columns.map((column) => column.key);
+    setVisibleColumnKeys(next);
+    if (typeof window !== 'undefined') window.localStorage.removeItem(preferenceKey);
+  };
 
   const sortedRows = useMemo(() => {
-    const column = columns.find((item) => item.key === sortKey && item.sortValue);
+    const column = visibleColumns.find((item) => item.key === sortKey && item.sortValue);
     if (!column?.sortValue) return rows;
     return [...rows].sort((left, right) => {
       const a = column.sortValue?.(left);
@@ -78,7 +114,7 @@ export default function WorklistDataTable<T>({
         : String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true, sensitivity: 'base' });
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [columns, rows, sortDirection, sortKey]);
+  }, [rows, sortDirection, sortKey, visibleColumns]);
 
   const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -124,6 +160,25 @@ export default function WorklistDataTable<T>({
           {onRefresh && <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={onRefresh} disabled={refreshing} aria-label="Refresh worklist" title={formatUpdatedAt(lastUpdated)}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> <span className="hidden md:inline">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
           </button>}
+          <div className="relative">
+            <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Configure columns" aria-label="Configure columns" aria-expanded={columnMenuOpen} onClick={() => setColumnMenuOpen((open) => !open)}>
+              <Settings2 className="h-4 w-4" /> <span className="hidden lg:inline">Columns</span>
+            </button>
+            {columnMenuOpen && <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-xl">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold">Workspace columns</span>
+                <button type="button" className="text-xs text-primary hover:underline" onClick={resetColumns}>Reset</button>
+              </div>
+              <p className="mb-2 text-[11px] text-muted-foreground">Choose only the information needed for this role's workflow. Preferences are saved for this workspace.</p>
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {columns.map((column) => <label key={column.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                  <input type="checkbox" checked={visibleColumnKeys.includes(column.key)} onChange={() => toggleColumn(column.key)} />
+                  <span className="flex-1">{column.label}</span>
+                  {visibleColumnKeys.includes(column.key) && <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+                </label>)}
+              </div>
+            </div>}
+          </div>
           <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Toggle row density" aria-label="Toggle row density" onClick={() => setView((current) => current === 'list' ? 'compact' : 'list')}>
             <Settings2 className="h-4 w-4" />
           </button>
@@ -149,7 +204,7 @@ export default function WorklistDataTable<T>({
         <p className="text-xs text-muted-foreground">{selectedIds.size > 0 ? `${selectedIds.size} selected · ` : ''}{sortedRows.length} record{sortedRows.length === 1 ? '' : 's'}</p>
         <label className="flex items-center gap-2 text-xs text-muted-foreground">Sort by
           <select value={sortKey} onChange={(event) => { setSortKey(event.target.value); setPage(0); }} className="input-medical h-8 max-w-44 py-1">
-            {columns.filter((column) => column.sortValue).map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
+            {visibleColumns.filter((column) => column.sortValue).map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
           </select>
           <button type="button" className="btn-ghost p-1.5" aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`} onClick={() => setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc')}><ChevronsUpDown className="h-3.5 w-3.5" /></button>
         </label>
@@ -160,16 +215,16 @@ export default function WorklistDataTable<T>({
           <thead className="bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Select visible rows" /></th>
-              {columns.map((column) => <th key={column.key} className={`whitespace-nowrap px-4 py-3 ${column.className ?? ''}`}>{column.label}</th>)}
+              {visibleColumns.map((column) => <th key={column.key} className={`whitespace-nowrap px-4 py-3 ${column.className ?? ''}`}>{column.label}</th>)}
               {rowActions && <th className="px-4 py-3 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {loading ? <tr><td colSpan={columns.length + (rowActions ? 2 : 1)} className="px-4 py-10 text-center text-sm text-muted-foreground"><span className="inline-flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Loading worklist…</span></td></tr> : visibleRows.map((row) => {
+            {loading ? <tr><td colSpan={visibleColumns.length + (rowActions ? 2 : 1)} className="px-4 py-10 text-center text-sm text-muted-foreground"><span className="inline-flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Loading worklist…</span></td></tr> : visibleRows.map((row) => {
               const id = getRowId(row);
               return <tr key={id} className={`border-b border-[#F3F4F6] transition-colors hover:bg-muted/30 ${selectedIds.has(id) ? 'bg-primary/5' : ''} ${view === 'compact' ? 'text-xs' : ''}`}>
                 <td className={`px-4 ${view === 'compact' ? 'py-2' : 'py-4'}`}><input type="checkbox" checked={selectedIds.has(id)} onChange={() => toggleOne(id)} aria-label={`Select row ${id}`} /></td>
-                {columns.map((column) => <td key={column.key} className={`px-4 align-middle ${view === 'compact' ? 'py-2' : 'py-4'} ${column.className ?? ''}`}>{column.render(row)}</td>)}
+                {visibleColumns.map((column) => <td key={column.key} className={`px-4 align-middle ${view === 'compact' ? 'py-2' : 'py-4'} ${column.className ?? ''}`}>{column.render(row)}</td>)}
                 {rowActions && <td className="px-4 py-3 text-right">{rowActions(row)}</td>}
               </tr>;
             })}
