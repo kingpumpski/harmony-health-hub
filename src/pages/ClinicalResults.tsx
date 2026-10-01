@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { useAuth } from '@/contexts/AuthContext';
