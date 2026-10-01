@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.register_outside_lab_document(_patient_id uuid
 RETURNS public.outside_lab_documents
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_doc public.outside_lab_documents;
@@ -30,7 +30,7 @@ CREATE OR REPLACE FUNCTION public.complete_outside_lab_ai_analysis(_document_id 
 RETURNS public.outside_lab_documents
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_uid uuid := auth.uid();
