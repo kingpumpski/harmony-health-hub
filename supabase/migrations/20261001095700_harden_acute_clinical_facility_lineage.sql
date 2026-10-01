@@ -1,6 +1,6 @@
 -- Enforce patient/facility lineage at the database mutation boundary for acute clinical domains.
 CREATE OR REPLACE FUNCTION public.enforce_clinical_facility_lineage()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog','public'
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE uid uuid := auth.uid(); patient_facility uuid; context_facility uuid;
 BEGIN
@@ -18,7 +18,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.enforce_ai_clinical_event_facility()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog','public'
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE uid uuid := auth.uid(); session_facility uuid; context_facility uuid;
 BEGIN
