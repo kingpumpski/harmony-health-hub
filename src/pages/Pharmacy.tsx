@@ -290,7 +290,9 @@ export default function Pharmacy() {
             </div>
           )}
         </div>
-      )}      </OperationalWorklistShell>
+      )}
+      >
+      </OperationalWorklistShell>
       {createMedicationName && <CatalogueCreateModal kind="pharmacy" initialName={createMedicationName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={() => void load()} onClose={() => setCreateMedicationName('')} />}
     </>
   );
