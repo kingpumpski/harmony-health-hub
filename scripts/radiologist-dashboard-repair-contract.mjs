@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const migration=fs.readFileSync('supabase/migrations/20261001101200_repair_radiologist_dashboard_aggregation.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261001101432_repair_radiologist_dashboard_aggregation.sql','utf8');
 const source=fs.readFileSync('supabase/migrations/20260929190000_role_dashboard_radiologist_workflow_boundary.sql','utf8');
 
 for (const needle of [
