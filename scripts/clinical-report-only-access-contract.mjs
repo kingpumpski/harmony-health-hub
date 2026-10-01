@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const migrationPath = 'supabase/migrations/20261001152635_clinician_report_only_access.sql';
 const migration = read(migrationPath);
+const pharmacyPermissionMigration = read('supabase/migrations/20261001152820_remove_practitioner_pharmacy_permission.sql');
 const app = read('src/App.tsx');
 const sidebar = read('src/components/layout/Sidebar.tsx');
 const permissions = read('src/lib/permissions.ts');
@@ -101,6 +102,11 @@ assert('clinical defaults do not grant practitioner diagnostic workspace permiss
   !permissions.slice(permissions.indexOf('  practitioner:'), permissions.indexOf('  nurse:')).includes("'laboratory'") &&
   !permissions.slice(permissions.indexOf('  practitioner:'), permissions.indexOf('  nurse:')).includes("'radiology'") &&
   !permissions.slice(permissions.indexOf('  practitioner:'), permissions.indexOf('  nurse:')).includes("'pharmacy'"));
+assert('practitioner database permissions exclude pharmacy workspace access',
+  pharmacyPermissionMigration.includes("DELETE FROM public.role_permissions") &&
+  pharmacyPermissionMigration.includes("role = 'practitioner'") &&
+  pharmacyPermissionMigration.includes("permission_key = 'pharmacy'"));
+
 assert('clinician laboratory report page is read-only',
   labResultsPage.includes("rpc('get_clinician_lab_results'") &&
   !labResultsPage.includes("rpc('approve_lab_result'") &&
