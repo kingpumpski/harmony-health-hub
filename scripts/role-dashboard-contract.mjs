@@ -72,3 +72,12 @@ const authSource=read('src/contexts/AuthContext.tsx');
 if (!authSource.includes('activeRoleStorageKey')) throw new Error('Active role session persistence contract missing');
 if (!authSource.includes('roles.includes(persistedRole)')) throw new Error('Persisted active role must be revalidated against assigned roles');
 if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(session.user.id))')) throw new Error('Active role context must clear on logout');
+
+
+const nurse = read('src/pages/dashboard/NurseDashboard.tsx');
+if (!nurse.includes("type InpatientFilter = 'all' | 'critical' | 'stable';")) throw new Error('Nursing dashboard must use the canonical inpatient filter statuses');
+if (!nurse.includes("['all', 'critical', 'stable'] as const")) throw new Error('Nursing dashboard filter options must match its rendered status model');
+if (nurse.includes("'attention'] as const")) throw new Error('Nursing dashboard must not expose the obsolete attention status filter');
+const radiologyTechnician = read('src/pages/dashboard/RadiologyTechnicianDashboard.tsx');
+if (!radiologyTechnician.includes("get_role_dashboard_summary_for_role")) throw new Error('Radiology technician dashboard must use the validated role-scoped summary RPC');
+if (!radiologyTechnician.includes("[user?.role]")) throw new Error('Radiology technician dashboard must refresh when active role changes');
