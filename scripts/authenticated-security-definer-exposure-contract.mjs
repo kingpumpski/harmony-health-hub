@@ -23,10 +23,11 @@ const sources = files.map((name) => ({
 const allSource = sources.map(({ sql }) => sql).join("\n");
 
 function functionDeclarations(sql) {
-  const pattern = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)\s*\(([^)]*)\)[\s\S]*?SECURITY\s+DEFINER/gi;
+  const pattern = /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.([a-z0-9_]+)\\s*\\(([^)]*)\\)[\\s\\S]*?SECURITY\\s+DEFINER[\\s\\S]*?(?=CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.|$)/gi;
   return [...sql.matchAll(pattern)].map((match) => ({
     name: match[1],
     signature: match[2],
+    source: match[0],
   }));
 }
 
@@ -39,32 +40,8 @@ assert(
   "authenticated SECURITY DEFINER exposure contract: no SECURITY DEFINER functions detected",
 );
 
-function functionChunk(name) {
-  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\function functionChunk(name, signature) {
-  const escapedName = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
-  const normalizedSignature = signature.trim().replace(/\s+/g, "\\s+");
-  const declaration = new RegExp(
-    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
-      escapedName +
-      "\\s*\\(" +
-      normalizedSignature +
-      "\\)[\\s\\S]*?(?=CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.|$)",
-    "i",
-  ).exec(allSource);
-  return declaration?.[0] ?? "";
-}");
-  const declaration = new RegExp(
-    "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\." +
-      escapedName +
-      "\\s*\\(",
-    "i",
-  ).exec(allSource);
-  if (!declaration) return "";
-  const start = declaration.index;
-  const next = allSource.slice(start + declaration[0].length).search(
-    /CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\./i,
-  );
-  return allSource.slice(start, next < 0 ? allSource.length : start + declaration[0].length + next);
+function functionChunk(source) {
+  return source ?? "";
 }
 
 function hasExplicitRevoke(name, role) {
@@ -136,7 +113,7 @@ for (const declaration of declarations) {
   );
   if (hasAuthenticatedGrant(declaration.name)) {
     assert(
-      hasAuthorizationGuard(declaration.name),
+      hasAuthorizationGuard(declaration.source),
       declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard",
     );
   }
