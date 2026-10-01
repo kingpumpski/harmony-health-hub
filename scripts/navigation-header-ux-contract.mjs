@@ -15,6 +15,12 @@ check('facility sharing administration is routed', app.includes('/admin/facility
 check('platform user management includes System Superuser', app.includes("path=\"/admin/users\"") && app.includes('system_superuser'));
 check('facility attribution administration is routed', app.includes('/admin/facility-attribution') && app.includes('FacilityAttributionReview'));
 
+
+const layout = read('src/components/layout/MainLayout.tsx');
+check('authenticated layout provides a keyboard skip link and focusable main landmark', layout.includes('Skip to main content') && layout.includes('id="main-content" tabIndex={-1}'));
+check('loading status is announced accessibly and motion respects reduced-motion preferences', layout.includes('aria-live="polite"') && layout.includes('motion-reduce:animate-none'));
+check('mobile navigation closes when the route changes', layout.includes('setMobileNavOpen(false);') && layout.includes('[location.pathname]'));
+
 if (failures.length) {
   console.error('Navigation/header UX contract failures:');
   failures.forEach((failure) => console.error('- ' + failure));
