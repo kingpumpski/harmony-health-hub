@@ -36,8 +36,16 @@ const declarations = sources.flatMap(({ name, sql }) =>
 
 assert(
   declarations.length > 0,
-  "authenticated SECURITY DEFINER exposure contract: no new SECURITY DEFINER functions detected",
+  "authenticated SECURITY DEFINER exposure contract: no SECURITY DEFINER functions detected",
 );
+
+function functionChunk(name) {
+  const marker = "FUNCTION public." + name + "(";
+  const start = allSource.indexOf(marker);
+  if (start < 0) return "";
+  const next = allSource.indexOf("CREATE OR REPLACE FUNCTION", start + marker.length);
+  return allSource.slice(start, next < 0 ? allSource.length : next);
+}
 
 function hasExplicitRevoke(name, role) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
@@ -48,10 +56,7 @@ function hasExplicitRevoke(name, role) {
     "gi",
   );
   return [...allSource.matchAll(pattern)].some((match) =>
-    match[1]
-      .split(",")
-      .map((value) => value.trim().toLowerCase())
-      .includes(role.toLowerCase()),
+    match[1].split(",").map((value) => value.trim().toLowerCase()).includes(role.toLowerCase()),
   );
 }
 
@@ -65,29 +70,6 @@ function hasAuthenticatedGrant(name) {
   ).test(allSource);
 }
 
-function hasAuthorizationGuard(name) {
-  const escaped = name.replace(/[.*+?^$()|[\\]\\\\]/g, "\\\\function hasAuthorizationGuard() {
-  return /(?:auth\.uid\(\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\(|is_clinical_staff\(|has_role\()/i.test(allSource);
-}");
-  const pattern = new RegExp(
-    "CREATE\\\\s+(?:OR\\\\s+REPLACE\\\\s+)?FUNCTION\\\\s+public\\\\." +
-      escaped +
-      "\\\\s*\\\\([^)]*\\\\)[\\\\s\\\\S]*?(?=CREATE\\\\s+(?:OR\\\\s+REPLACE\\\\s+)?FUNCTION|$)",
-    "i",
-  );
-  const match = allSource.match(pattern);
-  return match
-    ? /(?:auth\\.uid\\(\\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\\(|is_clinical_staff\\(|has_role\\()/i.test(match[0])
-    : false;
-}
-
-function hasPublicGrant(name) {");
-  return new RegExp(
-    "(auth\\\\.uid\\\\(\\\\)|current_user_(?:has_)?role|current_user_facility_id|has_facility_access\\\\(|is_clinical_staff\\\\(|has_role\\\\()",
-    "i",
-  ).test(allSource);
-}
-
 function hasPublicGrant(name) {
   const escaped = name.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
   return new RegExp(
@@ -96,6 +78,19 @@ function hasPublicGrant(name) {
       "\\s*\\([^;]*\\)\\s+TO\\s+PUBLIC",
     "i",
   ).test(allSource);
+}
+
+function hasAuthorizationGuard(name) {
+  const chunk = functionChunk(name);
+  return [
+    "auth.uid()",
+    "current_user_role(",
+    "current_user_has_role(",
+    "current_user_facility_id(",
+    "has_facility_access(",
+    "is_clinical_staff(",
+    "has_role(",
+  ].some((needle) => chunk.includes(needle));
 }
 
 for (const declaration of declarations) {
@@ -122,7 +117,7 @@ for (const declaration of declarations) {
   if (hasAuthenticatedGrant(declaration.name)) {
     assert(
       hasAuthorizationGuard(declaration.name),
-      declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard (auth.uid/current-user role/facility/clinical-role helper)",
+      declaration.name + " grants authenticated EXECUTE but has no recognizable server-side authorization guard",
     );
   }
 }
@@ -130,5 +125,5 @@ for (const declaration of declarations) {
 console.log(
   "Authenticated SECURITY DEFINER exposure contract passed: " +
     declarations.length +
-    " newly introduced SECURITY DEFINER functions have explicit PUBLIC/anon denial and an explicit authenticated grant or denial.",
+    " SECURITY DEFINER functions have explicit execution boundaries and authenticated APIs have recognizable authorization guards.",
 );
