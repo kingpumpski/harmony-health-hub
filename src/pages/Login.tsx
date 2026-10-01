@@ -127,8 +127,9 @@ export default function Login() {
               {mode === 'signup' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-2">First name</label>
+                    <label htmlFor="signup-first-name" className="block text-sm font-medium mb-2">First name</label>
                     <input
+                      id="signup-first-name"
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
@@ -137,8 +138,9 @@ export default function Login() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Last name</label>
+                    <label htmlFor="signup-last-name" className="block text-sm font-medium mb-2">Last name</label>
                     <input
+                      id="signup-last-name"
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
@@ -150,8 +152,9 @@ export default function Login() {
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-2">Email Address</label>
+                <label htmlFor="auth-email" className="block text-sm font-medium mb-2">Email Address</label>
                 <input
+                  id="auth-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -162,9 +165,10 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Password</label>
+                <label htmlFor="auth-password" className="block text-sm font-medium mb-2">Password</label>
                 <div className="relative">
                   <input
+                    id="auth-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
