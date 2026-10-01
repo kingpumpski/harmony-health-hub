@@ -124,9 +124,10 @@ export default function Consultation() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Symptoms</label>
+                <label htmlFor="consultation-new-symptom" className="block text-sm font-medium mb-2">Symptoms</label>
                 <div className="flex items-center gap-3 mb-3">
                   <input
+                    id="consultation-new-symptom"
                     value={newSymptom}
                     onChange={(e) => setNewSymptom(e.target.value)}
                     placeholder="Add a new symptom"
@@ -144,9 +145,10 @@ export default function Consultation() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Provisional Diagnoses</label>
+                <label htmlFor="consultation-new-diagnosis" className="block text-sm font-medium mb-2">Provisional Diagnoses</label>
                 <div className="flex items-center gap-3 mb-3">
                     <MedicalTermInput
+                    id="consultation-new-diagnosis"
                     value={newDiagnosis}
                     onChange={setNewDiagnosis}
                     placeholder="Add a provisional diagnosis"
@@ -174,8 +176,9 @@ export default function Consultation() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Clerking Notes</label>
+                <label htmlFor="consultation-clerking-notes" className="block text-sm font-medium mb-2">Clerking Notes</label>
                 <textarea
+                  id="consultation-clerking-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={5}
