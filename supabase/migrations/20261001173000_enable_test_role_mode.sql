@@ -182,7 +182,7 @@ as $$
     or public.has_facility_access((select auth.uid()), _facility_id)
     or (
       (select auth.uid()) is not null
-      and public.current_user_has_facility_data_scope(_facility_id,'patient_read')
+      and private.current_user_has_facility_data_scope(_facility_id,'patient_read')
     );
 $$;
 
