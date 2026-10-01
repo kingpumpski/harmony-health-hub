@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.create_admission_workflow(_patient_id uuid,_ward text,_bed text DEFAULT NULL::text,_reason text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_admission uuid; v_bed_id uuid; v_ward_name text; v_bed_ward uuid; v_ward_facility uuid; v_transfer jsonb; v_ward_input text:=NULLIF(pg_catalog.btrim(_ward),''); v_bed_input text:=NULLIF(pg_catalog.btrim(_bed),'');
 BEGIN
@@ -34,7 +34,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(_patient_id uuid,_encounter_id uuid DEFAULT NULL::uuid,_modality text DEFAULT 'X-Ray',_study_name text DEFAULT 'General study',_body_site text DEFAULT NULL::text,_priority text DEFAULT 'routine',_clinical_indication text DEFAULT NULL::text,_amount numeric DEFAULT 0)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_active_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_encounter_facility uuid; eid uuid; iid uuid; sid uuid; st text; es text;
 BEGIN
