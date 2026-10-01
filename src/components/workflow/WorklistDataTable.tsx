@@ -59,7 +59,7 @@ export default function WorklistDataTable<T>({
 }: WorklistDataTableProps<T>) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortKey, setSortKey] = useState<string>(columns.find((column) => column.sortValue)?.key ?? '');
+  const [sortKey, setSortKey] = useState<string>(columns.find((column) => column.key === 'relative' && column.sortValue)?.key ?? columns.find((column) => column.sortValue)?.key ?? '');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
   const [view, setView] = useState<'list' | 'compact'>('list');
@@ -122,7 +122,7 @@ export default function WorklistDataTable<T>({
           {onRefresh && <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={onRefresh} disabled={refreshing} aria-label="Refresh worklist" title={formatUpdatedAt(lastUpdated)}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> <span className="hidden md:inline">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
           </button>}
-          <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Table display settings" aria-label="Table display settings" onClick={() => setView((current) => current === 'list' ? 'compact' : 'list')}>
+          <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Toggle row density" aria-label="Toggle row density" onClick={() => setView((current) => current === 'list' ? 'compact' : 'list')}>
             <Settings2 className="h-4 w-4" />
           </button>
         </div>
