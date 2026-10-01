@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(_patient_id uuid,
 RETURNS public.insurance_claims
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
