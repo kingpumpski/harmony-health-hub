@@ -473,7 +473,8 @@ export default function Encounters() {
     const nameQuery = appliedFilters.name.trim().toLowerCase();
     const encounterQuery = appliedFilters.encounterId.trim().toLowerCase();
     const practitionerQuery = appliedFilters.practitioner.trim().toLowerCase();
-    const isClinician = user?.roles?.includes("practitioner");
+    const isPrivileged = user?.roles?.some((role) => ["admin", "it_admin", "system_superuser"].includes(role)) ?? false;
+    const isClinician = Boolean(user?.roles?.includes("practitioner")) && !isPrivileged;
     return encounters.filter((item) => {
       // Keep the clinician's default worklist limited to encounters assigned to them.
       if (isClinician && item.practitioner_id !== user?.id) return false;
