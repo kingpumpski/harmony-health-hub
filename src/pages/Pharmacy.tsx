@@ -10,7 +10,7 @@ import OperationalWorklistShell from '@/components/workflow/OperationalWorklistS
 
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
-type Prescription = { id: string; patient_id: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
+type Prescription = { id: string; patient_id: string; created_at?: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
 type Plan = { id: string; medication_name: string; prepared_quantity: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
 type Alternative = Pick<InventoryItem, 'id' | 'drug_name' | 'brand_name' | 'generic_name' | 'strength' | 'form' | 'supplier' | 'stock_quantity' | 'unit_price'>;
 type PosSale = { id: string; medication: string; quantity: number; total_amount: number; status: string; service_order_id: string | null };
@@ -193,7 +193,7 @@ export default function Pharmacy() {
                   return (
                     <Fragment key={prescription.id}>
                       <tr>
-                    <td>{visiblePrescriptions.indexOf(prescription) + 1}</td><td className="font-mono text-xs">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{new Date((prescription as any).created_at ?? Date.now()).toLocaleString()}</td>
+                    <td>{visiblePrescriptions.indexOf(prescription) + 1}</td><td className="font-mono text-xs">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(prescription.created_at ?? Date.now()).toLocaleString()}</td>
                     {prescriptionColumns.medication && <td><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></td>}{prescriptionColumns.dosage && <td className="text-xs">{prescription.dosage ?? '—'} · {prescription.frequency ?? '—'}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={prescription.status} /></td>}
                     <td><div className="flex min-w-[220px] justify-end gap-2"><ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
                       </tr>
