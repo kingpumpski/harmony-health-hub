@@ -18,6 +18,11 @@ interface ResultRow {
   encounter_id: string | null;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
+  acknowledged_at: string | null;
+  clinical_indication: string | null;
+  prescriber_name: string | null;
+  diagnoses: Array<{ id: string; diagnosis: string; icd_code: string | null; is_principal: boolean }>;
   patients?: { first_name: string; last_name: string } | null;
 }
 interface ResultNotification { id: string; related_entity_id: string | null; is_read: boolean }
@@ -32,6 +37,7 @@ export default function ClinicalResults() {
   const [modalityFilter, setModalityFilter] = useState('all');
   const [appliedFilters, setAppliedFilters] = useState({ review: 'all', priority: 'all', modality: 'all' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -54,7 +60,7 @@ export default function ClinicalResults() {
     void load();
     if (!user?.id) return;
     const channel = supabase.channel(`clinical-results-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_orders' }, () => { setRealtimeUpdatedAt(new Date()); playWorkflowSound('info'); void load(); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load, user?.id]);
@@ -62,14 +68,14 @@ export default function ClinicalResults() {
   const unreadResultIds = useMemo(() => new Set(notifications.filter((n) => !n.is_read).map((n) => n.related_entity_id).filter(Boolean) as string[]), [notifications]);
 
   const acknowledge = async (resultId: string) => {
+    const { error } = await (supabase as any).rpc('acknowledge_imaging_result', { _result_id: resultId });
     const matching = notifications.filter((n) => n.related_entity_id === resultId && !n.is_read);
-    if (!matching.length) return;
-    const { error } = await (supabase as any).rpc('mark_notifications_read', { _notification_ids: matching.map((n) => n.id) });
     if (error) {
       playWorkflowSound('critical');
       toast({ title: 'Could not acknowledge result', description: error.message, variant: 'destructive' });
       return;
     }
+    if (matching.length) await (supabase as any).rpc('mark_notifications_read', { _notification_ids: matching.map((n) => n.id) });
     playWorkflowSound('success');
     toast({ title: 'Radiology result acknowledged' });
     void load();
@@ -78,15 +84,15 @@ export default function ClinicalResults() {
   const modalities = useMemo(() => Array.from(new Set(results.map((r) => r.modality).filter(Boolean))).sort(), [results]);
   const visibleResults = useMemo(() => results.filter((result) => {
     const reviewMatches = appliedFilters.review === 'all'
-      || (appliedFilters.review === 'pending' && unreadResultIds.has(result.id))
-      || (appliedFilters.review === 'acknowledged' && !unreadResultIds.has(result.id));
+      || (appliedFilters.review === 'pending' && !result.acknowledged_at)
+      || (appliedFilters.review === 'acknowledged' && !!result.acknowledged_at);
     const priorityMatches = appliedFilters.priority === 'all' || result.priority.toLowerCase() === appliedFilters.priority;
     const modalityMatches = appliedFilters.modality === 'all' || result.modality === appliedFilters.modality;
     return reviewMatches && priorityMatches && modalityMatches;
-  }), [results, appliedFilters, unreadResultIds]);
+  }), [results, appliedFilters]);
 
   if (!user) return null;
-  const pendingCount = results.filter((r) => unreadResultIds.has(r.id)).length;
+  const pendingCount = results.filter((r) => !r.acknowledged_at).length;
   const urgentCount = results.filter((r) => ['urgent', 'stat'].includes(r.priority.toLowerCase())).length;
 
   return (
@@ -113,7 +119,7 @@ export default function ClinicalResults() {
       ) : undefined}
       listTitle="Radiology results worklist"
       listDescription="Completed reports remain visible with clinical status, workflow progress and auditable actions."
-      listMeta={`${visibleResults.length} shown · ${results.length} total`}
+      listMeta={`${visibleResults.length} shown · ${results.length} total${realtimeUpdatedAt ? ` · Updated ${realtimeUpdatedAt.toLocaleTimeString()}` : ''}`}
       loading={false}
       empty={false}
       listContent={(
@@ -133,12 +139,7 @@ export default function ClinicalResults() {
         >
           <thead>
             <tr>
-              <th scope="col">Patient</th>
-              <th scope="col">Study</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Status</th>
-              <th scope="col">Workflow progress</th>
-              <th scope="col">Report date</th>
+              <th scope="col">S/N</th><th scope="col">Patient ID</th><th scope="col">Full Name</th><th scope="col">Service</th><th scope="col">Diagnoses</th><th scope="col">Prescriber</th><th scope="col">Priority</th><th scope="col">Report finalized</th><th scope="col">Audit timestamp</th>
               <th scope="col" className="text-right">Action</th>
             </tr>
           </thead>
@@ -149,21 +150,14 @@ export default function ClinicalResults() {
               return (
                 <Fragment key={result.id}>
                   <tr className={unread ? 'bg-warning/5' : undefined}>
-                    <td>
-                      <div className="min-w-[170px]">
-                        <p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">Patient record · {result.patient_id.slice(0, 8)}</p>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="min-w-[190px]">
-                        <p className="font-medium">{result.study_name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{result.modality}</p>
-                      </div>
-                    </td>
+                    <td>{visibleResults.indexOf(result) + 1}</td>
+                    <td className="font-mono text-xs">{result.patients?.patient_code ?? result.patient_id.slice(0, 8)}</td>
+                    <td><p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p></td>
+                    <td><p className="font-medium">{result.study_name}</p><p className="text-xs text-muted-foreground">{result.modality}</p></td>
+                    <td className="text-xs">{result.diagnoses.length ? result.diagnoses.map((d) => <div key={d.id}>{d.is_principal ? 'Principal: ' : ''}{d.diagnosis}{d.icd_code ? ` (${d.icd_code})` : ''}</div>) : <span className="text-muted-foreground">No current encounter diagnosis</span>}</td>
+                    <td className="text-sm">{result.prescriber_name ?? '—'}</td>
                     <td>{urgent ? <ClinicalStatusBadge status={result.priority} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
-                    <td><ClinicalStatusBadge status={unread ? 'pending' : 'acknowledged'} /></td>
-                    <td><ClinicalProgressBar value={100} label="Completed" /></td>
+                    <td className="whitespace-nowrap text-xs text-muted-foreground">{result.completed_at ? new Date(result.completed_at).toLocaleString() : new Date(result.updated_at).toLocaleString()}</td>
                     <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(result.updated_at).toLocaleString()}</td>
                     <td>
                       <div className="flex min-w-[190px] justify-end gap-2">
@@ -174,7 +168,7 @@ export default function ClinicalResults() {
                   </tr>
                   {expandedId === result.id && (
                     <tr key={`${result.id}-details`} className="bg-muted/20">
-                      <td colSpan={7}>
+                      <td colSpan={10}>
                         <div className="grid gap-3 md:grid-cols-2">
                           <section className="rounded-xl border border-border bg-background p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Radiology report</p>
