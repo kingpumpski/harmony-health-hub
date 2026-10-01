@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
-import { writeFileSync } from "node:fs";
+import { copyFileSync, writeFileSync } from "node:fs";
 import { componentTagger } from "lovable-tagger";
 
 function compressedAssets() {
@@ -24,6 +24,19 @@ function compressedAssets() {
   };
 }
 
+function githubPagesSpaFallback() {
+  return {
+    name: "github-pages-spa-fallback",
+    apply: "build" as const,
+    closeBundle() {
+      // GitHub Pages does not rewrite deep links to index.html. Serving the
+      // built app as 404.html lets BrowserRouter resolve /patients/:patientId
+      // and other client-side routes after a direct visit or browser refresh.
+      copyFileSync("dist/index.html", "dist/404.html");
+    },
+  };
+}
+
 // GitHub Pages serves this project from /harmony-health-hub/ rather than /
 // so production asset URLs must use the project-site base path.
 export default defineConfig(({ mode }) => ({
@@ -36,7 +49,7 @@ export default defineConfig(({ mode }) => ({
     manifest: true,
     chunkSizeWarningLimit: 350,
   },
-  plugins: [react(), mode === "production" && compressedAssets(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === "production" && compressedAssets(), mode === "production" && githubPagesSpaFallback(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
