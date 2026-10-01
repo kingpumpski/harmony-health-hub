@@ -193,23 +193,6 @@ export default function Settings(){
    <p className="text-muted-foreground">Central configuration and operational control plane for administrators and IT administrators.</p>
   </header>
 
-  {canControlTestMode && environmentMode && <section className={`rounded-3xl border p-5 space-y-4 ${environmentMode.enabled ? 'border-warning/50 bg-warning/5' : 'border-border bg-card'}`}>
-   <div className="flex items-start justify-between gap-4">
-    <div>
-     <div className="flex items-center gap-2"><ShieldAlert className={`w-5 h-5 ${environmentMode.enabled ? 'text-warning' : 'text-primary'}`}/><h2 className="font-semibold">Environment Mode</h2></div>
-     <p className="text-sm text-muted-foreground mt-1">Super-admin control for the explicit role-testing environment. The switch is available only on a deployment explicitly marked TEST; production deployments remain locked.</p>
-    </div>
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${environmentMode.enabled ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{environmentMode.enabled ? 'TEST MODE' : 'PRODUCTION MODE'}</span>
-   </div>
-   <div className="grid gap-3 md:grid-cols-[1fr_auto] items-end">
-    <label className="text-sm space-y-1"><span>Reason for this change</span><input className="input-medical w-full" placeholder="e.g. Role testing for appointment workflow" value={environmentModeReason} onChange={e=>setEnvironmentModeReason(e.target.value)} disabled={environmentModeSaving}/></label>
-    <button type="button" disabled={environmentModeSaving || environmentMode.environment !== 'test'} onClick={()=>void changeEnvironmentMode(!environmentMode.enabled)} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${environmentMode.enabled ? 'btn-secondary' : 'btn-primary'}`}>
-      {environmentModeSaving ? 'Switching…' : environmentMode.enabled ? 'Switch to Production Mode' : 'Switch to Test Mode'}
-    </button>
-   </div>
-   <p className="text-xs text-muted-foreground">Deployment guard: <b>{environmentMode.environment.toUpperCase()}</b>. Last changed: {environmentMode.updated_at ? new Date(environmentMode.updated_at).toLocaleString() : '—'}.</p>
-  </section>}
-
   <section className="card-medical rounded-3xl p-5 space-y-5">
    <div className="grid gap-4 md:grid-cols-2">{fields.map(key=><label key={key} className="text-sm space-y-1 block"><span className="capitalize">{key.replaceAll('_',' ')}</span><input className="input-medical w-full" value={config[key]??''} onChange={e=>setConfig({...config,[key]:e.target.value})}/></label>)}
     <label className="text-sm space-y-1 block"><span>Appointment buffer (minutes)</span><input type="number" min="0" className="input-medical w-full" value={config.appointment_buffer_minutes} onChange={e=>setConfig({...config,appointment_buffer_minutes:Math.max(0,Number(e.target.value))})}/></label>
@@ -300,12 +283,12 @@ export default function Settings(){
    <div className="flex gap-3">
     <div className="rounded-xl bg-warning/15 p-2"><FlaskConical className="w-5 h-5 text-warning"/></div>
     <div className="flex-1"><h2 className="font-semibold">Environment Mode</h2><p className="text-sm text-muted-foreground mt-1">System Super Admin control for the temporary test-user facility bypass. This switch is audited and is not a substitute for separate test and production deployments.</p></div>
-    <span className={environmentMode?.enabled ? "rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning" : "rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success"}>{environmentModeLoading ? 'Loading…' : environmentMode?.enabled ? 'TEST MODE' : 'LIVE MODE'}</span>
+    <span className={environmentMode?.enabled ? "rounded-full bg-warning/15 px-3 py-1 text-xs font-semibold text-warning" : "rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success"}>{environmentModeLoading ? 'Loading…' : environmentMode?.enabled ? 'TEST MODE' : 'PRODUCTION MODE'}</span>
    </div>
    <div className="rounded-2xl border bg-background/70 p-4 space-y-4">
     <div className="flex items-center justify-between gap-4">
      <div><p className="font-medium">{environmentMode?.enabled ? 'Test mode is ON' : 'Live mode is ON'}</p><p className="text-xs text-muted-foreground mt-1">{environmentMode?.enabled ? 'Designated test users can operate through TEST-0001 without normal facility membership.' : 'Normal facility-membership enforcement is active.'}</p></div>
-     <button type="button" role="switch" aria-checked={Boolean(environmentMode?.enabled)} disabled={environmentModeLoading||environmentModeSaving} onClick={()=>void changeEnvironmentMode(!Boolean(environmentMode?.enabled))} className={environmentMode?.enabled ? "relative h-7 w-12 rounded-full bg-warning transition disabled:opacity-50" : "relative h-7 w-12 rounded-full bg-muted transition disabled:opacity-50"}>
+     <button type="button" role="switch" aria-checked={Boolean(environmentMode?.enabled)} disabled={environmentModeLoading||environmentModeSaving} onClick={()=>void changeEnvironmentMode(!environmentMode?.enabled)} className={environmentMode?.enabled ? "relative h-7 w-12 rounded-full bg-warning transition disabled:opacity-50" : "relative h-7 w-12 rounded-full bg-muted transition disabled:opacity-50"}>
       <span className={environmentMode?.enabled ? "absolute left-6 top-1 h-5 w-5 rounded-full bg-white shadow transition" : "absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition"} />
      </button>
     </div>
