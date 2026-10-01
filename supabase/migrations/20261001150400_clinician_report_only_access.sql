@@ -99,7 +99,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $$
 DECLARE
   result jsonb;
@@ -373,7 +373,7 @@ CREATE OR REPLACE FUNCTION public.start_imaging_order(_imaging_order_id uuid)
 RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $
 DECLARE
   uid uuid := auth.uid();
@@ -445,7 +445,7 @@ CREATE OR REPLACE FUNCTION public.complete_imaging_order(
 RETURNS public.imaging_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $
 DECLARE
   uid uuid := auth.uid();
