@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SpecialistReferralCard from '@/components/SpecialistReferralCard';
 import FinancialSettlementCard from '@/components/FinancialSettlementCard';
+import OperationalHandoffPanel from '@/components/workflow/OperationalHandoffPanel';
 import FrontDeskDashboard from './dashboard/FrontDeskDashboard';
 import PractitionerDashboard from './dashboard/PractitionerDashboard';
 import NurseDashboard from './dashboard/NurseDashboard';
@@ -55,7 +56,7 @@ export default function Dashboard(){
                   <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             </span>
           </label>
         </div>
@@ -63,6 +64,7 @@ export default function Dashboard(){
 
       {showReferral && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard /></div>}
       {showSettlement && <FinancialSettlementCard />}
+      <OperationalHandoffPanel />
       {dashboard}
     </div>
   );
