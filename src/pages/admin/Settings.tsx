@@ -208,7 +208,7 @@ export default function Settings(){
     </button>
    </div>
    <p className="text-xs text-muted-foreground">Deployment guard: <b>{environmentMode.environment.toUpperCase()}</b>. Last changed: {environmentMode.updated_at ? new Date(environmentMode.updated_at).toLocaleString() : '—'}.</p>
-  </section>
+  </section>}
 
   <section className="card-medical rounded-3xl p-5 space-y-5">
    <div className="grid gap-4 md:grid-cols-2">{fields.map(key=><label key={key} className="text-sm space-y-1 block"><span className="capitalize">{key.replaceAll('_',' ')}</span><input className="input-medical w-full" value={config[key]??''} onChange={e=>setConfig({...config,[key]:e.target.value})}/></label>)}
