@@ -77,4 +77,19 @@ for (const token of [
   assert(acuteMigration.includes(token), `Missing acute clinical lineage guard: ${token}`);
 }
 
+const wrapperMigration = fs.readFileSync(
+  'supabase/migrations/20261001123000_harden_legacy_clinical_wrapper_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.get_pending_specialist_referrals()',
+  'CREATE OR REPLACE FUNCTION public.patient_coverage_details(_patient_id uuid)',
+  'Patient facility attribution is unresolved',
+  'Patient belongs to a different facility context',
+  'REVOKE ALL ON FUNCTION public.get_pending_specialist_referrals() FROM PUBLIC,anon',
+  'REVOKE ALL ON FUNCTION public.patient_coverage_details(uuid) FROM PUBLIC,anon',
+]) {
+  assert(wrapperMigration.includes(token), `Missing legacy wrapper boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
