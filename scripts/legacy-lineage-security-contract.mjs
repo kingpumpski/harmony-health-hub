@@ -243,4 +243,35 @@ for (const token of [
   assert(internalTriggerMigration.includes(token), `Missing internal trigger privilege boundary: ${token}`);
 }
 
+
+const pharmacyCareMigration = fs.readFileSync(
+  'supabase/migrations/20261001152608_harden_pharmacy_care_transition_document_boundaries.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing',
+  'public.assert_patient_facility_context(p.patient_id)',
+  'CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense',
+  'CREATE OR REPLACE FUNCTION public.create_care_transition_workflow',
+  'CREATE OR REPLACE FUNCTION public.upload_patient_document_metadata',
+  'Storage path must be scoped to the patient',
+  'REVOKE ALL ON FUNCTION public.upload_patient_document_metadata(uuid,text,text,text,text,bigint,text) FROM PUBLIC,anon',
+]) {
+  assert(pharmacyCareMigration.includes(token), `Missing pharmacy/care-transition/document boundary: ${token}`);
+}
+
+const pharmacyPosMigration = fs.readFileSync(
+  'supabase/migrations/20261001152610_harden_pharmacy_pos_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale',
+  'public.assert_patient_facility_context(_patient_id)',
+  'CREATE OR REPLACE FUNCTION public.confirm_pharmacy_pos_sale',
+  'POS sale facility attribution is unresolved or mismatched',
+  'REVOKE ALL ON FUNCTION public.create_pharmacy_pos_sale(uuid,uuid,integer) FROM PUBLIC,anon',
+]) {
+  assert(pharmacyPosMigration.includes(token), `Missing pharmacy POS facility boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
