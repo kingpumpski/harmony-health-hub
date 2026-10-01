@@ -535,7 +535,10 @@ export default function Encounters() {
             <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh encounters">
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" /> Refresh
             </button>
-            <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-primary inline-flex items-center gap-2">
+            <button type="button" onClick={() => { document.getElementById("encounter-patient")?.focus(); }} className="btn-primary inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add Patient Encounter
+            </button>
+            <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-secondary inline-flex items-center gap-2">
               <History className="h-4 w-4" aria-hidden="true" /> Encounter history
             </button>
           </>
