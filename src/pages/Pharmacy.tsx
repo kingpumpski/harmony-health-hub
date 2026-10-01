@@ -11,7 +11,7 @@ import OperationalWorklistShell from '@/components/workflow/OperationalWorklistS
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
 type Prescription = { id: string; patient_id: string; created_at?: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
-type Plan = { id: string; medication_name: string; prepared_quantity: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
+type Plan = { id: string; created_at?: string; medication_name: string; prepared_quantity: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
 type Alternative = Pick<InventoryItem, 'id' | 'drug_name' | 'brand_name' | 'generic_name' | 'strength' | 'form' | 'supplier' | 'stock_quantity' | 'unit_price'>;
 type PosSale = { id: string; medication: string; quantity: number; total_amount: number; status: string; service_order_id: string | null };
 const db = supabase as any;
@@ -213,11 +213,8 @@ export default function Pharmacy() {
                 })}
                 {plans.filter((plan) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'ready').map((plan) => (
                   <tr key={plan.id}>
-                    <td><div className="min-w-[160px]"><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p><p className="text-xs text-muted-foreground">{plan.patients?.patient_code ?? 'Prepared order'}</p></div></td>
-                    <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>
-                    <td className="text-xs text-muted-foreground">Payment/release gate satisfied before dispensing.</td>
-                    <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>
-                    <td><ClinicalProgressBar value={90} label="Ready" /></td>
+                    <td>{plans.indexOf(plan) + 1}</td><td className="font-mono text-xs">{plan.patients?.patient_code ?? 'Prepared order'}</td><td><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{plan.created_at ? new Date(plan.created_at).toLocaleString() : '—'}</td>
+                    {prescriptionColumns.medication && <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>}{prescriptionColumns.dosage && <td className="text-xs">Prepared quantity: {plan.prepared_quantity}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>}
                     <td><div className="flex justify-end"><ClinicalTableAction label="Dispense" icon="acknowledge" onClick={() => void dispense(plan)} disabled={!['released', 'in_progress'].includes(plan.service_order_status ?? '')} /></div></td>
                   </tr>
                 ))}
