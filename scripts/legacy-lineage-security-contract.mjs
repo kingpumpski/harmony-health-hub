@@ -227,4 +227,20 @@ for (const token of [
   assert(insuranceClaimMigration.includes(token), `Missing insurance-claim facility boundary: ${token}`);
 }
 
+
+const internalTriggerMigration = fs.readFileSync(
+  'supabase/migrations/20261001152100_lock_internal_trigger_function_execute_grants.sql',
+  'utf8',
+);
+for (const token of [
+  'REVOKE ALL ON FUNCTION public.calculate_triage_bmi() FROM PUBLIC, anon, authenticated, service_role',
+  'REVOKE ALL ON FUNCTION public.enforce_clinical_facility_lineage() FROM PUBLIC, anon, authenticated, service_role',
+  'REVOKE ALL ON FUNCTION public.prevent_notification_audit_mutation() FROM PUBLIC, anon, authenticated, service_role',
+  'REVOKE ALL ON FUNCTION public.validate_service_order_encounter() FROM PUBLIC, anon, authenticated, service_role',
+  "has_function_privilege('authenticated', v_function.signature, 'EXECUTE')",
+  'Internal trigger function remains directly executable',
+]) {
+  assert(internalTriggerMigration.includes(token), `Missing internal trigger privilege boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
