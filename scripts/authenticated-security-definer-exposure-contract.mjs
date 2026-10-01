@@ -86,6 +86,7 @@ function hasAuthorizationGuard(name, signature) {
     "current_user_facility_id(",
     "has_facility_access(",
     "is_clinical_staff(",
+    "current_user_is_clinical_staff(",
     "has_role(",
   ].some((needle) => chunk.includes(needle));
 }
