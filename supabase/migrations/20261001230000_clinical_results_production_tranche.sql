@@ -140,6 +140,5 @@ REVOKE ALL ON FUNCTION public.acknowledge_lab_result(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.acknowledge_lab_result(uuid) TO authenticated;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.imaging_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.lab_results;
 
 NOTIFY pgrst,'reload schema';
