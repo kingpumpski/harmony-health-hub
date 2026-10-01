@@ -157,4 +157,24 @@ for (const token of [
   assert(appointmentStartMigration.includes(token), `Missing appointment-start boundary: ${token}`);
 }
 
+
+const encounterImagingMigration = fs.readFileSync(
+  'supabase/migrations/20261001151500_harden_encounter_submit_imaging_facility_context.sql',
+  'utf8',
+);
+for (const token of [
+  'v_patient_facility := public.assert_patient_facility_context(v_enc.patient_id)',
+  'Encounter facility attribution is unresolved',
+  'Encounter or patient belongs to a different facility context',
+  'facility_id',
+  'Imaging order facility attribution is unresolved',
+  'Imaging order belongs to a different facility context',
+  'Imaging service order linkage or facility context is invalid',
+  'REVOKE ALL ON FUNCTION public.submit_encounter_workflow(uuid,text,timestamptz,text) FROM PUBLIC, anon',
+  'REVOKE ALL ON FUNCTION public.start_imaging_order(uuid) FROM PUBLIC, anon',
+  'REVOKE ALL ON FUNCTION public.complete_imaging_order(uuid,text,text) FROM PUBLIC, anon',
+]) {
+  assert(encounterImagingMigration.includes(token), `Missing encounter/imaging facility boundary: ${token}`);
+}
+
 console.log('Legacy lineage and clinical RPC security contract passed.');
