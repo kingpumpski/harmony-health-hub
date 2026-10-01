@@ -10,8 +10,9 @@ import { toast } from 'sonner';
 
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
 type DashboardRow = Record<string, any>;
+type InpatientFilter = 'all' | 'critical' | 'stable';
 
-const statusTone = (status: string) => status === 'critical' ? 'bg-critical/5 border-l-2 border-l-critical' : status === 'attention' ? 'bg-warning/5 border-l-2 border-l-warning' : '';
+const statusTone = (status: string) => status === 'critical' ? 'bg-critical/5 border-l-2 border-l-critical' : '';
 
 export default function NurseDashboard() {
   const { user } = useAuth();
@@ -24,7 +25,7 @@ export default function NurseDashboard() {
   const [workflowNotifications, setWorkflowNotifications] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'critical' | 'attention'>('all');
+  const [filter, setFilter] = useState<InpatientFilter>('all');
   const [noteTarget, setNoteTarget] = useState<DashboardRow | null>(null);
   const [noteForm, setNoteForm] = useState({ note_text: '', assessment: '', intervention: '', evaluation: '' });
   const [noteSaving, setNoteSaving] = useState(false);
@@ -199,7 +200,7 @@ export default function NurseDashboard() {
         <section className="lg:col-span-2 card-medical">
           <div className="p-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="font-semibold">Current Inpatients</h2><p className="text-xs text-muted-foreground">Live admissions replace the former static demonstration list.</p></div>
-            <div className="flex gap-2">{(['all', 'critical', 'attention'] as const).map(f => <button key={f} onClick={() => setFilter(f)} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium capitalize', filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{f}</button>)}</div>
+            <div className="flex gap-2">{(['all', 'critical', 'stable'] as const).map(f => <button key={f} onClick={() => setFilter(f)} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium', filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{f === 'all' ? 'All' : f === 'critical' ? 'Critical' : 'Stable'}</button>)}</div>
           </div>
           <div className="divide-y divide-border">
             {inpatientRows.filter(p => filter === 'all' || p.status === filter).map((patient, index) => {
