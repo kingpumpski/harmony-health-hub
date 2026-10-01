@@ -1,2 +1,0 @@
--- Facility-context hardening for legacy clinical wrappers.
--- Implemented in the live database migration sequence; kept on the hardening branch for review.
