@@ -49,6 +49,35 @@ assert('clinician imaging report RPC returns completed reports only',
   imagingReportRpc.includes("io.status = 'completed'") &&
   imagingReportRpc.includes('public.current_user_has_facility_access') &&
   imagingReportRpc.includes('io.requested_by = uid OR e.practitioner_id = uid'));
+const startImaging = migration.slice(
+  migration.indexOf('CREATE OR REPLACE FUNCTION public.start_imaging_order'),
+  migration.indexOf('REVOKE ALL ON FUNCTION public.start_imaging_order')
+);
+const completeImaging = migration.slice(
+  migration.indexOf('CREATE OR REPLACE FUNCTION public.complete_imaging_order'),
+  migration.indexOf('REVOKE ALL ON FUNCTION public.complete_imaging_order')
+);
+const approveLab = migration.slice(
+  migration.indexOf('CREATE OR REPLACE FUNCTION public.approve_lab_result'),
+  migration.indexOf('REVOKE ALL ON FUNCTION public.approve_lab_result')
+);
+assert('imaging acquisition start is restricted to imaging staff',
+  startImaging.includes("public.has_role(uid, 'radiology_technician')") &&
+  startImaging.includes("public.has_role(uid, 'radiologist')") &&
+  !startImaging.includes("public.has_role(uid, 'practitioner')") &&
+  !startImaging.includes("public.has_role(uid, 'nurse')"));
+assert('radiology report completion is restricted to radiologists and administrators',
+  completeImaging.includes("public.has_role(uid, 'radiologist')") &&
+  completeImaging.includes("public.has_role(uid, 'admin')") &&
+  !completeImaging.includes("public.has_role(uid, 'practitioner')") &&
+  !completeImaging.includes("public.has_role(uid, 'radiology_technician')") &&
+  completeImaging.includes("'/clinical-results'"));
+assert('laboratory result approval is restricted to lab technicians and administrators',
+  approveLab.includes("public.has_role(uid, 'lab_technician')") &&
+  approveLab.includes("public.has_role(uid, 'admin')") &&
+  !approveLab.includes("public.has_role(uid, 'practitioner')") &&
+  approveLab.includes("'/lab-results'"));
+
 assert('report RPCs are not executable by anonymous callers',
   migration.includes('REVOKE ALL ON FUNCTION public.get_clinician_lab_results(integer) FROM PUBLIC, anon') &&
   migration.includes('REVOKE ALL ON FUNCTION public.get_clinician_imaging_results(integer) FROM PUBLIC, anon'));
