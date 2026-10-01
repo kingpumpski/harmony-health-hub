@@ -10,9 +10,9 @@ const kpiCleanup = fs.readFileSync('supabase/migrations/20260929200000_role_dash
 assert.match(workflow,/Role-specific operational shortcuts/);
 assert.match(workflow,/className="mt-8 border-t border-border pt-6"/);
 assert.match(workflow,/if \(role === 'canteen'\)/);
-assert.match(workflow,/make\('Meal menu','[\\s\\S]*?/menu'/);
+assert.ok(workflow.includes("make('Meal menu','/menu'"));
 assert.match(workflow,/if \(role === 'patient'\)/);
-assert.match(workflow,/make\('Meal menu','\\/menu'/);
+assert.ok(workflow.includes("make('Meal menu','/menu'"));
 assert.match(workflow,/if \(role === 'radiology_technician'\)/);
 assert.doesNotMatch(workflow,/Awaiting Accounts/);
 assert.doesNotMatch(workflow,/Radiology results.*radiology_technician/);
@@ -31,10 +31,13 @@ for (const role of ['admin','practitioner','nurse','midwife','specialist_nurse',
 }
 assert.doesNotMatch(handoff,/from\(['"]notifications['"]\)/);
 assert.doesNotMatch(handoff,/select\(['"]\*['"]\)/);
+assert.doesNotMatch(handoff,/postgres_changes/);
 assert.match(kpi,/v_role = 'radiologist'/);
 assert.match(kpi,/v_role = 'radiology_technician'/);
 assert.match(kpi,/Ready for interpretation/);
-const radiologistBlock = kpi.match(/ELSIF v_role = 'radiologist'[\\s\\S]*?ELSIF v_role = 'radiology_technician'/)?.[0] ?? '';
+const radiologistStart = kpi.indexOf("ELSIF v_role = 'radiologist'");
+const radiologyTechnicianStart = kpi.indexOf("ELSIF v_role = 'radiology_technician'");
+const radiologistBlock = radiologistStart >= 0 && radiologyTechnicianStart > radiologistStart ? kpi.slice(radiologistStart, radiologyTechnicianStart) : '';
 assert.ok(radiologistBlock.length > 0);
 assert.doesNotMatch(radiologistBlock,/'key','progress'/);
 assert.match(kpi,/Ready for acquisition/);
