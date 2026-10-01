@@ -40,7 +40,7 @@ assert(
 );
 
 const mutationMigration = fs.readFileSync(
-  'supabase/migrations/20261001101500_harden_authenticated_clinical_mutation_boundaries.sql',
+  'supabase/migrations/20261001152932_harden_authenticated_clinical_mutation_boundaries.sql',
   'utf8',
 );
 for (const token of [
