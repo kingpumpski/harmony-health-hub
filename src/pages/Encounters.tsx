@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -261,7 +261,7 @@ export default function Encounters() {
   const [appliedFilters, setAppliedFilters] = useState({ name: "", encounterId: "", practitioner: "", status: "all", from: "", to: "" });
   const activePatientId = selected?.patient_id || patientId;
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       const [{ data: pts }, { data: encs }] = await Promise.all([
@@ -274,7 +274,7 @@ export default function Encounters() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadDetails = async (id: string) => {
     const [{ data: dx }, { data: rx }, { data: labs }, { data: imaging }, { data: services }] = await Promise.all([
@@ -299,7 +299,7 @@ export default function Encounters() {
         if (status === "CHANNEL_ERROR") toast({ title: "Live encounter updates unavailable", description: "Use Refresh to synchronize the list.", variant: "destructive" });
       });
     return () => { void supabase.removeChannel(channel); };
-  }, [user?.id]);
+  }, [loadAll, user?.id]);
   useEffect(() => {
     const id = searchParams.get("encounter");
     const p = searchParams.get("patient");
@@ -584,7 +584,7 @@ export default function Encounters() {
         listDescription="Select a row to open the clinical document. Finalized encounters remain versioned and auditable."
         listMeta={`${visibleEncounters.length} matching record${visibleEncounters.length === 1 ? "" : "s"}`}
         loading={loading}
-        empty={visibleEncounters.length === 0}
+        empty={encounters.length === 0}
         emptyTitle="No recent encounters"
         emptyDescription="Create a new encounter draft above or adjust the worklist filters."
         bareList
