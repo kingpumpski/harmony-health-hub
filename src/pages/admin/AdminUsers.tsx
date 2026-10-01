@@ -9,14 +9,14 @@ const availableRoles = [
   { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
   { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'radiology_technician', label: 'Radiology Technician' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
-  { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' },
+  { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' }, { value: 'system_superuser', label: 'System Superuser' },
 ] as const;
 type RoleValue = string;
 interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; phone: string | null; department: string | null; specialization: string | null; role: string }
 type EditableUser = Omit<DirectoryRow, 'role'>;
 
 export default function AdminUsers() {
-  const { user } = useAuth(); const canManage = user?.role === 'admin';
+  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
   const [users, setUsers] = useState<DirectoryRow[]>([]); const [searchEmail, setSearchEmail] = useState('');
   const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
@@ -114,7 +114,8 @@ export default function AdminUsers() {
   if (!user) return null;
   return <div className="space-y-6 animate-fade-in">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">Admin User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
-    {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an admin to manage users.</div>}
+    {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an administrator or System Superuser to manage users.</div>}
+    {canManageSuperuser && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm"><b>Platform governance:</b> You can provision System Superuser accounts for platform leadership. Facility staff roles remain governed by their facility administration.</div>}
     {canManage && <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
       <div className="min-w-0">
         <RecordList
@@ -146,13 +147,13 @@ export default function AdminUsers() {
             <input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="input-medical w-full" placeholder="Email address" required />
             <input value={createPhone} onChange={e => setCreatePhone(e.target.value)} className="input-medical w-full" placeholder="Phone (optional)" />
             <div className="grid grid-cols-2 gap-2"><input value={createDepartment} onChange={e => setCreateDepartment(e.target.value)} className="input-medical" placeholder="Department" /><input value={createSpecialization} onChange={e => setCreateSpecialization(e.target.value)} className="input-medical" placeholder="Specialization" /></div>
-            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => r.value !== 'system_superuser' || canManageSuperuser).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
             <select value={onboarding} onChange={e => setOnboarding(e.target.value as 'invite' | 'password')} className="input-medical w-full"><option value="invite">Email invitation</option><option value="password">Create with password</option></select>
             {onboarding === 'password' && <input type="password" minLength={8} value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="input-medical w-full" placeholder="Initial password (8+ characters)" required />}
             <button type="submit" disabled={creating} className="btn-primary w-full"><UserPlus className="w-4 h-4" />{creating ? 'Creating…' : onboarding === 'invite' ? 'Create & Send Invitation' : 'Create User'}</button>
           </form>
         </div>
-        <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Promote Existing Account</h2><p className="text-sm text-muted-foreground">Self-registered users can still be assigned a facility role here.</p></div><Settings className="w-5 h-5 text-warning" /></div><form onSubmit={promoteByEmail} className="space-y-4"><input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="input-medical w-full" placeholder="user@example.com" required /><select value={newRole} onChange={e => setNewRole(e.target.value)} className="input-medical w-full">{availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select><button type="submit" className="btn-secondary w-full">Assign Role</button></form></div>
+        <div className="card-medical p-6"><div className="flex items-center justify-between mb-4"><div><h2 className="text-lg font-semibold">Promote Existing Account</h2><p className="text-sm text-muted-foreground">Self-registered users can still be assigned a facility role here.</p></div><Settings className="w-5 h-5 text-warning" /></div><form onSubmit={promoteByEmail} className="space-y-4"><input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className="input-medical w-full" placeholder="user@example.com" required /><select value={newRole} onChange={e => setNewRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => r.value !== 'system_superuser' || canManageSuperuser).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select><button type="submit" className="btn-secondary w-full">Assign Role</button></form></div>
       </div>
     </div>}
     <div className="rounded-3xl border border-border bg-background/60 p-5"><div className="flex items-center gap-3 text-sm text-muted-foreground"><CheckCircle2 className="w-4 h-4" /><span>Onboarding is server-authorized: only administrators can invoke direct user creation, and role assignment is recorded through the existing audit boundary.</span></div></div>

@@ -9,7 +9,7 @@ export type Permission =
   | 'dental' | 'procedures' | 'anesthesia' | 'ophthalmology' | 'ai_clinical' | 'users'
   | 'system_library' | 'clinical_references' | 'insurance_companies' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders'
   | 'notifications' | 'outside_lab' | 'financial_reports' | 'inventory' | 'stock_alerts'
-  | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items';
+  | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items' | 'facility_onboarding';
 
 export const permissionByHref: Record<string, Permission> = {
   '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
@@ -23,7 +23,7 @@ export const permissionByHref: Record<string, Permission> = {
   '/admin/users':'users','/admin/system':'system_library','/admin/clinical-references':'clinical_references','/admin/insurance-companies':'insurance_companies','/admin/offline-sync':'offline_sync','/admin/data-import':'data_import',
   '/inpatients':'inpatients','/menu':'meal_orders','/notifications':'notifications','/outside-lab':'outside_lab',
   '/financial-reports':'financial_reports','/inventory':'inventory','/stock-alerts':'stock_alerts','/patient-portal':'patient_portal',
-  '/orders':'orders','/dietary-plans':'dietary_plans',
+  '/orders':'orders','/dietary-plans':'dietary_plans','/admin/facility-onboarding':'facility_onboarding',
 };
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
@@ -40,6 +40,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing','meal_orders'],
+  system_superuser: ['dashboard','users','system_library','clinical_references','facility_onboarding'],
   it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
 
