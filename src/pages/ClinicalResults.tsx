@@ -37,7 +37,7 @@ export default function ClinicalResults() {
     if (!user?.id) return;
     setLoading(true);
     const [{ data: imaging, error: imagingError }, { data: notes }] = await Promise.all([
-      supabase.from('imaging_orders').select('id,patient_id,study_name,modality,priority,report,impression,encounter_id,created_at,updated_at,patients(first_name,last_name)').eq('requested_by', user.id).eq('status', 'completed').order('updated_at', { ascending: false }).limit(100),
+      (supabase as any).rpc('get_clinician_imaging_results', { _limit: 200 }),
       (supabase as any).rpc('get_workflow_notifications', { _limit: 200 }),
     ]);
     if (imagingError) {
@@ -94,7 +94,7 @@ export default function ClinicalResults() {
       icon={ImageIcon}
       eyebrow="Diagnostics · Results review"
       title="Radiology Results Review"
-      description="Review completed diagnostic imaging reports assigned to your clinical workflow and acknowledge each result from one auditable worklist."
+      description="Review completed diagnostic imaging reports available in your authorised patient and facility context. Imaging acquisition and report completion remain restricted to authorised radiology staff."
       actions={(
         <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh radiology results">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
