@@ -265,7 +265,6 @@ SET search_path = ''
 AS $$
 DECLARE
   uid uuid := auth.uid();
-  v_facility uuid;
   result jsonb;
 BEGIN
   IF uid IS NULL THEN
@@ -282,7 +281,6 @@ BEGIN
     RAISE EXCEPTION 'Clinical report access is not permitted';
   END IF;
 
-  v_facility := public.current_user_facility_id();
   _limit := LEAST(GREATEST(COALESCE(_limit, 100), 1), 300);
 
   SELECT COALESCE(jsonb_agg(row_data ORDER BY updated_at DESC), '[]'::jsonb)
