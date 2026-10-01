@@ -66,6 +66,11 @@ console.log(`Sidebar role contract passed for ${roles.length} roles`);
 const capabilityLinks = [
   ["nurse", "/lab-results", "laboratory_results"],
   ["specialist_nurse", "/lab-results", "laboratory_results"],
+  ["practitioner", "/clinical-results", "radiology_results"],
+  ["nurse", "/clinical-results", "radiology_results"],
+  ["specialist_nurse", "/clinical-results", "radiology_results"],
+  ["midwife", "/lab-results", "laboratory_results"],
+  ["midwife", "/clinical-results", "radiology_results"],
   ["midwife", "/maternity", "maternity"],
   ["midwife", "/fertility", "fertility"],
   ["front_desk", "/registration", "registration"],
@@ -77,7 +82,7 @@ const capabilityLinks = [
   ["accountant", "/insurance-claims", "claims"],
   ["accountant", "/financial-reports", "financial_reports"],
   ["it_admin", "/notifications", "notifications"],
-  ["practitioner", "/lab-results", "laboratory"],
+  ["practitioner", "/lab-results", "laboratory_results"],
   ["practitioner", "/clinical-results", "radiology_results"],
   ["patient", "/telemedicine", "telemedicine"],
   ["patient", "/billing", "billing"],
@@ -113,6 +118,8 @@ const guardedRoutes = [
   ['/orders', 'canteenRoles'],
   ['/dietary-plans', 'canteenRoles'],
   ['/notifications', 'notificationRoles'],
+  ['/lab-results', 'resultReviewRoles'],
+  ['/clinical-results', 'resultReviewRoles'],
   ['/notification-preferences', 'notificationRoles'],
 ];
 
@@ -131,6 +138,7 @@ const roleArrays = {
   canteenRoles: ['admin','canteen'],
   financialReportRoles: ['admin','accountant'],
   notificationRoles: ['admin','radiologist','radiology_technician','it_admin'],
+  resultReviewRoles: ['admin','practitioner','nurse','specialist_nurse','midwife'],
 };
 
 for (const [name, roles] of Object.entries(roleArrays)) {
