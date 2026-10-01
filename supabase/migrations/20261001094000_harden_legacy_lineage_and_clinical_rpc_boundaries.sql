@@ -818,3 +818,116 @@ GRANT EXECUTE ON FUNCTION public.amend_encounter_workflow(uuid,text,text,text,te
 -- Keep the intentional authenticated SECURITY DEFINER API surface explicit:
 -- these functions remain authenticated-only and server-authorized; they are not
 -- anonymous endpoints and do not grant cross-facility access to clinical roles.
+
+
+CREATE OR REPLACE FUNCTION public.get_appointment_worklist(_limit integer DEFAULT 300)
+RETURNS TABLE(
+  id uuid, patient_id uuid, patient_code text, patient_first_name text, patient_last_name text,
+  scheduled_at timestamp with time zone, consultation_type text, practitioner_id uuid,
+  practitioner_name text, department text, reason text, status text,
+  attending_officer_id uuid, treatment_status text, treatment_notes text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = 'pg_catalog, public'
+AS $function$
+DECLARE
+  v_limit integer := greatest(1,least(coalesce(_limit,300),500));
+  v_user uuid := auth.uid();
+  v_facility uuid := public.current_user_facility_id();
+  v_cross_facility boolean := public.has_role(v_user,'admin'::public.app_role)
+    OR public.has_role(v_user,'it_admin'::public.app_role)
+    OR public.current_user_has_role('system_superuser');
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(v_user,'admin'::public.app_role)
+    OR public.has_role(v_user,'it_admin'::public.app_role)
+    OR public.has_role(v_user,'system_superuser'::public.app_role)
+    OR public.has_role(v_user,'practitioner'::public.app_role)
+    OR public.has_role(v_user,'nurse'::public.app_role)
+    OR public.has_role(v_user,'midwife'::public.app_role)
+    OR public.has_role(v_user,'specialist_nurse'::public.app_role)
+    OR public.has_role(v_user,'front_desk'::public.app_role)
+  ) THEN
+    RAISE EXCEPTION 'Appointment worklist access denied';
+  END IF;
+
+  IF NOT v_cross_facility AND v_facility IS NULL THEN
+    RAISE EXCEPTION 'An active facility is required to access the appointment worklist';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    a.id,a.patient_id,p.patient_code,p.first_name,p.last_name,a.scheduled_at,
+    COALESCE(a.consultation_type,'General Consultation'),a.practitioner_id,
+    NULLIF(pg_catalog.trim(pg_catalog.concat_ws(' ',pr.first_name,pr.last_name)),''),
+    a.department,a.reason,a.status,a.attending_officer_id,a.treatment_status,a.treatment_notes
+  FROM public.appointments a
+  JOIN public.patients p ON p.id=a.patient_id
+  LEFT JOIN public.profiles pr ON pr.id=a.practitioner_id
+  WHERE COALESCE(p.status,'active') <> 'inactive'
+    AND (
+      v_cross_facility
+      OR (
+        a.facility_id = v_facility
+        AND p.facility_id = v_facility
+      )
+    )
+  ORDER BY a.scheduled_at ASC
+  LIMIT v_limit;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.get_appointment_clinicians()
+RETURNS TABLE(
+  id uuid, first_name text, last_name text, department text,
+  specialization text, clinician_role text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = 'pg_catalog, public'
+AS $function$
+DECLARE
+  v_user uuid := auth.uid();
+  v_facility uuid := public.current_user_facility_id();
+  v_cross_facility boolean := public.has_role(v_user,'admin'::public.app_role)
+    OR public.has_role(v_user,'it_admin'::public.app_role)
+    OR public.current_user_has_role('system_superuser');
+BEGIN
+  IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(v_user,'admin'::public.app_role)
+    OR public.has_role(v_user,'it_admin'::public.app_role)
+    OR public.has_role(v_user,'system_superuser'::public.app_role)
+    OR public.has_role(v_user,'practitioner'::public.app_role)
+    OR public.has_role(v_user,'nurse'::public.app_role)
+    OR public.has_role(v_user,'midwife'::public.app_role)
+    OR public.has_role(v_user,'specialist_nurse'::public.app_role)
+    OR public.has_role(v_user,'front_desk'::public.app_role)
+  ) THEN
+    RAISE EXCEPTION 'Appointment clinician directory access denied';
+  END IF;
+
+  IF NOT v_cross_facility AND v_facility IS NULL THEN
+    RAISE EXCEPTION 'An active facility is required to access the clinician directory';
+  END IF;
+
+  RETURN QUERY
+  SELECT DISTINCT
+    p.id,p.first_name,p.last_name,p.department,p.specialization,ur.role::text
+  FROM public.profiles p
+  JOIN public.user_roles ur ON ur.user_id=p.id
+  JOIN public.facility_memberships fm ON fm.user_id=p.id AND fm.is_active=true
+  WHERE ur.role IN ('practitioner'::public.app_role,'radiologist'::public.app_role)
+    AND (v_cross_facility OR fm.facility_id=v_facility)
+  ORDER BY p.last_name,p.first_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.get_appointment_worklist(integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_appointment_worklist(integer) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_appointment_clinicians() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_appointment_clinicians() TO authenticated;
