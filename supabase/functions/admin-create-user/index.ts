@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
     );
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const caller = await requireAdmin(service, token);
+    const { data: callerRoleRow } = await service.from('user_roles').select('role').eq('user_id', caller.id).in('role', ['admin','system_superuser']).limit(1).maybeSingle();
+    const callerRole = String(callerRoleRow?.role ?? '');
     const body = await req.json();
 
     // This function is called with the service-role client, so auth.uid() is NULL.
@@ -110,7 +112,7 @@ Deno.serve(async (req) => {
       if (!userId || !ADMIN_USER_ROLE_SET.has(nextRole)) {
         return json({ error: 'A valid userId and supported role are required' }, 400);
       }
-      if (userId === caller.id && nextRole !== 'admin') {
+      if (userId === caller.id && nextRole !== callerRole) {
         return json({ error: 'Administrators cannot remove their own admin role' }, 400);
       }
 
@@ -148,6 +150,8 @@ Deno.serve(async (req) => {
 
       return json({ ok: true, user: { id: userId, role: nextRole } });
     }
+
+    if (String(body?.role ?? '').trim().toLowerCase() === 'system_superuser' && callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can create or assign another System Superuser.' }, 403);
 
     const onboarding = body?.onboarding === 'password' ? 'password' : 'invite';
     const user = await provisionAdminUser(service, {
