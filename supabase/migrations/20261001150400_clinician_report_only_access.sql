@@ -207,7 +207,7 @@ BEGIN
         'clinical_notes', o.clinical_notes,
         'result_data', r.result_data,
         'parameter_results', r.parameter_results,
-        'result_text', COALESCE(NULLIF(r.result, ''), r.result_data ->> 'value'),
+        'result_text', r.result_data ->> 'value',
         'interpretation', r.interpretation,
         'is_abnormal', COALESCE(r.is_abnormal, false),
         'status', r.status,
