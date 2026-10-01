@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.ensure_encounter_facility_attribution(_encount
 RETURNS public.encounters
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -59,7 +59,7 @@ CREATE OR REPLACE FUNCTION public.create_encounter_workflow(_patient_id uuid, _s
 RETURNS public.encounters
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   result public.encounters;
@@ -265,7 +265,7 @@ CREATE OR REPLACE FUNCTION public.acknowledge_nursing_handover(_handover_id uuid
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -316,7 +316,7 @@ CREATE OR REPLACE FUNCTION public.acknowledge_vital_alert(_alert_id uuid)
 RETURNS public.vital_alerts
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -365,7 +365,7 @@ CREATE OR REPLACE FUNCTION public.activate_patient_visit_coverage(
 RETURNS public.patient_visit_authorizations
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   coverage RECORD;
@@ -450,7 +450,7 @@ CREATE OR REPLACE FUNCTION public.admit_encounter_workflow(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   v_enc public.encounters%rowtype;
@@ -637,7 +637,7 @@ CREATE OR REPLACE FUNCTION public.amend_encounter_workflow(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog', 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
@@ -830,7 +830,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   v_limit integer := greatest(1,least(coalesce(_limit,300),500));
@@ -888,7 +888,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   v_user uuid := auth.uid();
