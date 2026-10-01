@@ -16,7 +16,7 @@ export const permissionByHref: Record<string, Permission> = {
   '/vitals':'triage','/encounters':'encounters','/clinical-operations':'clinical_operations','/inpatient':'inpatient','/ward-bed-board':'inpatient',
   '/nursing-handover':'handover','/emergency-board':'emergency','/theatre-board':'theatre','/transfusion-board':'transfusion',
   '/insurance-claims':'claims','/reports':'reports','/reports/submissions':'report_submissions','/accounts-approvals':'accounts_approvals',
-  '/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/lab-results':'laboratory',
+  '/billing/tariffs':'tariff_adjustments','/department-queue':'department_queue','/laboratory':'laboratory','/lab-results':'laboratory_results',
   '/radiology':'radiology','/clinical-results':'radiology_results','/pharmacy':'pharmacy','/medications':'medication_administration',
   '/billing':'billing','/maternity':'maternity','/telemedicine':'telemedicine','/fertility':'fertility','/dental':'dental',
   '/procedures':'procedures','/anesthesia':'anesthesia','/ophthalmology':'ophthalmology','/ai-clinical':'ai_clinical',
@@ -28,10 +28,10 @@ export const permissionByHref: Record<string, Permission> = {
 
 export const rolePermissions: Record<UserRole, Permission[]> = {
   admin: [...Object.values(permissionByHref), 'encounters_amend','create_services','create_items'],
-  practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology','radiology_results','laboratory','laboratory_results','reports','dental','procedures','anesthesia','pharmacy','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
-  nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders','laboratory_results'],
-  specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical','laboratory_results'],
-  midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','emergency','theatre','transfusion','triage','medication_administration'],
+  practitioner: ['dashboard','appointments','patients','encounters','clinical_operations','inpatient','emergency','theatre','transfusion','department_queue','radiology_results','laboratory_results','reports','dental','procedures','anesthesia','medication_administration','telemedicine','fertility','ophthalmology','ai_clinical'],
+  nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','meal_orders','laboratory_results','radiology_results'],
+  specialist_nurse: ['dashboard','patients','appointments','triage','encounters','clinical_operations','inpatient','ward','handover','emergency','theatre','transfusion','inpatients','medication_administration','ai_clinical','laboratory_results','radiology_results'],
+  midwife: ['dashboard','maternity','fertility','inpatient','handover','clinical_operations','emergency','theatre','transfusion','triage','medication_administration','laboratory_results','radiology_results'],
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical','create_services'],
   radiology_technician: ['dashboard','radiology','department_queue','patients','notifications','create_services'],
   front_desk: ['dashboard','patients','registration','appointments','triage','finance','billing'],
