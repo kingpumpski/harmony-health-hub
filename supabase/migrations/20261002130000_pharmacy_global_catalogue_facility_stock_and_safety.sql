@@ -390,15 +390,17 @@ $function$;
 REVOKE ALL ON FUNCTION public.find_pharmacy_alternatives(text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.find_pharmacy_alternatives(text,text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing(
-  _prescription_id uuid, _inventory_id uuid, _quantity integer, _notes text DEFAULT NULL
+DROP FUNCTION IF EXISTS public.prepare_pharmacy_dispensing(uuid,uuid,integer,text);
+CREATE FUNCTION public.prepare_pharmacy_dispensing(
+  _prescription_id uuid, _inventory_id uuid, _quantity integer, _notes text DEFAULT NULL,
+  _alternative_reason text DEFAULT NULL
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE
   p public.prescriptions; i public.pharmacy_inventory; existing public.pharmacy_dispensing_plans;
   plan_id uuid; order_id uuid; charge numeric; claim numeric; encounter_status text;
-  uid uuid := auth.uid(); pf uuid; remaining integer; is_nhis boolean;
+  uid uuid := auth.uid(); pf uuid; remaining integer; is_nhis boolean; is_alternative boolean;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid, 'admin') OR public.has_role(uid, 'it_admin') OR public.has_role(uid, 'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
   IF _quantity IS NULL OR _quantity <= 0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
@@ -412,6 +414,17 @@ BEGIN
   IF _quantity > remaining THEN RAISE EXCEPTION 'Dispensing quantity exceeds the remaining prescribed quantity'; END IF;
   IF i.stock_quantity < _quantity THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
   IF i.unit_price <= 0 THEN RAISE EXCEPTION 'Configure a positive retail price before dispensing'; END IF;
+  is_alternative := lower(btrim(i.drug_name)) <> lower(btrim(p.medication))
+    AND lower(btrim(coalesce(i.generic_name, ''))) <> lower(btrim(p.medication))
+    AND lower(btrim(coalesce(i.brand_name, ''))) <> lower(btrim(p.medication));
+  IF is_alternative THEN
+    IF NOT (public.has_role(uid, 'admin') OR public.has_role(uid, 'pharmacist')) THEN
+      RAISE EXCEPTION 'Only a pharmacist may authorize a medication substitution';
+    END IF;
+    IF pg_catalog.length(pg_catalog.btrim(coalesce(_alternative_reason, ''))) < 10 THEN
+      RAISE EXCEPTION 'Document the prescriber authorization and clinical reason before substituting medication';
+    END IF;
+  END IF;
   IF p.encounter_id IS NOT NULL THEN
     SELECT status INTO encounter_status FROM public.encounters WHERE id = p.encounter_id;
     IF NOT FOUND OR encounter_status IN ('completed', 'cancelled') THEN RAISE EXCEPTION 'Prescription is linked to a closed or missing encounter'; END IF;
@@ -430,19 +443,24 @@ BEGIN
     prescribed_dose, prescribed_frequency, prescribed_duration, computed_quantity, prepared_quantity,
     prepared_by, notes, facility_id, patient_charge, nhis_claim_amount)
   VALUES (p.id, p.patient_id, i.id, i.drug_name, p.dosage, p.frequency, p.duration, p.computed_quantity,
-    _quantity, uid, _notes, pf, charge, claim) RETURNING id INTO plan_id;
+    _quantity, uid, CASE WHEN is_alternative THEN pg_catalog.concat_ws(E'\\n', NULLIF(_notes, ''), 'Substitution: ' || pg_catalog.btrim(_alternative_reason)) ELSE _notes END, pf, charge, claim) RETURNING id INTO plan_id;
   INSERT INTO public.service_orders(patient_id, department, service_name, amount, related_entity_id, status,
     requested_by, order_type, service_code, notes, facility_id)
   VALUES (p.patient_id, 'pharmacy', 'Dispense: ' || i.drug_name, charge, p.id,
     'pending_payment_approval', uid, 'drug', i.id, 'Pharmacy preparation ' || plan_id::text, pf)
   RETURNING id INTO order_id;
   UPDATE public.pharmacy_dispensing_plans SET service_order_id = order_id, updated_at = pg_catalog.now() WHERE id = plan_id;
+  IF is_alternative THEN
+    PERFORM public.record_system_audit('pharmacy_medication_substitution', 'pharmacy', 'pharmacy_dispensing_plans', plan_id, 'warning',
+      pg_catalog.jsonb_build_object('prescription_id', p.id, 'prescribed_medication', p.medication,
+        'selected_medication', i.drug_name, 'facility_id', pf, 'authorization_reason', _alternative_reason, 'actor_id', uid));
+  END IF;
   RETURN pg_catalog.jsonb_build_object('plan_id', plan_id, 'service_order_id', order_id, 'amount', charge,
     'nhis_claim_amount', claim, 'status', 'unpaid');
 END;
 $function$;
-REVOKE ALL ON FUNCTION public.prepare_pharmacy_dispensing(uuid,uuid,integer,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.prepare_pharmacy_dispensing(uuid,uuid,integer,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.prepare_pharmacy_dispensing(uuid,uuid,integer,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.prepare_pharmacy_dispensing(uuid,uuid,integer,text,text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
