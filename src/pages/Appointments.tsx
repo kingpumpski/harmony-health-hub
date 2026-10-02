@@ -338,7 +338,7 @@ export default function Appointments() {
                   <option value="">{patients.length ? 'Select patient…' : 'No schedulable patients found'}</option>
                   {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}
                 </select>
-                {patients.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-300" role="status">No active patients with verified facility attribution are available for this booking. Ask an administrator or IT administrator to reconcile the patient’s facility assignment before scheduling; this system will not guess or assign a facility automatically.</p>}
+                {patients.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-300" role="status">No active patients are available in this facility. If TEST MODE is active, register a synthetic test patient while TEST-0001 is the active facility; do not use a patient record assigned to another facility. Outside test mode, ask an administrator to reconcile any unresolved facility attribution.</p>}
               </label>
               <label className="block space-y-1.5 text-sm">
                 <span>Consultation type</span>

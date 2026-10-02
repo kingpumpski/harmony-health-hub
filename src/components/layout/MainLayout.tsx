@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import CriticalAlertOverlay from '@/components/CriticalAlertOverlay';
 import EncounterWorkflowOverlay from '@/components/EncounterWorkflowOverlay';
+import RouteLoadingScreen from '@/components/system/RouteLoadingScreen';
 
 const itAdminAllowedPaths = new Set(['/dashboard', '/profile', '/it-support', '/admin/logs', '/admin/offline-sync', '/notifications']);
 
@@ -20,14 +21,7 @@ export default function MainLayout() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  if (loading) return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div role="status" aria-live="polite" className="flex items-center gap-3 text-sm text-muted-foreground">
-        <div aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
-        Loading Harmony Health Hub…
-      </div>
-    </div>
-  );
+  if (loading) return <RouteLoadingScreen />;
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
   if (user.role === 'it_admin' && !itAdminAllowedPaths.has(location.pathname)) return <Navigate to="/it-support" replace />;
 

@@ -8,6 +8,10 @@ export interface WorklistColumn<T> {
   render: (row: T) => ReactNode;
   sortValue?: (row: T) => string | number | null | undefined;
   className?: string;
+  /** Columns marked required cannot be hidden by user preferences. */
+  required?: boolean;
+  /** Optional columns can be hidden by default while remaining available in Column Settings. */
+  defaultVisible?: boolean;
 }
 
 export interface WorklistFilter {
@@ -73,32 +77,37 @@ export default function WorklistDataTable<T>({
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
   const preferenceKey = useMemo(() => `hms.worklist.columns:${user?.id ?? 'anonymous'}:${user?.role ?? 'unknown'}:${columnPreferenceKey ?? title}`, [columnPreferenceKey, title, user?.id, user?.role]);
-  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() => columns.map((column) => column.key));
+  const columnSignature = columns.map((column) => `${column.key}:${column.required ? 'required' : ''}:${column.defaultVisible === false ? 'optional' : 'default'}`).join('|');
+  const defaultColumnKeys = () => columns.filter((column) => column.required || column.defaultVisible !== false).map((column) => column.key);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(defaultColumnKeys);
 
+  // The stable signature captures the only column metadata this preference loader depends on.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const saved = JSON.parse(window.localStorage.getItem(preferenceKey) ?? 'null');
       if (Array.isArray(saved)) {
-        const valid = columns.filter((column) => saved.includes(column.key)).map((column) => column.key);
-        setVisibleColumnKeys(valid.length ? valid : columns.map((column) => column.key));
+        const valid = columns.filter((column) => column.required || saved.includes(column.key)).map((column) => column.key);
+        setVisibleColumnKeys(valid.length ? valid : defaultColumnKeys());
       } else {
-        setVisibleColumnKeys(columns.map((column) => column.key));
+        setVisibleColumnKeys(defaultColumnKeys());
       }
     } catch {
-      setVisibleColumnKeys(columns.map((column) => column.key));
+      setVisibleColumnKeys(defaultColumnKeys());
     }
-  }, [columns, preferenceKey]);
+  }, [columnSignature, preferenceKey]);
 
   const visibleColumns = useMemo(() => columns.filter((column) => visibleColumnKeys.includes(column.key)), [columns, visibleColumnKeys]);
   const toggleColumn = (key: string) => setVisibleColumnKeys((current) => {
+    if (columns.find((column) => column.key === key)?.required) return current;
     const next = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
     if (next.length === 0) return current;
     if (typeof window !== 'undefined') window.localStorage.setItem(preferenceKey, JSON.stringify(next));
     return next;
   });
   const resetColumns = () => {
-    const next = columns.map((column) => column.key);
+    const next = defaultColumnKeys();
     setVisibleColumnKeys(next);
     if (typeof window !== 'undefined') window.localStorage.removeItem(preferenceKey);
   };
@@ -171,9 +180,9 @@ export default function WorklistDataTable<T>({
               </div>
               <p className="mb-2 text-[11px] text-muted-foreground">Choose only the information needed for this role's workflow. Preferences are saved for this workspace.</p>
               <div className="max-h-64 space-y-1 overflow-y-auto">
-                {columns.map((column) => <label key={column.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-                  <input type="checkbox" checked={visibleColumnKeys.includes(column.key)} onChange={() => toggleColumn(column.key)} />
-                  <span className="flex-1">{column.label}</span>
+                {columns.map((column) => <label key={column.key} className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${column.required ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:bg-muted'}`}>
+                  <input type="checkbox" checked={visibleColumnKeys.includes(column.key)} disabled={column.required} onChange={() => toggleColumn(column.key)} aria-label={`${column.label}${column.required ? ' (required)' : ''}`} />
+                  <span className="flex-1">{column.label}{column.required && <span className="ml-1 text-[10px] text-muted-foreground">Required</span>}</span>
                   {visibleColumnKeys.includes(column.key) && <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
                 </label>)}
               </div>
