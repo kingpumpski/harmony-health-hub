@@ -17,8 +17,9 @@ check('facility attribution administration is routed', app.includes('/admin/faci
 
 
 const layout = read('src/components/layout/MainLayout.tsx');
+const routeLoading = read('src/components/system/RouteLoadingScreen.tsx');
 check('authenticated layout provides a keyboard skip link and focusable main landmark', layout.includes('Skip to main content') && layout.includes('id="main-content" tabIndex={-1}'));
-check('loading status is announced accessibly and motion respects reduced-motion preferences', layout.includes('aria-live="polite"') && layout.includes('motion-reduce:animate-none'));
+check('route-aware loading status is announced accessibly and motion respects reduced-motion preferences', routeLoading.includes('aria-live="polite"') && routeLoading.includes('motion-reduce:animate-none') && routeLoading.includes('Loading {moduleName}'));
 check('mobile navigation closes when the route changes', layout.includes('setMobileNavOpen(false);') && layout.includes('[location.pathname]'));
 
 if (failures.length) {
