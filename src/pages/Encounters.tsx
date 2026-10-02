@@ -438,7 +438,7 @@ export default function Encounters() {
     };
     void loadCatalogue();
     return () => { active = false; };
-  }, [quickAction, selected?.id]);
+  }, [quickAction, selected]);
 
   const loadHistory = async (encounterId: string) => {
     setHistoryLoading(true);
