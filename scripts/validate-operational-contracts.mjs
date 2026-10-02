@@ -325,7 +325,7 @@ const mainRuntimeSource = read('src/main.tsx');
 const serviceWorkerSource = read('public/sw.js');
 assert('header owns its Supabase client import', headerRuntimeSource.includes('import { supabase } from "@/integrations/supabase/client";') && headerRuntimeSource.includes('const db = supabase as any;'), 'Header notification/search runtime must not depend on an implicit global supabase variable');
 assert('production startup registers the current service worker', mainRuntimeSource.includes('navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: "none" })') || mainRuntimeSource.includes("navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: 'none' })"), 'production startup must refresh the service worker without stale script-cache dependence');
-assert('GitHub Pages shell cache is versioned', /harmony-health-hub-shell-v\\d+/.test(serviceWorkerSource), 'GitHub Pages service-worker shell cache must be invalidated when runtime assets are repaired');
+assert('GitHub Pages shell cache is versioned', /harmony-health-hub-shell-v\d+/.test(serviceWorkerSource), 'GitHub Pages service-worker shell cache must be invalidated when runtime assets are repaired');
 
 const globalWorkspaceSearch = read('src/lib/globalWorkspaceSearch.ts');
 const globalHeader = read('src/components/layout/Header.tsx');
