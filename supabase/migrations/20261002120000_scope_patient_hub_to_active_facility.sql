@@ -24,6 +24,8 @@ declare
   uid uuid := auth.uid();
   active_facility uuid;
   is_admin boolean;
+  is_test_user boolean;
+  test_facility uuid;
   can_sensitive boolean;
   q text := nullif(pg_catalog.btrim(coalesce(_query, '')), '');
   lim integer := least(greatest(coalesce(_limit, 100), 1), 1000);
@@ -35,6 +37,7 @@ begin
   if not (
     public.has_role(uid, 'admin'::public.app_role)
     or public.has_role(uid, 'it_admin'::public.app_role)
+    or public.has_role(uid, 'system_superuser'::public.app_role)
     or public.has_role(uid, 'practitioner'::public.app_role)
     or public.has_role(uid, 'nurse'::public.app_role)
     or public.has_role(uid, 'midwife'::public.app_role)
@@ -52,7 +55,18 @@ begin
 
   is_admin := public.has_role(uid, 'admin'::public.app_role)
     or public.has_role(uid, 'it_admin'::public.app_role);
+  is_test_user := public.hms_current_user_is_test_user();
   active_facility := public.current_user_facility_id();
+
+  -- Test mode takes precedence over administrator privileges.
+  if is_test_user then
+    test_facility := public.hms_test_facility_id();
+    if test_facility is null then
+      raise exception 'Test mode is active but TEST-0001 is not configured';
+    end if;
+    active_facility := test_facility;
+    is_admin := false;
+  end if;
 
   if not is_admin and active_facility is null then
     raise exception 'An active facility is required to search patient records';
@@ -60,6 +74,7 @@ begin
 
   can_sensitive := public.has_role(uid, 'admin'::public.app_role)
     or public.has_role(uid, 'it_admin'::public.app_role)
+    or public.has_role(uid, 'system_superuser'::public.app_role)
     or public.has_role(uid, 'practitioner'::public.app_role)
     or public.has_role(uid, 'nurse'::public.app_role)
     or public.has_role(uid, 'midwife'::public.app_role)
@@ -80,7 +95,8 @@ begin
     case when can_sensitive then p.insurance_number else null end
   from public.patients p
   where
-    (q is null
+    coalesce(p.status, 'active') <> 'inactive'
+    and (q is null
       or p.patient_code ilike '%' || q || '%'
       or p.first_name ilike '%' || q || '%'
       or p.last_name ilike '%' || q || '%'
@@ -135,8 +151,6 @@ set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
-  active_facility uuid;
-  is_admin boolean;
 begin
   if uid is null then
     raise exception 'Authentication required';
@@ -145,6 +159,7 @@ begin
   if not (
     public.has_role(uid, 'admin'::public.app_role)
     or public.has_role(uid, 'it_admin'::public.app_role)
+    or public.has_role(uid, 'system_superuser'::public.app_role)
     or public.has_role(uid, 'practitioner'::public.app_role)
     or public.has_role(uid, 'nurse'::public.app_role)
     or public.has_role(uid, 'midwife'::public.app_role)
@@ -160,13 +175,9 @@ begin
     raise exception 'Not authorized to access the patient record';
   end if;
 
-  is_admin := public.has_role(uid, 'admin'::public.app_role)
-    or public.has_role(uid, 'it_admin'::public.app_role);
-  active_facility := public.current_user_facility_id();
-
-  if not is_admin and active_facility is null then
-    raise exception 'An active facility is required to access patient records';
-  end if;
+  -- The helper enforces TEST-0001 isolation before admin exceptions and
+  -- requires system superusers to have the patient facility selected.
+  perform public.assert_patient_facility_read_context(_patient_id);
 
   return query
   select
@@ -196,18 +207,86 @@ begin
     p.status::text
   from public.patients p
   where p.id = _patient_id
-    and (
-      is_admin
-      or p.user_id = uid
-      or (
-        p.facility_id = active_facility
-        and public.current_user_has_facility_access(p.facility_id)
-      )
-    );
+    and coalesce(p.status, 'active') <> 'inactive';
 end;
 $$;
 
 revoke all on function public.get_patient_profile_for_user(uuid) from public, anon;
 grant execute on function public.get_patient_profile_for_user(uuid) to authenticated;
+
+create or replace function public.get_patient_directory_record(_patient_id uuid)
+returns table (
+  id uuid,
+  patient_code text,
+  first_name text,
+  last_name text,
+  phone text,
+  ghana_card_number text,
+  status text,
+  insurance_provider text,
+  insurance_number text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid uuid := auth.uid();
+  can_sensitive boolean;
+begin
+  if uid is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if not (
+    public.has_role(uid, 'admin'::public.app_role)
+    or public.has_role(uid, 'it_admin'::public.app_role)
+    or public.has_role(uid, 'system_superuser'::public.app_role)
+    or public.has_role(uid, 'practitioner'::public.app_role)
+    or public.has_role(uid, 'nurse'::public.app_role)
+    or public.has_role(uid, 'midwife'::public.app_role)
+    or public.has_role(uid, 'specialist_nurse'::public.app_role)
+    or public.has_role(uid, 'lab_technician'::public.app_role)
+    or public.has_role(uid, 'radiologist'::public.app_role)
+    or public.has_role(uid, 'radiology_technician'::public.app_role)
+    or public.has_role(uid, 'pharmacist'::public.app_role)
+    or public.has_role(uid, 'accountant'::public.app_role)
+    or public.has_role(uid, 'front_desk'::public.app_role)
+    or public.has_role(uid, 'canteen'::public.app_role)
+  ) then
+    raise exception 'Not authorized to access the staff patient directory';
+  end if;
+
+  perform public.assert_patient_facility_read_context(_patient_id);
+
+  can_sensitive := public.has_role(uid, 'admin'::public.app_role)
+    or public.has_role(uid, 'it_admin'::public.app_role)
+    or public.has_role(uid, 'system_superuser'::public.app_role)
+    or public.has_role(uid, 'practitioner'::public.app_role)
+    or public.has_role(uid, 'nurse'::public.app_role)
+    or public.has_role(uid, 'midwife'::public.app_role)
+    or public.has_role(uid, 'specialist_nurse'::public.app_role)
+    or public.has_role(uid, 'accountant'::public.app_role)
+    or public.has_role(uid, 'front_desk'::public.app_role);
+
+  return query
+  select
+    p.id,
+    p.patient_code,
+    p.first_name,
+    p.last_name,
+    p.phone,
+    case when can_sensitive then p.ghana_card_number else null end,
+    p.status::text,
+    case when can_sensitive then p.insurance_provider else null end,
+    case when can_sensitive then p.insurance_number else null end
+  from public.patients p
+  where p.id = _patient_id
+    and coalesce(p.status, 'active') <> 'inactive';
+end;
+$$;
+
+revoke all on function public.get_patient_directory_record(uuid) from public, anon;
+grant execute on function public.get_patient_directory_record(uuid) to authenticated;
 
 notify pgrst, 'reload schema';
