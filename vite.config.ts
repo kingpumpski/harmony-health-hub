@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
-import { copyFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { componentTagger } from "lovable-tagger";
 
 function compressedAssets() {
@@ -24,15 +24,24 @@ function compressedAssets() {
   };
 }
 
-function githubPagesSpaFallback() {
+function githubPagesSpaFallback(basePath: string) {
+  const base = basePath.replace(/\\/$/, "");
   return {
     name: "github-pages-spa-fallback",
     apply: "build" as const,
     closeBundle() {
-      // GitHub Pages does not rewrite deep links to index.html. Serving the
-      // built app as 404.html lets BrowserRouter resolve /patients/:patientId
-      // and other client-side routes after a direct visit or browser refresh.
-      copyFileSync("dist/index.html", "dist/404.html");
+      // GitHub Pages returns 404.html for client-side routes. Redirect through
+      // the project root and restore the original path before React Router loads.
+      const indexPath = "dist/index.html";
+      const restoreRoute = `<script>(function(){var params=new URLSearchParams(window.location.search);var route=params.get("__hms_spa_redirect");if(!route)return;var safeRoute=route.charAt(0)==="/"&&!route.startsWith("//")?route:"/";window.history.replaceState(null,"",${JSON.stringify(base)}+safeRoute);})();</script>`;
+      const indexHtml = readFileSync(indexPath, "utf8");
+      if (!indexHtml.includes("__hms_spa_redirect")) {
+        writeFileSync(indexPath, indexHtml.replace("</head>", `${restoreRoute}\\n</head>`));
+      }
+      const fallbackHtml = `<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="robots" content="noindex"><title>Opening Harmony Health Hub</title></head>
+<body><p>Opening Harmony Health Hub…</p><script>(function(){var base=${JSON.stringify(base)};var path=window.location.pathname;var route=path.indexOf(base)===0?path.slice(base.length):path;if(!route.startsWith("/"))route="/"+route;var target=route+window.location.search+window.location.hash;window.location.replace(base+"/?__hms_spa_redirect="+encodeURIComponent(target));})();</script></body></html>`;
+      writeFileSync("dist/404.html", fallbackHtml);
     },
   };
 }
@@ -49,7 +58,7 @@ export default defineConfig(({ mode }) => ({
     manifest: true,
     chunkSizeWarningLimit: 350,
   },
-  plugins: [react(), mode === "production" && compressedAssets(), mode === "production" && githubPagesSpaFallback(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mode === "production" && compressedAssets(), mode === "production" && githubPagesSpaFallback("/harmony-health-hub/"), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
