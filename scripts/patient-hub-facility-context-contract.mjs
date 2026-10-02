@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const migration = fs.readFileSync('supabase/migrations/20261002120000_scope_patient_hub_to_active_facility.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261002115106_scope_patient_hub_to_active_facility.sql', 'utf8');
 const page = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
 const healthApi = fs.readFileSync('src/lib/healthApi.ts', 'utf8');
 
