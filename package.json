@@ -62,6 +62,7 @@
     "test:encounter-facility-context-reassertion": "node scripts/encounter-facility-context-reassertion-contract.mjs",
     "test:encounter-workflow-workspace-facility": "node scripts/encounter-workflow-workspace-facility-contract.mjs",
     "test:encounter-worklist-rpc": "node scripts/encounter-worklist-rpc-contract.mjs",
+    "test:encounter-clinical-context-facility": "node scripts/encounter-clinical-context-facility-contract.mjs",
     "test:live-test-mode-privilege-audit": "node scripts/live-test-mode-privilege-audit-contract.mjs",
     "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs"
   },
