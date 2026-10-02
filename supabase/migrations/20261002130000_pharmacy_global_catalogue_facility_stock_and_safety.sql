@@ -134,8 +134,8 @@ BEGIN
   IF pg_catalog.length(pg_catalog.btrim(COALESCE(_drug_name, ''))) < 2 THEN RAISE EXCEPTION 'Drug name must contain at least two characters'; END IF;
   IF COALESCE(_stock_quantity, 0) < 0 OR COALESCE(_reorder_level, 0) < 0 OR COALESCE(_unit_price, 0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
   IF _expiry_date IS NOT NULL AND _expiry_date < CURRENT_DATE THEN RAISE EXCEPTION 'Expiry date cannot be in the past'; END IF;
-  IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0) THEN
-    RAISE EXCEPTION 'Expiry date and a positive retail price are required before stock can be made available';
+  IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0 OR COALESCE(_reorder_level, 0) <= 0) THEN
+    RAISE EXCEPTION 'Expiry date, positive retail price and a configured reorder level are required before stock can be made available';
   END IF;
 
   INSERT INTO public.medication_catalogue(name, category, generic_name, strength, form, created_by)
@@ -344,8 +344,8 @@ BEGIN
     OR COALESCE(_unit_price, 0) < 0 OR COALESCE(_nhis_patient_price, 0) < 0
     OR COALESCE(_nhis_claim_amount, 0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
   IF _expiry_date IS NOT NULL AND _expiry_date < CURRENT_DATE THEN RAISE EXCEPTION 'Expiry date cannot be in the past'; END IF;
-  IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0) THEN
-    RAISE EXCEPTION 'Expiry date and a positive retail price are required before stock can be made available';
+  IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0 OR COALESCE(_reorder_level, 0) <= 0) THEN
+    RAISE EXCEPTION 'Expiry date, positive retail price and a configured reorder level are required before stock can be made available';
   END IF;
   UPDATE public.pharmacy_inventory SET
     brand_name = NULLIF(pg_catalog.btrim(_brand_name), ''),
