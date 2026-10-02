@@ -273,7 +273,7 @@ export default function Encounters() {
     try {
       const [{ data: pts, error: patientError }, { data: encs, error: encounterError }, { data: staff, error: staffError }] = await Promise.all([
       searchPatientDirectory('', 200),
-      db.rpc("get_encounter_workflow_workspace", {}, { get: true }),
+      db.rpc("get_encounter_worklist", { _limit: 50 }, { get: true }),
       db.rpc("get_appointment_clinicians", {}, { get: true }),
     ]);
       if (patientError) throw patientError;
