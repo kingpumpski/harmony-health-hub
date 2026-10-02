@@ -293,7 +293,7 @@ export default function Pharmacy() {
                   <div><label htmlFor="inventory-price" className="text-xs font-semibold block">Unit price</label><input id="inventory-price" type="number" min="0" step="0.01" value={inventoryForm.unit_price} onChange={(event) => setInventoryForm((current) => ({ ...current, unit_price: Number(event.target.value) }))} className="input-medical w-full mt-1" /></div>
                   <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-2">{editingInventoryId && <button type="button" onClick={resetInventoryForm} className="btn-secondary">Cancel edit</button>}<button type="submit" className="btn-primary inline-flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> {editingInventoryId ? 'Save changes' : 'Add to store'}</button></div>
                 </form>}
-              </div>}
+              </div>
               <ClinicalDataTable
                 title="Pharmacy stock"
                 description="Stock visibility remains medication-specific, with reorder risk and operational details rather than project-management fields."
