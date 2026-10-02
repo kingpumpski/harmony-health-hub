@@ -16,7 +16,7 @@ for (const needle of [
 
 for (const needle of [
   "get_appointment_schedulable_patients",
-  'Patient facility attribution is unresolved',
+  'facility attribution is unresolved',
   'error.message',
   'No active patients with verified facility attribution are available'
 ]) {
