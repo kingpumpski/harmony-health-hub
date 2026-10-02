@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BellRing, CreditCard, Package, Pencil, Pill, RefreshCw, Search, ShoppingCart, Settings2 } from 'lucide-react';
+import { AlertTriangle, BellRing, CreditCard, Package, Pencil, Pill, RefreshCw, Search, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -293,6 +293,13 @@ export default function Pharmacy() {
                   <div><label htmlFor="inventory-price" className="text-xs font-semibold block">Unit price</label><input id="inventory-price" type="number" min="0" step="0.01" value={inventoryForm.unit_price} onChange={(event) => setInventoryForm((current) => ({ ...current, unit_price: Number(event.target.value) }))} className="input-medical w-full mt-1" /></div>
                   <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-2">{editingInventoryId && <button type="button" onClick={resetInventoryForm} className="btn-secondary">Cancel edit</button>}<button type="submit" className="btn-primary inline-flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> {editingInventoryId ? 'Save changes' : 'Add to store'}</button></div>
                 </form>}
+              </div>
+              <div className="px-4 pt-4 sm:px-5">
+                <label htmlFor="pharmacy-inventory-search" className="sr-only">Search pharmacy stock</label>
+                <div className="relative max-w-md">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                  <input id="pharmacy-inventory-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search medication, generic name or supplier" className="input-medical w-full pl-9" />
+                </div>
               </div>
               <ClinicalDataTable
                 title="Pharmacy stock"
