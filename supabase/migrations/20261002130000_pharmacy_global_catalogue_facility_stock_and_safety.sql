@@ -370,8 +370,12 @@ BEGIN
   END IF;
   IF fid IS NULL THEN RAISE EXCEPTION 'Select an active facility before finding alternatives'; END IF;
   SELECT c.category INTO source_category FROM public.medication_catalogue c
-  WHERE c.active AND (lower(c.name) = lower(btrim(_medication))
-    OR lower(coalesce(c.generic_name, '')) = lower(btrim(_medication)))
+  WHERE c.active AND (
+    lower(c.name) = lower(btrim(_medication))
+    OR lower(btrim(_medication)) LIKE lower(btrim(c.name)) || ' %'
+    OR lower(coalesce(c.generic_name, '')) = lower(btrim(_medication))
+    OR (NULLIF(btrim(c.generic_name), '') IS NOT NULL AND lower(btrim(_medication)) LIKE lower(btrim(c.generic_name)) || ' %')
+  )
   ORDER BY CASE WHEN lower(c.name) = lower(btrim(_medication)) THEN 0 ELSE 1 END LIMIT 1;
   IF source_category IS NULL THEN RETURN; END IF;
   RETURN QUERY
@@ -415,9 +419,18 @@ BEGIN
   IF _quantity > remaining THEN RAISE EXCEPTION 'Dispensing quantity exceeds the remaining prescribed quantity'; END IF;
   IF i.stock_quantity < _quantity THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
   IF i.unit_price <= 0 THEN RAISE EXCEPTION 'Configure a positive retail price before dispensing'; END IF;
-  is_alternative := lower(btrim(i.drug_name)) <> lower(btrim(p.medication))
-    AND lower(btrim(coalesce(i.generic_name, ''))) <> lower(btrim(p.medication))
-    AND lower(btrim(coalesce(i.brand_name, ''))) <> lower(btrim(p.medication));
+  is_alternative := NOT (
+    lower(btrim(i.drug_name)) = lower(btrim(p.medication))
+    OR lower(btrim(p.medication)) LIKE lower(btrim(i.drug_name)) || ' %'
+    OR (NULLIF(btrim(i.generic_name), '') IS NOT NULL AND (
+      lower(btrim(i.generic_name)) = lower(btrim(p.medication))
+      OR lower(btrim(p.medication)) LIKE lower(btrim(i.generic_name)) || ' %'
+    ))
+    OR (NULLIF(btrim(i.brand_name), '') IS NOT NULL AND (
+      lower(btrim(i.brand_name)) = lower(btrim(p.medication))
+      OR lower(btrim(p.medication)) LIKE lower(btrim(i.brand_name)) || ' %'
+    ))
+  );
   IF is_alternative THEN
     IF NOT (public.has_role(uid, 'admin') OR public.has_role(uid, 'pharmacist')) THEN
       RAISE EXCEPTION 'Only a pharmacist may authorize a medication substitution';
