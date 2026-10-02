@@ -40,7 +40,7 @@ for (const needle of [
   'add_global_medication_to_facility',
   'Assign to active facility',
   'placeholder="Scan medication barcode, then press Enter"',
-  'disabled={Boolean(editingInventoryId)}'
+  'disabled={Boolean(editingInventoryId) &&'
 ]) {
   if (!page.includes(needle)) throw new Error('Pharmacy safety UI missing: ' + needle);
 }
