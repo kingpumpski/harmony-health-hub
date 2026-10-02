@@ -15,7 +15,7 @@ for (const needle of [
   'public.add_global_medication_to_facility',
   'nhis_patient_price, nhis_claim_amount',
   'WHERE i.active AND i.facility_id = fid AND i.stock_quantity > 0',
-  'IF source_category IS NULL THEN RETURN;',
+  "IF source_category IS NULL OR lower(btrim(source_category)) = 'uncategorized' THEN RETURN;",
   'prescriber authorization and clinical reason',
   'dispensed_quantity = next_dispensed',
   `'nhis_claim_amount', claim`,
