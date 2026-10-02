@@ -64,7 +64,7 @@ function workflowErrorMessage(error: unknown): string {
     return 'This historical record has no verified facility attribution. An administrator or IT administrator must reconcile the record with documented evidence before clinical processing can continue.';
   }
   if (normalized.includes('different facility context') || normalized.includes('belongs to another facility') || normalized.includes('facility context mismatch')) {
-    return 'This appointment is outside the effective facility context. Select the patient’s facility and reopen the appointment. Test-mode accounts are restricted to the test facility. No encounter was created.';
+    return 'Facility context mismatch. Switch to the patient’s facility and reopen the appointment. If TEST MODE is active, use a patient and appointment assigned to the Harmony Health Hub Test Facility (TEST-0001), or ask the system super admin to disable test mode before working with this facility. No encounter was created.';
   }
   if (normalized.includes('select an active facility')) {
     return 'Select an active facility before continuing with this appointment.';
