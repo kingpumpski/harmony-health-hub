@@ -30,7 +30,7 @@ GRANT SELECT ON public.medication_catalogue TO authenticated;
 
 ALTER TABLE public.pharmacy_inventory
   ADD COLUMN IF NOT EXISTS catalogue_id uuid REFERENCES public.medication_catalogue(id) ON DELETE RESTRICT,
-  ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.facilities(id) ON DELETE RESTRICT,
+  ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.healthcare_facilities(id) ON DELETE RESTRICT,
   ADD COLUMN IF NOT EXISTS barcode text,
   ADD COLUMN IF NOT EXISTS nhis_patient_price numeric(12,2) NOT NULL DEFAULT 0 CHECK (nhis_patient_price >= 0),
   ADD COLUMN IF NOT EXISTS nhis_claim_amount numeric(12,2) NOT NULL DEFAULT 0 CHECK (nhis_claim_amount >= 0);
