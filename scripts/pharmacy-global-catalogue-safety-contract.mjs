@@ -46,6 +46,6 @@ for (const needle of [
 }
 if (!modal.includes('_category: category || \'Uncategorized\'')) throw new Error('Medication category is not passed to the global catalogue RPC.');
 if (!clinicalTable.includes('export function ClinicalProgressBar(')) throw new Error('ClinicalProgressBar export must remain available.');
-if (!shell.includes('xl:grid-cols-5') || !shell.includes('text-xl font-bold')) throw new Error('Operational KPI cards must be compact and fit five columns on wide screens.');
+if (!shell.includes('lg:grid-cols-5') || !shell.includes('text-xl font-bold')) throw new Error('Operational KPI cards must be compact and fit five columns on wide screens.');
 
 console.log('Pharmacy global catalogue, facility isolation and dispensing safety contract passed');

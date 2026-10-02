@@ -14,7 +14,7 @@ for (const needle of [
   "CREATE OR REPLACE FUNCTION public.update_pharmacy_inventory_item",
   "public.record_system_audit",
   "REVOKE ALL ON FUNCTION public.update_pharmacy_inventory_item",
-  "GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric) TO authenticated"
+  "GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text) TO authenticated"
 ]) {
   if (!migration.includes(needle)) throw new Error('Pharmacy inventory migration missing security/management contract: ' + needle);
 }
