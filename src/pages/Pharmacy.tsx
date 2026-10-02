@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BellRing, CreditCard, Package, Pill, RefreshCw, Search, ShoppingCart, Settings2 } from 'lucide-react';
+import { AlertTriangle, BellRing, CreditCard, Package, Pencil, Pill, RefreshCw, Search, ShoppingCart, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -35,6 +35,7 @@ export default function Pharmacy() {
   const [posQuantity, setPosQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createMedicationName, setCreateMedicationName] = useState('');
+  const [editingInventoryId, setEditingInventoryId] = useState<string | null>(null);
   const [inventoryForm, setInventoryForm] = useState({ drug_name: '', brand_name: '', generic_name: '', strength: '', form: '', supplier: '', batch_number: '', expiry_date: '', stock_quantity: 0, reorder_level: 20, unit_price: 0 });
   const previousActive = useRef(0);
   const loadedActive = useRef(false);
@@ -96,11 +97,43 @@ export default function Pharmacy() {
   }, [prescriptions, plans, posSales, inventory]);
 
   const findAlternatives = async (prescription: Prescription) => { const { data, error } = await db.rpc('find_pharmacy_alternatives', { _medication: prescription.medication, _strength: prescription.dosage }); if (error) return toast.error(error.message); setAlternatives((current) => ({ ...current, [prescription.id]: (data ?? []) as Alternative[] })); };
-  const canCreateItems = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_items');
+  const canCreateItems = user?.roles.some((role) => role === 'admin' || role === 'it_admin' || role === 'pharmacist') || user?.permissions.includes('create_items');
   const prepare = async (prescription: Prescription) => { const inventoryId = matches[prescription.id]; if (!inventoryId) return toast.error('Select the available product or an approved alternative.'); const { error } = await db.rpc('prepare_pharmacy_dispensing', { _prescription_id: prescription.id, _inventory_id: inventoryId, _quantity: Math.max(1, quantities[prescription.id] ?? prescription.computed_quantity ?? 1), _notes: null }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success('Prescription prepared. Accounts must receive payment before dispensing.'); void load(); };
   const dispense = async (plan: Plan) => { const { error } = await db.rpc('confirm_pharmacy_dispense', { _plan_id: plan.id }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success(`${plan.medication_name} dispensed.`); void load(); };
   const createPosSale = async (event: React.FormEvent) => { event.preventDefault(); if (!posItem || posQuantity < 1) return toast.error('Select a product and quantity.'); const { error } = await db.rpc('create_pharmacy_pos_sale', { _patient_id: posPatient || null, _inventory_id: posItem, _quantity: posQuantity }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success('Walk-in sale created and sent for payment release.'); setPosItem(''); setPosPatient(''); setPosQuantity(1); void load(); };
-  const addInventory = async (event: React.FormEvent) => { event.preventDefault(); if (!inventoryForm.drug_name.trim()) return toast.error('Drug name is required.'); const { error } = await db.rpc('create_pharmacy_inventory_item', { _drug_name: inventoryForm.drug_name, _brand_name: inventoryForm.brand_name || null, _generic_name: inventoryForm.generic_name || null, _strength: inventoryForm.strength || null, _form: inventoryForm.form || null, _supplier: inventoryForm.supplier || null, _batch_number: inventoryForm.batch_number || null, _expiry_date: inventoryForm.expiry_date || null, _stock_quantity: inventoryForm.stock_quantity, _reorder_level: inventoryForm.reorder_level, _unit_price: inventoryForm.unit_price }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success('Product added to the pharmacy store.'); setInventoryForm({ drug_name: '', brand_name: '', generic_name: '', strength: '', form: '', supplier: '', batch_number: '', expiry_date: '', stock_quantity: 0, reorder_level: 20, unit_price: 0 }); void load(); };
+  const resetInventoryForm = () => {
+    setEditingInventoryId(null);
+    setInventoryForm({ drug_name: '', brand_name: '', generic_name: '', strength: '', form: '', supplier: '', batch_number: '', expiry_date: '', stock_quantity: 0, reorder_level: 20, unit_price: 0 });
+  };
+  const editInventoryItem = (item: InventoryItem) => {
+    setEditingInventoryId(item.id);
+    setInventoryForm({
+      drug_name: item.drug_name ?? '', brand_name: item.brand_name ?? '', generic_name: item.generic_name ?? '',
+      strength: item.strength ?? '', form: item.form ?? '', supplier: item.supplier ?? '', batch_number: item.batch_number ?? '',
+      expiry_date: item.expiry_date ?? '', stock_quantity: Number(item.stock_quantity ?? 0),
+      reorder_level: Number(item.reorder_level ?? 0), unit_price: Number(item.unit_price ?? 0),
+    });
+  };
+  const saveInventory = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inventoryForm.drug_name.trim()) return toast.error('Drug name is required.');
+    const payload = {
+      _drug_name: inventoryForm.drug_name, _brand_name: inventoryForm.brand_name || null,
+      _generic_name: inventoryForm.generic_name || null, _strength: inventoryForm.strength || null,
+      _form: inventoryForm.form || null, _supplier: inventoryForm.supplier || null,
+      _batch_number: inventoryForm.batch_number || null, _expiry_date: inventoryForm.expiry_date || null,
+      _stock_quantity: inventoryForm.stock_quantity, _reorder_level: inventoryForm.reorder_level,
+      _unit_price: inventoryForm.unit_price,
+    };
+    const { error } = editingInventoryId
+      ? await db.rpc('update_pharmacy_inventory_item', { _item_id: editingInventoryId, ...payload })
+      : await db.rpc('create_pharmacy_inventory_item', payload);
+    if (error) { playWorkflowSound('error'); return toast.error(error.message); }
+    playWorkflowSound('success');
+    toast.success(editingInventoryId ? 'Pharmacy item updated.' : 'Product added to the pharmacy store.');
+    resetInventoryForm();
+    void load();
+  };
 
   const counterCards = [
     { label: 'Prescriptions waiting', value: counters.awaitingPreparation, surface: 'bg-primary/5', tone: 'text-primary', tab: 'dispense' as const, urgent: counters.awaitingPreparation > 0 },
@@ -251,16 +284,16 @@ export default function Pharmacy() {
           {tab === 'inventory' && (
             <div>
               <div className="border-b border-border p-5">
-                <form onSubmit={addInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                {canCreateItems && <form onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {(['drug_name', 'brand_name', 'generic_name', 'strength', 'form', 'supplier', 'batch_number', 'expiry_date'] as const).map((field) => (
                     <div key={field}><label htmlFor={`inventory-${field}`} className="text-xs font-semibold block capitalize">{field.replace('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} className="input-medical w-full mt-1" /></div>
                   ))}
                   <div><label htmlFor="inventory-stock" className="text-xs font-semibold block">Stock quantity</label><input id="inventory-stock" type="number" min="0" value={inventoryForm.stock_quantity} onChange={(event) => setInventoryForm((current) => ({ ...current, stock_quantity: Number(event.target.value) }))} className="input-medical w-full mt-1" /></div>
                   <div><label htmlFor="inventory-reorder" className="text-xs font-semibold block">Reorder level</label><input id="inventory-reorder" type="number" min="0" value={inventoryForm.reorder_level} onChange={(event) => setInventoryForm((current) => ({ ...current, reorder_level: Number(event.target.value) }))} className="input-medical w-full mt-1" /></div>
                   <div><label htmlFor="inventory-price" className="text-xs font-semibold block">Unit price</label><input id="inventory-price" type="number" min="0" step="0.01" value={inventoryForm.unit_price} onChange={(event) => setInventoryForm((current) => ({ ...current, unit_price: Number(event.target.value) }))} className="input-medical w-full mt-1" /></div>
-                  <div className="md:col-span-2 lg:col-span-4 flex justify-end"><button type="submit" className="btn-primary inline-flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> Add to store</button></div>
-                </form>
-              </div>
+                  <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-2">{editingInventoryId && <button type="button" onClick={resetInventoryForm} className="btn-secondary">Cancel edit</button>}<button type="submit" className="btn-primary inline-flex items-center gap-2"><Package className="w-4 h-4" aria-hidden="true" /> {editingInventoryId ? 'Save changes' : 'Add to store'}</button></div>
+                </form>}
+              </div>}
               <ClinicalDataTable
                 title="Pharmacy stock"
                 description="Stock visibility remains medication-specific, with reorder risk and operational details rather than project-management fields."
@@ -284,7 +317,7 @@ export default function Pharmacy() {
                       <td><p className="font-semibold">{item.stock_quantity}</p><p className="text-xs text-muted-foreground">reorder {item.reorder_level}</p></td>
                       <td><ClinicalProgressBar value={stockProgress} label={low ? 'Reorder' : 'Healthy'} /></td>
                       <td className="whitespace-nowrap text-xs">{item.expiry_date ?? 'No expiry recorded'}</td>
-                      <td><div className="flex justify-end"><ClinicalStatusBadge status={low ? 'pending' : 'approved'} label={low ? 'Review stock' : 'In stock'} /></div></td>
+                      <td><div className="flex justify-end items-center gap-2">{canCreateItems && <button type="button" onClick={() => editInventoryItem(item)} className="btn-secondary inline-flex items-center gap-1.5 text-xs"><Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit</button>}<ClinicalStatusBadge status={low ? 'pending' : 'approved'} label={low ? 'Review stock' : 'In stock'} /></div></td>
                     </tr>
                   );
                 })}</tbody>
