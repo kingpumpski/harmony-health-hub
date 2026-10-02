@@ -204,7 +204,7 @@ function QuickActionModal(props: any) {
     setQuickPriority, selectedLabCode, setSelectedLabCode, selectedImaging, setSelectedImaging,
     selectedServiceCode, setSelectedServiceCode, selectedMedication, setSelectedMedication,
     labCatalogue, imagingCatalogue, serviceCatalogue, medicationCatalogue, catalogLoading,
-    onClose, onSaved, addDiagnosis, setPrincipal, newDx, setNewDx, addPrescription,
+    onClose, addDiagnosis, setPrincipal, newDx, setNewDx, addPrescription,
     med, setMed, dose, setDose, freq, setFreq, duration, setDuration, selectedDiagnosisId,
     setSelectedDiagnosisId, createLabOrder, createImagingOrder, createServiceOrder
   } = props;
@@ -938,7 +938,6 @@ export default function Encounters() {
           medicationCatalogue={medicationCatalogue}
           catalogLoading={catalogLoading}
           onClose={() => setQuickAction(null)}
-          onSaved={() => { setQuickAction(null); setQuickSearch(""); setQuickNotes(""); void loadDetails(selected.id); }}
           addDiagnosis={addDiagnosis}
           setPrincipal={setPrincipal}
           newDx={newDx}
