@@ -146,9 +146,8 @@ export default function Pharmacy() {
       _barcode: inventoryForm.barcode || null, _nhis_patient_price: inventoryForm.nhis_patient_price,
       _nhis_claim_amount: inventoryForm.nhis_claim_amount,
     };
-    const { _category, ...localUpdatePayload } = payload;
     const { error } = editingInventoryId
-      ? await db.rpc('update_pharmacy_inventory_item', { _item_id: editingInventoryId, ...localUpdatePayload })
+      ? await db.rpc('update_pharmacy_inventory_item', { _item_id: editingInventoryId, ...payload })
       : await db.rpc('create_pharmacy_inventory_item', payload);
     if (error) { playWorkflowSound('error'); return toast.error(error.message); }
     playWorkflowSound('success');
@@ -345,7 +344,7 @@ export default function Pharmacy() {
               <div className="border-b border-border p-5">
                 {canCreateItems && <form onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {(['drug_name', 'brand_name', 'generic_name', 'category', 'strength', 'form', 'supplier', 'batch_number', 'barcode', 'expiry_date'] as const).map((field) => (
-                    <div key={field}><label htmlFor={`inventory-${field}`} className="text-xs font-semibold block capitalize">{field.replaceAll('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} disabled={Boolean(editingInventoryId) && ['drug_name', 'generic_name', 'category', 'strength', 'form'].includes(field)} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} placeholder={field === 'drug_name' ? 'e.g., Amoxicillin' : field === 'generic_name' ? 'e.g., Amoxicillin trihydrate' : field === 'category' ? 'e.g., Antibiotic' : field === 'strength' ? 'e.g., 500 mg' : field === 'form' ? 'e.g., Capsule' : field === 'barcode' ? 'Scan or enter barcode' : `Enter ${field.replaceAll('_', ' ')}`} className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
+                    <div key={field}><label htmlFor={`inventory-${field}`} className="text-xs font-semibold block capitalize">{field === 'category' ? 'Global category (shared across facilities)' : field.replaceAll('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} disabled={Boolean(editingInventoryId) && ['drug_name', 'generic_name', 'strength', 'form'].includes(field)} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} placeholder={field === 'drug_name' ? 'e.g., Amoxicillin' : field === 'generic_name' ? 'e.g., Amoxicillin trihydrate' : field === 'category' ? 'e.g., Antibiotic' : field === 'strength' ? 'e.g., 500 mg' : field === 'form' ? 'e.g., Capsule' : field === 'barcode' ? 'Scan or enter barcode' : `Enter ${field.replaceAll('_', ' ')}`} className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
                   ))}
                   <div><label htmlFor="inventory-stock" className="text-xs font-semibold block">Stock quantity</label><input id="inventory-stock" type="number" min="0" value={inventoryForm.stock_quantity} onChange={(event) => setInventoryForm((current) => ({ ...current, stock_quantity: Number(event.target.value) }))} placeholder="0" className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
                   <div><label htmlFor="inventory-reorder" className="text-xs font-semibold block">Reorder level</label><input id="inventory-reorder" type="number" min="0" value={inventoryForm.reorder_level} onChange={(event) => setInventoryForm((current) => ({ ...current, reorder_level: Number(event.target.value) }))} placeholder="e.g., 20" className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
