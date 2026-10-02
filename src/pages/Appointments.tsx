@@ -213,7 +213,15 @@ export default function Appointments() {
 
   const startEncounter = async (appointment: Appointment) => {
     if (!canClaim) return;
-    if (appointment.attending_officer_id !== currentUserId) {
+    if (appointment.attending_officer_id && appointment.attending_officer_id !== currentUserId) {
+      toast({
+        title: 'Appointment already assigned',
+        description: 'This appointment is assigned to another clinician. Open the patient or wait for the assigned clinician to continue the encounter.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!appointment.attending_officer_id) {
       const claimed = await claim(appointment);
       if (!claimed) return;
       appointment = { ...appointment, attending_officer_id: currentUserId, treatment_status: 'claimed' };
