@@ -7,7 +7,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { useAuth } from '@/contexts/AuthContext';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
-import ClinicalDataTable, { ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
+import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string };
 type InventoryItem = { id: string; drug_name: string; brand_name: string | null; generic_name: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null };
