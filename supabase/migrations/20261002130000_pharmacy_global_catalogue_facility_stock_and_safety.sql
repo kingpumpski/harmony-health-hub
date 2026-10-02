@@ -81,6 +81,31 @@ DROP POLICY IF EXISTS pharmacy_inventory_facility_read ON public.pharmacy_invent
 CREATE POLICY pharmacy_inventory_facility_read ON public.pharmacy_inventory
   FOR SELECT TO authenticated
   USING (facility_id IS NOT NULL AND private.current_user_can_select_facility_record(facility_id, 'medication_read'));
+DROP POLICY IF EXISTS inv_pharma_insert ON public.pharmacy_inventory;
+CREATE POLICY inv_pharma_insert ON public.pharmacy_inventory FOR INSERT TO authenticated
+  WITH CHECK (
+    facility_id = (SELECT public.current_user_facility_id())
+    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
+      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
+  );
+DROP POLICY IF EXISTS inv_pharma_update ON public.pharmacy_inventory;
+CREATE POLICY inv_pharma_update ON public.pharmacy_inventory FOR UPDATE TO authenticated
+  USING (
+    facility_id = (SELECT public.current_user_facility_id())
+    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
+      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
+  )
+  WITH CHECK (
+    facility_id = (SELECT public.current_user_facility_id())
+    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
+      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
+  );
+DROP POLICY IF EXISTS inv_pharma_delete ON public.pharmacy_inventory;
+CREATE POLICY inv_pharma_delete ON public.pharmacy_inventory FOR DELETE TO authenticated
+  USING (
+    facility_id = (SELECT public.current_user_facility_id())
+    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist'))
+  );
 
 DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric);
 
@@ -284,10 +309,13 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_pharmacy_workspace(integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_pharmacy_workspace(integer) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.update_pharmacy_inventory_item(
+DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric);
+CREATE FUNCTION public.update_pharmacy_inventory_item(
   _item_id uuid, _drug_name text, _brand_name text, _generic_name text, _strength text,
   _form text, _supplier text, _batch_number text, _expiry_date date, _stock_quantity integer,
-  _reorder_level integer, _unit_price numeric
+  _reorder_level integer, _unit_price numeric, _barcode text DEFAULT NULL,
+  _nhis_patient_price numeric DEFAULT 0, _nhis_claim_amount numeric DEFAULT 0,
+  _category text DEFAULT NULL
 )
 RETURNS public.pharmacy_inventory LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
@@ -301,7 +329,9 @@ BEGIN
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility before updating stock'; END IF;
   IF _item_id IS NULL THEN RAISE EXCEPTION 'Inventory item is required'; END IF;
   IF pg_catalog.length(pg_catalog.btrim(COALESCE(_drug_name, ''))) < 2 THEN RAISE EXCEPTION 'Drug name must contain at least two characters'; END IF;
-  IF COALESCE(_stock_quantity, 0) < 0 OR COALESCE(_reorder_level, 0) < 0 OR COALESCE(_unit_price, 0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
+  IF COALESCE(_stock_quantity, 0) < 0 OR COALESCE(_reorder_level, 0) < 0
+    OR COALESCE(_unit_price, 0) < 0 OR COALESCE(_nhis_patient_price, 0) < 0
+    OR COALESCE(_nhis_claim_amount, 0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
   IF _expiry_date IS NOT NULL AND _expiry_date < CURRENT_DATE THEN RAISE EXCEPTION 'Expiry date cannot be in the past'; END IF;
   IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0) THEN
     RAISE EXCEPTION 'Expiry date and a positive retail price are required before stock can be made available';
@@ -312,17 +342,23 @@ BEGIN
     supplier = NULLIF(pg_catalog.btrim(_supplier), ''), batch_number = NULLIF(pg_catalog.btrim(_batch_number), ''),
     expiry_date = _expiry_date, stock_quantity = COALESCE(_stock_quantity, 0),
     reorder_level = COALESCE(_reorder_level, 0), unit_price = COALESCE(_unit_price, 0),
+    barcode = NULLIF(pg_catalog.btrim(_barcode), ''),
+    nhis_patient_price = COALESCE(_nhis_patient_price, 0),
+    nhis_claim_amount = COALESCE(_nhis_claim_amount, 0),
     updated_at = pg_catalog.now()
   WHERE id = _item_id AND facility_id = v_facility AND active RETURNING * INTO r;
   IF NOT FOUND THEN RAISE EXCEPTION 'Active pharmacy inventory item was not found in the active facility'; END IF;
+  UPDATE public.medication_catalogue SET category = COALESCE(NULLIF(pg_catalog.btrim(_category), ''), category),
+    name = r.drug_name, generic_name = r.generic_name, strength = r.strength, form = r.form, updated_at = pg_catalog.now()
+  WHERE id = r.catalogue_id;
   PERFORM public.record_system_audit('pharmacy_inventory_updated', 'pharmacy', 'pharmacy_inventory', r.id, 'info',
     pg_catalog.jsonb_build_object('drug_name', r.drug_name, 'stock_quantity', r.stock_quantity,
       'facility_id', v_facility, 'actor_id', v_uid));
   RETURN r;
 END;
 $function$;
-REVOKE ALL ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric) TO authenticated;
+REVOKE ALL ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.find_pharmacy_alternatives(text,text);
 CREATE FUNCTION public.find_pharmacy_alternatives(_medication text, _strength text DEFAULT NULL)
