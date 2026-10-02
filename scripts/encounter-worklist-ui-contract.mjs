@@ -10,7 +10,7 @@ const header = read('src/components/layout/Header.tsx');
 const billing = read('src/pages/Billing.tsx');
 const patientHub = read('src/pages/patients/PatientHub.tsx');
 const submitMigration = read('supabase/migrations/20260930020000_encounter_draft_edit_workflow.sql');
-const lifecycleMigration = read('supabase/migrations/20260914110000_encounter_lifecycle_integrity_hardening.sql');
+const lifecycleMigration = read('supabase/migrations/20260930003000_fix_encounter_submission_document_version_conflict.sql');
 
 for (const key of [
   'label: "Encounter ID", required: true',
