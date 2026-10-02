@@ -921,9 +921,6 @@ export default function Encounters() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
       {quickAction && selected && (
         <QuickActionModal
           action={quickAction}
