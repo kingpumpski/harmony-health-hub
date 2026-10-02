@@ -287,6 +287,7 @@ export default function Encounters() {
   const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
+  const [patientSearch, setPatientSearch] = useState("");
   const [symptoms, setSymptoms] = useState("");
   const [clerking, setClerking] = useState("");
   const [draftSymptoms, setDraftSymptoms] = useState("");
@@ -341,7 +342,7 @@ export default function Encounters() {
     try {
       const [{ data: encs, error: encounterError }, patientDirectory, { data: staff }] = await Promise.all([
         supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
-        searchPatientDirectory("", 300),
+        searchPatientDirectory("", 1000),
         db.rpc("get_appointment_clinicians", {}, { get: true }),
       ]);
       if (patientDirectory.error) {
@@ -601,6 +602,11 @@ export default function Encounters() {
     setSearchParams({});
   };
 
+  const filteredPatients = useMemo(() => {
+    const q = patientSearch.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter((p) => `${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(q));
+  }, [patientSearch, patients]);
   const draftCount = encounters.filter((item) => item.status !== "completed").length;
   const completedCount = encounters.filter((item) => item.status === "completed").length;
   const admittedCount = encounters.filter((item) => Boolean(item.admission_id)).length;
@@ -705,11 +711,16 @@ export default function Encounters() {
             </div>
             <form onSubmit={createEncounter} className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label htmlFor="encounter-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
-                <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required>
+                <label htmlFor="encounter-patient-search" className="mb-1 block text-xs font-semibold">Find patient <span className="text-critical">*</span></label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <input id="encounter-patient-search" value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search by patient name or hospital ID" />
+                </div>
+                <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical mt-2 w-full" required size={Math.min(Math.max(filteredPatients.length, 2), 8)}>
                   <option value="">Select patient…</option>
-                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
+                  {filteredPatients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
                 </select>
+                <p className="mt-1 text-[11px] text-muted-foreground">{filteredPatients.length} patient record{filteredPatients.length === 1 ? "" : "s"} available in the authorized directory.</p>
               </div>
               <div>
                 <label htmlFor="encounter-symptoms" className="mb-1 block text-xs font-semibold">Presenting symptoms / complaints</label>
