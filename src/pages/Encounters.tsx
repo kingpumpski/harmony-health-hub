@@ -628,7 +628,8 @@ export default function Encounters() {
           refreshing={loading}
           lastUpdated={lastUpdated}
           emptyMessage="No encounters match the selected filters."
-          rowActions={(item) => <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => selectEncounter(item)}>View</button>}
+          columnPreferenceKey="encounter-worklist"
+          rowActions={(item) => <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => selectEncounter(item)}>{item.status === "completed" ? "View" : "Edit / View"}</button>}
         />
       </OperationalWorklistShell>
 
