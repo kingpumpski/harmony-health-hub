@@ -12,7 +12,7 @@ const send=read('supabase/functions/notifications-send/index.ts');
 const settings=read('src/pages/admin/Settings.tsx');
 const docs=read('docs/NOTIFICATION_PROVIDER_TEST_SETUP.md');
 assert('provider-authentication',provider.includes('auth.getUser')&&provider.includes('Authorization'),'provider endpoint must require bearer authentication');
-assert('provider-role-boundary',provider.includes("['admin','it_admin']")&&provider.includes('has_facility_access'),'provider configuration must require Admin/IT Admin and facility access');
+assert('provider-role-boundary',provider.includes("['admin','it_admin','system_superuser']")&&provider.includes('has_facility_access'),'provider configuration must require Admin/IT Admin and facility access');
 assert('credential-encryption',provider.includes('NOTIFICATION_CREDENTIAL_ENCRYPTION_KEY')&&provider.includes('AES-GCM')&&provider.includes('kb.length!==32'),'provider credentials must use a 32-byte AES-GCM key');
 assert('smtp-hosted-boundary',/smtpPort\s*===\s*25/.test(provider)&&/smtpPort\s*===\s*587/.test(provider)&&/credentials\.port\?\?465/.test(provider)&&/secure\s*!==\s*true/.test(provider),'hosted SMTP ports 25/587 must be rejected and 465 must require TLS');
 assert('provider-routing',provider.includes('priority')&&provider.includes('isPrimary')&&provider.includes('is_primary'),'provider priority and primary routing must be persisted');
