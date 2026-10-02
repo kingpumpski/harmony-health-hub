@@ -110,6 +110,9 @@ jobs:
       - name: Encounter workflow workspace facility contract
         run: npm run test:encounter-workflow-workspace-facility
 
+      - name: Encounter worklist RPC contract
+        run: npm run test:encounter-worklist-rpc
+
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 
