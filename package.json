@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:contracts": "node scripts/validate-operational-contracts.mjs",
+    "test:contracts": "node scripts/validate-operational-contracts.mjs && npm run test:test-mode-facility-isolation",
     "test:clinical-report-access": "node scripts/clinical-report-only-access-contract.mjs",
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
