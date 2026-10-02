@@ -827,22 +827,25 @@ export default function Encounters() {
                         <p className="mt-1 text-xs text-muted-foreground">Keep the clinical narrative central. Orders and treatment actions are opened only when needed.</p>
                       </div>
                       {selected.status !== "completed" && (
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs"
-                          onClick={() => {
-                            const principal = diagnoses.find((dx) => dx.is_principal)?.diagnosis;
-                            if (principal && !draftTreatmentPlan.trim()) setDraftTreatmentPlan(`Assessment: ${principal}\n\n`);
-                            toast({ title: principal ? "Clinical context prepared" : "Clerking sheet ready", description: principal ? "The principal diagnosis has been placed in the treatment-plan draft for clinician review." : "Enter the narrative findings and save the draft." });
-                          }}
-                        >Prepare assessment</button>
-                        <button type="button" className="btn-ghost text-xs" onClick={() => {
-                          const v = latestVitals?.[0];
-                          if (!v) return toast({ title: "No recent vitals available", description: "Record triage/vitals first, then return to the encounter." });
-                          const block = `Latest vitals — BP ${v.systolic ?? "—"}/${v.diastolic ?? "—"} · Pulse ${v.pulse_rate ?? "—"} · Temp ${v.temperature ?? "—"} · SpO₂ ${v.oxygen_saturation ?? "—"}%\n`;
-                          if (!draftClerking.includes("Latest vitals —")) setDraftClerking((current) => current ? `${current.trim()}\n\n${block}` : block);
-                          toast({ title: "Latest vitals prepared", description: "Review the inserted values and save the clerking draft." });
-                        }}>Auto-fill latest vitals</button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            onClick={() => {
+                              const principal = diagnoses.find((dx) => dx.is_principal)?.diagnosis;
+                              if (principal && !draftTreatmentPlan.trim()) setDraftTreatmentPlan(`Assessment: ${principal}\n\n`);
+                              toast({ title: principal ? "Clinical context prepared" : "Clerking sheet ready", description: principal ? "The principal diagnosis has been placed in the treatment-plan draft for clinician review." : "Enter the narrative findings and save the draft." });
+                            }}
+                          >Prepare assessment</button>
+                          <button type="button" className="btn-ghost text-xs" onClick={() => {
+                            const v = latestVitals?.[0];
+                            if (!v) return toast({ title: "No recent vitals available", description: "Record triage/vitals first, then return to the encounter." });
+                            const block = `Latest vitals — BP ${v.systolic ?? "—"}/${v.diastolic ?? "—"} · Pulse ${v.pulse_rate ?? "—"} · Temp ${v.temperature ?? "—"} · SpO₂ ${v.oxygen_saturation ?? "—"}%\n`;
+                            if (!draftClerking.includes("Latest vitals —")) setDraftClerking((current) => current ? `${current.trim()}\n\n${block}` : block);
+                            toast({ title: "Latest vitals prepared", description: "Review the inserted values and save the clerking draft." });
+                          }}>Auto-fill latest vitals</button>
+                        </div>
+                      )}
                       )}
                     </div>
                     {selected.status !== "completed" ? (
