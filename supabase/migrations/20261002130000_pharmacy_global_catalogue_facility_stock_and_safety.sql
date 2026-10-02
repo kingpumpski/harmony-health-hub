@@ -297,10 +297,20 @@ BEGIN
     'plans', CASE WHEN v_clinical_pharmacy THEN COALESCE((
       SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(x) ORDER BY x.created_at DESC)
       FROM (SELECT d.id, d.patient_id, d.medication_name, d.prepared_quantity, d.service_order_id,
-        d.status, d.created_at, d.patient_charge, d.nhis_claim_amount, so.status AS service_order_status,
+        d.status, d.created_at, d.patient_charge, d.nhis_claim_amount, d.prescription_id, d.inventory_id,
+        r.medication AS prescribed_medication, r.dosage, r.frequency, r.duration,
+        r.computed_quantity, r.dispensed_quantity, so.status AS service_order_status,
         pg_catalog.jsonb_build_object('id', p.id, 'first_name', p.first_name, 'last_name', p.last_name,
-          'patient_code', p.patient_code) AS patients
+          'patient_code', p.patient_code, 'date_of_birth', p.date_of_birth, 'gender', p.gender,
+          'blood_group', p.blood_group, 'allergies', p.allergies, 'insurance_provider', p.insurance_provider,
+          'insurance_number', p.insurance_number, 'insurance_expiry', p.insurance_expiry) AS patients,
+        COALESCE(NULLIF(e.principal_diagnosis, ''), (
+          SELECT pg_catalog.string_agg(dx.diagnosis, ', ' ORDER BY dx.is_principal DESC, dx.created_at DESC)
+          FROM public.diagnoses dx WHERE dx.encounter_id = r.encounter_id
+        )) AS diagnosis
         FROM public.pharmacy_dispensing_plans d JOIN public.patients p ON p.id = d.patient_id
+        LEFT JOIN public.prescriptions r ON r.id = d.prescription_id AND r.patient_id = d.patient_id
+        LEFT JOIN public.encounters e ON e.id = r.encounter_id AND e.patient_id = r.patient_id
         LEFT JOIN public.service_orders so ON so.id = d.service_order_id
         WHERE d.status <> 'cancelled' AND (v_admin OR (v_facility IS NOT NULL AND d.facility_id = v_facility))
         ORDER BY d.created_at DESC LIMIT _limit) x
@@ -386,7 +396,7 @@ BEGIN
     OR (NULLIF(btrim(c.generic_name), '') IS NOT NULL AND lower(btrim(_medication)) LIKE lower(btrim(c.generic_name)) || ' %')
   )
   ORDER BY CASE WHEN lower(c.name) = lower(btrim(_medication)) THEN 0 ELSE 1 END LIMIT 1;
-  IF source_category IS NULL THEN RETURN; END IF;
+  IF source_category IS NULL OR lower(btrim(source_category)) = 'uncategorized' THEN RETURN; END IF;
   RETURN QUERY
   SELECT i.id, i.drug_name, i.brand_name, i.generic_name, i.strength, i.form, i.supplier,
     i.stock_quantity, i.unit_price, c.category
@@ -396,8 +406,14 @@ BEGIN
     AND (i.expiry_date IS NULL OR i.expiry_date >= CURRENT_DATE)
     AND (_strength IS NULL OR i.strength ILIKE '%' || _strength || '%')
     AND (source_category IS NULL OR lower(c.category) = lower(source_category))
-    AND (lower(i.drug_name) <> lower(btrim(_medication))
-      OR lower(coalesce(i.generic_name, '')) <> lower(btrim(_medication)))
+    AND NOT (
+      lower(btrim(_medication)) = lower(btrim(i.drug_name))
+      OR lower(btrim(_medication)) LIKE lower(btrim(i.drug_name)) || ' %'
+      OR (NULLIF(btrim(i.generic_name), '') IS NOT NULL AND (
+        lower(btrim(_medication)) = lower(btrim(i.generic_name))
+        OR lower(btrim(_medication)) LIKE lower(btrim(i.generic_name)) || ' %'
+      ))
+    )
   ORDER BY i.stock_quantity DESC, i.drug_name LIMIT 20;
 END;
 $function$;
