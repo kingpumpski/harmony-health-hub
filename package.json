@@ -14,7 +14,7 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:clinical-results-production && npm run test:contracts && npm run test:clinical-report-access && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:project-integrity && npm run test:security-best-practices && npm run test:legacy-lineage-security && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:role-dashboards && npm run test:radiologist-dashboard-repair && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation && npm run test:authenticated-security-definer-exposure && npm run test:new-security-definer-authorization && npm run test:rls-helper-performance",
+    "test": "npm run test:clinical-results-production && npm run test:appointment-scheduling-facility && npm run test:contracts && npm run test:clinical-report-access && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:project-integrity && npm run test:security-best-practices && npm run test:legacy-lineage-security && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:role-dashboards && npm run test:radiologist-dashboard-repair && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation && npm run test:authenticated-security-definer-exposure && npm run test:new-security-definer-authorization && npm run test:rls-helper-performance",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
@@ -44,7 +44,8 @@
     "test:new-security-definer-authorization": "node scripts/new-security-definer-authorization-contract.mjs",
     "test:legacy-lineage-security": "node scripts/legacy-lineage-security-contract.mjs",
     "test:clinical-results-production": "node scripts/clinical-results-production-contract.mjs",
-    "test:radiologist-dashboard-repair": "node scripts/radiologist-dashboard-repair-contract.mjs"
+    "test:radiologist-dashboard-repair": "node scripts/radiologist-dashboard-repair-contract.mjs",
+    "test:appointment-scheduling-facility": "node scripts/appointment-scheduling-facility-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
