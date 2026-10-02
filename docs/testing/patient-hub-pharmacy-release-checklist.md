@@ -1,12 +1,12 @@
 # Harmony Health Hub — Patient Hub and Pharmacy Test Release Checklist
 
-Use this checklist to validate PR #271 in a **non-production/test environment** before considering promotion. It is a test plan, not evidence that the live deployment has passed.
+Use this checklist to validate PR #271 before considering promotion. It is a test plan, not evidence that the project has passed production sign-off. At the time of the latest diagnostic check, the connected Supabase account exposed only the `harmony-health-hub` project; there was no separate Supabase test project available. The app's test mode is not a separate database. Do not treat it as database isolation.
 
 ## 1. Release gates
 
 - [ ] Review PR #271 and confirm its diff contains only the intended Patient Hub compatibility/test changes.
 - [ ] Wait for the GitHub **Quality** workflow to finish successfully, including typecheck, lint, regression contracts, and production build.
-- [ ] Confirm the target Supabase environment is the test project and record its project reference before applying migrations.
+- [ ] Provision or identify a dedicated non-production Supabase project and record its project reference before applying migrations. Do not apply test migrations to the current production project.
 - [ ] Confirm a current backup/recovery point and the normal migration approval process are in place.
 - [ ] Apply the migration through the repository's approved Supabase migration workflow; do not manually edit production function definitions to work around the error.
 - [ ] Do not promote to production until the same checks and a separately approved production migration have been completed.
@@ -36,6 +36,8 @@ order by p.proname, arguments;
 
 For these read-only functions, `provolatile` should be `s` (STABLE). If a function is missing, appears more than once with unexpected signatures, or is not STABLE, stop and investigate the applied migration history before testing further.
 
+**Latest live diagnostic (2026-10-02):** the six functions currently report STABLE. Supabase edge logs showed the three Patient Hub GET RPCs returning HTTP 200 at 09:26 UTC, while earlier requests at 05:20 UTC returned 405. Therefore the 405 was observed historically but was not reproducible in the latest check; do not claim this PR alone fixed it. Retest with the affected account and capture a fresh request if it recurs.
+
 ## 3. Patient Hub acceptance tests
 
 Use a dedicated test patient assigned to the test facility. Do not use real patient data for routine acceptance testing.
@@ -50,9 +52,11 @@ Use a dedicated test patient assigned to the test facility. Do not use real pati
 
 ## 4. Encounter-start facility mismatch
 
-A `Facility context mismatch` response is a separate data-lineage/authorization failure; the GET compatibility migration does not fix it.
+A `Facility context mismatch` response is separate from Patient Hub GET compatibility. Latest database logs show `assign_active_facility()` raising during the encounter INSERT because the encounter's facility differs from `current_user_facility_id()` at trigger time. The current encounter-start function also requires the patient's facility to match the active facility. This points to an active-facility/context mismatch at write time; it is not a reason to weaken the trigger.
 
-- [ ] Record the test user's active facility ID, patient ID and facility ID, appointment ID and facility ID, and any linked encounter ID and facility ID.
+The current live database also has legacy rows with missing facility attribution (aggregate diagnostic: 10 appointments, 10 patients, and 10 encounters with null facility IDs; no appointment/patient or encounter/patient mismatches were found among rows with both IDs populated). These counts do not identify the affected test record. Reconcile only the specific test record through the approved audited workflow.
+
+- [ ] Record the test user's active facility ID, patient ID and facility ID, appointment ID and facility ID, and any linked encounter ID and facility ID in an access-controlled admin diagnostic; do not paste patient identifiers into public issue comments or general logs.
 - [ ] Compare those IDs using authorized, read-only diagnostics.
 - [ ] Check whether the appointment belongs to the same patient and facility and whether it is in a startable status.
 - [ ] If attribution is incorrect, use the project's approved, audited reconciliation workflow with an authorized administrator.
@@ -82,4 +86,4 @@ A `Facility context mismatch` response is a separate data-lineage/authorization 
 
 ## Exit criteria
 
-The change is ready for test sign-off only when the migration is applied in the test environment, the Quality workflow passes, Patient Hub GET calls work for authorized test users, cross-facility isolation is preserved, and encounter-start lineage is either verified or tracked as a separate blocker. Passing source-level contracts alone is not production verification.
+The change is ready for test sign-off only when the migration is applied in a dedicated test project, the Quality workflow passes, Patient Hub GET calls work for authorized test users, cross-facility isolation is preserved, and encounter-start lineage is verified. Passing source-level contracts alone is not production verification. Because no separate test project is currently available, do not describe the current shared production database as an isolated test environment.
