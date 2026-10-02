@@ -16,7 +16,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance')] },
+    { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance')] },
     { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
   ],
   practitioner: [
@@ -55,7 +55,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Finance', icon: CreditCard, items: [item(CreditCard, 'Finance', '/finance', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'Insurance Claims', '/insurance-claims', 'claims'), item(BarChart3, 'Financial Reports', '/financial-reports', 'financial_reports')] },
+    { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'NHIS / Insurance Claims', '/insurance-claims', 'claims'), item(BarChart3, 'Financial Reports', '/financial-reports', 'financial_reports')] },
   ],
   radiology_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
