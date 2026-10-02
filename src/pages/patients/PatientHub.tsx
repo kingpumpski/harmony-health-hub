@@ -30,7 +30,7 @@ export default function PatientHub() {
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any; setHistoryLoading(true); setHistoryError('');
     if (currentAdmissionId) {
-      const { data, error } = await db.rpc('get_patient_current_treatment_snapshot', { _patient_id: patientId, _admission_id: currentAdmissionId });
+      const { data, error } = await db.rpc('get_patient_current_treatment_snapshot', { _patient_id: patientId, _admission_id: currentAdmissionId }, { get: true });
       if (error) {
         setRows({}); setHistoryError(error.message ?? 'Unable to load the current treatment context.'); toast.error(error.message ?? 'Unable to load the current treatment context.');
       } else {
@@ -50,10 +50,10 @@ export default function PatientHub() {
       setHistoryLoading(false); return;
     }
     const specs = [
-      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
-      ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })]] : []),
+      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })],
+      ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })]] : []),
       ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]] : []),
-      ...([...roleSet].some((role) => clinicalRoles.has(role) || role === 'system_superuser') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
+      ...([...roleSet].some((role) => clinicalRoles.has(role) || role === 'system_superuser') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const nextRows: Record<string, any[]> = {};
     const failed: string[] = [];
