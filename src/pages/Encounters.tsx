@@ -290,6 +290,7 @@ export default function Encounters() {
   const [draftSymptoms, setDraftSymptoms] = useState("");
   const [draftClerking, setDraftClerking] = useState("");
   const [draftTreatmentPlan, setDraftTreatmentPlan] = useState("");
+  const [latestVitals, setLatestVitals] = useState<ClinicalContext["recent_vitals"]>([]);
   const [draftSaving, setDraftSaving] = useState(false);
   const [newDx, setNewDx] = useState("");
   const [med, setMed] = useState("");
@@ -405,7 +406,11 @@ export default function Encounters() {
     setDraftClerking(selected.clerking_notes ?? "");
     setDraftTreatmentPlan(selected.treatment_plan ?? "");
     void loadDetails(selected.id);
-  }, [selected?.id]);
+    void db.rpc("get_encounter_clinical_context", { _patient_id: selected.patient_id, _encounter_id: selected.id }).then(({ data, error }: any) => {
+      if (error) return;
+      setLatestVitals(((data?.recent_vitals ?? []) as ClinicalContext["recent_vitals"]).slice(0, 1));
+    });
+  }, [selected]);
 
   useEffect(() => {
     if (!quickAction || !selected) return;
@@ -831,6 +836,13 @@ export default function Encounters() {
                             toast({ title: principal ? "Clinical context prepared" : "Clerking sheet ready", description: principal ? "The principal diagnosis has been placed in the treatment-plan draft for clinician review." : "Enter the narrative findings and save the draft." });
                           }}
                         >Prepare assessment</button>
+                        <button type="button" className="btn-ghost text-xs" onClick={() => {
+                          const v = latestVitals?.[0];
+                          if (!v) return toast({ title: "No recent vitals available", description: "Record triage/vitals first, then return to the encounter." });
+                          const block = `Latest vitals — BP ${v.systolic ?? "—"}/${v.diastolic ?? "—"} · Pulse ${v.pulse_rate ?? "—"} · Temp ${v.temperature ?? "—"} · SpO₂ ${v.oxygen_saturation ?? "—"}%\n`;
+                          if (!draftClerking.includes("Latest vitals —")) setDraftClerking((current) => current ? `${current.trim()}\n\n${block}` : block);
+                          toast({ title: "Latest vitals prepared", description: "Review the inserted values and save the clerking draft." });
+                        }}>Auto-fill latest vitals</button>
                       )}
                     </div>
                     {selected.status !== "completed" ? (
