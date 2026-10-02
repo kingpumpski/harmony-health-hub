@@ -40,7 +40,7 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing','meal_orders'],
-  system_superuser: ['dashboard','users','system_library','clinical_references','facility_onboarding'],
+  system_superuser: [...Object.values(permissionByHref), 'encounters_amend','create_services','create_items'],
   it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
 
