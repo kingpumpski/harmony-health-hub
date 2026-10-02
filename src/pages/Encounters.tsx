@@ -48,6 +48,7 @@ interface Encounter {
   submitted_at?: string | null;
   version_no?: number | null;
 }
+interface Clinician { id: string; first_name: string | null; last_name: string | null; department?: string | null; specialization?: string | null; clinician_role?: string; }
 interface Diagnosis {
   id: string;
   encounter_id: string;
@@ -219,6 +220,7 @@ export default function Encounters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [clinicians, setClinicians] = useState<Clinician[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [selected, setSelected] = useState<Encounter | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -268,11 +270,13 @@ export default function Encounters() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: pts }, { data: encs }] = await Promise.all([
+      const [{ data: pts }, { data: encs }, { data: staff }] = await Promise.all([
       supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
       supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+      db.rpc("get_appointment_clinicians", {}, { get: true }),
     ]);
       setPatients((pts ?? []) as Patient[]);
+      setClinicians((staff ?? []) as Clinician[]);
       setEncounters((encs ?? []) as Encounter[]);
       setLastUpdated(new Date());
     } finally {
@@ -512,6 +516,7 @@ export default function Encounters() {
       return true;
     });
   }, [appliedFilters, encounters, patients, user?.id, user?.roles]); 
+  const clinicianMap = useMemo(() => new Map(clinicians.map((clinician) => [clinician.id, clinician])), [clinicians]);
   const encounterColumns: WorklistColumn<Encounter>[] = [
     { key: "reference", label: "Encounter ID", required: true, sortValue: (item) => item.id, render: (item) => <span className="font-mono text-xs text-muted-foreground" title={item.id}>{item.id.slice(0, 8).toUpperCase()}</span> },
     { key: "patient", label: "Patient name", required: true, sortValue: (item) => patients.find((p) => p.id === item.patient_id)?.last_name ?? "", render: (item) => {
@@ -519,7 +524,7 @@ export default function Encounters() {
       return <div className="min-w-0"><p className="font-semibold text-foreground">{patient ? `${patient.first_name} ${patient.last_name}` : "Patient record"}</p><p className="mt-0.5 max-w-[220px] truncate text-xs text-muted-foreground">{patient?.patient_code ?? item.patient_id}</p></div>;
     }},
     { key: "consultation", label: "Consultation type", required: true, sortValue: (item) => item.encounter_type ?? "consultation", render: (item) => <span className="capitalize">{(item.encounter_type ?? "consultation").replace(/_/g, " ")}</span> },
-    { key: "clinician", label: "Clinician name", required: true, sortValue: (item) => item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned", render: (item) => <span className="text-muted-foreground">{item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned"}</span> },
+    { key: "clinician", label: "Clinician name", required: true, sortValue: (item) => item.practitioner_id === user?.id ? "You" : item.practitioner_id ? `${clinicianMap.get(item.practitioner_id)?.last_name ?? ""} ${clinicianMap.get(item.practitioner_id)?.first_name ?? ""}` : "Unassigned", render: (item) => { const clinician = item.practitioner_id ? clinicianMap.get(item.practitioner_id) : null; return <span className="text-muted-foreground">{item.practitioner_id === user?.id ? "You" : clinician ? `${clinician.first_name ?? ""} ${clinician.last_name ?? ""}`.trim() || "Assigned clinician" : item.practitioner_id ? "Assigned clinician" : "Unassigned"}</span>; } },
     { key: "date", label: "Encounter date & time", required: true, sortValue: (item) => new Date(item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap">{new Date(item.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span> },
     { key: "timestamp", label: "Timestamp / last modified", required: true, sortValue: (item) => new Date(item.updated_at ?? item.submitted_at ?? item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap text-xs text-muted-foreground">{new Date(item.updated_at ?? item.submitted_at ?? item.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span> },
     { key: "status", label: "Status", required: true, sortValue: (item) => item.status, render: (item) => {
