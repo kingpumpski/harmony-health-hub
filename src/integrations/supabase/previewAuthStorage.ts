@@ -7,6 +7,8 @@ export function brokeredPreviewStorage() {
   const host = location.hostname;
   const PREVIEW_ZONES = ['lovableproject.com', 'lovableproject-dev.com', 'lovable.app', 'gpt-eng.com', 'gptengineer.run'];
   const onPreviewZone = PREVIEW_ZONES.some((z) => host === z || host.endsWith('.' + z));
+  // Read the id only from non-user-controlled host positions, so a user-named
+  // preview--<name> host can't smuggle another project's id.
   const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
   const projectId = onPreviewZone
     ? (host.match(new RegExp('^(?:id-preview(?:-[a-z0-9]+)?|project)--(' + UUID + ')(?:-dev)?(?=\\.|$)', 'i'))?.[1]
@@ -15,6 +17,8 @@ export function brokeredPreviewStorage() {
   const framed = window.parent && window.parent !== window;
   if (!projectId || !framed) return localStorage;
 
+  // Post only to the real editor ancestor, validated as a Lovable origin, so the
+  // session token can never reach an untrusted embedder.
   const dev = host.endsWith('.lovableproject-dev.com') || host.endsWith('.gpt-eng.com');
   const EDITOR = dev
     ? /^https:\/\/([a-z0-9-]+\.)*(lovable\.dev|gptengineer\.app)$|^http:\/\/localhost:3000$/
@@ -31,6 +35,7 @@ export function brokeredPreviewStorage() {
     new Promise((resolve) => {
       const requestId = newId();
       let done = false;
+      let timer: ReturnType<typeof setTimeout>;
       const finish = (r: { ok: boolean; value?: string | null } | null) => {
         if (done) return;
         done = true;
@@ -46,10 +51,12 @@ export function brokeredPreviewStorage() {
       window.addEventListener('message', onMessage);
       const msg: Record<string, unknown> = { type, requestId, projectId, key };
       if (value !== undefined) msg['value'] = value;
+      // targetOrigin per trusted editor origin, so a session token never reaches an arbitrary embedder.
       for (const origin of editorOrigins) window.parent.postMessage(msg, origin);
-      const timer = setTimeout(() => finish(null), TIMEOUT);
+      timer = setTimeout(() => finish(null), TIMEOUT);
     });
 
+  // The editor may not be listening yet at the first getItem, so retry once.
   let firstGet = true;
   const RETRY_DELAY = 250;
 
@@ -61,6 +68,8 @@ export function brokeredPreviewStorage() {
         res = await request('lovable-preview-auth:get', key);
       }
       firstGet = false;
+      // '' is the logout tombstone: clear the local copy too so it can't resurrect if
+      // the broker later goes silent. A null reply means never-synced -> keep local.
       if (res && res.ok && typeof res.value === 'string') {
         if (res.value === '') { localStorage.removeItem(key); return null; }
         return res.value;
@@ -69,7 +78,12 @@ export function brokeredPreviewStorage() {
     },
     setItem: (key: string, value: string) => {
       localStorage.setItem(key, value);
-      return request('lovable-preview-auth:set', key, value).then(() => undefined);
+      return request('lovable-preview-auth:set', key, value).then((res) => {
+        if (res && res.ok && typeof res.value === 'string' && localStorage.getItem(key) === value) {
+          if (res.value === '') localStorage.removeItem(key);
+          else localStorage.setItem(key, res.value);
+        }
+      });
     },
     removeItem: (key: string) => {
       localStorage.removeItem(key);
