@@ -58,7 +58,7 @@ export default function OperationalWorklistShell({
       </header>
 
       {counters.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" aria-label={`${title} counters`}>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label={`${title} counters`}>
           {counters.map((counter) => (
             <div key={counter.label} className={`card-medical min-w-0 ${counter.surface ?? 'bg-card'} p-3`}>
               <p className="truncate text-[11px] leading-tight text-muted-foreground">{counter.label}</p>
