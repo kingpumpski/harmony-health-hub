@@ -98,6 +98,9 @@ jobs:
       - name: Patient Hub read-only RPC contract
         run: npm run test:patient-hub-readonly-rpc
 
+      - name: Patient Hub read RPC GET compatibility contract
+        run: npm run test:patient-hub-read-rpc-get-compatibility
+
       - name: Patient Hub section-load error contract
         run: npm run test:patient-hub-section-load-errors
 
