@@ -8,10 +8,10 @@ for (const needle of [
   "An active facility is required to access patient records",
   "p.facility_id = active_facility",
   "public.current_user_has_facility_access(p.facility_id)",
-  "REVOKE ALL ON FUNCTION public.search_patient_directory(text, integer) FROM PUBLIC, anon",
-  "REVOKE ALL ON FUNCTION public.get_patient_profile_for_user(uuid) FROM PUBLIC, anon",
-  "GRANT EXECUTE ON FUNCTION public.search_patient_directory(text, integer) TO authenticated",
-  "GRANT EXECUTE ON FUNCTION public.get_patient_profile_for_user(uuid) TO authenticated"
+  "revoke all on function public.search_patient_directory(text, integer) from public, anon",
+  "revoke all on function public.get_patient_profile_for_user(uuid) from public, anon",
+  "grant execute on function public.search_patient_directory(text, integer) to authenticated",
+  "grant execute on function public.get_patient_profile_for_user(uuid) to authenticated"
 ]) {
   if (!migration.includes(needle)) throw new Error("Patient facility-scope migration missing guard: " + needle);
 }
