@@ -31,6 +31,15 @@ if (!appointments.includes('facility context mismatch') ||
     !appointments.includes('Switch to the patient')) {
   throw new Error('Appointment UI must explain how to recover from facility context mismatch');
 }
+if (!appointments.includes("appointment.attending_officer_id && appointment.attending_officer_id !== currentUserId")) {
+  throw new Error('Appointment start must refuse takeover of an appointment assigned to another clinician');
+}
+if (!appointments.includes("const appointmentPatient = (appointment: Appointment): Patient | undefined")) {
+  throw new Error('Appointment rows must prefer the protected worklist patient projection');
+}
+if (/supabase\\.from\\(['\"]appointments['\"]\\)/.test(appointments) || /supabase\\.from\\(['\"]patients['\"]\\)/.test(appointments)) {
+  throw new Error('Appointment page must not directly read appointments or patients tables');
+}
 const appointmentPage = fs.readFileSync('src/pages/Appointments.tsx', 'utf8');
 for (const call of [
   "supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never, { get: true } as never)",
