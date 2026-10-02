@@ -109,7 +109,39 @@ export async function searchPatients(query: string) {
   return ranked.sort((a, b) => b.score - a.score).map(({ patient }) => patient);
 }
 
-export async function getPatientById(id: string) { const { data, error } = await supabase.rpc('get_patient_profile_for_user' as never, { _patient_id: id } as never); if (error) throw error; const rows = (data ?? []) as any[]; return rows[0] ?? null; }
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function fetchPatientProfile(patientId: string) {
+  const { data, error } = await supabase.rpc('get_patient_profile_for_user' as never, { _patient_id: patientId } as never);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  return rows[0] ?? null;
+}
+
+/**
+ * Resolve Patient Hub links by the canonical patient UUID first. Some legacy
+ * links contain the hospital patient code instead; only fall back to an exact
+ * code match through the facility-scoped directory, then fetch the profile
+ * through the same authorized RPC. This does not bypass facility authorization.
+ */
+export async function getPatientById(id: string) {
+  const requestedId = id.trim();
+  if (!requestedId) return null;
+
+  if (UUID_PATTERN.test(requestedId)) {
+    const profile = await fetchPatientProfile(requestedId);
+    if (profile) return profile;
+  }
+
+  const { data: matches, error } = await searchPatientDirectory(requestedId, 10);
+  if (error) throw error;
+  const exactMatch = (matches ?? []).find(
+    (candidate) => String(candidate.patient_code ?? '').trim().toLocaleLowerCase() === requestedId.toLocaleLowerCase(),
+  );
+  if (!exactMatch) return null;
+
+  return fetchPatientProfile(exactMatch.id);
+}
 export async function updatePatient(id: string, data: Partial<Patient>) {
   const updateRow = {
     patient_code: data.patientId,
