@@ -16,7 +16,7 @@ const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
 ];
 const editRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'front_desk']);
 const clinicalRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife']);
-const clinicalHistoryRoles = new Set(['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);
+const clinicalHistoryRoles = new Set(['admin', 'system_superuser', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);
 const billingRoles = new Set(['admin', 'accountant', 'front_desk']);
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'; }
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) { return <section className="card-medical p-5 space-y-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-lg font-semibold">{title}</h2>{action}</div>{children}</section>; }
@@ -50,10 +50,10 @@ export default function PatientHub() {
       setHistoryLoading(false); return;
     }
     const specs = [
-      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })],
-      ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })]] : []),
+      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
+      ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })]] : []),
       ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]] : []),
-      ...([...roleSet].some((role) => clinicalRoles.has(role)) ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })]] : []),
+      ...([...roleSet].some((role) => clinicalRoles.has(role)) ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const nextRows: Record<string, any[]> = {};
     const failed: string[] = [];
