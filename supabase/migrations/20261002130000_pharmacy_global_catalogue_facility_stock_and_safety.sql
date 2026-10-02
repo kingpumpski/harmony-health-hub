@@ -87,6 +87,7 @@ DROP POLICY IF EXISTS inv_pharma_insert ON public.pharmacy_inventory;
 REVOKE INSERT, UPDATE, DELETE ON public.pharmacy_inventory FROM PUBLIC, anon, authenticated;
 
 DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric);
+DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric,text);
 
 CREATE OR REPLACE FUNCTION public.create_pharmacy_inventory_item(
   _drug_name text, _brand_name text, _generic_name text, _strength text, _form text,
@@ -428,6 +429,7 @@ REVOKE ALL ON FUNCTION public.find_pharmacy_alternatives(text,text) FROM PUBLIC,
 GRANT EXECUTE ON FUNCTION public.find_pharmacy_alternatives(text,text) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.prepare_pharmacy_dispensing(uuid,uuid,integer,text);
+DROP FUNCTION IF EXISTS public.prepare_pharmacy_dispensing(uuid,uuid,integer,text,text);
 CREATE FUNCTION public.prepare_pharmacy_dispensing(
   _prescription_id uuid, _inventory_id uuid, _quantity integer, _notes text DEFAULT NULL,
   _alternative_reason text DEFAULT NULL
