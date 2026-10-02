@@ -52,7 +52,7 @@ export default function PatientHub() {
     const specs = [
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })],
       ...(canClinicalHistory ? [['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })]] : []),
-      ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 }, { get: true })]] : []),
+      ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]] : []),
       ...([...roleSet].some((role) => clinicalRoles.has(role)) ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })]] : []),
     ];
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const nextRows: Record<string, any[]> = {};
