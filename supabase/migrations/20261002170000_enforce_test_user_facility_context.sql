@@ -161,7 +161,7 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.hms_current_user_is_test_user() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.hms_current_user_is_test_user() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.current_user_facility_id() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.get_user_facilities() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_user_facilities() TO authenticated;
