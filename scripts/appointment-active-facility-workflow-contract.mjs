@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20261002130000_scope_appointment_workflows_to_active_facility.sql', 'utf8');
 const appointments = fs.readFileSync('src/pages/Appointments.tsx', 'utf8');
+const claimMigration = fs.readFileSync('supabase/migrations/20261002191500_harden_appointment_claim_test_mode_boundary.sql', 'utf8');
 
 for (const needle of [
   'a.facility_id = v_facility',
@@ -16,6 +17,15 @@ for (const needle of [
   "NOTIFY pgrst, 'reload schema'"
 ]) {
   if (!migration.includes(needle)) throw new Error('Active-facility appointment guard missing: ' + needle);
+}
+for (const needle of [
+  'public.hms_current_user_is_test_user()',
+  'public.hms_test_facility_id()',
+  'Test mode is active. Test accounts can claim appointments only for patients in the Harmony Health Hub Test Facility',
+  'REVOKE ALL ON FUNCTION public.claim_appointment(uuid) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.claim_appointment(uuid) TO authenticated',
+]) {
+  if (!claimMigration.includes(needle)) throw new Error('Appointment claim test-mode boundary missing: ' + needle);
 }
 if (!appointments.includes('facility context mismatch') ||
     !appointments.includes('Switch to the patient')) {
