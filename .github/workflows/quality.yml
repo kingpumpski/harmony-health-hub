@@ -119,6 +119,12 @@ jobs:
       - name: Encounter clerking facility contract
         run: npm run test:encounter-clerking-facility
 
+      - name: Encounter lifecycle facility contract
+        run: npm run test:encounter-lifecycle-facility
+
+      - name: Encounter diagnosis facility contract
+        run: npm run test:encounter-diagnosis-facility
+
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 
