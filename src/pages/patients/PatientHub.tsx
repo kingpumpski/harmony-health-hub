@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, RefreshCw, UserRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getPatientById, searchPatients, updatePatient } from '@/lib/healthApi';
+import { getPatientById, updatePatient } from '@/lib/healthApi';
 import { useAuth } from '@/contexts/AuthContext';
 import TriageHistoryChart from '@/components/triage/TriageHistoryChart';
 import TriageRecordForm from '@/components/triage/TriageRecordForm';
