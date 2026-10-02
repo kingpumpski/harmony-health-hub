@@ -22,6 +22,8 @@ export default function Pharmacy() {
   const [tab, setTab] = useState<'dispense' | 'pos' | 'inventory'>('dispense');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [unassignedInventory, setUnassignedInventory] = useState<InventoryItem[]>([]);
+  const [legacyReasons, setLegacyReasons] = useState<Record<string, string>>({});
   const [catalogue, setCatalogue] = useState<Array<{ id: string; name: string; category: string; generic_name: string | null; strength: string | null; form: string | null }>>([]);
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const [barcodeScan, setBarcodeScan] = useState('');
@@ -69,10 +71,12 @@ export default function Pharmacy() {
       plans?: Plan[];
       pos_sales?: PosSale[];
       catalogue?: Array<{ id: string; name: string; category: string; generic_name: string | null; strength: string | null; form: string | null }>;
+      unassigned_inventory?: InventoryItem[];
     };
     setPatients(workspace.patients ?? []);
     setInventory(workspace.inventory ?? []);
     setCatalogue(workspace.catalogue ?? []);
+    setUnassignedInventory(workspace.unassigned_inventory ?? []);
     setPrescriptions(workspace.prescriptions ?? []);
     setPlans(workspace.plans ?? []);
     setPosSales((workspace.pos_sales ?? []).map((sale) => ({
@@ -145,6 +149,8 @@ export default function Pharmacy() {
     void load();
   };
 
+  const canReconcileLegacy = Boolean(user?.roles.some((role) => role === 'admin' || role === 'system_superuser'));
+  const assignLegacyStock = async (itemId: string) => { const reason = legacyReasons[itemId]?.trim() ?? ''; if (reason.length < 10) return toast.error('Record a reconciliation reason of at least 10 characters.'); const { error } = await db.rpc('assign_unattributed_pharmacy_inventory', { _item_id: itemId, _reason: reason }); if (error) return toast.error(error.message); toast.success('Legacy stock assigned to the active facility and audit logged.'); setLegacyReasons((current) => ({ ...current, [itemId]: '' })); void load(); };
   const addGlobalMedication = async (catalogueId: string) => { const { error } = await db.rpc('add_global_medication_to_facility', { _catalogue_id: catalogueId }); if (error) return toast.error(error.message); toast.success('Medication added to this facility with zero stock. Configure price, expiry and stock before dispensing.'); void load(); };
   const scanBarcode = () => { const item = inventory.find((candidate) => candidate.barcode?.trim().toLowerCase() === barcodeScan.trim().toLowerCase()); if (!item) return toast.error('No matching barcode in this facility store.'); if (item.stock_quantity < 1 || (item.expiry_date && item.expiry_date < new Date().toISOString().slice(0, 10))) return toast.error('This product is out of stock or expired.'); setPosItem(item.id); setTab('pos'); toast.success(`Matched ${item.drug_name}. Confirm patient and quantity before creating the sale.`); setBarcodeScan(''); };
   const counterCards = [
@@ -323,6 +329,7 @@ export default function Pharmacy() {
                 </form>}
               </div>
               <div className="px-4 pt-4 sm:px-5">
+                {canReconcileLegacy && unassignedInventory.length > 0 && <div className="mb-4 rounded-lg border border-critical/40 bg-critical/5 p-3"><h3 className="text-sm font-semibold text-critical">Legacy stock needs facility reconciliation ({unassignedInventory.length})</h3><p className="mt-1 text-xs text-muted-foreground">These records predate facility-specific stock. They are excluded from dispensing until an administrator verifies the physical stock and assigns the correct active facility. Do not assign based only on the currently selected facility.</p>{unassignedInventory.map((item) => <div key={item.id} className="grid gap-2 border-t border-border py-3 md:grid-cols-[1fr_2fr_auto] md:items-center"><div><p className="text-sm font-semibold">{item.drug_name}</p><p className="text-xs text-muted-foreground">Recorded quantity: {item.stock_quantity} · {item.supplier ?? 'Supplier unknown'} · {item.batch_number ?? 'No batch'}</p></div><input value={legacyReasons[item.id] ?? ''} onChange={(event) => setLegacyReasons((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Physical count / source record / reason" aria-label={`Reconciliation reason for ${item.drug_name}`} className="input-medical h-9 placeholder:text-muted-foreground/60" /><button type="button" className="btn-secondary text-xs" disabled={(legacyReasons[item.id] ?? '').trim().length < 10} onClick={() => void assignLegacyStock(item.id)}>Assign to active facility</button></div>)}</div>}
                 {canCreateItems && <div className="mb-4 rounded-lg border border-border p-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Shared medication catalogue</h3><p className="text-xs text-muted-foreground">Add an existing global medication to this facility. Local stock starts at zero.</p></div><input value={catalogueSearch} onChange={(event) => setCatalogueSearch(event.target.value)} placeholder="Search global catalogue" aria-label="Search global medication catalogue" className="input-medical h-9 max-w-xs" /></div>{catalogue.filter((item) => `${item.name} ${item.generic_name ?? ''} ${item.category}`.toLowerCase().includes(catalogueSearch.toLowerCase())).slice(0, 8).map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border py-2 text-sm"><div><span className="font-medium">{item.name}</span><span className="ml-2 text-xs text-muted-foreground">{item.category} · {item.generic_name ?? 'Generic not recorded'} {item.strength ?? ''}</span></div><button type="button" className="btn-secondary text-xs" onClick={() => void addGlobalMedication(item.id)}>Add with zero stock</button></div>)}</div>}
                 <div className="mb-3 flex flex-wrap items-center gap-2"><label htmlFor="pharmacy-barcode-scan" className="text-xs font-semibold">Barcode scan</label><input id="pharmacy-barcode-scan" value={barcodeScan} onChange={(event) => setBarcodeScan(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); scanBarcode(); } }} placeholder="Scan medication barcode, then press Enter" className="input-medical h-9 min-w-64 flex-1 placeholder:text-muted-foreground/60" /><button type="button" onClick={scanBarcode} className="btn-secondary text-xs">Match barcode</button></div>
                 <label htmlFor="pharmacy-inventory-search" className="sr-only">Search pharmacy stock</label>
