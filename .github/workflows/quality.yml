@@ -92,6 +92,18 @@ jobs:
       - name: Dependency security contract
         run: npm run test:dependency-security
 
+      - name: Patient Hub facility context contract
+        run: npm run test:patient-hub-facility-context
+
+      - name: Patient Hub read-only RPC contract
+        run: npm run test:patient-hub-readonly-rpc
+
+      - name: Patient Hub section-load error contract
+        run: npm run test:patient-hub-section-load-errors
+
+      - name: Pharmacy workspace UI contract
+        run: npm run test:pharmacy-workspace-ui
+
       - name: Role dashboard KPI semantic contract
         run: node scripts/role-dashboard-kpi-semantic-contract.mjs
 
