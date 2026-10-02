@@ -63,7 +63,7 @@ DECLARE
 BEGIN
   FOREACH v_signature IN ARRAY v_signatures LOOP
     v_definition := pg_catalog.pg_get_functiondef(v_signature);
-    IF pg_catalog.position('PERFORM public.assert_patient_facility_context(_patient_id);' IN v_definition) = 0 THEN
+    IF pg_catalog.strpos(v_definition, 'PERFORM public.assert_patient_facility_context(_patient_id);') = 0 THEN
       RAISE EXCEPTION 'Expected facility assertion missing from %; refusing partial read-RPC repair', v_signature;
     END IF;
     v_definition := pg_catalog.replace(
