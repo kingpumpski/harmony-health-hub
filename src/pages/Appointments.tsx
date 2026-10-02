@@ -6,7 +6,6 @@ import { toast } from '@/hooks/use-toast';
 import { Calendar, CheckCircle2, Clock3, Plus, RefreshCw, Stethoscope, UserCheck, X } from 'lucide-react';
 import { notifyRoles } from '@/lib/notifications';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
-import { searchPatientDirectory } from '@/lib/patientDirectory';
 
 interface Patient {
   id: string;
@@ -52,7 +51,11 @@ const consultationTypes = [
 const activeStatuses = new Set(['scheduled', 'claimed', 'in_progress']);
 
 function workflowErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error ?? '');
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : String(error ?? '');
   const normalized = message.toLowerCase();
   if (normalized.includes('facility attribution is unresolved') || normalized.includes('unresolved')) {
     return 'This historical record has no verified facility attribution. An administrator or IT administrator must reconcile the record with documented evidence before clinical processing can continue.';
@@ -91,7 +94,7 @@ export default function Appointments() {
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     const [{ data: pts, error: patientError }, { data: workspace, error: appointmentError }, { data: staff, error: clinicianError }] = await Promise.all([
-      searchPatientDirectory('', 300),
+      supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never),
       supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never),
       supabase.rpc('get_appointment_clinicians' as never),
     ]);
@@ -325,10 +328,11 @@ export default function Appointments() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5 text-sm sm:col-span-2">
                 <span>Patient name</span>
-                <select required value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full">
-                  <option value="">Select patient…</option>
+                <select required disabled={patients.length === 0} value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full">
+                  <option value="">{patients.length ? 'Select patient…' : 'No schedulable patients found'}</option>
                   {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}
                 </select>
+                {patients.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-300" role="status">No active patients with verified facility attribution are available for this booking. Ask an administrator or IT administrator to reconcile the patient’s facility assignment before scheduling; this system will not guess or assign a facility automatically.</p>}
               </label>
               <label className="block space-y-1.5 text-sm">
                 <span>Consultation type</span>
@@ -358,7 +362,7 @@ export default function Appointments() {
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setShowScheduler(false)} className="btn-secondary">Cancel</button>
-              <button disabled={saving} type="submit" className="btn-primary">{saving ? 'Saving…' : 'Save appointment'}</button>
+              <button disabled={saving || patients.length === 0} type="submit" className="btn-primary">{saving ? 'Saving…' : 'Save appointment'}</button>
             </div>
           </form>
         </div>
