@@ -58,6 +58,9 @@ jobs:
       - name: Role dashboard contract
         run: npm run test:role-dashboards
 
+      - name: Encounter worklist and route UX contract
+        run: npm run test:encounter-worklist-ui
+
       - name: Sidebar role contract
         run: npm run test:sidebar-roles
 
