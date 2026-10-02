@@ -846,7 +846,6 @@ export default function Encounters() {
                           }}>Auto-fill latest vitals</button>
                         </div>
                       )}
-                      )}
                     </div>
                     {selected.status !== "completed" ? (
                       <div className="mt-4 space-y-3">
