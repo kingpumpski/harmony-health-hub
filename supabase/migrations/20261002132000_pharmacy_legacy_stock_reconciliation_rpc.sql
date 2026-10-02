@@ -27,3 +27,5 @@ $function$;
 REVOKE ALL ON FUNCTION public.assign_unattributed_pharmacy_inventory(uuid,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assign_unattributed_pharmacy_inventory(uuid,text) TO authenticated;
 
+
+NOTIFY pgrst, 'reload schema';
