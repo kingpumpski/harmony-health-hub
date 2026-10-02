@@ -60,6 +60,7 @@
     "test:pharmacy-global-catalogue-safety": "node scripts/pharmacy-global-catalogue-safety-contract.mjs",
     "test:patient-hub-read-rpc-get-compatibility": "node scripts/patient-hub-read-rpc-get-compatibility-contract.mjs",
     "test:encounter-facility-context-reassertion": "node scripts/encounter-facility-context-reassertion-contract.mjs",
+    "test:encounter-workflow-workspace-facility": "node scripts/encounter-workflow-workspace-facility-contract.mjs",
     "test:live-test-mode-privilege-audit": "node scripts/live-test-mode-privilege-audit-contract.mjs",
     "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs"
   },
