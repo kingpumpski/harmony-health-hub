@@ -6,6 +6,7 @@ const page = fs.readFileSync('src/pages/Pharmacy.tsx', 'utf8');
 for (const needle of [
   "public.current_user_has_catalogue_create_permission('create_items')",
   "public.has_role(v_uid, 'it_admin')",
+  "public.has_role(v_uid, 'system_superuser')",
   "'inventory'",
   "CASE WHEN v_clinical_pharmacy THEN",
   "p.facility_id = v_facility",
