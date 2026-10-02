@@ -57,11 +57,14 @@ function workflowErrorMessage(error: unknown): string {
       ? error.message
       : String(error ?? '');
   const normalized = message.toLowerCase();
+  if (normalized.includes('test mode is active') || normalized.includes('test accounts can start encounters')) {
+    return 'Test mode is active for this account. Clinical writes are restricted to the Harmony Health Hub Test Facility. Open a test-facility patient, or ask the system super admin to disable test mode before working with this facility. No encounter was created.';
+  }
   if (normalized.includes('facility attribution is unresolved') || normalized.includes('unresolved')) {
     return 'This historical record has no verified facility attribution. An administrator or IT administrator must reconcile the record with documented evidence before clinical processing can continue.';
   }
   if (normalized.includes('different facility context') || normalized.includes('belongs to another facility') || normalized.includes('facility context mismatch')) {
-    return 'This appointment is outside the currently selected facility. Switch to the patient’s facility and reopen the appointment. No encounter was created.';
+    return 'This appointment is outside the effective facility context. Select the patient’s facility and reopen the appointment. Test-mode accounts are restricted to the test facility. No encounter was created.';
   }
   if (normalized.includes('select an active facility')) {
     return 'Select an active facility before continuing with this appointment.';
@@ -211,7 +214,7 @@ export default function Appointments() {
       _clerking_notes: null,
     } as never);
     setStartingEncounter(false);
-    if (error) return toast({ title: 'Could not start encounter', description: error.message, variant: 'destructive' });
+    if (error) return toast({ title: 'Could not start encounter', description: workflowErrorMessage(error), variant: 'destructive' });
     playWorkflowSound('success');
     toast({ title: 'Clinical encounter started', description: 'The appointment is now in treatment.' });
     setSelected(null);
