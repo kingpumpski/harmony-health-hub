@@ -9,6 +9,7 @@ const sidebar = read('src/components/layout/Sidebar.tsx');
 const header = read('src/components/layout/Header.tsx');
 const billing = read('src/pages/Billing.tsx');
 const claims = read('src/pages/InsuranceClaims.tsx');
+const billingSummaryMigration = read('supabase/migrations/20261002110000_billing_workspace_summary.sql');
 const patientHub = read('src/pages/patients/PatientHub.tsx');
 const submitMigration = read('supabase/migrations/20260930020000_encounter_draft_edit_workflow.sql');
 const lifecycleMigration = read('supabase/migrations/20260930003000_fix_encounter_submission_document_version_conflict.sql');
@@ -36,6 +37,8 @@ if (!app.includes('<Navigate to="/billing" replace />')) throw new Error('Legacy
 if (sidebar.includes("label: 'Finance'") || sidebar.includes("item(CreditCard, 'Finance'")) throw new Error('Legacy Finance sidebar labels remain');
 if (!billing.includes("navigate('/insurance-claims')")) throw new Error('Billing does not link to the insurance/NHIS claims worklist');
 if (!claims.includes("payerFilter === 'nhis'") || !claims.includes('Currency GHS')) throw new Error('Claims worklist is missing the NHIS filter or GHS currency context');
+if (!billing.includes("db.rpc('get_billing_workspace_summary')") || !billing.includes("label: 'NHIS claims pending'") || !billing.includes("label: 'Cash collected today'")) throw new Error('Billing dashboard is missing facility-scoped NHIS and cash KPIs');
+if (!billingSummaryMigration.includes('active_facility') || !billingSummaryMigration.includes("GRANT EXECUTE ON FUNCTION public.get_billing_workspace_summary() TO authenticated") || !billingSummaryMigration.includes("SET search_path = ''")) throw new Error('Billing summary RPC is missing facility or privilege hardening');
 if (!encounters.includes('get_appointment_clinicians')) throw new Error('Encounter worklist does not attempt to resolve clinician display names');
 if (!header.includes('setNotificationAttention(unreadRows.length > 0)')) throw new Error('Notification attention does not track unread acknowledgements');
 if (!patientHub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })")) throw new Error('Patient Hub appointment history must use GET for its STABLE RPC');
