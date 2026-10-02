@@ -13,6 +13,7 @@ interface Patient { id: string; first_name: string; last_name: string; patient_c
 interface BillableItem { invoice_id: string; invoice_item_id: string; source_type: string | null; source_id: string | null; description: string; category: string | null; department: string | null; quantity: number; unit_price: number; amount: number; paid_amount: number; outstanding_amount: number; service_order_id: string | null; service_order_status: string | null }
 interface BillingWindow { invoice_id: string; account_id: string; records_folder_id: string; patient_name: string; patient_type: 'Insured' | 'Cash / Non-Insured'; insurance_name: string | null; encounter_id: string | null; date_time: string; total_amount: number; insurance_total: number; top_up_total: number; credit_balance: number; amount_due: number; items: Array<BillableItem & { charge: number; insurance_charge: number; top_up: number; billed_at: string | null }> }
 interface Tariff { id: string; service_code: string; service_name: string; department: string; unit: string; amount: number; active: boolean }
+interface BillingWorkspaceSummary { nhis_pending_count: number; cash_collected_today: number; currency: string }
 const db = supabase as any;
 const money = (v: number) => `₵${Number(v || 0).toFixed(2)}`;
 const smallNumberWords = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
@@ -43,6 +44,7 @@ export default function Billing() {
   const canPrepareBill = user?.roles?.some((role) => ['admin', 'accountant', 'front_desk'].includes(role)) ?? false;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [workspaceSummary, setWorkspaceSummary] = useState<BillingWorkspaceSummary | null>(null);
   const [patientId, setPatientId] = useState('');
   const [from, setFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [items, setItems] = useState<BillableItem[]>([]);
@@ -60,6 +62,16 @@ export default function Billing() {
   const selectedPatient = patients.find((p) => p.id === patientId);
   const canCreateServices = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_services');
   const filteredTariffs = useMemo(() => tariffs.filter((t) => `${t.service_code} ${t.service_name} ${t.department}`.toLowerCase().includes(walkInSearch.toLowerCase())), [tariffs, walkInSearch]);
+
+  const loadBillingSummary = useCallback(async () => {
+    const { data, error } = await db.rpc('get_billing_workspace_summary');
+    if (error) {
+      setWorkspaceSummary(null);
+      return;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    setWorkspaceSummary(row ? row as BillingWorkspaceSummary : null);
+  }, []);
 
   const loadPatients = useCallback(async () => {
     const { data, error } = await supabase.from('patients').select('id,first_name,last_name,patient_code,membership_type,membership_expires_at,insurance_provider,insurance_number').order('created_at', { ascending: false }).limit(1000);
@@ -98,6 +110,14 @@ export default function Billing() {
   }, [canPrepareBill, from, patientId]);
 
   useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
+  useEffect(() => {
+    void loadBillingSummary();
+    const channel = supabase.channel('billing-workspace-summary-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => void loadBillingSummary())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_claims' }, () => void loadBillingSummary())
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [loadBillingSummary]);
   useEffect(() => { void loadBillable(); }, [loadBillable]);
   useEffect(() => {
     if (!patientId || !canPrepareBill) return;
@@ -171,6 +191,12 @@ export default function Billing() {
     { label: 'Released services', value: String(totals.released), icon: Activity, tone: 'text-info', surface: 'bg-info/5' },
   ];
 
+  const facilityCounters = [
+    { label: 'NHIS claims pending', value: workspaceSummary ? String(workspaceSummary.nhis_pending_count) : '—', tone: 'text-warning', surface: 'bg-warning/5' },
+    { label: 'Cash collected today', value: workspaceSummary ? money(workspaceSummary.cash_collected_today) : '—', tone: 'text-success', surface: 'bg-success/5' },
+  ];
+  const displayedCounters = [...facilityCounters, ...(patientId ? counters.map(({ label, value, tone, surface }) => ({ label, value, tone, surface })) : [])];
+
   return (
     <>
       <style>{'@media print { @page { size: A4; margin: 12mm; } body * { visibility: hidden !important; } #billing-print-area, #billing-print-area * { visibility: visible !important; } #billing-print-area { position: absolute; left: 0; top: 0; width: 100%; } .print\\\\:hidden { display: none !important; } }'}</style>
@@ -182,7 +208,7 @@ export default function Billing() {
         actions={
           <div className="flex flex-wrap gap-2">
             {canViewClaims && <button type="button" onClick={() => navigate('/insurance-claims')} className="btn-secondary inline-flex items-center gap-2"><ShieldCheck className="w-4 h-4" aria-hidden="true" />NHIS / Insurance Claims</button>}
-            <button type="button" onClick={() => { playWorkflowSound('info'); void loadBillable(); }} className="btn-secondary inline-flex items-center gap-2" disabled={!patientId || loading}>
+            <button type="button" onClick={() => { playWorkflowSound('info'); void loadBillable(); void loadBillingSummary(); }} className="btn-secondary inline-flex items-center gap-2" disabled={!patientId || loading}>
               <RefreshCw className="w-4 h-4" aria-hidden="true" />Refresh
             </button>
             {billingWindow && <button type="button" onClick={() => void printReceipt()} className="btn-primary inline-flex items-center gap-2">
@@ -190,7 +216,7 @@ export default function Billing() {
             </button>}
           </div>
         }
-        counters={patientId ? counters.map(({ label, value, tone, surface }) => ({ label, value, tone, surface })) : []}
+        counters={displayedCounters}
         beforeList={
           <section className="card-medical p-5 space-y-4 print:hidden" aria-labelledby="billing-account-selector">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
