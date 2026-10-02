@@ -257,10 +257,10 @@ BEGIN
     ), '[]'::jsonb) ELSE '[]'::jsonb END,
     'inventory', COALESCE((
       SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(i) ORDER BY i.drug_name, i.expiry_date NULLS LAST)
-      FROM (SELECT i.id, i.catalogue_id, i.facility_id, i.drug_name, i.brand_name, i.generic_name,
+      FROM (SELECT i.id, i.catalogue_id, i.facility_id, i.drug_name, i.brand_name, i.generic_name, c.category,
         i.form, i.strength, i.stock_quantity, i.reorder_level, i.unit_price, i.supplier, i.batch_number,
         i.expiry_date, i.barcode, i.nhis_patient_price, i.nhis_claim_amount
-        FROM public.pharmacy_inventory i
+        FROM public.pharmacy_inventory i LEFT JOIN public.medication_catalogue c ON c.id = i.catalogue_id
         WHERE i.active AND i.facility_id = v_facility
           AND (i.expiry_date IS NULL OR i.expiry_date >= CURRENT_DATE)
         ORDER BY i.drug_name LIMIT _limit) i
@@ -310,12 +310,12 @@ REVOKE ALL ON FUNCTION public.get_pharmacy_workspace(integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_pharmacy_workspace(integer) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric);
+DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text);
 CREATE FUNCTION public.update_pharmacy_inventory_item(
   _item_id uuid, _drug_name text, _brand_name text, _generic_name text, _strength text,
   _form text, _supplier text, _batch_number text, _expiry_date date, _stock_quantity integer,
   _reorder_level integer, _unit_price numeric, _barcode text DEFAULT NULL,
-  _nhis_patient_price numeric DEFAULT 0, _nhis_claim_amount numeric DEFAULT 0,
-  _category text DEFAULT NULL
+  _nhis_patient_price numeric DEFAULT 0, _nhis_claim_amount numeric DEFAULT 0
 )
 RETURNS public.pharmacy_inventory LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
@@ -348,17 +348,14 @@ BEGIN
     updated_at = pg_catalog.now()
   WHERE id = _item_id AND facility_id = v_facility AND active RETURNING * INTO r;
   IF NOT FOUND THEN RAISE EXCEPTION 'Active pharmacy inventory item was not found in the active facility'; END IF;
-  UPDATE public.medication_catalogue SET category = COALESCE(NULLIF(pg_catalog.btrim(_category), ''), category),
-    name = r.drug_name, generic_name = r.generic_name, strength = r.strength, form = r.form, updated_at = pg_catalog.now()
-  WHERE id = r.catalogue_id;
   PERFORM public.record_system_audit('pharmacy_inventory_updated', 'pharmacy', 'pharmacy_inventory', r.id, 'info',
     pg_catalog.jsonb_build_object('drug_name', r.drug_name, 'stock_quantity', r.stock_quantity,
       'facility_id', v_facility, 'actor_id', v_uid));
   RETURN r;
 END;
 $function$;
-REVOKE ALL ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.find_pharmacy_alternatives(text,text);
 CREATE FUNCTION public.find_pharmacy_alternatives(_medication text, _strength text DEFAULT NULL)
@@ -375,6 +372,7 @@ BEGIN
   WHERE c.active AND (lower(c.name) = lower(btrim(_medication))
     OR lower(coalesce(c.generic_name, '')) = lower(btrim(_medication)))
   ORDER BY CASE WHEN lower(c.name) = lower(btrim(_medication)) THEN 0 ELSE 1 END LIMIT 1;
+  IF source_category IS NULL THEN RETURN; END IF;
   RETURN QUERY
   SELECT i.id, i.drug_name, i.brand_name, i.generic_name, i.strength, i.form, i.supplier,
     i.stock_quantity, i.unit_price, c.category
