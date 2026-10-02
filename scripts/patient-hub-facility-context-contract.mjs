@@ -1,0 +1,26 @@
+import fs from 'node:fs';
+
+const migration = fs.readFileSync('supabase/migrations/20261002120000_scope_patient_hub_to_active_facility.sql', 'utf8');
+const page = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
+
+for (const needle of [
+  "An active facility is required to search patient records",
+  "An active facility is required to access patient records",
+  "p.facility_id = active_facility",
+  "public.current_user_has_facility_access(p.facility_id)",
+  "REVOKE ALL ON FUNCTION public.search_patient_directory(text, integer) FROM PUBLIC, anon",
+  "REVOKE ALL ON FUNCTION public.get_patient_profile_for_user(uuid) FROM PUBLIC, anon",
+  "GRANT EXECUTE ON FUNCTION public.search_patient_directory(text, integer) TO authenticated",
+  "GRANT EXECUTE ON FUNCTION public.get_patient_profile_for_user(uuid) TO authenticated"
+]) {
+  if (!migration.includes(needle)) throw new Error("Patient facility-scope migration missing guard: " + needle);
+}
+
+if (!page.includes('Your account has no active facility context. Patient records are facility-scoped.')) {
+  throw new Error('Patient Hub must explain missing active-facility context rather than showing a misleading not-found state');
+}
+if (!page.includes('This patient record was not found in your active facility, or your account does not have permission to view it.')) {
+  throw new Error('Patient Hub must use a facility-aware not-found message');
+}
+
+console.log('Patient Hub active-facility access regression contract passed');
