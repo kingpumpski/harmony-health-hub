@@ -309,6 +309,7 @@ GRANT EXECUTE ON FUNCTION public.get_pharmacy_workspace(integer) TO authenticate
 
 DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric);
 DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric,text);
+DROP FUNCTION IF EXISTS public.update_pharmacy_inventory_item(uuid,text,text,text,text,text,text,text,date,integer,integer,numeric,text,numeric,numeric);
 CREATE OR REPLACE FUNCTION public.assign_unattributed_pharmacy_inventory(
   _item_id uuid, _reason text
 )
