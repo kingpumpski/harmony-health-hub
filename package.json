@@ -64,7 +64,8 @@
     "test:encounter-worklist-rpc": "node scripts/encounter-worklist-rpc-contract.mjs",
     "test:encounter-clinical-context-facility": "node scripts/encounter-clinical-context-facility-contract.mjs",
     "test:live-test-mode-privilege-audit": "node scripts/live-test-mode-privilege-audit-contract.mjs",
-    "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs"
+    "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs",
+    "test:encounter-clerking-facility": "node scripts/encounter-clerking-facility-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
