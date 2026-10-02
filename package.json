@@ -55,7 +55,8 @@
     "test:encounter-worklist-ui": "node scripts/encounter-worklist-ui-contract.mjs",
     "test:patient-hub-section-load-errors": "node scripts/patient-hub-section-load-errors-contract.mjs",
     "test:pharmacy-inventory-management": "node scripts/pharmacy-inventory-management-contract.mjs",
-    "test:test-facility-fixture": "node scripts/test-facility-fixture-contract.mjs"
+    "test:test-facility-fixture": "node scripts/test-facility-fixture-contract.mjs",
+    "test:pharmacy-workspace-ui": "node scripts/pharmacy-workspace-ui-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
