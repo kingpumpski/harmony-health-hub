@@ -13,12 +13,12 @@ for (const needle of [
   'ADD COLUMN IF NOT EXISTS catalogue_id uuid REFERENCES public.medication_catalogue(id)',
   'i.facility_id = v_facility',
   'public.add_global_medication_to_facility',
-  'stock_quantity, reorder_level, unit_price, nhis_patient_price, nhis_claim_amount',
+  'nhis_patient_price, nhis_claim_amount',
   'WHERE i.active AND i.facility_id = fid AND i.stock_quantity > 0',
   'IF source_category IS NULL THEN RETURN;',
   'prescriber authorization and clinical reason',
   'dispensed_quantity = next_dispensed',
-  'nhis_claim_amount = claim',
+  `'nhis_claim_amount', claim`,
   'public.assign_unattributed_pharmacy_inventory',
   'REVOKE INSERT, UPDATE, DELETE ON public.pharmacy_inventory FROM PUBLIC, anon, authenticated'
 ]) {
