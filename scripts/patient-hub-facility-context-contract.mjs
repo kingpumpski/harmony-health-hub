@@ -6,7 +6,7 @@ const healthApi = fs.readFileSync('src/lib/healthApi.ts', 'utf8');
 
 for (const needle of [
   "An active facility is required to search patient records",
-  "An active facility is required to access patient records",
+  "The helper enforces TEST-0001 isolation before admin exceptions",
   "p.facility_id = active_facility",
   "public.current_user_has_facility_access(p.facility_id)",
   "revoke all on function public.search_patient_directory(text, integer) from public, anon",
