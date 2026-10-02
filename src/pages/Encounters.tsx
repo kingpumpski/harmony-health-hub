@@ -38,6 +38,8 @@ interface Encounter {
   symptoms: string | null;
   clerking_notes: string | null;
   principal_diagnosis: string | null;
+  encounter_type?: string | null;
+  updated_at?: string | null;
   treatment_plan: string | null;
   status: string;
   admission_id: string | null;
@@ -214,12 +216,14 @@ function encounterAge(createdAt: string) {
 }
 
 export default function Encounters() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [selected, setSelected] = useState<Encounter | null>(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isNewEncounterOpen, setIsNewEncounterOpen] = useState(false);
+  const [principalRequiredError, setPrincipalRequiredError] = useState(false);
   const [admitting, setAdmitting] = useState(false);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -266,7 +270,7 @@ export default function Encounters() {
     try {
       const [{ data: pts }, { data: encs }] = await Promise.all([
       supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
-      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, status, admission_id, created_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
     ]);
       setPatients((pts ?? []) as Patient[]);
       setEncounters((encs ?? []) as Encounter[]);
@@ -347,6 +351,7 @@ export default function Encounters() {
     if (error) return toast({ title: "Encounter creation failed", description: error.message, variant: "destructive" });
     setSymptoms("");
     setClerking("");
+    setIsNewEncounterOpen(false);
     setSelected(data as Encounter);
     setIsHistoryOpen(false);
     void loadAll();
@@ -385,6 +390,7 @@ export default function Encounters() {
     const { data, error } = await db.rpc("set_principal_diagnosis", { _encounter_id: selected.id, _diagnosis_id: dx.id });
     if (error) return toast({ title: "Principal diagnosis failed", description: error.message, variant: "destructive" });
     setSelected({ ...selected, principal_diagnosis: data?.diagnosis ?? dx.diagnosis });
+    setPrincipalRequiredError(false);
     void loadDetails(selected.id);
   };
 
@@ -424,6 +430,12 @@ export default function Encounters() {
 
   const submitEncounter = async () => {
     if (!selected) return;
+    if (!diagnoses.some((diagnosis) => diagnosis.is_principal)) {
+      setPrincipalRequiredError(true);
+      toast({ title: "Principal diagnosis required", description: "Select a provisional diagnosis and mark it as Principal before finalizing this encounter.", variant: "destructive" });
+      return;
+    }
+    setPrincipalRequiredError(false);
     const { data, error } = await db.rpc("submit_encounter_workflow", { _encounter_id: selected.id, _specialty: null, _appointment_date: null, _referral_reason: null });
     if (error) return toast({ title: "Encounter submission failed", description: error.message, variant: "destructive" });
     setSelected({ ...selected, status: "completed", submitted_at: new Date().toISOString(), version_no: data?.version_no ?? selected.version_no ?? 1 });
@@ -463,6 +475,12 @@ export default function Encounters() {
   const selectEncounter = (item: Encounter) => {
     setSelected(item);
     setIsHistoryOpen(false);
+    setSearchParams({ patient: item.patient_id, encounter: item.id });
+  };
+
+  const closeSelectedEncounter = () => {
+    setSelected(null);
+    setSearchParams({});
   };
 
   const draftCount = encounters.filter((item) => item.status !== "completed").length;
@@ -495,20 +513,23 @@ export default function Encounters() {
     });
   }, [appliedFilters, encounters, patients, user?.id, user?.roles]); 
   const encounterColumns: WorklistColumn<Encounter>[] = [
-    { key: "title", label: "Title", sortValue: (item) => patients.find((p) => p.id === item.patient_id)?.last_name ?? "", render: (item) => {
+    { key: "reference", label: "Encounter ID", required: true, sortValue: (item) => item.id, render: (item) => <span className="font-mono text-xs text-muted-foreground" title={item.id}>{item.id.slice(0, 8).toUpperCase()}</span> },
+    { key: "patient", label: "Patient name", required: true, sortValue: (item) => patients.find((p) => p.id === item.patient_id)?.last_name ?? "", render: (item) => {
       const patient = patients.find((p) => p.id === item.patient_id);
-      return <div className="min-w-0"><p className="font-semibold text-foreground">{patient ? `${patient.first_name} ${patient.last_name}` : "Patient record"}</p><p className="mt-0.5 max-w-[280px] truncate text-xs text-muted-foreground">{item.principal_diagnosis || item.symptoms || "Clinical encounter"}</p></div>;
+      return <div className="min-w-0"><p className="font-semibold text-foreground">{patient ? `${patient.first_name} ${patient.last_name}` : "Patient record"}</p><p className="mt-0.5 max-w-[220px] truncate text-xs text-muted-foreground">{patient?.patient_code ?? item.patient_id}</p></div>;
     }},
-    { key: "status", label: "Status", sortValue: (item) => item.status, render: (item) => {
-      const status = item.version_no && item.version_no > 1 ? "Amended" : item.status === "completed" ? "Closed" : item.admission_id ? "Active" : "Draft";
-      const tone = status === "Closed" ? "bg-success/10 text-success" : status === "Amended" ? "bg-warning/10 text-warning" : status === "Active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
+    { key: "consultation", label: "Consultation type", required: true, sortValue: (item) => item.encounter_type ?? "consultation", render: (item) => <span className="capitalize">{(item.encounter_type ?? "consultation").replace(/_/g, " ")}</span> },
+    { key: "clinician", label: "Clinician name", required: true, sortValue: (item) => item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned", render: (item) => <span className="text-muted-foreground">{item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned"}</span> },
+    { key: "date", label: "Encounter date & time", required: true, sortValue: (item) => new Date(item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap">{new Date(item.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span> },
+    { key: "timestamp", label: "Timestamp / last modified", required: true, sortValue: (item) => new Date(item.updated_at ?? item.submitted_at ?? item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap text-xs text-muted-foreground">{new Date(item.updated_at ?? item.submitted_at ?? item.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span> },
+    { key: "status", label: "Status", required: true, sortValue: (item) => item.status, render: (item) => {
+      const status = item.version_no && item.version_no > 1 ? "Amended" : item.status === "completed" ? "Submitted" : item.admission_id ? "Admitted" : "Draft / in progress";
+      const tone = status === "Submitted" ? "bg-success/10 text-success" : status === "Amended" ? "bg-warning/10 text-warning" : status === "Admitted" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
       return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{status}</span>;
     }},
-    { key: "date", label: "Encounter date", sortValue: (item) => new Date(item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap">{new Date(item.created_at).toLocaleDateString()}</span> },
-    { key: "practitioner", label: "Practitioner", sortValue: (item) => item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned", render: (item) => <span className="text-muted-foreground">{item.practitioner_id === user?.id ? "You" : item.practitioner_id ? "Assigned clinician" : "Unassigned"}</span> },
-    { key: "reference", label: "Encounter ID", sortValue: (item) => item.id, render: (item) => <span className="font-mono text-xs text-muted-foreground" title={item.id}>{item.id.slice(0, 8).toUpperCase()}</span> },
-    { key: "relative", label: "Last modified", sortValue: (item) => new Date(item.submitted_at ?? item.created_at).getTime(), render: (item) => <span className="whitespace-nowrap text-xs text-muted-foreground">{encounterAge(item.submitted_at ?? item.created_at)}</span> },
-    { key: "notes", label: "Notes", sortValue: (item) => [item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length, render: (item) => <span className="inline-flex min-w-7 justify-center rounded-full bg-muted px-2 py-1 text-xs">{[item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length}</span> },
+    { key: "diagnosis", label: "Diagnosis", defaultVisible: false, sortValue: (item) => item.principal_diagnosis ?? "", render: (item) => <span className="max-w-[240px] truncate">{item.principal_diagnosis || "Not assigned"}</span> },
+    { key: "admission", label: "Admission status", defaultVisible: false, sortValue: (item) => item.admission_id ? "IPD" : "OPD", render: (item) => <span className={item.admission_id ? "text-primary font-medium" : "text-muted-foreground"}>{item.admission_id ? "IPD" : "OPD"}</span> },
+    { key: "notes", label: "Clinical notes", defaultVisible: false, sortValue: (item) => [item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length, render: (item) => <span className="inline-flex min-w-7 justify-center rounded-full bg-muted px-2 py-1 text-xs">{[item.symptoms, item.clerking_notes, item.treatment_plan].filter((value) => Boolean(value?.trim())).length} fields</span> },
   ];
   const encounterFilters: WorklistFilter[] = [
     { key: "name", label: "Patient name", value: filterName, onChange: setFilterName, placeholder: "Search patient name" },
@@ -536,7 +557,7 @@ export default function Encounters() {
             <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh encounters">
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" /> Refresh
             </button>
-            <button type="button" onClick={() => { document.getElementById("encounter-patient")?.focus(); }} className="btn-primary inline-flex items-center gap-2">
+            <button type="button" onClick={() => setIsNewEncounterOpen(true)} className="btn-primary inline-flex items-center gap-2">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add Patient Encounter
             </button>
             <button type="button" onClick={() => setIsHistoryOpen(true)} className="btn-secondary inline-flex items-center gap-2">
@@ -550,17 +571,18 @@ export default function Encounters() {
           { label: "Submitted", value: completedCount, tone: "text-success" },
           { label: "Admissions linked", value: admittedCount },
         ]}
-        beforeList={(
-          <section className="card-medical p-5">
+        beforeList={isNewEncounterOpen && (
+          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="new-encounter-title">
+          <section className="card-medical max-h-[92vh] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="font-semibold flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden="true" /> New encounter</h2>
+                <h2 id="new-encounter-title" className="font-semibold flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden="true" /> New encounter</h2>
                 <p className="mt-1 text-xs text-muted-foreground">Create a draft first. Final submission remains a separate, auditable clinical action.</p>
               </div>
-              <div className="flex flex-wrap gap-2 text-[10px]">
+              <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setIsNewEncounterOpen(false)} className="btn-ghost" aria-label="Close new encounter form"><X className="h-4 w-4" /></button><div className="flex flex-wrap gap-2 text-[10px]">
                 <span className="rounded-full border border-warning/40 bg-warning/5 px-2.5 py-1 font-semibold text-warning">Draft-first</span>
                 <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 font-medium text-primary">{todayCount} today</span>
-              </div>
+              </div></div>
             </div>
             <form onSubmit={createEncounter} className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -582,7 +604,7 @@ export default function Encounters() {
                 <button type="submit" className="btn-primary inline-flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" /> Save draft</button>
               </div>
             </form>
-          </section>
+          </section></div>
         )}
         listTitle="Recent encounter worklist"
         listDescription="Select a row to open the clinical document. Finalized encounters remain versioned and auditable."
@@ -649,10 +671,10 @@ export default function Encounters() {
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${selected.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}><Clock3 className="w-3.5 h-3.5" />{selected.status === "completed" ? `Submitted · v${selected.version_no ?? 1}` : "Draft"}</span>
                 {selected.status === "completed" && <button type="button" onClick={beginAmendment} className="btn-secondary inline-flex items-center gap-2"><Pencil className="w-4 h-4" /> Amend</button>}
                 <button type="button" onClick={() => void loadHistory(selected.id)} className="btn-secondary inline-flex items-center gap-2"><History className="w-4 h-4" /> Version history</button>
-                {selected.status === "completed" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
+                {selected.status !== "cancelled" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
                 {selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}
                 {selected.status !== "completed" && <button type="button" onClick={() => void submitEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Submit for final</button>}
-                <button type="button" onClick={() => setSelected(null)} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button>
+                <button type="button" onClick={closeSelectedEncounter} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button>
               </div>
             </div>
             {amending && selected.status === "completed" && <section className="mb-5 rounded-2xl border border-warning/40 bg-warning/5 p-5">
@@ -698,7 +720,8 @@ export default function Encounters() {
                    </section>
                    <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
                     {selected.status !== "completed" && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add provisional diagnosis" className="input-medical flex-1" /><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add</button></div>}
-                    <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span className="ml-2 text-xs rounded-full bg-muted px-2 py-1">Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
+                    {principalRequiredError && <p role="alert" className="mb-3 rounded-lg border border-critical/40 bg-critical/5 p-3 text-sm text-critical">Please confirm the Principal Diagnosis to finalize this encounter. Select a provisional diagnosis and choose “Set principal”.</p>}
+                    <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span title={principalRequiredError ? "Please confirm the Principal Diagnosis to finalize this encounter." : "Provisional diagnosis"} className={`ml-2 text-xs rounded-full px-2 py-1 ${principalRequiredError ? "bg-critical/10 text-critical ring-1 ring-critical/40" : "bg-warning/10 text-warning"}`}>Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
                   </section>
                   <section className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment remains explicitly linked to the documented clinical assessment.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>
