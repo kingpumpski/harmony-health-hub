@@ -82,30 +82,7 @@ CREATE POLICY pharmacy_inventory_facility_read ON public.pharmacy_inventory
   FOR SELECT TO authenticated
   USING (facility_id IS NOT NULL AND private.current_user_can_select_facility_record(facility_id, 'medication_read'));
 DROP POLICY IF EXISTS inv_pharma_insert ON public.pharmacy_inventory;
-CREATE POLICY inv_pharma_insert ON public.pharmacy_inventory FOR INSERT TO authenticated
-  WITH CHECK (
-    facility_id = (SELECT public.current_user_facility_id())
-    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
-      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
-  );
-DROP POLICY IF EXISTS inv_pharma_update ON public.pharmacy_inventory;
-CREATE POLICY inv_pharma_update ON public.pharmacy_inventory FOR UPDATE TO authenticated
-  USING (
-    facility_id = (SELECT public.current_user_facility_id())
-    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
-      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
-  )
-  WITH CHECK (
-    facility_id = (SELECT public.current_user_facility_id())
-    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist')
-      OR public.current_user_has_role('it_admin') OR public.current_user_has_role('system_superuser'))
-  );
-DROP POLICY IF EXISTS inv_pharma_delete ON public.pharmacy_inventory;
-CREATE POLICY inv_pharma_delete ON public.pharmacy_inventory FOR DELETE TO authenticated
-  USING (
-    facility_id = (SELECT public.current_user_facility_id())
-    AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist'))
-  );
+-- Legacy direct-mutation policies are removed; validated RPCs are the only stock write surface.
 -- Inventory writes are only permitted through validated, audited RPCs.
 REVOKE INSERT, UPDATE, DELETE ON public.pharmacy_inventory FROM PUBLIC, anon, authenticated;
 
