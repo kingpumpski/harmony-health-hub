@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
+import RouteLoadingScreen from '@/components/system/RouteLoadingScreen';
 import OfflineStatus from '@/components/system/OfflineStatus';
 import RoleGuard from '@/components/auth/RoleGuard';
 import Index from './pages/Index';
@@ -84,7 +85,7 @@ const CanteenMeals = lazy(() => import('./pages/CanteenMeals'));
 const Profile = lazy(() => import('./pages/Profile'));
 const SpecialistReferralQueue = lazy(() => import('./pages/SpecialistReferralQueue'));
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60000, gcTime: 300000, refetchOnWindowFocus: false, retry: 1 } } });
-const PageFallback = () => <div className="flex min-h-[40vh] items-center justify-center p-12 text-sm text-muted-foreground">Loading…</div>;
+const PageFallback = RouteLoadingScreen;
 interface ErrorBoundaryProps { children: ReactNode }
 interface ErrorBoundaryState { error: Error | null }
 class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> { state: ErrorBoundaryState = { error: null }; static getDerivedStateFromError(error: Error): ErrorBoundaryState { return { error }; } componentDidCatch(error: Error, info: ErrorInfo) { console.error('Harmony Health Hub render error', error, info.componentStack); } handleReload = () => window.location.reload(); render() { if (!this.state.error) return this.props.children; return <div className="min-h-screen bg-background px-6 py-16 text-foreground"><div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 shadow-sm"><h1 className="text-xl font-semibold">Harmony Health Hub could not display this page</h1><p className="mt-2 text-sm text-muted-foreground">The application encountered a runtime error. Your session and data have not been cleared.</p><p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">{this.state.error.message || 'Unknown application error'}</p><button type="button" onClick={this.handleReload} className="btn-primary mt-4">Reload application</button></div></div>; } }
