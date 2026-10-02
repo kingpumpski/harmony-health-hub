@@ -25,7 +25,7 @@ function compressedAssets() {
 }
 
 function githubPagesSpaFallback(basePath: string) {
-  const base = basePath.replace(/\\/$/, "");
+  const base = basePath.replace(/\/$/, "");
   return {
     name: "github-pages-spa-fallback",
     apply: "build" as const,
@@ -36,7 +36,7 @@ function githubPagesSpaFallback(basePath: string) {
       const restoreRoute = `<script>(function(){var params=new URLSearchParams(window.location.search);var route=params.get("__hms_spa_redirect");if(!route)return;var safeRoute=route.charAt(0)==="/"&&!route.startsWith("//")?route:"/";window.history.replaceState(null,"",${JSON.stringify(base)}+safeRoute);})();</script>`;
       const indexHtml = readFileSync(indexPath, "utf8");
       if (!indexHtml.includes("__hms_spa_redirect")) {
-        writeFileSync(indexPath, indexHtml.replace("</head>", `${restoreRoute}\\n</head>`));
+        writeFileSync(indexPath, indexHtml.replace("</head>", `${restoreRoute}\n</head>`));
       }
       const fallbackHtml = `<!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="robots" content="noindex"><title>Opening Harmony Health Hub</title></head>
