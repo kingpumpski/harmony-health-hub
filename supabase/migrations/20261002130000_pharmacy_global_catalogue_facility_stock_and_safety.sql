@@ -82,6 +82,8 @@ CREATE POLICY pharmacy_inventory_facility_read ON public.pharmacy_inventory
   FOR SELECT TO authenticated
   USING (facility_id IS NOT NULL AND private.current_user_can_select_facility_record(facility_id, 'medication_read'));
 
+DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric);
+
 CREATE OR REPLACE FUNCTION public.create_pharmacy_inventory_item(
   _drug_name text, _brand_name text, _generic_name text, _strength text, _form text,
   _supplier text, _batch_number text, _expiry_date date, _stock_quantity integer,
@@ -146,7 +148,6 @@ EXCEPTION WHEN unique_violation THEN
 END;
 $function$;
 
-DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric);
 REVOKE ALL ON FUNCTION public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric,text) TO authenticated;
 
