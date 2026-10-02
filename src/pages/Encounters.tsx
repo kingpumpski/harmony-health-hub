@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
 import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
+import { searchPatientDirectory, type StaffPatient } from "@/lib/patientDirectory";
 
 interface Patient {
   id: string;
@@ -270,12 +271,24 @@ export default function Encounters() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: pts }, { data: encs }, { data: staff }] = await Promise.all([
-      supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
-      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
-      db.rpc("get_appointment_clinicians", {}, { get: true }),
-    ]);
-      setPatients((pts ?? []) as Patient[]);
+      const [{ data: encs, error: encounterError }, patientDirectory, { data: staff }] = await Promise.all([
+        supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+        searchPatientDirectory("", 300),
+        db.rpc("get_appointment_clinicians", {}, { get: true }),
+      ]);
+      if (patientDirectory.error) {
+        toast({ title: "Patient directory unavailable", description: patientDirectory.error.message, variant: "destructive" });
+      }
+      if (encounterError) {
+        toast({ title: "Encounter list unavailable", description: encounterError.message, variant: "destructive" });
+      }
+      const directoryPatients = (patientDirectory.data ?? []) as StaffPatient[];
+      setPatients(directoryPatients.map((p) => ({
+        id: p.id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        patient_code: p.patient_code,
+      })));
       setClinicians((staff ?? []) as Clinician[]);
       setEncounters((encs ?? []) as Encounter[]);
       setLastUpdated(new Date());
