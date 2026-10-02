@@ -21,4 +21,13 @@ if (!appointments.includes('facility context mismatch') ||
     !appointments.includes('Switch to the patient')) {
   throw new Error('Appointment UI must explain how to recover from facility context mismatch');
 }
+const appointmentPage = fs.readFileSync('src/pages/Appointments.tsx', 'utf8');
+for (const call of [
+  "supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never, { get: true } as never)",
+  "supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never, { get: true } as never)",
+  "supabase.rpc('get_appointment_clinicians' as never, {} as never, { get: true } as never)",
+]) {
+  if (!appointmentPage.includes(call)) throw new Error('Read-only appointment RPC must use GET: ' + call);
+}
+
 console.log('Active-facility appointment workflow contract passed');
