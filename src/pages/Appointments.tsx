@@ -97,9 +97,9 @@ export default function Appointments() {
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     const [{ data: pts, error: patientError }, { data: workspace, error: appointmentError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never),
-      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never),
-      supabase.rpc('get_appointment_clinicians' as never),
+      supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never, { get: true } as never),
+      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never, { get: true } as never),
+      supabase.rpc('get_appointment_clinicians' as never, {} as never, { get: true } as never),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
     if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' });
