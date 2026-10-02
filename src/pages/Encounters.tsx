@@ -170,40 +170,16 @@ function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; 
     return Array.from(new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean))).slice(0, 12);
   }, [context, patient]);
   return (
-    <aside className="card-medical p-5 space-y-4 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-      <div className="flex items-start justify-between gap-3">
-        <div><h3 className="font-semibold flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety context</h3><p className="text-xs text-muted-foreground mt-1">High-value history stays beside the active encounter.</p></div>
-        {loading && <span className="text-xs text-muted-foreground">Loading…</span>}
+    <aside className="card-medical p-4 space-y-3 border-l-4 border-l-critical/70 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
+      <div className="flex items-start justify-between gap-2">
+        <div><h3 className="font-semibold text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety</h3><p className="text-[11px] text-muted-foreground mt-0.5">Only high-value context is shown here.</p></div>
+        {loading && <span className="text-[11px] text-muted-foreground">Loading…</span>}
       </div>
-      {patient && (
-        <section className="rounded-xl border border-border p-3">
-          <p className="font-medium text-sm">{patient.name}</p>
-          <p className="text-xs text-muted-foreground">{patient.patient_code}</p>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <div>Blood group<p className="font-medium">{patient.blood_group || "Not recorded"}</p></div>
-            <div>Genotype<p className="font-medium">{patient.genotype || "Not recorded"}</p></div>
-          </div>
-        </section>
-      )}
-      <BMIContextCard patientId={patientId} />
-      {patient?.allergies && <section className="rounded-xl border border-critical/40 bg-critical/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm text-critical"><AlertTriangle className="w-4 h-4" /> Allergies / alerts</div><p className="text-sm mt-2 whitespace-pre-wrap">{patient.allergies}</p></section>}
-      {conditions.length > 0 && <section className="rounded-xl border border-warning/40 bg-warning/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm mb-2"><AlertTriangle className="w-4 h-4" /> Conditions to notice</div><div className="flex flex-wrap gap-2">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium">{condition}</span>)}</div></section>}
-      {context?.recent_vitals?.[0] && (
-        <section className="rounded-xl border border-border p-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4" /> Latest recorded vitals</h4>
-          <p className="text-[11px] text-muted-foreground mt-1">{new Date(context.recent_vitals[0].recorded_at).toLocaleString()}</p>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <span>BP: <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span>
-            <span>Pulse: <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span>
-            <span>Temp: <b>{context.recent_vitals[0].temperature ?? "—"}</b></span>
-            <span>SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span>
-          </div>
-        </section>
-      )}
-      <section>
-        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Previous encounters</h4>
-        {!context?.previous_encounters?.length ? <p className="text-sm text-muted-foreground">No previous encounters recorded.</p> : <div className="space-y-3">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-xl border border-border p-3 bg-background/70"><div className="flex justify-between gap-2"><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span><span className="text-xs rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-sm font-semibold mt-2">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p>{item.symptoms && <p className="text-xs mt-2"><b>Presentation:</b> {item.symptoms}</p>}{item.treatment_plan && <p className="text-xs text-muted-foreground mt-1"><b className="text-foreground">Previous plan:</b> {item.treatment_plan}</p>}</article>)}</div>}
-      </section>
+      {patient && <section className="rounded-lg border border-border p-3"><p className="font-medium text-sm">{patient.name}</p><p className="text-[11px] text-muted-foreground">{patient.patient_code}</p><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Blood group <b>{patient.blood_group || "—"}</b></span><span>Genotype <b>{patient.genotype || "—"}</b></span></div></section>}
+      {patient?.allergies && <section className="rounded-lg border border-critical/40 bg-critical/5 p-3"><div className="flex items-center gap-1.5 font-semibold text-xs text-critical"><AlertTriangle className="w-3.5 h-3.5" /> Allergies / alerts</div><p className="text-xs mt-1 whitespace-pre-wrap">{patient.allergies}</p></section>}
+      {context?.recent_vitals?.[0] && <section className="rounded-lg border border-border p-3"><h4 className="text-xs font-semibold flex items-center gap-1.5"><HeartPulse className="w-3.5 h-3.5" /> Latest vitals</h4><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>BP <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span><span>Pulse <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span><span>Temp <b>{context.recent_vitals[0].temperature ?? "—"}</b></span><span>SpO₂ <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span></div></section>}
+      {(conditions.length > 0 || bmi) && <details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-xs font-semibold">Additional clinical context</summary><div className="mt-3 space-y-3">{conditions.length > 0 && <div><p className="text-xs font-medium mb-1">Conditions</p><div className="flex flex-wrap gap-1.5">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2 py-1 text-[11px] font-medium">{condition}</span>)}</div></div>}<BMIContextCard patientId={patientId} /></div></details>}
+      <details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-xs font-semibold flex items-center gap-1.5"><History className="w-3.5 h-3.5 text-primary" /> Previous encounters ({context?.previous_encounters?.length ?? 0})</summary>{!context?.previous_encounters?.length ? <p className="mt-2 text-xs text-muted-foreground">No previous encounters recorded.</p> : <div className="mt-3 space-y-2">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-lg border border-border p-2.5 bg-background/70"><div className="flex justify-between gap-2"><span className="text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</span><span className="text-[10px] rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-xs font-semibold mt-1">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p></article>)}</div>}</details>
     </aside>
   );
 }
@@ -679,7 +655,7 @@ export default function Encounters() {
 
       {selected && (
         <div className="fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="active-encounter-title">
-          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-4 sm:p-5">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Active clinical document</p>
@@ -702,8 +678,8 @@ export default function Encounters() {
               <div className="mt-3"><label className="text-xs font-semibold">Amendment reason</label><textarea value={amendmentReason} onChange={(e) => setAmendmentReason(e.target.value)} className="input-medical mt-1 w-full" rows={2} placeholder="Why is this finalized clinical document being amended?" required /></div>
               <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setAmending(false)} className="btn-ghost">Cancel</button><button type="button" onClick={() => void saveAmendment()} disabled={amendmentBusy || !amendmentReason.trim()} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{amendmentBusy ? "Saving…" : "Save amendment"}</button></div>
             </section>}
-            <div className="flex-1 overflow-auto p-3 sm:p-5">
-              <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+            <div className="flex-1 overflow-auto p-2 sm:p-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)]">
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
                 <div className="space-y-5">
                   <section className="rounded-2xl border border-border bg-card p-5">
