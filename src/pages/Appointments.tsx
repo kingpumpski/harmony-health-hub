@@ -133,6 +133,17 @@ export default function Appointments() {
   }, [user?.id]);
 
   const patientMap = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  const appointmentPatient = (appointment: Appointment): Patient | undefined => {
+    if (appointment.patient_first_name || appointment.patient_last_name || appointment.patient_code) {
+      return {
+        id: appointment.patient_id,
+        patient_code: appointment.patient_code ?? '',
+        first_name: appointment.patient_first_name ?? '',
+        last_name: appointment.patient_last_name ?? '',
+      };
+    }
+    return patientMap.get(appointment.patient_id);
+  };
   const clinicianMap = useMemo(() => new Map(clinicians.map((c) => [c.id, c])), [clinicians]);
 
   const todayActive = useMemo(() => {
@@ -301,7 +312,7 @@ export default function Appointments() {
         ) : (
           <div className="divide-y divide-border">
             {todayActive.map((appointment) => {
-              const patient = patientMap.get(appointment.patient_id);
+              const patient = appointmentPatient(appointment);
               return (
                 <button
                   key={appointment.id}
