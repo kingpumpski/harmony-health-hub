@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20261002120000_scope_patient_hub_to_active_facility.sql', 'utf8');
 const page = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
+const healthApi = fs.readFileSync('src/lib/healthApi.ts', 'utf8');
 
 for (const needle of [
   "An active facility is required to search patient records",
@@ -23,4 +24,13 @@ if (!page.includes('This patient record was not found in your active facility, o
   throw new Error('Patient Hub must use a facility-aware not-found message');
 }
 
-console.log('Patient Hub active-facility access regression contract passed');
+for (const needle of [
+  'UUID_PATTERN',
+  'searchPatientDirectory(requestedId, 10)',
+  'candidate.patient_code',
+  'return fetchPatientProfile(exactMatch.id)'
+]) {
+  if (!healthApi.includes(needle)) throw new Error('Patient Hub canonical-ID fallback missing: ' + needle);
+}
+
+console.log('Patient Hub active-facility access and legacy-link resolution contract passed');
