@@ -25,8 +25,10 @@ for (const needle of [
 }
 
 const testIndex = migration.indexOf('if public.hms_test_mode_enabled()');
-const adminIndex = migration.indexOf("if public.has_role(uid,'admin') or public.has_role(uid,'it_admin')");
-if (testIndex < 0 || adminIndex < 0 || testIndex > adminIndex) {
+const privilegedExceptionIndex = migration.indexOf(
+  "if public.has_role(uid, 'admin') or public.has_role(uid, 'it_admin') then"
+);
+if (testIndex < 0 || privilegedExceptionIndex < 0 || testIndex > privilegedExceptionIndex) {
   throw new Error('Clerking must evaluate test-mode isolation before privileged-role exception');
 }
 
