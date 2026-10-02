@@ -1,5 +1,5 @@
 const BASE_PATH = '/harmony-health-hub';
-const CACHE_NAME = 'harmony-health-hub-shell-v14';
+const CACHE_NAME = 'harmony-health-hub-shell-v15';
 const SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
@@ -78,6 +78,24 @@ self.addEventListener('fetch', (event) => {
 
   if (NETWORK_ONLY_PATHS.has(url.pathname)) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
+  // A deep-link navigation may receive GitHub Pages' 404.html response.
+  // Serve the current SPA shell instead so BrowserRouter can resolve the path.
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request, { cache: 'no-store' }).then(async (response) => {
+      if (response.ok) return response;
+      if (response.status === 404) {
+        const shell = await fetch(`${BASE_PATH}/index.html`, { cache: 'no-store' });
+        if (shell.ok) return shell;
+      }
+      return response;
+    }).catch(async () => {
+      const shell = await caches.match(`${BASE_PATH}/index.html`);
+      if (shell) return shell;
+      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>Harmony Health Hub is temporarily offline. Reconnect and refresh.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }));
     return;
   }
 
