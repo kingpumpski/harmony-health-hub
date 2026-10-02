@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Keep patient directory and Patient Hub reads inside the active facility boundary.
 -- A missing active facility is an actionable context error, not an empty patient record.
 
@@ -290,3 +292,5 @@ revoke all on function public.get_patient_directory_record(uuid) from public, an
 grant execute on function public.get_patient_directory_record(uuid) to authenticated;
 
 notify pgrst, 'reload schema';
+
+COMMIT;
