@@ -27,6 +27,7 @@ BEGIN
   v_pharmacist := public.has_role(v_uid, 'pharmacist');
   v_front_desk := public.has_role(v_uid, 'front_desk');
   v_catalogue_manager := public.has_role(v_uid, 'it_admin')
+    OR public.has_role(v_uid, 'system_superuser')
     OR public.current_user_has_catalogue_create_permission('create_items');
   v_clinical_pharmacy := v_admin OR v_pharmacist;
 
@@ -160,6 +161,7 @@ BEGIN
   IF v_uid IS NULL OR NOT (
     public.has_role(v_uid, 'admin')
     OR public.has_role(v_uid, 'it_admin')
+    OR public.has_role(v_uid, 'system_superuser')
     OR public.has_role(v_uid, 'pharmacist')
     OR public.current_user_has_catalogue_create_permission('create_items')
   ) THEN
