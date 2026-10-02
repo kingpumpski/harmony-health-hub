@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, CreditCard, FileText, Loader2, Plus, Printer, RefreshCw, ShieldCheck, Wallet, ReceiptText, Activity, CircleDollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,8 @@ const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
 export default function Billing() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const canViewClaims = user?.roles?.some((role) => role === 'admin' || role === 'accountant') ?? false;
   const canPrepareBill = user?.roles?.some((role) => ['admin', 'accountant', 'front_desk'].includes(role)) ?? false;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
@@ -174,10 +177,11 @@ export default function Billing() {
       <OperationalWorklistShell
         icon={CreditCard}
         eyebrow="Business & Reporting · Billing"
-        title="Billing & Patient Account"
+        title="Billing"
         description="Encounter-aware billing for Ghana Cedi accounts, with an insured and cash presentation that follows the patient's financial pathway."
         actions={
           <div className="flex flex-wrap gap-2">
+            {canViewClaims && <button type="button" onClick={() => navigate('/insurance-claims')} className="btn-secondary inline-flex items-center gap-2"><ShieldCheck className="w-4 h-4" aria-hidden="true" />NHIS / Insurance Claims</button>}
             <button type="button" onClick={() => { playWorkflowSound('info'); void loadBillable(); }} className="btn-secondary inline-flex items-center gap-2" disabled={!patientId || loading}>
               <RefreshCw className="w-4 h-4" aria-hidden="true" />Refresh
             </button>
