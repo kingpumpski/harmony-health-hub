@@ -616,3 +616,5 @@ $function$;
 REVOKE ALL ON FUNCTION public.confirm_pharmacy_pos_sale(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.confirm_pharmacy_pos_sale(uuid) TO authenticated;
 
+
+NOTIFY pgrst, 'reload schema';
