@@ -219,11 +219,12 @@ AS $function$
 DECLARE
   result jsonb; v_uid uuid := auth.uid(); v_department text;
   v_facility uuid := public.current_user_facility_id();
-  v_admin boolean; v_pharmacist boolean; v_front_desk boolean;
+  v_admin boolean; v_superuser boolean; v_pharmacist boolean; v_front_desk boolean;
   v_catalogue_manager boolean; v_clinical_pharmacy boolean;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   v_admin := public.has_role(v_uid, 'admin');
+  v_superuser := public.has_role(v_uid, 'system_superuser');
   v_pharmacist := public.has_role(v_uid, 'pharmacist');
   v_front_desk := public.has_role(v_uid, 'front_desk');
   v_catalogue_manager := public.has_role(v_uid, 'it_admin') OR public.has_role(v_uid, 'system_superuser')
@@ -256,6 +257,14 @@ BEGIN
           AND NOT EXISTS (SELECT 1 FROM public.pharmacy_inventory i
             WHERE i.facility_id = v_facility AND i.catalogue_id = c.id AND i.active AND i.batch_number IS NULL)
         ORDER BY c.name LIMIT _limit) c
+    ), '[]'::jsonb) ELSE '[]'::jsonb END,
+    'unassigned_inventory', CASE WHEN v_admin OR v_superuser THEN COALESCE((
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(i) ORDER BY i.drug_name, i.expiry_date NULLS LAST)
+      FROM (SELECT i.id, i.catalogue_id, i.drug_name, i.brand_name, i.generic_name, c.category,
+        i.form, i.strength, i.stock_quantity, i.reorder_level, i.unit_price, i.supplier, i.batch_number,
+        i.expiry_date, i.barcode, i.nhis_patient_price, i.nhis_claim_amount
+        FROM public.pharmacy_inventory i LEFT JOIN public.medication_catalogue c ON c.id = i.catalogue_id
+        WHERE i.active AND i.facility_id IS NULL ORDER BY i.drug_name LIMIT _limit) i
     ), '[]'::jsonb) ELSE '[]'::jsonb END,
     'inventory', COALESCE((
       SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(i) ORDER BY i.drug_name, i.expiry_date NULLS LAST)
