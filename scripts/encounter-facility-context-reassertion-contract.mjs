@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const migrationPath = 'supabase/migrations/20261002170000_reassert_start_appointment_encounter_facility_context.sql';
+const migrationPath = 'supabase/migrations/20261002180000_reassert_start_appointment_encounter_facility_context.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 
 for (const needle of [
