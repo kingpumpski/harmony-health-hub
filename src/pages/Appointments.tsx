@@ -60,8 +60,11 @@ function workflowErrorMessage(error: unknown): string {
   if (normalized.includes('facility attribution is unresolved') || normalized.includes('unresolved')) {
     return 'This historical record has no verified facility attribution. An administrator or IT administrator must reconcile the record with documented evidence before clinical processing can continue.';
   }
-  if (normalized.includes('different facility context') || normalized.includes('belongs to another facility')) {
-    return 'This record belongs to another facility context and cannot be processed from the current facility.';
+  if (normalized.includes('different facility context') || normalized.includes('belongs to another facility') || normalized.includes('facility context mismatch')) {
+    return 'This appointment is outside the currently selected facility. Switch to the patient’s facility and reopen the appointment. No encounter was created.';
+  }
+  if (normalized.includes('select an active facility')) {
+    return 'Select an active facility before continuing with this appointment.';
   }
   return message || 'The requested workflow action could not be completed.';
 }
