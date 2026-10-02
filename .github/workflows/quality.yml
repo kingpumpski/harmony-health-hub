@@ -104,6 +104,9 @@ jobs:
       - name: Patient Hub section-load error contract
         run: npm run test:patient-hub-section-load-errors
 
+      - name: Encounter facility-context reassertion contract
+        run: npm run test:encounter-facility-context-reassertion
+
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 
