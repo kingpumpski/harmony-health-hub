@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BedDouble,
-  CheckCircle2,
   Clock3,
   Pencil,
   Save,
@@ -15,16 +14,19 @@ import {
   Plus,
   ShieldAlert,
   Stethoscope,
-  Trash2,
-  UserRound,
   X,
   RefreshCw,
+  Search,
+  FlaskConical,
+  ScanLine,
+  ClipboardList,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
 import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
+import { searchPatientDirectory, type StaffPatient } from "@/lib/patientDirectory";
 
 interface Patient {
   id: string;
@@ -169,40 +171,16 @@ function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; 
     return Array.from(new Set([...chronic, ...historical].map((v) => v.trim()).filter(Boolean))).slice(0, 12);
   }, [context, patient]);
   return (
-    <aside className="card-medical p-5 space-y-4 border-l-4 border-l-critical/70 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-      <div className="flex items-start justify-between gap-3">
-        <div><h3 className="font-semibold flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety context</h3><p className="text-xs text-muted-foreground mt-1">High-value history stays beside the active encounter.</p></div>
-        {loading && <span className="text-xs text-muted-foreground">Loading…</span>}
+    <aside className="card-medical p-4 space-y-3 border-l-4 border-l-critical/70 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
+      <div className="flex items-start justify-between gap-2">
+        <div><h3 className="font-semibold text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-critical" /> Patient safety</h3><p className="text-[11px] text-muted-foreground mt-0.5">Only high-value context is shown here.</p></div>
+        {loading && <span className="text-[11px] text-muted-foreground">Loading…</span>}
       </div>
-      {patient && (
-        <section className="rounded-xl border border-border p-3">
-          <p className="font-medium text-sm">{patient.name}</p>
-          <p className="text-xs text-muted-foreground">{patient.patient_code}</p>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <div>Blood group<p className="font-medium">{patient.blood_group || "Not recorded"}</p></div>
-            <div>Genotype<p className="font-medium">{patient.genotype || "Not recorded"}</p></div>
-          </div>
-        </section>
-      )}
-      <BMIContextCard patientId={patientId} />
-      {patient?.allergies && <section className="rounded-xl border border-critical/40 bg-critical/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm text-critical"><AlertTriangle className="w-4 h-4" /> Allergies / alerts</div><p className="text-sm mt-2 whitespace-pre-wrap">{patient.allergies}</p></section>}
-      {conditions.length > 0 && <section className="rounded-xl border border-warning/40 bg-warning/5 p-4"><div className="flex items-center gap-2 font-semibold text-sm mb-2"><AlertTriangle className="w-4 h-4" /> Conditions to notice</div><div className="flex flex-wrap gap-2">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2.5 py-1 text-xs font-medium">{condition}</span>)}</div></section>}
-      {context?.recent_vitals?.[0] && (
-        <section className="rounded-xl border border-border p-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4" /> Latest recorded vitals</h4>
-          <p className="text-[11px] text-muted-foreground mt-1">{new Date(context.recent_vitals[0].recorded_at).toLocaleString()}</p>
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <span>BP: <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span>
-            <span>Pulse: <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span>
-            <span>Temp: <b>{context.recent_vitals[0].temperature ?? "—"}</b></span>
-            <span>SpO₂: <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span>
-          </div>
-        </section>
-      )}
-      <section>
-        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Previous encounters</h4>
-        {!context?.previous_encounters?.length ? <p className="text-sm text-muted-foreground">No previous encounters recorded.</p> : <div className="space-y-3">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-xl border border-border p-3 bg-background/70"><div className="flex justify-between gap-2"><span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span><span className="text-xs rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-sm font-semibold mt-2">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p>{item.symptoms && <p className="text-xs mt-2"><b>Presentation:</b> {item.symptoms}</p>}{item.treatment_plan && <p className="text-xs text-muted-foreground mt-1"><b className="text-foreground">Previous plan:</b> {item.treatment_plan}</p>}</article>)}</div>}
-      </section>
+      {patient && <section className="rounded-lg border border-border p-3"><p className="font-medium text-sm">{patient.name}</p><p className="text-[11px] text-muted-foreground">{patient.patient_code}</p><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Blood group <b>{patient.blood_group || "—"}</b></span><span>Genotype <b>{patient.genotype || "—"}</b></span></div></section>}
+      {patient?.allergies && <section className="rounded-lg border border-critical/40 bg-critical/5 p-3"><div className="flex items-center gap-1.5 font-semibold text-xs text-critical"><AlertTriangle className="w-3.5 h-3.5" /> Allergies / alerts</div><p className="text-xs mt-1 whitespace-pre-wrap">{patient.allergies}</p></section>}
+      {context?.recent_vitals?.[0] && <section className="rounded-lg border border-border p-3"><h4 className="text-xs font-semibold flex items-center gap-1.5"><HeartPulse className="w-3.5 h-3.5" /> Latest vitals</h4><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>BP <b>{context.recent_vitals[0].systolic ?? "—"}/{context.recent_vitals[0].diastolic ?? "—"}</b></span><span>Pulse <b>{context.recent_vitals[0].pulse_rate ?? "—"}</b></span><span>Temp <b>{context.recent_vitals[0].temperature ?? "—"}</b></span><span>SpO₂ <b>{context.recent_vitals[0].oxygen_saturation ?? "—"}%</b></span></div></section>}
+      {<details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-xs font-semibold">Additional clinical context</summary><div className="mt-3 space-y-3">{conditions.length > 0 && <div><p className="text-xs font-medium mb-1">Conditions</p><div className="flex flex-wrap gap-1.5">{conditions.map((condition) => <span key={condition} className="rounded-full bg-background border border-warning/40 px-2 py-1 text-[11px] font-medium">{condition}</span>)}</div></div>}<BMIContextCard patientId={patientId} /></div></details>}
+      <details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-xs font-semibold flex items-center gap-1.5"><History className="w-3.5 h-3.5 text-primary" /> Previous encounters ({context?.previous_encounters?.length ?? 0})</summary>{!context?.previous_encounters?.length ? <p className="mt-2 text-xs text-muted-foreground">No previous encounters recorded.</p> : <div className="mt-3 space-y-2">{context.previous_encounters.map((item) => <article key={item.id} className="rounded-lg border border-border p-2.5 bg-background/70"><div className="flex justify-between gap-2"><span className="text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</span><span className="text-[10px] rounded-full bg-muted px-2 py-0.5">{item.status}</span></div><p className="text-xs font-semibold mt-1">{item.principal_diagnosis || item.diagnoses[0] || "Clinical encounter"}</p></article>)}</div>}</details>
     </aside>
   );
 }
@@ -214,6 +192,79 @@ function encounterAge(createdAt: string) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h old`;
   return `${Math.floor(hours / 24)}d old`;
+}
+
+
+function QuickActionModal(props: any) {
+  const {
+    action, selected, diagnoses, quickSearch, setQuickSearch, quickNotes, setQuickNotes, quickPriority,
+    setQuickPriority, selectedLabCode, setSelectedLabCode, selectedImaging, setSelectedImaging,
+    selectedServiceCode, setSelectedServiceCode, selectedMedication, setSelectedMedication,
+    labCatalogue, imagingCatalogue, serviceCatalogue, medicationCatalogue, catalogLoading,
+    onClose, addDiagnosis, setPrincipal, newDx, setNewDx, addPrescription,
+    med, setMed, dose, setDose, freq, setFreq, duration, setDuration, selectedDiagnosisId,
+    setSelectedDiagnosisId, createLabOrder, createImagingOrder, createServiceOrder
+  } = props;
+
+  const filteredLabs = labCatalogue.filter((x:any) => `${x.test_code} ${x.test_name}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
+  const filteredImaging = imagingCatalogue.filter((x:any) => `${x.service_code} ${x.service_name}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
+  const filteredServices = serviceCatalogue.filter((x:any) => `${x.service_code} ${x.service_name} ${x.department ?? ""}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
+  const filteredMeds = medicationCatalogue.filter((x:any) => `${x.name} ${x.generic_name ?? ""} ${x.strength ?? ""} ${x.form ?? ""}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
+
+  const title = action === "diagnosis" ? "Add diagnosis" : action === "lab" ? "Order laboratory test" : action === "imaging" ? "Order radiology" : action === "medication" ? "Prescribe medication" : "Order other service";
+  return (
+    <div className="fixed inset-0 z-[95] bg-slate-950/65 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quick-action-title">
+      <div className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-card p-4">
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Clinical quick action</p><h2 id="quick-action-title" className="mt-1 text-lg font-semibold">{title}</h2><p className="mt-1 text-xs text-muted-foreground">Encounter {selected.id.slice(0, 8).toUpperCase()} · Patient-linked and server-authorized.</p></div>
+          <button type="button" onClick={onClose} className="btn-ghost" aria-label="Close quick action"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="flex-1 overflow-auto p-4 space-y-4">
+          {action === "diagnosis" && (
+            <>
+              <div><label className="mb-1 block text-xs font-semibold">Diagnosis</label><input autoFocus value={newDx} onChange={(e) => setNewDx(e.target.value)} className="input-medical w-full" placeholder="Search or enter diagnosis" /></div>
+              <div className="rounded-xl border border-border bg-muted/20 p-3 text-xs text-muted-foreground">New diagnoses are provisional by default. After adding one, use <b>Set principal</b> when it becomes the diagnosis driving treatment.</div>
+              {diagnoses.length > 0 && <div className="space-y-2">{diagnoses.map((dx:any) => <div key={dx.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><span className="text-sm">{dx.diagnosis}</span>{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}</div>)}</div>}
+              <div className="flex justify-end"><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add provisional diagnosis</button></div>
+            </>
+          )}
+          {action === "lab" && (
+            <>
+              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input autoFocus value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search active laboratory tests" /></div>
+              <div className="grid gap-2">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading laboratory catalogue…</p> : filteredLabs.map((x:any) => <button type="button" key={x.test_code} onClick={() => setSelectedLabCode(x.test_code)} className={`rounded-xl border p-3 text-left ${selectedLabCode === x.test_code ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.test_name}</p><p className="text-[11px] text-muted-foreground">{x.test_code} · {x.category ?? "General"}</p></button>)}</div>
+              <div className="grid gap-3 sm:grid-cols-2"><select value={quickPriority} onChange={(e) => setQuickPriority(e.target.value)} className="input-medical"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select><textarea value={quickNotes} onChange={(e) => setQuickNotes(e.target.value)} className="input-medical sm:col-span-2" rows={3} placeholder={diagnoses.find((d:any) => d.is_principal)?.diagnosis ? `Clinical indication / notes · context: ${diagnoses.find((d:any) => d.is_principal)?.diagnosis}` : "Clinical indication / notes"} /></div>
+              <div className="flex justify-end"><button type="button" onClick={() => void createLabOrder()} className="btn-primary">Add laboratory order</button></div>
+            </>
+          )}
+          {action === "imaging" && (
+            <>
+              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input autoFocus value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search imaging services" /></div>
+              <div className="grid gap-2">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading imaging catalogue…</p> : filteredImaging.map((x:any) => <button type="button" key={x.service_code} onClick={() => setSelectedImaging((v:any) => ({ ...v, study: x.service_name, modality: x.service_code || "X-Ray" }))} className={`rounded-xl border p-3 text-left ${selectedImaging.study === x.service_name ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.service_name}</p><p className="text-[11px] text-muted-foreground">{x.service_code} · {x.department ?? "Imaging"}</p></button>)}</div>
+              <div className="grid gap-3 sm:grid-cols-2"><input value={selectedImaging.bodySite} onChange={(e) => setSelectedImaging((v:any) => ({ ...v, bodySite: e.target.value }))} className="input-medical" placeholder="Body site (optional)" /><select value={quickPriority} onChange={(e) => setQuickPriority(e.target.value)} className="input-medical"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select><textarea value={quickNotes} onChange={(e) => setQuickNotes(e.target.value)} className="input-medical sm:col-span-2" rows={3} placeholder="Clinical indication / notes" /></div>
+              <div className="flex justify-end"><button type="button" onClick={() => void createImagingOrder()} className="btn-primary">Add radiology order</button></div>
+            </>
+          )}
+          {action === "medication" && (
+            <form onSubmit={addPrescription} className="space-y-3">
+              <div><label className="mb-1 block text-xs font-semibold">Select diagnosis being treated</label><select value={selectedDiagnosisId} onChange={(e) => setSelectedDiagnosisId(e.target.value)} className="input-medical w-full" required><option value="">Select diagnosis…</option>{diagnoses.map((dx:any) => <option key={dx.id} value={dx.id}>{dx.diagnosis}{dx.is_principal ? " · Principal" : ""}</option>)}</select></div>
+              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search medication catalogue" /></div>
+              <div className="grid max-h-52 gap-2 overflow-y-auto">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading medication catalogue…</p> : filteredMeds.map((x:any) => <button type="button" key={x.id} onClick={() => { setSelectedMedication(x.name); setMed(x.name); }} className={`rounded-xl border p-3 text-left ${selectedMedication === x.name ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.name}</p><p className="text-[11px] text-muted-foreground">{[x.generic_name, x.strength, x.form].filter(Boolean).join(" · ") || "Catalogue item"}</p></button>)}</div>
+              <div className="grid gap-3 sm:grid-cols-2"><input value={dose} onChange={(e) => setDose(e.target.value)} className="input-medical" placeholder="Dose" required /><input value={freq} onChange={(e) => setFreq(e.target.value)} className="input-medical" placeholder="Frequency (BD, TDS…)" required /><input value={duration} onChange={(e) => setDuration(e.target.value)} className="input-medical sm:col-span-2" placeholder="Duration" /></div>
+              <div className="flex justify-end"><button type="submit" disabled={!selectedDiagnosisId || !med.trim()} className="btn-primary">Add prescription</button></div>
+            </form>
+          )}
+          {action === "service" && (
+            <>
+              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input autoFocus value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search active services" /></div>
+              <div className="grid gap-2">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading service catalogue…</p> : filteredServices.map((x:any) => <button type="button" key={x.service_code} onClick={() => setSelectedServiceCode(x.service_code)} className={`rounded-xl border p-3 text-left ${selectedServiceCode === x.service_code ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.service_name}</p><p className="text-[11px] text-muted-foreground">{x.service_code} · {x.department ?? "Clinical service"}</p></button>)}</div>
+              <textarea value={quickNotes} onChange={(e) => setQuickNotes(e.target.value)} className="input-medical w-full" rows={3} placeholder="Clinical notes / reason for service" />
+              <div className="flex justify-end"><button type="button" onClick={() => void createServiceOrder()} className="btn-primary">Add service order</button></div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Encounters() {
@@ -233,11 +284,13 @@ export default function Encounters() {
   const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [patientId, setPatientId] = useState(searchParams.get("patient") || "");
+  const [patientSearch, setPatientSearch] = useState("");
   const [symptoms, setSymptoms] = useState("");
   const [clerking, setClerking] = useState("");
   const [draftSymptoms, setDraftSymptoms] = useState("");
   const [draftClerking, setDraftClerking] = useState("");
   const [draftTreatmentPlan, setDraftTreatmentPlan] = useState("");
+  const [latestVitals, setLatestVitals] = useState<ClinicalContext["recent_vitals"]>([]);
   const [draftSaving, setDraftSaving] = useState(false);
   const [newDx, setNewDx] = useState("");
   const [med, setMed] = useState("");
@@ -256,6 +309,20 @@ export default function Encounters() {
   const [auditHistory, setAuditHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  type QuickAction = "diagnosis" | "lab" | "imaging" | "medication" | "service" | null;
+  const [quickAction, setQuickAction] = useState<QuickAction>(null);
+  const [quickSearch, setQuickSearch] = useState("");
+  const [quickNotes, setQuickNotes] = useState("");
+  const [quickPriority, setQuickPriority] = useState("routine");
+  const [selectedLabCode, setSelectedLabCode] = useState("");
+  const [selectedImaging, setSelectedImaging] = useState({ modality: "X-Ray", study: "", bodySite: "" });
+  const [selectedServiceCode, setSelectedServiceCode] = useState("");
+  const [selectedMedication, setSelectedMedication] = useState("");
+  const [labCatalogue, setLabCatalogue] = useState<Array<{ test_code: string; test_name: string; category?: string | null }>>([]);
+  const [imagingCatalogue, setImagingCatalogue] = useState<Array<{ service_code: string; service_name: string; department?: string | null }>>([]);
+  const [serviceCatalogue, setServiceCatalogue] = useState<Array<{ service_code: string; service_name: string; department?: string | null }>>([]);
+  const [medicationCatalogue, setMedicationCatalogue] = useState<Array<{ id: string; name: string; generic_name?: string | null; strength?: string | null; form?: string | null }>>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [filterName, setFilterName] = useState("");
@@ -266,16 +333,29 @@ export default function Encounters() {
   const [filterTo, setFilterTo] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({ name: "", encounterId: "", practitioner: "", status: "all", from: "", to: "" });
   const activePatientId = selected?.patient_id || patientId;
+  const canUseQuickActions = Boolean(user?.roles?.some((role) => ["practitioner", "nurse", "midwife", "specialist_nurse"].includes(role)));
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: pts }, { data: encs }, { data: staff }] = await Promise.all([
-      supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
-      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
-      db.rpc("get_appointment_clinicians", {}, { get: true }),
-    ]);
-      setPatients((pts ?? []) as Patient[]);
+      const [{ data: encs, error: encounterError }, patientDirectory, { data: staff }] = await Promise.all([
+        supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+        searchPatientDirectory("", 1000),
+        db.rpc("get_appointment_clinicians", {}, { get: true }),
+      ]);
+      if (patientDirectory.error) {
+        toast({ title: "Patient directory unavailable", description: patientDirectory.error.message, variant: "destructive" });
+      }
+      if (encounterError) {
+        toast({ title: "Encounter list unavailable", description: encounterError.message, variant: "destructive" });
+      }
+      const directoryPatients = (patientDirectory.data ?? []) as StaffPatient[];
+      setPatients(directoryPatients.map((p) => ({
+        id: p.id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        patient_code: p.patient_code,
+      })));
       setClinicians((staff ?? []) as Clinician[]);
       setEncounters((encs ?? []) as Encounter[]);
       setLastUpdated(new Date());
@@ -326,7 +406,44 @@ export default function Encounters() {
     setDraftClerking(selected.clerking_notes ?? "");
     setDraftTreatmentPlan(selected.treatment_plan ?? "");
     void loadDetails(selected.id);
-  }, [selected?.id]);
+    void db.rpc("get_encounter_clinical_context", { _patient_id: selected.patient_id, _encounter_id: selected.id }).then(({ data, error }: any) => {
+      if (error) return;
+      setLatestVitals(((data?.recent_vitals ?? []) as ClinicalContext["recent_vitals"]).slice(0, 1));
+    });
+  }, [selected]);
+
+  useEffect(() => {
+    if (!quickAction || !selected) return;
+    let active = true;
+    const loadCatalogue = async () => {
+      setCatalogLoading(true);
+      try {
+        if (quickAction === "lab") {
+          const { data, error } = await db.from("lab_test_catalogue").select("test_code,test_name,category").eq("active", true).order("test_name").limit(100);
+          if (error) throw error;
+          if (active) setLabCatalogue((data ?? []) as typeof labCatalogue);
+        } else if (quickAction === "imaging") {
+          const { data, error } = await db.from("service_tariffs").select("service_code,service_name,department").eq("active", true).ilike("department", "imaging").order("service_name").limit(100);
+          if (error) throw error;
+          if (active) setImagingCatalogue((data ?? []) as typeof imagingCatalogue);
+        } else if (quickAction === "service") {
+          const { data, error } = await db.from("service_tariffs").select("service_code,service_name,department").eq("active", true).not("department", "ilike", "imaging").order("service_name").limit(100);
+          if (error) throw error;
+          if (active) setServiceCatalogue((data ?? []) as typeof serviceCatalogue);
+        } else if (quickAction === "medication") {
+          const { data, error } = await db.from("medication_catalogue").select("id,name,generic_name,strength,form").eq("active", true).order("name").limit(100);
+          if (error) throw error;
+          if (active) setMedicationCatalogue((data ?? []) as typeof medicationCatalogue);
+        }
+      } catch (error) {
+        if (active) toast({ title: "Catalogue unavailable", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      } finally {
+        if (active) setCatalogLoading(false);
+      }
+    };
+    void loadCatalogue();
+    return () => { active = false; };
+  }, [quickAction, selected]);
 
   const loadHistory = async (encounterId: string) => {
     setHistoryLoading(true);
@@ -487,6 +604,11 @@ export default function Encounters() {
     setSearchParams({});
   };
 
+  const filteredPatients = useMemo(() => {
+    const q = patientSearch.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter((p) => `${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(q));
+  }, [patientSearch, patients]);
   const draftCount = encounters.filter((item) => item.status !== "completed").length;
   const completedCount = encounters.filter((item) => item.status === "completed").length;
   const admittedCount = encounters.filter((item) => Boolean(item.admission_id)).length;
@@ -591,11 +713,16 @@ export default function Encounters() {
             </div>
             <form onSubmit={createEncounter} className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label htmlFor="encounter-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
-                <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full" required>
+                <label htmlFor="encounter-patient-search" className="mb-1 block text-xs font-semibold">Find patient <span className="text-critical">*</span></label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <input id="encounter-patient-search" value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search by patient name or hospital ID" />
+                </div>
+                <select id="encounter-patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical mt-2 w-full" required size={Math.min(Math.max(filteredPatients.length, 2), 8)}>
                   <option value="">Select patient…</option>
-                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
+                  {filteredPatients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.patient_code})</option>)}
                 </select>
+                <p className="mt-1 text-[11px] text-muted-foreground">{filteredPatients.length} patient record{filteredPatients.length === 1 ? "" : "s"} available in the authorized directory.</p>
               </div>
               <div>
                 <label htmlFor="encounter-symptoms" className="mb-1 block text-xs font-semibold">Presenting symptoms / complaints</label>
@@ -666,7 +793,7 @@ export default function Encounters() {
 
       {selected && (
         <div className="fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="active-encounter-title">
-          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-4 sm:p-5">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Active clinical document</p>
@@ -689,54 +816,174 @@ export default function Encounters() {
               <div className="mt-3"><label className="text-xs font-semibold">Amendment reason</label><textarea value={amendmentReason} onChange={(e) => setAmendmentReason(e.target.value)} className="input-medical mt-1 w-full" rows={2} placeholder="Why is this finalized clinical document being amended?" required /></div>
               <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setAmending(false)} className="btn-ghost">Cancel</button><button type="button" onClick={() => void saveAmendment()} disabled={amendmentBusy || !amendmentReason.trim()} className="btn-primary inline-flex items-center gap-2"><Save className="w-4 h-4" />{amendmentBusy ? "Saving…" : "Save amendment"}</button></div>
             </section>}
-            <div className="flex-1 overflow-auto p-3 sm:p-5">
-              <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+            <div className="flex-1 overflow-auto p-2 sm:p-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)]">
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
-                <div className="space-y-5">
-                  <section className="rounded-2xl border border-border bg-card p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3><p className="text-xs text-muted-foreground mt-1">Draft clinical documentation stays attached to this encounter. Finalized documents remain locked and versioned.</p></div>
-                      <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span>
+                <div className="min-w-0 space-y-4 pb-20">
+                  <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">Keep the clinical narrative central. Orders and treatment actions are opened only when needed.</p>
+                      </div>
+                      {selected.status !== "completed" && (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            onClick={() => {
+                              const principal = diagnoses.find((dx) => dx.is_principal)?.diagnosis;
+                              if (principal && !draftTreatmentPlan.trim()) setDraftTreatmentPlan(`Assessment: ${principal}\n\n`);
+                              toast({ title: principal ? "Clinical context prepared" : "Clerking sheet ready", description: principal ? "The principal diagnosis has been placed in the treatment-plan draft for clinician review." : "Enter the narrative findings and save the draft." });
+                            }}
+                          >Prepare assessment</button>
+                          <button type="button" className="btn-ghost text-xs" onClick={() => {
+                            const v = latestVitals?.[0];
+                            if (!v) return toast({ title: "No recent vitals available", description: "Record triage/vitals first, then return to the encounter." });
+                            const block = `Latest vitals — BP ${v.systolic ?? "—"}/${v.diastolic ?? "—"} · Pulse ${v.pulse_rate ?? "—"} · Temp ${v.temperature ?? "—"} · SpO₂ ${v.oxygen_saturation ?? "—"}%\n`;
+                            if (!draftClerking.includes("Latest vitals —")) setDraftClerking((current) => current ? `${current.trim()}\n\n${block}` : block);
+                            toast({ title: "Latest vitals prepared", description: "Review the inserted values and save the clerking draft." });
+                          }}>Auto-fill latest vitals</button>
+                        </div>
+                      )}
                     </div>
                     {selected.status !== "completed" ? (
                       <div className="mt-4 space-y-3">
                         <div className="grid gap-3 md:grid-cols-2">
-                          <div><label className="mb-1 block text-xs font-semibold" htmlFor="draft-symptoms">Symptoms / presentation</label><textarea id="draft-symptoms" value={draftSymptoms} onChange={(e) => setDraftSymptoms(e.target.value)} className="input-medical w-full" rows={4} placeholder="Document the presenting concerns" /></div>
-                          <div><label className="mb-1 block text-xs font-semibold" htmlFor="draft-clerking">Clerking / history</label><textarea id="draft-clerking" value={draftClerking} onChange={(e) => setDraftClerking(e.target.value)} className="input-medical w-full" rows={4} placeholder="Record relevant history and examination context" /></div>
-                          <div className="md:col-span-2"><label className="mb-1 block text-xs font-semibold" htmlFor="draft-treatment-plan">Treatment plan</label><textarea id="draft-treatment-plan" value={draftTreatmentPlan} onChange={(e) => setDraftTreatmentPlan(e.target.value)} className="input-medical w-full" rows={3} placeholder="Document the planned management" /></div>
+                          <div><label className="mb-1 block text-xs font-semibold" htmlFor="draft-symptoms">Symptoms / presentation</label><textarea id="draft-symptoms" value={draftSymptoms} onChange={(e) => setDraftSymptoms(e.target.value)} className="input-medical w-full" rows={5} placeholder="Document the presenting concerns" /></div>
+                          <div><label className="mb-1 block text-xs font-semibold" htmlFor="draft-clerking">Clerking / history</label><textarea id="draft-clerking" value={draftClerking} onChange={(e) => setDraftClerking(e.target.value)} className="input-medical w-full" rows={5} placeholder="Record relevant history, examination and clinical findings" /></div>
+                          <div className="md:col-span-2"><label className="mb-1 block text-xs font-semibold" htmlFor="draft-treatment-plan">Assessment / treatment plan</label><textarea id="draft-treatment-plan" value={draftTreatmentPlan} onChange={(e) => setDraftTreatmentPlan(e.target.value)} className="input-medical w-full" rows={4} placeholder="Document assessment, treatment plan and follow-up" /></div>
                         </div>
-                        <div className="flex justify-end"><button type="button" onClick={() => void saveDraft()} disabled={draftSaving} className="btn-secondary inline-flex items-center gap-2"><Save className="h-4 w-4" />{draftSaving ? "Saving draft…" : "Save draft"}</button></div>
+                        <div className="flex justify-end"><button type="button" onClick={() => void saveDraft()} disabled={draftSaving} className="btn-secondary inline-flex items-center gap-2"><Save className="h-4 w-4" />{draftSaving ? "Saving draft…" : "Save clerking draft"}</button></div>
                       </div>
                     ) : (
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Symptoms / presentation</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.symptoms || "—"}</p></div>
                         <div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clerking / history</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.clerking_notes || "—"}</p></div>
-                        <div className="md:col-span-2"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Treatment plan</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.treatment_plan || "Not yet documented"}</p></div>
+                        <div className="md:col-span-2"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assessment / treatment plan</h4><p className="mt-2 text-sm whitespace-pre-wrap">{selected.treatment_plan || "Not yet documented"}</p></div>
                       </div>
                     )}
                   </section>
-                  <section className="rounded-2xl border border-border bg-card p-5">
-                    <section className="rounded-2xl border border-border bg-card p-5">
-                     <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnostic & service orders</h3><p className="text-xs text-muted-foreground">Orders attached to this encounter remain visible so downstream departments can continue treatment without leaving the clinical document.</p></div><span className="text-xs text-muted-foreground">{labOrders.length + imagingOrders.length + serviceOrders.length} order(s)</span></div>
-                     <div className="grid gap-3 md:grid-cols-3">
-                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Laboratory</span><span className="text-lg font-bold tabular-nums">{labOrders.length}</span></div><div className="mt-2 space-y-2">{labOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.test_name || "Lab test"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!labOrders.length && <p className="text-xs text-muted-foreground">No laboratory orders.</p>}</div><Link to="/laboratory" className="mt-3 inline-flex text-xs text-primary">Open laboratory</Link></div>
-                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Imaging</span><span className="text-lg font-bold tabular-nums">{imagingOrders.length}</span></div><div className="mt-2 space-y-2">{imagingOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.study_name || o.modality || "Imaging order"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!imagingOrders.length && <p className="text-xs text-muted-foreground">No imaging orders.</p>}</div><Link to="/radiology" className="mt-3 inline-flex text-xs text-primary">Open radiology</Link></div>
-                       <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Other services</span><span className="text-lg font-bold tabular-nums">{serviceOrders.length}</span></div><div className="mt-2 space-y-2">{serviceOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.service_name || "Service"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!serviceOrders.length && <p className="text-xs text-muted-foreground">No service orders.</p>}</div><Link to="/department-queue" className="mt-3 inline-flex text-xs text-primary">Open department queue</Link></div>
-                     </div>
-                   </section>
-                   <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
-                    {selected.status !== "completed" && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add provisional diagnosis" className="input-medical flex-1" /><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add</button></div>}
-                    {principalRequiredError && <p role="alert" className="mb-3 rounded-lg border border-critical/40 bg-critical/5 p-3 text-sm text-critical">Please confirm the Principal Diagnosis to finalize this encounter. Select a provisional diagnosis and choose “Set principal”.</p>}
-                    <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span title={principalRequiredError ? "Please confirm the Principal Diagnosis to finalize this encounter." : "Provisional diagnosis"} className={`ml-2 text-xs rounded-full px-2 py-1 ${principalRequiredError ? "bg-critical/10 text-critical ring-1 ring-critical/40" : "bg-warning/10 text-warning"}`}>Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
+
+                  <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div><h3 className="font-semibold">Clinical quick actions</h3><p className="text-xs text-muted-foreground mt-1">Open one focused action at a time. Server-side workflow authorization remains enforced.</p></div>
+                      <span className="text-[11px] text-muted-foreground">{diagnoses.length + labOrders.length + imagingOrders.length + serviceOrders.length + prescriptions.length} documented action{diagnoses.length + labOrders.length + imagingOrders.length + serviceOrders.length + prescriptions.length === 1 ? "" : "s"}</span>
+                    </div>
+                    {selected.status !== "completed" && canUseQuickActions ? (
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                        <button type="button" onClick={() => { setQuickAction("diagnosis"); setQuickSearch(""); }} className="btn-secondary min-h-16 flex-col gap-1 text-xs"><Plus className="h-4 w-4" />Add diagnosis<span className="text-[10px] text-muted-foreground">{diagnoses.length} documented</span></button>
+                        <button type="button" onClick={() => { setQuickAction("lab"); setQuickSearch(""); }} className="btn-secondary min-h-16 flex-col gap-1 text-xs"><FlaskConical className="h-4 w-4" />Order lab<span className="text-[10px] text-muted-foreground">{labOrders.length} ordered</span></button>
+                        <button type="button" onClick={() => { setQuickAction("imaging"); setQuickSearch(""); }} className="btn-secondary min-h-16 flex-col gap-1 text-xs"><ScanLine className="h-4 w-4" />Order radiology<span className="text-[10px] text-muted-foreground">{imagingOrders.length} ordered</span></button>
+                        <button type="button" onClick={() => { setQuickAction("medication"); setQuickSearch(""); const principal = diagnoses.find((dx) => dx.is_principal); setSelectedDiagnosisId(principal?.id ?? ""); }} className="btn-secondary min-h-16 flex-col gap-1 text-xs"><Pill className="h-4 w-4" />Prescribe<span className="text-[10px] text-muted-foreground">{prescriptions.length} prescribed</span></button>
+                        <button type="button" onClick={() => { setQuickAction("service"); setQuickSearch(""); }} className="btn-secondary min-h-16 flex-col gap-1 text-xs"><ClipboardList className="h-4 w-4" />Other service<span className="text-[10px] text-muted-foreground">{serviceOrders.length} ordered</span></button>
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 text-xs text-muted-foreground">{selected.status === "completed" ? "Finalized encounter: clinical actions are read-only." : "Quick clinical actions are available to clinician roles for draft encounters."}</div>
+                    )}
+                    {principalRequiredError && <p role="alert" className="mt-3 rounded-lg border border-critical/40 bg-critical/5 p-3 text-sm text-critical">A Principal Diagnosis is required before final submission.</p>}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => { setQuickAction("diagnosis"); setQuickSearch(""); }} className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium">Diagnoses · {diagnoses.length}</button>
+                      <button type="button" onClick={() => { setQuickAction("lab"); setQuickSearch(""); }} className="rounded-full border border-border px-3 py-1.5 text-xs">Labs · {labOrders.length}</button>
+                      <button type="button" onClick={() => { setQuickAction("imaging"); setQuickSearch(""); }} className="rounded-full border border-border px-3 py-1.5 text-xs">Radiology · {imagingOrders.length}</button>
+                      <button type="button" onClick={() => { setQuickAction("medication"); setQuickSearch(""); }} className="rounded-full border border-border px-3 py-1.5 text-xs">Meds · {prescriptions.length}</button>
+                      <button type="button" onClick={() => { setQuickAction("service"); setQuickSearch(""); }} className="rounded-full border border-border px-3 py-1.5 text-xs">Services · {serviceOrders.length}</button>
+                    </div>
                   </section>
-                  <section className="rounded-2xl border border-border bg-card p-5">
-                    <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment remains explicitly linked to the documented clinical assessment.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>
-                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><select value={selectedDiagnosisId} onChange={(e) => setSelectedDiagnosisId(e.target.value)} className="input-medical md:col-span-2" required><option value="">Select diagnosis being treated…</option>{diagnoses.map((dx) => <option key={dx.id} value={dx.id}>{dx.diagnosis}{dx.is_principal ? " · Principal" : ""}</option>)}</select><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" disabled={!diagnoses.length} className="btn-primary md:col-span-2">Add prescription</button></form>}
-                    <div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || "Dose not recorded"} · {rx.frequency || "Frequency not recorded"} · {rx.duration || "Duration not recorded"}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div>
+
+                  <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div><h3 className="font-semibold">Documented clinical actions</h3><p className="text-xs text-muted-foreground mt-1">Compact summaries keep downstream work visible without recreating the full order forms.</p></div>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {[...diagnoses.map((dx) => ({ key: `dx-${dx.id}`, label: dx.diagnosis, meta: dx.is_principal ? "Principal diagnosis" : "Provisional diagnosis" })),
+                        ...labOrders.slice(0, 5).map((o) => ({ key: `lab-${o.id}`, label: o.test_name || "Laboratory test", meta: `Lab · ${o.status || "ordered"}` })),
+                        ...imagingOrders.slice(0, 5).map((o) => ({ key: `img-${o.id}`, label: o.study_name || o.modality || "Imaging study", meta: `Radiology · ${o.status || "ordered"}` })),
+                        ...prescriptions.slice(0, 5).map((o) => ({ key: `rx-${o.id}`, label: o.medication, meta: `Medication · ${o.frequency || "frequency not recorded"}` })),
+                        ...serviceOrders.slice(0, 5).map((o) => ({ key: `svc-${o.id}`, label: o.service_name || "Other service", meta: `Service · ${o.status || "ordered"}` }))].slice(0, 12).map((item) => (
+                          <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.label}</p><p className="text-[11px] text-muted-foreground">{item.meta}</p></div></div>
+                        ))}
+                    </div>
+                    {!diagnoses.length && !labOrders.length && !imagingOrders.length && !prescriptions.length && !serviceOrders.length && <p className="text-sm text-muted-foreground">No clinical actions documented yet.</p>}
                   </section>
                 </div>
               </div>
             </div>
+
+            {selected.status !== "completed" && canUseQuickActions && (
+              <div className="sticky bottom-0 z-10 border-t border-border bg-card/95 px-3 py-2.5 backdrop-blur sm:px-4">
+                <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-2">
+                  <button type="button" onClick={() => { setQuickAction("diagnosis"); setQuickSearch(""); }} className="btn-secondary text-xs"><Plus className="mr-1.5 inline h-3.5 w-3.5" />Diagnosis</button>
+                  <button type="button" onClick={() => { setQuickAction("lab"); setQuickSearch(""); }} className="btn-secondary text-xs"><FlaskConical className="mr-1.5 inline h-3.5 w-3.5" />Lab</button>
+                  <button type="button" onClick={() => { setQuickAction("imaging"); setQuickSearch(""); }} className="btn-secondary text-xs"><ScanLine className="mr-1.5 inline h-3.5 w-3.5" />Radiology</button>
+                  <button type="button" onClick={() => { setQuickAction("medication"); setQuickSearch(""); const principal = diagnoses.find((dx) => dx.is_principal); setSelectedDiagnosisId(principal?.id ?? ""); }} className="btn-primary text-xs"><Pill className="mr-1.5 inline h-3.5 w-3.5" />Prescribe</button>
+                  <button type="button" onClick={() => { setQuickAction("service"); setQuickSearch(""); }} className="btn-secondary text-xs"><ClipboardList className="mr-1.5 inline h-3.5 w-3.5" />Other service</button>
+                </div>
+              </div>
+            )}
+      {quickAction && selected && (
+        <QuickActionModal
+          action={quickAction}
+          selected={selected}
+          diagnoses={diagnoses}
+          quickSearch={quickSearch}
+          setQuickSearch={setQuickSearch}
+          quickNotes={quickNotes}
+          setQuickNotes={setQuickNotes}
+          quickPriority={quickPriority}
+          setQuickPriority={setQuickPriority}
+          selectedLabCode={selectedLabCode}
+          setSelectedLabCode={setSelectedLabCode}
+          selectedImaging={selectedImaging}
+          setSelectedImaging={setSelectedImaging}
+          selectedServiceCode={selectedServiceCode}
+          setSelectedServiceCode={setSelectedServiceCode}
+          selectedMedication={selectedMedication}
+          setSelectedMedication={setSelectedMedication}
+          labCatalogue={labCatalogue}
+          imagingCatalogue={imagingCatalogue}
+          serviceCatalogue={serviceCatalogue}
+          medicationCatalogue={medicationCatalogue}
+          catalogLoading={catalogLoading}
+          onClose={() => setQuickAction(null)}
+          addDiagnosis={addDiagnosis}
+          setPrincipal={setPrincipal}
+          newDx={newDx}
+          setNewDx={setNewDx}
+          addPrescription={addPrescription}
+          med={med}
+          setMed={setMed}
+          dose={dose}
+          setDose={setDose}
+          freq={freq}
+          setFreq={setFreq}
+          duration={duration}
+          setDuration={setDuration}
+          selectedDiagnosisId={selectedDiagnosisId}
+          setSelectedDiagnosisId={setSelectedDiagnosisId}
+          createLabOrder={async () => {
+            if (!selectedLabCode) return toast({ title: "Select a laboratory test", variant: "destructive" });
+            const { error } = await db.rpc("create_encounter_lab_order", { _encounter_id: selected.id, _test_code: selectedLabCode, _priority: quickPriority, _clinical_notes: quickNotes || null });
+            if (error) return toast({ title: "Laboratory order failed", description: error.message, variant: "destructive" });
+            toast({ title: "Laboratory order added", description: "The order is now linked to this encounter." });
+            setQuickAction(null); setQuickNotes(""); setSelectedLabCode(""); void loadDetails(selected.id);
+          }}
+          createImagingOrder={async () => {
+            if (!selectedImaging.study.trim()) return toast({ title: "Select an imaging study", variant: "destructive" });
+            const { error } = await db.rpc("create_encounter_imaging_order", { _encounter_id: selected.id, _modality: selectedImaging.modality, _study_name: selectedImaging.study.trim(), _body_site: selectedImaging.bodySite || null, _priority: quickPriority, _clinical_indication: quickNotes || null });
+            if (error) return toast({ title: "Radiology order failed", description: error.message, variant: "destructive" });
+            toast({ title: "Radiology order added", description: "The imaging request is now linked to this encounter." });
+            setQuickAction(null); setQuickNotes(""); setSelectedImaging({ modality: "X-Ray", study: "", bodySite: "" }); void loadDetails(selected.id);
+          }}
+          createServiceOrder={async () => {
+            if (!selectedServiceCode) return toast({ title: "Select a service", variant: "destructive" });
+            const { error } = await db.rpc("create_encounter_service_order", { _encounter_id: selected.id, _service_code: selectedServiceCode, _notes: quickNotes || null });
+            if (error) return toast({ title: "Service order failed", description: error.message, variant: "destructive" });
+            toast({ title: "Service order added", description: "The service request is now linked to this encounter." });
+            setQuickAction(null); setQuickNotes(""); setSelectedServiceCode(""); void loadDetails(selected.id);
+          }}
+        />
+      )}
           </div>
         </div>
       )}

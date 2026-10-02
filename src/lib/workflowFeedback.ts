@@ -13,6 +13,10 @@ let audioContext: AudioContext | null = null;
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
+  // Browsers block audio created before a user gesture. Realtime notifications may
+  // arrive during initial page load, so silently defer sound until the user has
+  // interacted with the application rather than generating a console warning.
+  if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
   try {
     audioContext ??= new AudioContext();
     if (audioContext.state === 'suspended') void audioContext.resume().catch(() => undefined);
