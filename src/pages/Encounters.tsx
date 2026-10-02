@@ -271,12 +271,14 @@ export default function Encounters() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: pts, error: patientError }, { data: encs }, { data: staff }] = await Promise.all([
+      const [{ data: pts, error: patientError }, { data: encs, error: encounterError }, { data: staff, error: staffError }] = await Promise.all([
       searchPatientDirectory('', 200),
-      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+      db.rpc("get_encounter_workflow_workspace", {}, { get: true }),
       db.rpc("get_appointment_clinicians", {}, { get: true }),
     ]);
       if (patientError) throw patientError;
+      if (encounterError) throw encounterError;
+      if (staffError) throw staffError;
       setPatients((pts ?? []) as Patient[]);
       setClinicians((staff ?? []) as Clinician[]);
       setEncounters((encs ?? []) as Encounter[]);
