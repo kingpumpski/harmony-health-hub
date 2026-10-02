@@ -106,6 +106,8 @@ CREATE POLICY inv_pharma_delete ON public.pharmacy_inventory FOR DELETE TO authe
     facility_id = (SELECT public.current_user_facility_id())
     AND (public.current_user_has_role('admin') OR public.current_user_has_role('pharmacist'))
   );
+-- Inventory writes are only permitted through validated, audited RPCs.
+REVOKE INSERT, UPDATE, DELETE ON public.pharmacy_inventory FROM PUBLIC, anon, authenticated;
 
 DROP FUNCTION IF EXISTS public.create_pharmacy_inventory_item(text,text,text,text,text,text,text,date,integer,integer,numeric);
 
@@ -336,9 +338,8 @@ BEGIN
   IF COALESCE(_stock_quantity, 0) > 0 AND (_expiry_date IS NULL OR COALESCE(_unit_price, 0) <= 0) THEN
     RAISE EXCEPTION 'Expiry date and a positive retail price are required before stock can be made available';
   END IF;
-  UPDATE public.pharmacy_inventory SET drug_name = pg_catalog.btrim(_drug_name),
-    brand_name = NULLIF(pg_catalog.btrim(_brand_name), ''), generic_name = NULLIF(pg_catalog.btrim(_generic_name), ''),
-    strength = NULLIF(pg_catalog.btrim(_strength), ''), form = NULLIF(pg_catalog.btrim(_form), ''),
+  UPDATE public.pharmacy_inventory SET
+    brand_name = NULLIF(pg_catalog.btrim(_brand_name), ''),
     supplier = NULLIF(pg_catalog.btrim(_supplier), ''), batch_number = NULLIF(pg_catalog.btrim(_batch_number), ''),
     expiry_date = _expiry_date, stock_quantity = COALESCE(_stock_quantity, 0),
     reorder_level = COALESCE(_reorder_level, 0), unit_price = COALESCE(_unit_price, 0),
