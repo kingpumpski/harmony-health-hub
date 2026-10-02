@@ -81,6 +81,8 @@ export default function WorklistDataTable<T>({
   const defaultColumnKeys = () => columns.filter((column) => column.required || column.defaultVisible !== false).map((column) => column.key);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(defaultColumnKeys);
 
+  // The stable signature captures the only column metadata this preference loader depends on.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
