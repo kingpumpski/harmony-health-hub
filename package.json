@@ -66,7 +66,8 @@
     "test:live-test-mode-privilege-audit": "node scripts/live-test-mode-privilege-audit-contract.mjs",
     "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs",
     "test:encounter-clerking-facility": "node scripts/encounter-clerking-facility-contract.mjs",
-    "test:encounter-diagnosis-facility": "node scripts/encounter-diagnosis-facility-contract.mjs"
+    "test:encounter-diagnosis-facility": "node scripts/encounter-diagnosis-facility-contract.mjs",
+    "test:encounter-lifecycle-facility": "node scripts/encounter-lifecycle-facility-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
