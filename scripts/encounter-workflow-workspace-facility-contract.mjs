@@ -31,9 +31,13 @@ if (!ui.includes("rpc('get_encounter_workflow_workspace')")) {
 }
 
 const testModeIndex = migration.indexOf('public.hms_test_mode_enabled()');
-const adminIndex = migration.indexOf("public.current_user_has_role('admin'::public.app_role)");
-if (testModeIndex < 0 || adminIndex < 0 || testModeIndex > adminIndex) {
-  throw new Error('Encounter workspace must evaluate test-mode isolation before privileged-role exceptions');
+const nonTestIndex = migration.indexOf('not public.hms_test_mode_enabled()');
+const facilityAdminIndex = migration.indexOf("not public.hms_test_mode_enabled() and ( public.current_user_has_role('admin'::public.app_role)");
+if (testModeIndex < 0 || nonTestIndex < 0 || nonTestIndex <= testModeIndex) {
+  throw new Error('Encounter workspace must establish test-mode isolation before the non-test facility exception');
+}
+if (facilityAdminIndex < 0) {
+  throw new Error('Encounter workspace must keep the admin exception inside the non-test facility branch');
 }
 
 console.log('Encounter workflow workspace facility boundary contract passed.');
