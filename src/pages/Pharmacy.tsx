@@ -12,7 +12,7 @@ import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTa
 type Patient = { id: string; first_name: string; last_name: string; patient_code: string; date_of_birth?: string | null; gender?: string | null; blood_group?: string | null; allergies?: string | null; insurance_provider?: string | null; insurance_number?: string | null; insurance_expiry?: string | null };
 type InventoryItem = { id: string; catalogue_id?: string | null; facility_id?: string | null; drug_name: string; brand_name: string | null; generic_name: string | null; category?: string | null; form: string | null; strength: string | null; stock_quantity: number; reorder_level: number; unit_price: number; supplier: string | null; batch_number: string | null; expiry_date: string | null; barcode?: string | null; nhis_patient_price?: number; nhis_claim_amount?: number };
 type Prescription = { id: string; patient_id: string; encounter_id?: string | null; diagnosis?: string | null; dispensed_quantity?: number; created_at?: string; medication: string; dosage: string | null; frequency: string | null; duration: string | null; computed_quantity: number | null; status: string; patients?: Patient };
-type Plan = { id: string; created_at?: string; medication_name: string; prepared_quantity: number; patient_charge?: number; nhis_claim_amount?: number; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
+type Plan = { id: string; created_at?: string; medication_name: string; prepared_quantity: number; patient_charge?: number; nhis_claim_amount?: number; prescription_id?: string; inventory_id?: string; prescribed_medication?: string | null; dosage?: string | null; frequency?: string | null; duration?: string | null; computed_quantity?: number | null; dispensed_quantity?: number; diagnosis?: string | null; service_order_id: string | null; service_order_status?: string | null; patients?: Patient };
 type Alternative = Pick<InventoryItem, 'id' | 'drug_name' | 'brand_name' | 'generic_name' | 'strength' | 'form' | 'supplier' | 'stock_quantity' | 'unit_price'> & { category?: string | null };
 type PosSale = { id: string; medication: string; quantity: number; total_amount: number; status: string; service_order_id: string | null };
 const db = supabase as any;
@@ -59,6 +59,7 @@ export default function Pharmacy() {
   const [appliedPosStatus, setAppliedPosStatus] = useState('all');
   const [appliedInventoryStock, setAppliedInventoryStock] = useState('all');
   const [expandedPrescriptionId, setExpandedPrescriptionId] = useState<string | null>(null);
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const [expandedPosId, setExpandedPosId] = useState<string | null>(null);
   const [prescriptionColumns, setPrescriptionColumns] = useState({ medication: false, dosage: false, status: false });
   const [columnsOpen, setColumnsOpen] = useState(false);
@@ -262,7 +263,7 @@ export default function Pharmacy() {
                       <tr>
                     <td>{visiblePrescriptions.indexOf(prescription) + 1}</td><td className="font-mono text-xs">{prescription.patients?.patient_code ?? prescription.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{prescription.patients ? `${prescription.patients.first_name} ${prescription.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(prescription.created_at ?? Date.now()).toLocaleString()}</td>
                     {prescriptionColumns.medication && <td><p className="font-medium">{prescription.medication}</p><p className="text-xs text-muted-foreground">{prescription.computed_quantity ?? 'Quantity not set'} unit(s)</p></td>}{prescriptionColumns.dosage && <td className="text-xs">{prescription.dosage ?? '—'} · {prescription.frequency ?? '—'}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={prescription.status} /></td>}
-                    <td><div className="flex min-w-[220px] flex-wrap items-center justify-end gap-2">{lowStockMatch && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-critical"><AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />Low stock</span>}<ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /><ClinicalTableAction label="Prepare" icon="acknowledge" onClick={() => void prepare(prescription)} /></div></td>
+                    <td><div className="flex min-w-[220px] flex-wrap items-center justify-end gap-2">{lowStockMatch && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-critical"><AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />Low stock</span>}<ClinicalTableAction label={expandedPrescriptionId === prescription.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPrescriptionId(expandedPrescriptionId === prescription.id ? null : prescription.id)} /></div></td>
                       </tr>
                       {expandedPrescriptionId === prescription.id && (
                         <tr key={`${prescription.id}-details`} className="bg-muted/20">
@@ -284,13 +285,32 @@ export default function Pharmacy() {
                     </Fragment>
                   );
                 })}
-                {plans.filter((plan) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'ready').map((plan) => (
-                  <tr key={plan.id}>
-                    <td>{plans.indexOf(plan) + 1}</td><td className="font-mono text-xs">{plan.patients?.patient_code ?? 'Prepared order'}</td><td><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{plan.created_at ? new Date(plan.created_at).toLocaleString() : '—'}</td>
-                    {prescriptionColumns.medication && <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>}{prescriptionColumns.dosage && <td className="text-xs">Prepared quantity: {plan.prepared_quantity}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>}
-                    <td><div className="flex justify-end"><ClinicalTableAction label="Dispense" icon="acknowledge" onClick={() => void dispense(plan)} disabled={!['released', 'in_progress'].includes(plan.service_order_status ?? '')} /></div></td>
-                  </tr>
-                ))}
+                {plans.filter((plan) => appliedDispenseStatus === 'all' || appliedDispenseStatus === 'ready').map((plan) => {
+                  const planNhis = Boolean(plan.patients?.insurance_provider?.toUpperCase().includes('NHIS') && plan.patients?.insurance_number && (!plan.patients.insurance_expiry || plan.patients.insurance_expiry >= new Date().toISOString().slice(0, 10)));
+                  const planRemaining = plan.computed_quantity == null ? null : Math.max(0, plan.computed_quantity - (plan.dispensed_quantity ?? 0));
+                  return <Fragment key={plan.id}>
+                    <tr>
+                      <td>{plans.indexOf(plan) + 1}</td><td className="font-mono text-xs">{plan.patients?.patient_code ?? 'Prepared order'}</td><td><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p></td><td className="whitespace-nowrap text-xs text-muted-foreground">{plan.created_at ? new Date(plan.created_at).toLocaleString() : '—'}</td>
+                      {prescriptionColumns.medication && <td><p className="font-medium">{plan.medication_name}</p><p className="text-xs text-muted-foreground">{plan.prepared_quantity} prepared</p></td>}{prescriptionColumns.dosage && <td className="text-xs">{plan.dosage ?? '—'} · {plan.frequency ?? '—'}</td>}{prescriptionColumns.status && <td><ClinicalStatusBadge status={plan.service_order_status ?? 'pending'} /></td>}
+                      <td><div className="flex justify-end"><ClinicalTableAction label={expandedPlanId === plan.id ? 'Hide details' : 'View order'} onClick={() => setExpandedPlanId(expandedPlanId === plan.id ? null : plan.id)} /></div></td>
+                    </tr>
+                    {expandedPlanId === plan.id && <tr className="bg-muted/20"><td colSpan={5 + Number(prescriptionColumns.medication) + Number(prescriptionColumns.dosage) + Number(prescriptionColumns.status)}>
+                      <div className="grid gap-3 p-1">
+                        <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-3 text-xs sm:grid-cols-4 lg:grid-cols-6" aria-label="Patient clinical safety context">
+                          <div><p className="text-muted-foreground">Patient</p><p className="font-semibold">{plan.patients ? `${plan.patients.first_name} ${plan.patients.last_name}` : 'Patient'}</p></div>
+                          <div><p className="text-muted-foreground">Age / gender</p><p className="font-medium">{plan.patients?.date_of_birth ? `${Math.max(0, Math.floor((Date.now() - new Date(plan.patients.date_of_birth).getTime()) / 31557600000))} years` : 'Age not recorded'} · {plan.patients?.gender ?? 'Not recorded'}</p></div>
+                          <div><p className="text-muted-foreground">Blood group</p><p className="font-medium">{plan.patients?.blood_group ?? 'Not recorded'}</p></div>
+                          <div className="col-span-2"><p className="text-muted-foreground">Allergies</p><p className={`font-semibold ${plan.patients?.allergies?.trim() && !/^((no known (drug )?allergies)|nka|nkda|none)$/i.test(plan.patients.allergies.trim()) ? 'text-critical' : ''}`}>{plan.patients?.allergies?.trim() || 'No allergy recorded — verify with patient'}</p></div>
+                          <div className="col-span-2 lg:col-span-1"><p className="text-muted-foreground">Current encounter diagnosis</p><p className="font-medium">{plan.diagnosis ?? 'Not recorded'}</p></div>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3 text-sm">
+                          <div><p className="font-semibold">{plan.medication_name}</p><p className="text-xs text-muted-foreground">Dose: {plan.dosage ?? 'Not recorded'} · Frequency: {plan.frequency ?? 'Not recorded'} · Duration: {plan.duration ?? 'Not recorded'}</p><p className="mt-1 text-xs">Prepared quantity: {plan.prepared_quantity} · Dispensed total: {plan.dispensed_quantity ?? 0} · Remaining: {planRemaining == null ? 'Not specified' : planRemaining}</p><p className="mt-1 text-xs">Patient charge: <strong>GHS {Number(plan.patient_charge ?? 0).toFixed(2)}</strong>{planNhis && <> · NHIS claim amount: <strong>GHS {Number(plan.nhis_claim_amount ?? 0).toFixed(2)}</strong></>}</p></div>
+                          <ClinicalTableAction label="Dispense" icon="acknowledge" onClick={() => void dispense(plan)} disabled={!['released', 'in_progress'].includes(plan.service_order_status ?? '')} />
+                        </div>
+                      </div>
+                    </td></tr>}
+                  </Fragment>;
+                })}
               </tbody>
             </ClinicalDataTable>
             </>
