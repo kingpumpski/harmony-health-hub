@@ -50,6 +50,8 @@ export default function Settings(){
  const [saving,setSaving]=useState(false);
  const [facilities,setFacilities]=useState<HealthcareFacility[]>([]);
  const [facilityId,setFacilityId]=useState('');
+ const [activeContextFacilityId,setActiveContextFacilityId]=useState('');
+ const [switchingFacility,setSwitchingFacility]=useState(false);
  const [notification,setNotification]=useState<FacilityNotificationConfig|null>(null);
  const [providerConnections,setProviderConnections]=useState<ProviderConnection[]>([]);
  const [secretRequirements,setSecretRequirements]=useState<NotificationProviderSecretRequirement[]>([]);
@@ -87,19 +89,40 @@ export default function Settings(){
 
  async function load(){
    setLoading(true);
-   const [{data,error}, facilityResult] = await Promise.all([
+   const [{data,error}, facilityResult, contextResult] = await Promise.all([
      db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override,require_principal_diagnosis_for_final,inherit_inpatient_diagnoses,notification_sound_enabled').limit(1).maybeSingle(),
-     listFacilities().catch(()=>[]),
+     canControlTestMode
+       ? db.rpc('list_facilities_for_superadmin_context').then(({data,error}:any)=>{if(error)throw error;return data??[]}).catch((error:unknown)=>{toast.error(error instanceof Error?error.message:'Unable to load facilities.');return [];})
+       : listFacilities().catch(()=>[]),
+     canControlTestMode ? db.rpc('get_current_facility_context') : Promise.resolve({data:null,error:null}),
    ]);
    if(error) toast.error(error.message);
+   if(contextResult?.error && canControlTestMode) toast.error(contextResult.error.message);
    setConfig(data as Config|null);
    setFacilities(facilityResult);
-   const initial = facilityResult[0]?.id ?? '';
+   const currentContext = Array.isArray(contextResult?.data) ? contextResult.data[0] : contextResult?.data;
+   const initial = currentContext?.facility_id ?? facilityResult[0]?.id ?? '';
+   setActiveContextFacilityId(initial);
    setFacilityId(initial);
    setLoading(false);
    if(initial) void loadNotificationSettings(initial);
    if(canControlTestMode) void loadEnvironmentMode();
  }
+ async function switchActiveFacility(){
+   if(!canControlTestMode || !activeContextFacilityId)return;
+   const selected=facilities.find(f=>f.id===activeContextFacilityId);
+   if(!selected)return toast.error('Select an active facility.');
+   if(!window.confirm('Switch the system super admin active facility context to '+selected.name+'? The current page will reload and facility-scoped workspaces will use this context.'))return;
+   setSwitchingFacility(true);
+   try{
+     const {error}=await db.rpc('set_active_facility_context',{_facility_id:activeContextFacilityId});
+     if(error)throw new Error(error.message);
+     toast.success('Active facility context updated.');
+     window.location.reload();
+   }catch(error){toast.error(error instanceof Error?error.message:'Unable to switch facility context.');}
+   finally{setSwitchingFacility(false);}
+ }
+
  async function loadNotificationSettings(id:string){
    setNotificationLoading(true);
    try {
@@ -192,6 +215,17 @@ export default function Settings(){
    <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><SettingsIcon className="w-6 h-6 text-primary"/>System Settings</h1>
    <p className="text-muted-foreground">Central configuration and operational control plane for administrators and IT administrators.</p>
   </header>
+
+  {canControlTestMode && <section className="card-medical rounded-3xl border border-primary/20 p-5 space-y-3">
+   <div><h2 className="font-semibold flex items-center gap-2"><Building2 className="w-4 h-4 text-primary"/>Active Facility Context</h2><p className="mt-1 text-sm text-muted-foreground">Switch the system super admin workspace to an active facility for cross-facility troubleshooting. This changes your context only; it does not move patient records or grant other users access.</p></div>
+   <div className="flex flex-col gap-3 sm:flex-row">
+    <select className="input-medical min-w-0 flex-1" value={activeContextFacilityId} onChange={e=>setActiveContextFacilityId(e.target.value)} aria-label="Active facility context">
+     <option value="">Select facility</option>
+     {facilities.map(f=><option key={f.id} value={f.id}>{f.name}{f.facility_code ? ' ('+f.facility_code+')' : ''}</option>)}
+    </select>
+    <button type="button" className="btn-primary" disabled={!activeContextFacilityId||switchingFacility||facilities.length===0} onClick={()=>void switchActiveFacility()}>{switchingFacility?'Switching…':'Switch active facility'}</button>
+   </div>
+  </section>
 
   <section className="card-medical rounded-3xl p-5 space-y-5">
    <div className="grid gap-4 md:grid-cols-2">{fields.map(key=><label key={key} className="text-sm space-y-1 block"><span className="capitalize">{key.replaceAll('_',' ')}</span><input className="input-medical w-full" value={config[key]??''} onChange={e=>setConfig({...config,[key]:e.target.value})}/></label>)}
