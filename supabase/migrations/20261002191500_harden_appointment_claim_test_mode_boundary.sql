@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.claim_appointment(_appointment_id uuid)
 RETURNS public.appointments
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = 'pg_catalog, public'
+SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
