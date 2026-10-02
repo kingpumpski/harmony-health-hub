@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BedDouble,
-  CheckCircle2,
   Clock3,
   Pencil,
   Save,
@@ -15,8 +14,6 @@ import {
   Plus,
   ShieldAlert,
   Stethoscope,
-  Trash2,
-  UserRound,
   X,
   RefreshCw,
   Search,
