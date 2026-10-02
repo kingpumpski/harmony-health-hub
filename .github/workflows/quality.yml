@@ -107,6 +107,9 @@ jobs:
       - name: Encounter facility-context reassertion contract
         run: npm run test:encounter-facility-context-reassertion
 
+      - name: Encounter workflow workspace facility contract
+        run: npm run test:encounter-workflow-workspace-facility
+
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 
