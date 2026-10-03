@@ -35,7 +35,7 @@ for (const needle of [
   'public.assert_patient_facility_context(_patient_id)',
   'and a.facility_id=v_facility',
   'and e.facility_id=v_facility',
-  'diagnosis, is_principal, icd_code, ai_suggested, facility_id',
+  'diagnosis,is_principal,icd_code,ai_suggested,facility_id',
   'select result.id,d.diagnosis,d.is_principal,d.icd_code,d.ai_suggested,v_facility',
   "alter function public.create_encounter_workflow(uuid,text,text) set search_path=''",
   'revoke all on function public.create_encounter_workflow(uuid,text,text) from public,anon',
