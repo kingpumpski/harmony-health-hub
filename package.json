@@ -70,7 +70,8 @@
     "test:encounter-lifecycle-facility": "node scripts/encounter-lifecycle-facility-contract.mjs",
     "test:encounter-admission-order-facility": "node scripts/encounter-admission-order-facility-contract.mjs",
     "test:direct-patient-order-facility": "node scripts/direct-patient-order-facility-contract.mjs",
-    "test:service-order-invoice-facility": "node scripts/service-order-invoice-facility-contract.mjs"
+    "test:service-order-invoice-facility": "node scripts/service-order-invoice-facility-contract.mjs",
+    "test:billing-workflow-facility": "node scripts/billing-workflow-facility-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
