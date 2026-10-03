@@ -122,6 +122,9 @@ jobs:
       - name: Encounter lifecycle facility contract
         run: npm run test:encounter-lifecycle-facility
 
+      - name: Encounter admission and order facility contract
+        run: npm run test:encounter-admission-order-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
