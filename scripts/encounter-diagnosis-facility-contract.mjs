@@ -14,7 +14,7 @@ for (const n of [
   'revoke all on function public.add_encounter_diagnosis(uuid,text,text) from public, anon'
 ]) assert(attribution.includes(n), 'Missing diagnosis attribution boundary: ' + n);
 const attrTest = attribution.indexOf('if public.hms_test_mode_enabled()');
-const attrNonTest = attribution.indexOf('else v_facility:=public.current_user_facility_id()');
+const attrNonTest = attribution.indexOf('else v_facility := public.current_user_facility_id()');
 assert(attrTest >= 0 && attrNonTest > attrTest, 'Attribution must check test mode before non-test facility handling');
 
 const lifecycle = normalize('supabase/migrations/20261002210000_harden_diagnosis_lifecycle_facility_boundary.sql');
