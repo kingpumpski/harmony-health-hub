@@ -131,6 +131,9 @@ jobs:
       - name: Service order and invoice facility contract
         run: npm run test:service-order-invoice-facility
 
+      - name: Billing workflow facility contract
+        run: npm run test:billing-workflow-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
