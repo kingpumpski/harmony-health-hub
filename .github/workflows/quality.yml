@@ -128,6 +128,9 @@ jobs:
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
 
+      - name: Service order and invoice facility contract
+        run: npm run test:service-order-invoice-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
