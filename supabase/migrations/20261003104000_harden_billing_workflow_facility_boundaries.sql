@@ -68,7 +68,7 @@ BEGIN
   v_anchor := 'IF NOT EXISTS (SELECT 1 FROM public.invoices WHERE id=_invoice_id) THEN RAISE EXCEPTION ''Invoice not found''; END IF;';
   IF pg_catalog.strpos(v_definition, v_anchor) = 0 THEN RAISE EXCEPTION 'pay_selected_invoice_items invoice anchor missing'; END IF;
   v_definition := replace(v_definition, v_anchor, 'SELECT i.patient_id,i.facility_id INTO v_patient_id,v_invoice_facility FROM public.invoices i WHERE i.id=_invoice_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION ''Invoice not found''; END IF; PERFORM public.assert_patient_facility_context(v_patient_id); SELECT p.facility_id INTO v_patient_facility FROM public.patients p WHERE p.id=v_patient_id; IF v_patient_facility IS NULL OR v_invoice_facility IS DISTINCT FROM v_patient_facility THEN RAISE EXCEPTION ''Invoice facility does not match patient facility''; END IF;');
-  v_anchor := 'IF (SELECT count(*) FROM public.invoice_items WHERE invoice_id=_invoice_id AND id=ANY(_item_ids)) <> cardinality(_item_ids) THEN RAISE EXCEPTION ''One or more selected invoice items do not belong to this invoice''; END IF;';
+  v_anchor := E'IF (SELECT count(*) FROM public.invoice_items WHERE invoice_id=_invoice_id AND id=ANY(_item_ids)) <> cardinality(_item_ids) THEN\n    RAISE EXCEPTION ''One or more selected invoice items do not belong to this invoice'';\n  END IF;';
   IF pg_catalog.strpos(v_definition, v_anchor) = 0 THEN RAISE EXCEPTION 'pay_selected_invoice_items item membership anchor missing'; END IF;
   v_definition := replace(v_definition, v_anchor, v_anchor || E'
   IF EXISTS (SELECT 1 FROM public.invoice_items ii WHERE ii.invoice_id=_invoice_id AND ii.id=ANY(_item_ids) AND ii.facility_id IS DISTINCT FROM v_invoice_facility) THEN
