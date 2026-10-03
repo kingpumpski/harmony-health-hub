@@ -134,6 +134,9 @@ jobs:
       - name: Billing workflow facility contract
         run: npm run test:billing-workflow-facility
 
+      - name: Insurance claim facility contract
+        run: npm run test:insurance-claim-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
