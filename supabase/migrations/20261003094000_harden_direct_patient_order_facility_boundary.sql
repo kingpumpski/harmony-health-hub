@@ -2,7 +2,7 @@
 DO $migration$
 DECLARE
   v_definition text;
-  v_anchor text;
+  v_anchor text := 'IF NOT FOUND THEN RAISE EXCEPTION ''Active patient does not exist''; END IF;';
   v_name text;
   v_functions text[] := ARRAY[
     'public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric,uuid)',
@@ -11,15 +11,10 @@ DECLARE
 BEGIN
   FOREACH v_name IN ARRAY v_functions LOOP
     v_definition := pg_catalog.pg_get_functiondef(v_name::regprocedure);
-    IF v_name LIKE 'public.create_lab_order_with_payment_gate%' THEN
-      v_anchor := 'IF NOT(public.has_role(uid,''admin'') OR public.has_role(uid,''it_admin'') OR public.has_role(uid,''practitioner'') OR public.has_role(uid,''nurse'') OR public.has_role(uid,''midwife'') OR public.has_role(uid,''lab_technician'') OR public.has_role(uid,''front_desk'')) THEN RAISE EXCEPTION ''Laboratory order access required''; END IF;';
-    ELSE
-      v_anchor := 'IF uid IS NULL OR NOT(public.has_role(uid,''admin'') OR public.has_role(uid,''it_admin'') OR public.has_role(uid,''practitioner'') OR public.has_role(uid,''nurse'') OR public.has_role(uid,''midwife'') OR public.has_role(uid,''radiologist'') OR public.has_role(uid,''radiology_technician'') OR public.has_role(uid,''front_desk'')) THEN RAISE EXCEPTION ''Imaging order access required''; END IF;';
-    END IF;
     IF pg_catalog.strpos(v_definition,v_anchor)=0 THEN
-      RAISE EXCEPTION 'Expected role-check anchor not found for %',v_name;
+      RAISE EXCEPTION 'Expected active-patient validation anchor not found for %',v_name;
     END IF;
-    v_definition := pg_catalog.replace(v_definition,v_anchor,v_anchor || E'\n PERFORM public.assert_patient_facility_context(_patient_id);');
+    v_definition := pg_catalog.replace(v_definition,v_anchor,v_anchor || E'\\n PERFORM public.assert_patient_facility_context(_patient_id);');
     EXECUTE v_definition;
   END LOOP;
 END;
