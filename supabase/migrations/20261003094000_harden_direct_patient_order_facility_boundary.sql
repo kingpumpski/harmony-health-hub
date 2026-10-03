@@ -14,7 +14,7 @@ BEGIN
     IF pg_catalog.strpos(v_definition,v_anchor)=0 THEN
       RAISE EXCEPTION 'Expected active-patient validation anchor not found for %',v_name;
     END IF;
-    v_definition := pg_catalog.replace(v_definition,v_anchor,v_anchor || E'\\n PERFORM public.assert_patient_facility_context(_patient_id);');
+    v_definition := pg_catalog.replace(v_definition,v_anchor,v_anchor || E'\n PERFORM public.assert_patient_facility_context(_patient_id);');
     EXECUTE v_definition;
   END LOOP;
 END;
