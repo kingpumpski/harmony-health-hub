@@ -125,6 +125,9 @@ jobs:
       - name: Encounter admission and order facility contract
         run: npm run test:encounter-admission-order-facility
 
+      - name: Direct patient order facility contract
+        run: npm run test:direct-patient-order-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
