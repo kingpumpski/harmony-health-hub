@@ -137,6 +137,9 @@ jobs:
       - name: Insurance claim facility contract
         run: npm run test:insurance-claim-facility
 
+      - name: Patient, emergency and imaging facility contract
+        run: npm run test:patient-emergency-imaging-facility
+
       - name: Encounter diagnosis facility contract
         run: npm run test:encounter-diagnosis-facility
 
