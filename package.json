@@ -68,7 +68,8 @@
     "test:encounter-clerking-facility": "node scripts/encounter-clerking-facility-contract.mjs",
     "test:encounter-diagnosis-facility": "node scripts/encounter-diagnosis-facility-contract.mjs",
     "test:encounter-lifecycle-facility": "node scripts/encounter-lifecycle-facility-contract.mjs",
-    "test:encounter-admission-order-facility": "node scripts/encounter-admission-order-facility-contract.mjs"
+    "test:encounter-admission-order-facility": "node scripts/encounter-admission-order-facility-contract.mjs",
+    "test:direct-patient-order-facility": "node scripts/direct-patient-order-facility-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
