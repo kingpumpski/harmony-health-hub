@@ -41,7 +41,7 @@ BEGIN
       v_replacement := v_anchor || E'\n  PERFORM public.ensure_encounter_facility_attribution(_encounter_id);\n  SELECT * INTO v_enc FROM public.encounters WHERE id = _encounter_id FOR UPDATE;';
     END IF;
 
-    IF pg_catalog.position(v_anchor in v_definition) = 0 THEN
+    IF pg_catalog.strpos(v_definition,v_anchor) = 0 THEN
       RAISE EXCEPTION 'Expected insertion anchor not found for %', v_name;
     END IF;
 
