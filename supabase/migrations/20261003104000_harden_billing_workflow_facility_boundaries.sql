@@ -29,7 +29,7 @@ BEGIN
   v_signature := 'public.mark_billing_items_billed(uuid,uuid[])'::regprocedure;
   v_definition := pg_get_functiondef(v_signature);
   v_definition := replace(v_definition, 'v_count integer;', 'v_count integer; v_patient_id uuid; v_invoice_facility uuid; v_patient_facility uuid;');
-  v_anchor := 'IF NOT EXISTS (SELECT 1 FROM public.invoices WHERE id = _invoice_id) THEN RAISE EXCEPTION ''Invoice not found''; END IF;';
+  v_anchor := E'IF NOT EXISTS (SELECT 1 FROM public.invoices WHERE id = _invoice_id) THEN\n    RAISE EXCEPTION ''Invoice not found'';\n  END IF;';
   IF pg_catalog.strpos(v_definition, v_anchor) = 0 THEN RAISE EXCEPTION 'mark_billing_items_billed invoice anchor missing'; END IF;
   v_definition := replace(v_definition, v_anchor, 'SELECT i.patient_id,i.facility_id INTO v_patient_id,v_invoice_facility FROM public.invoices i WHERE i.id=_invoice_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION ''Invoice not found''; END IF; PERFORM public.assert_patient_facility_context(v_patient_id); SELECT p.facility_id INTO v_patient_facility FROM public.patients p WHERE p.id=v_patient_id; IF v_patient_facility IS NULL OR v_invoice_facility IS DISTINCT FROM v_patient_facility THEN RAISE EXCEPTION ''Invoice facility does not match patient facility''; END IF;');
   v_anchor := 'UPDATE public.invoice_items';
