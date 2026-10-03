@@ -52,7 +52,7 @@ BEGIN
       || substring(v_definition from v_pos + length('BEGIN'));
 
     EXECUTE v_definition;
-    EXECUTE format('ALTER FUNCTION %s SET search_path = ''''', v_signature);
+    EXECUTE format('ALTER FUNCTION %s SET search_path TO %L', v_signature, '');
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon', v_signature);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', v_signature);
   END LOOP;
