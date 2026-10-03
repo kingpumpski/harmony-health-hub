@@ -92,6 +92,21 @@ for (const token of [
   assert(wrapperMigration.includes(token), `Missing legacy wrapper boundary: ${token}`);
 }
 
+const testModePatientContextMigration = fs.readFileSync(
+  'supabase/migrations/20261002190000_harden_test_mode_patient_facility_assertion.sql',
+  'utf8',
+);
+for (const token of [
+  'CREATE OR REPLACE FUNCTION public.assert_patient_facility_context(_patient_id uuid)',
+  'IF public.hms_current_user_is_test_user() THEN',
+  'public.hms_test_facility_id()',
+  'Test mode is active. Test accounts can access patient records only in the Harmony Health Hub Test Facility (TEST-0001).',
+  "IF public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') THEN",
+  'REVOKE ALL ON FUNCTION public.assert_patient_facility_context(uuid) FROM PUBLIC, anon, authenticated',
+]) {
+  assert(testModePatientContextMigration.includes(token), `Missing test-mode patient facility boundary: ${token}`);
+}
+
 const patientReadMigration = fs.readFileSync(
   'supabase/migrations/20261001102111_harden_patient_read_facility_context.sql',
   'utf8',
