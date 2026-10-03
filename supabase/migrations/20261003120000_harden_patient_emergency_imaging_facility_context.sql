@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION public.update_patient_workflow(_patient_id uuid, _changes jsonb)
 RETURNS public.patients
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public'
+SET search_path = ''
 AS $function$
 declare
   uid uuid := auth.uid(); v_patient public.patients; v_role text;
@@ -58,7 +58,7 @@ REVOKE ALL ON FUNCTION public.update_patient_workflow(uuid,jsonb) FROM PUBLIC,an
 GRANT EXECUTE ON FUNCTION public.update_patient_workflow(uuid,jsonb) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.transition_emergency_case(_case_id uuid,_status text,_disposition text DEFAULT NULL::text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog','public'
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); c public.emergency_cases%ROWTYPE;
 BEGIN
@@ -81,7 +81,7 @@ REVOKE ALL ON FUNCTION public.transition_emergency_case(uuid,text,text) FROM PUB
 GRANT EXECUTE ON FUNCTION public.transition_emergency_case(uuid,text,text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.start_imaging_order(_imaging_order_id uuid)
-RETURNS public.imaging_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+RETURNS public.imaging_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); o public.imaging_orders; s public.service_orders; es text;
 BEGIN
