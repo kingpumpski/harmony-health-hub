@@ -18,7 +18,7 @@ interface DirectoryRow { id: string; email: string | null; first_name: string | 
 type EditableUser = Omit<DirectoryRow, 'role'>;
 
 export default function AdminUsers() {
-  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
+  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
   const [users, setUsers] = useState<DirectoryRow[]>([]); const [facilities, setFacilities] = useState<FacilityOption[]>([]); const [searchEmail, setSearchEmail] = useState('');
   const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
@@ -145,7 +145,7 @@ export default function AdminUsers() {
   ];
   if (!user) return null;
   return <div className="space-y-6 animate-fade-in">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">Admin User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
     {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an administrator or System Superuser to manage users.</div>}
     {canManageSuperuser && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm"><b>Platform governance:</b> You can provision System Superuser accounts for platform leadership. Facility staff roles remain governed by their facility administration.</div>}
     {canManage && <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
