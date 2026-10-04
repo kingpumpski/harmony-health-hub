@@ -6,6 +6,7 @@ const settings = fs.readFileSync('src/pages/admin/Settings.tsx', 'utf8');
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
 const notificationFunction = fs.readFileSync('supabase/functions/notification-provider-config/index.ts', 'utf8');
 const onboardingMigration = fs.readFileSync('supabase/migrations/20261004271000_complete_platform_facility_onboarding_bootstrap.sql', 'utf8');
+const lifecycleMigration = fs.readFileSync('supabase/migrations/20261004272000_add_platform_facility_lifecycle_workflows.sql', 'utf8');
 
 for (const needle of [
   'public.has_role(auth.uid(), \'system_superuser\'::public.app_role)',
@@ -53,4 +54,14 @@ for (const needle of [
 ]) {
   if (!onboardingMigration.includes(needle)) throw new Error('Platform facility onboarding bootstrap missing guard: ' + needle);
 }
-console.log('Superadmin facility context, patient history, notification CORS, and onboarding bootstrap contract passed');
+for (const needle of [
+  "platform_update_facility(_facility_id uuid",
+  "platform_set_facility_active(_facility_id uuid",
+  "Only system super administrators may update facilities",
+  "Facility cannot be deactivated while users still have it as their active facility context",
+  "REVOKE ALL ON FUNCTION public.platform_update_facility(uuid,text,text,text,text,text,text) FROM PUBLIC,anon",
+  "REVOKE ALL ON FUNCTION public.platform_set_facility_active(uuid,boolean) FROM PUBLIC,anon",
+]) {
+  if (!lifecycleMigration.includes(needle)) throw new Error('Platform facility lifecycle migration missing guard: ' + needle);
+}
+console.log('Superadmin facility context, patient history, notification CORS, onboarding bootstrap, and facility lifecycle contract passed');
