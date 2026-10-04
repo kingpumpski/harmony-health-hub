@@ -138,7 +138,7 @@ export default function AdminUsers() {
       render: (row) => <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={() => setEditingUser({ id: row.id, email: row.email, first_name: row.first_name, last_name: row.last_name, phone: row.phone, department: row.department, specialization: row.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button>{canManageSuperuser && <button type="button" onClick={() => openFacilityManagement(row)} className="btn-secondary inline-flex items-center gap-1 text-xs"><Settings className="w-3 h-3" />Facility</button>}
         <select aria-label={`Change role for ${row.first_name || row.last_name || row.email || 'user'}`} value={row.role} onChange={e => void assignRole(row.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">
-          {availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          {availableRoles.filter(r => canManageSuperuser || !['admin','it_admin','system_superuser'].includes(r.value)).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
       </div>,
     },
@@ -186,7 +186,7 @@ export default function AdminUsers() {
             <input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="input-medical w-full" placeholder="Email address" required />
             <input value={createPhone} onChange={e => setCreatePhone(e.target.value)} className="input-medical w-full" placeholder="Phone (optional)" />
             <div className="grid grid-cols-2 gap-2"><input value={createDepartment} onChange={e => setCreateDepartment(e.target.value)} className="input-medical" placeholder="Department" /><input value={createSpecialization} onChange={e => setCreateSpecialization(e.target.value)} className="input-medical" placeholder="Specialization" /></div>
-            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => r.value !== 'system_superuser' || canManageSuperuser).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => canManageSuperuser || !['admin','it_admin','system_superuser'].includes(r.value)).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
             {canManageSuperuser && <select value={createFacilityId} onChange={e => setCreateFacilityId(e.target.value)} className="input-medical w-full"><option value="">No facility assignment yet</option>{facilities.filter(f=>f.is_active).map(f=><option key={f.id} value={f.id}>{f.name} ({f.facility_code})</option>)}</select>}
             <select value={onboarding} onChange={e => setOnboarding(e.target.value as 'invite' | 'password')} className="input-medical w-full"><option value="invite">Email invitation</option><option value="password">Create with password</option></select>
             {onboarding === 'password' && <input type="password" minLength={8} value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="input-medical w-full" placeholder="Initial password (8+ characters)" required />}
