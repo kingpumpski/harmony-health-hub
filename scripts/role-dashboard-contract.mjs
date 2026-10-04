@@ -74,6 +74,10 @@ if (!authSource.includes('roles.includes(persistedRole)')) throw new Error('Pers
 if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(session.user.id))')) throw new Error('Active role context must clear on logout');
 
 
+const systemSuperuserDashboard = read('src/pages/dashboard/SystemSuperuserDashboard.tsx');
+if (!systemSuperuserDashboard.includes("get_role_dashboard_summary_for_role")) throw new Error('System Superuser dashboard must use the validated role-scoped summary RPC');
+if (!systemSuperuserDashboard.includes("_requested_role: 'system_superuser'")) throw new Error('System Superuser dashboard must request its assigned server role');
+
 const nurse = read('src/pages/dashboard/NurseDashboard.tsx');
 if (!nurse.includes("type InpatientFilter = 'all' | 'critical' | 'stable';")) throw new Error('Nursing dashboard must use the canonical inpatient filter statuses');
 if (!nurse.includes("['all', 'critical', 'stable'] as const")) throw new Error('Nursing dashboard filter options must match its rendered status model');
