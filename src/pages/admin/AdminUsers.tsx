@@ -94,10 +94,8 @@ export default function AdminUsers() {
   };
 
   const assignRole = async (userId: string, role: RoleValue) => {
-    const { data, error } = await supabase.functions.invoke('admin-create-user', {
-      body: { action: 'update_role', userId, role },
-    });
-    if (error || data?.error) return toast({ title: 'Role update failed', description: await getFunctionError(error, data, 'Unable to update role'), variant: 'destructive' });
+    const { error } = await supabase.rpc('platform_set_user_role', { _user_id: userId, _role: role });
+    if (error) return toast({ title: 'Role update failed', description: error.message, variant: 'destructive' });
     setUsers(current => current.map(row => row.id === userId ? { ...row, role } : row));
     toast({ title: 'Role updated', description: 'Set to ' + role });
     void loadDirectory();
