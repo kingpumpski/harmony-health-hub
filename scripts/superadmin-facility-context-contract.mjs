@@ -5,6 +5,7 @@ const historyMigration = fs.readFileSync('supabase/migrations/20261002071000_sup
 const settings = fs.readFileSync('src/pages/admin/Settings.tsx', 'utf8');
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
 const notificationFunction = fs.readFileSync('supabase/functions/notification-provider-config/index.ts', 'utf8');
+const onboardingMigration = fs.readFileSync('supabase/migrations/20261004271000_complete_platform_facility_onboarding_bootstrap.sql', 'utf8');
 
 for (const needle of [
   'public.has_role(auth.uid(), \'system_superuser\'::public.app_role)',
@@ -44,4 +45,12 @@ for (const needle of [
 ]) {
   if (!notificationFunction.includes(needle)) throw new Error('Notification provider function missing CORS/superadmin support: ' + needle);
 }
-console.log('Superadmin facility context, patient history, and notification CORS contract passed');
+for (const needle of [
+  "public.initialize_facility_notification_onboarding(v_facility.id)",
+  "Only system super administrators may onboard facilities",
+  "REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) FROM PUBLIC, anon",
+  "GRANT EXECUTE ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) TO authenticated",
+]) {
+  if (!onboardingMigration.includes(needle)) throw new Error('Platform facility onboarding bootstrap missing guard: ' + needle);
+}
+console.log('Superadmin facility context, patient history, notification CORS, and onboarding bootstrap contract passed');
