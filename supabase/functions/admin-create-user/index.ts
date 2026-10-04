@@ -268,31 +268,11 @@ Deno.serve(async (req) => {
       return json({ ok: true, user: { id: userId, role: nextRole } });
     }
 
-    if (String(body?.role ?? '').trim().toLowerCase() === 'system_superuser' && callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can create or assign another System Superuser.' }, 403);
-
     const onboarding = body?.onboarding === 'password' ? 'password' : 'invite';
-    const user = await provisionAdminUser(service, {
-      email: String(body?.email ?? ''),
-      firstName: String(body?.firstName ?? ''),
-      lastName: String(body?.lastName ?? ''),
-      phone: String(body?.phone ?? ''),
-      department: String(body?.department ?? ''),
-      specialization: String(body?.specialization ?? ''),
-      role: String(body?.role ?? 'patient'),
-      onboarding,
-      password: String(body?.password ?? ''),
-    });
-
-    try {
-      await writeAdminAudit({
-        action: 'admin_create_user',
-        entityId: user.id,
-        metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id },
-      });
-    } catch (auditError) {
-      // Do not leave an account behind after a failed completion step.
-      await service.auth.admin.deleteUser(user.id);
-      throw auditError;
+    const requestedRole = String(body?.role ?? 'patient').trim().toLowerCase();
+    if (!ADMIN_USER_ROLE_SET.has(requestedRole)) return json({ error: 'Unsupported role' }, 400);
+    if (requestedRole === 'system_superuser' && callerRole !== 'system_superuser') {
+      return json({ error: 'Only a System Superuser can create or assign another System Superuser.' }, 403);
     }
 
     let requestedFacilityId = String(body?.facilityId ?? '').trim();
@@ -311,6 +291,29 @@ Deno.serve(async (req) => {
       if (callerContextError) return json({ error: 'Unable to determine administrator facility context: ' + callerContextError.message }, 500);
       if (!callerContext?.facility_id) return json({ error: 'An active facility context is required before creating facility users.' }, 400);
       requestedFacilityId = String(callerContext.facility_id);
+    }
+
+    const user = await provisionAdminUser(service, {
+      email: String(body?.email ?? ''),
+      firstName: String(body?.firstName ?? ''),
+      lastName: String(body?.lastName ?? ''),
+      phone: String(body?.phone ?? ''),
+      department: String(body?.department ?? ''),
+      specialization: String(body?.specialization ?? ''),
+      role: requestedRole,
+      onboarding,
+      password: String(body?.password ?? ''),
+    });
+
+    try {
+      await writeAdminAudit({
+        action: 'admin_create_user',
+        entityId: user.id,
+        metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id, facility_id: requestedFacilityId || null },
+      });
+    } catch (auditError) {
+      await service.auth.admin.deleteUser(user.id);
+      throw auditError;
     }
 
     if (requestedFacilityId) {
