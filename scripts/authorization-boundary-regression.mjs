@@ -64,6 +64,7 @@ const contracts = [
   ["create_nursing_shift_handover", ["assert_patient_facility_context", "set search_path = ''"]],
   ["approve_lab_result", ["facility context", "facility mismatch", "set search_path to ''"]],
   ["create_patient_admission", ["assert_patient_facility_context", "set search_path = ''"]],
+  ["update_encounter_draft_workflow", ["assert_patient_facility_context", "completed or cancelled encounters are read-only", "set search_path = ''"]],
   ["complete_ai_report_request", ["facility_id", "set search_path = ''"]],
   ["record_fertility_monitoring_workflow", ["assert_patient_facility_context", "set search_path = ''"]],
   ["record_maternity_observation_workflow", ["assert_patient_facility_context", "set search_path = ''"]],
