@@ -46,11 +46,34 @@ Deno.serve(async (req) => {
     };
 
     if (body?.action === 'list_users') {
-      const { data: profiles, error: profileError } = await service
+      let visibleUserIds: string[] | null = null;
+      if (callerRole !== 'system_superuser') {
+        const { data: callerContext, error: callerContextError } = await service
+          .from('user_active_facilities')
+          .select('facility_id')
+          .eq('user_id', caller.id)
+          .maybeSingle();
+        if (callerContextError) return json({ error: 'Unable to determine administrator facility context: ' + callerContextError.message }, 500);
+        if (!callerContext?.facility_id) return json({ error: 'An active facility context is required before viewing facility users.' }, 400);
+        const { data: memberships, error: membershipScopeError } = await service
+          .from('facility_memberships')
+          .select('user_id')
+          .eq('facility_id', callerContext.facility_id)
+          .eq('is_active', true);
+        if (membershipScopeError) return json({ error: 'Facility user directory lookup failed: ' + membershipScopeError.message }, 500);
+        visibleUserIds = Array.from(new Set((memberships ?? []).map((row) => row.user_id)));
+      }
+
+      let profileQuery = service
         .from('profiles')
         .select('id, email, first_name, last_name, phone, department, specialization, created_at')
         .order('created_at', { ascending: false })
         .limit(200);
+      if (visibleUserIds) {
+        if (!visibleUserIds.length) return json({ ok: true, users: [] });
+        profileQuery = profileQuery.in('id', visibleUserIds);
+      }
+      const { data: profiles, error: profileError } = await profileQuery;
       if (profileError) return json({ error: 'User directory lookup failed: ' + profileError.message }, 500);
       const ids = (profiles ?? []).map((p) => p.id);
       const { data: roles, error: roleError } = ids.length
