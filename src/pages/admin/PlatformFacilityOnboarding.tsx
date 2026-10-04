@@ -9,7 +9,7 @@ type Facility={id:string;name:string;facility_code:string|null;facility_type:str
 const types=[['chps_compound','CHPS Compound'],['health_centre','Health Centre'],['district_hospital','District Hospital'],['regional_hospital','Regional Hospital'],['teaching_hospital','Teaching Hospital'],['specialist_hospital','Specialist Hospital'],['polyclinic','Polyclinic'],['clinic','Clinic'],['maternity_home','Maternity Home'],['other','Other']];
 
 export default function PlatformFacilityOnboarding(){
- const {user}=useAuth(); const allowed=user?.role==='system_superuser';
+ const {user}=useAuth(); const allowed=user?.role==='system_superuser' || user?.roles.includes('system_superuser');
  const [facilities,setFacilities]=useState<Facility[]>([]); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
  const [name,setName]=useState(''); const [code,setCode]=useState(''); const [type,setType]=useState('district_hospital'); const [district,setDistrict]=useState(''); const [region,setRegion]=useState(''); const [dhims,setDhims]=useState('');
  const load=async()=>{setLoading(true); const {data,error}=await supabase.rpc('platform_list_facilities'); if(error) toast({title:'Facility directory unavailable',description:error.message,variant:'destructive'}); else setFacilities((data??[]) as Facility[]); setLoading(false);};
