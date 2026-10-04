@@ -69,4 +69,7 @@ REVOKE EXECUTE ON FUNCTION public.create_maternity_episode_workflow(uuid,integer
 GRANT EXECUTE ON FUNCTION public.create_patient_appointment(uuid,timestamp with time zone,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_maternity_episode_workflow(uuid,integer,integer,date,date,text,text,text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_patient_appointment(uuid,timestamptz,text,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_inpatient_review(uuid,text,text,text,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_maternity_episode_workflow(uuid,integer,integer,date,date,text,text,text) FROM PUBLIC;
 NOTIFY pgrst,'reload schema';
