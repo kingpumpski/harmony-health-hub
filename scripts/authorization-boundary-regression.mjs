@@ -83,7 +83,12 @@ for (const [name, tokens] of contracts) {
   const index = matches.at(-1).index;
   const section = normalizedSql.slice(index, index + 12000);
   for (const token of tokens) {
-    assert(section.includes(token.toLowerCase()), `${name}: missing ${token}`);
+    const normalizedToken = token.toLowerCase();
+    const searchPathEmpty = normalizedToken === "set search_path to ''" || normalizedToken === "set search_path = ''";
+    const present = searchPathEmpty
+      ? section.includes("set search_path to ''") || section.includes("set search_path = ''")
+      : section.includes(normalizedToken);
+    assert(present, `${name}: missing ${token}`);
   }
 }
 
