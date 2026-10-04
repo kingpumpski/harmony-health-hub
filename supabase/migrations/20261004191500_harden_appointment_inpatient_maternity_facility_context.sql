@@ -36,8 +36,8 @@ BEGIN
  IF v_admission.patient_id IS NULL THEN RAISE EXCEPTION 'Admission patient is required'; END IF;
  pf:=public.assert_patient_facility_context(v_admission.patient_id);
  IF v_admission.facility_id IS DISTINCT FROM pf THEN RAISE EXCEPTION 'Admission facility lineage mismatch'; END IF;
- INSERT INTO public.inpatient_reviews(admission_id,patient_id,review_type,reviewed_by,findings,assessment,plan,facility_id)
- VALUES(v_admission.id,v_admission.patient_id,v_type,uid,NULLIF(pg_catalog.btrim(coalesce(_findings,'')),''),NULLIF(pg_catalog.btrim(coalesce(_assessment,'')),''),NULLIF(pg_catalog.btrim(coalesce(_plan,'')),''),pf)
+ INSERT INTO public.inpatient_reviews(admission_id,patient_id,review_type,reviewed_by,findings,plan,facility_id)
+ VALUES(v_admission.id,v_admission.patient_id,v_type,uid,NULLIF(pg_catalog.btrim(coalesce(_findings,'')),''),NULLIF(pg_catalog.btrim(coalesce(_plan,'')),''),pf)
  RETURNING * INTO v_review;
  RETURN v_review;
 END;$function$;
