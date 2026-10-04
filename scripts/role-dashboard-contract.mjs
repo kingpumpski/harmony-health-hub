@@ -13,7 +13,7 @@ if (!activeRoleMigration.includes('get_role_dashboard_summary_for_role(_requeste
 if (!activeRoleMigration.includes('Requested dashboard role is not assigned to the authenticated user')) throw new Error('Active dashboard role must be server-validated');
 if (!activeRoleMigration.includes('REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon')) throw new Error('Active dashboard function must not be executable anonymously');
 if (!activeRoleMigration.includes('GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated')) throw new Error('Active dashboard function must be authenticated-only');
-const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
+const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin','system_superuser'];
 const expected=[
   ['admin','AdminDashboard'],
   ['practitioner','PractitionerDashboard'],
@@ -29,6 +29,7 @@ const expected=[
   ['canteen','CanteenDashboard'],
   ['patient','PatientDashboard'],
   ['it_admin','ITAdminDashboard'],
+  ['system_superuser','SystemSuperuserDashboard'],
 ];
 
 for (const [role,component] of expected) {
@@ -62,6 +63,7 @@ for (const needle of [
   "ELSIF v_role = 'front_desk'",
   "ELSIF v_role = 'canteen'",
   "ELSIF v_role = 'it_admin'",
+  "ELSIF v_role = 'system_superuser'",
   "REVOKE ALL ON FUNCTION public.get_role_dashboard_summary() FROM PUBLIC, anon",
   "GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary() TO authenticated"
 ]) {
