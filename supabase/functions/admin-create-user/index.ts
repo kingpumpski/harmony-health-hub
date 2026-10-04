@@ -171,9 +171,30 @@ Deno.serve(async (req) => {
       if (userId === caller.id && nextRole !== callerRole) {
         return json({ error: 'Administrators cannot remove their own admin role' }, 400);
       }
+      if (callerRole !== 'system_superuser' && ['admin','it_admin','system_superuser'].includes(nextRole)) {
+        return json({ error: 'Only a System Superuser can assign platform administrator roles.' }, 403);
+      }
 
       const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);
       if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);
+
+      if (callerRole !== 'system_superuser') {
+        const { data: callerContext, error: callerContextError } = await service
+          .from('user_active_facilities')
+          .select('facility_id')
+          .eq('user_id', caller.id)
+          .maybeSingle();
+        if (callerContextError) return json({ error: 'Unable to determine administrator facility context: ' + callerContextError.message }, 500);
+        if (!callerContext?.facility_id) return json({ error: 'An active facility context is required before managing facility users.' }, 400);
+        const { data: targetMembership } = await service
+          .from('facility_memberships')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('facility_id', callerContext.facility_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (!targetMembership) return json({ error: 'Target user is not an active member of your facility.' }, 403);
+      }
 
       const { data: previousRows, error: previousRoleError } = await service
         .from('user_roles')
@@ -234,12 +255,28 @@ Deno.serve(async (req) => {
       throw auditError;
     }
 
-    const requestedFacilityId = String(body?.facilityId ?? '').trim();
+    let requestedFacilityId = String(body?.facilityId ?? '').trim();
+    if (callerRole === 'system_superuser') {
+      if (requestedFacilityId) {
+        const { data: facility } = await service.from('healthcare_facilities').select('id,is_active').eq('id', requestedFacilityId).maybeSingle();
+        if (!facility) return json({ error: 'Requested facility not found' }, 400);
+        if (!facility.is_active) return json({ error: 'Requested facility is inactive' }, 400);
+      }
+    } else {
+      const { data: callerContext, error: callerContextError } = await service
+        .from('user_active_facilities')
+        .select('facility_id')
+        .eq('user_id', caller.id)
+        .maybeSingle();
+      if (callerContextError) return json({ error: 'Unable to determine administrator facility context: ' + callerContextError.message }, 500);
+      if (!callerContext?.facility_id) return json({ error: 'An active facility context is required before creating facility users.' }, 400);
+      requestedFacilityId = String(callerContext.facility_id);
+    }
+
     if (requestedFacilityId) {
-      if (callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can assign a facility during platform onboarding.' }, 403);
       const { data: facility } = await service.from('healthcare_facilities').select('id,is_active').eq('id', requestedFacilityId).maybeSingle();
-      if (!facility) return json({ error: 'Requested facility not found' }, 400);
-      if (!facility.is_active) return json({ error: 'Requested facility is inactive' }, 400);
+      if (!facility) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Requested facility not found' }, 400); }
+      if (!facility.is_active) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Requested facility is inactive' }, 400); }
       const { error: membershipError } = await service.from('facility_memberships').upsert({ user_id: user.id, facility_id: requestedFacilityId, access_scope: 'facility', is_active: true }, { onConflict: 'facility_id,user_id' });
       if (membershipError) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Initial facility membership failed: ' + membershipError.message }, 500); }
       const { error: activeError } = await service.from('user_active_facilities').upsert({ user_id: user.id, facility_id: requestedFacilityId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
