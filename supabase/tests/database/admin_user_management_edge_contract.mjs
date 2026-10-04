@@ -14,6 +14,12 @@ assert.match(ui, /context\?\.clone\(\)\.json/);
 assert.match(ui, /User creation failed/);
 assert.match(ui, /Role update failed/);
 
+assert.match(edge, /Only a System Superuser can assign platform administrator roles/);
+assert.match(edge, /Target user is not an active member of your facility/);
+assert.match(edge, /active facility context is required before creating facility users/);
+assert.match(edge, /callerRole !== 'system_superuser'/);
+assert.match(ui, /!\['admin','it_admin','system_superuser'\]\.includes/);
+
 console.log('Admin user-management Edge audit/error contract passed');
 
 assert.match(edge, /body\?\.action === 'update_profile'/);
