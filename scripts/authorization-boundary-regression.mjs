@@ -70,7 +70,7 @@ for (const [name, tokens] of contracts) {
     const normalizedToken = token.toLowerCase();
     const searchPathEmpty = normalizedToken === "set search_path to ''" || normalizedToken === "set search_path = ''";
     const present = searchPathEmpty
-      ? /set\s+search_path(?:\s+(?:to|=))?\s*''/.test(section) || new RegExp("alter\\s+function\\s+public\\." + name + "\\b[\\s\\S]{0,500}set\\s+search_path(?:\\s+(?:to|=))?\\s*''").test(normalizedSql)
+      ? /set\s+search_path\s*(?:(?:to|=)\s*)?''/.test(section) || new RegExp("alter\\s+function\\s+public\\." + name + "\\b[\\s\\S]{0,500}set\\s+search_path\s*(?:(?:to|=)\s*)?''").test(normalizedSql)
       : section.includes(normalizedToken);
     assert(present, `${name}: missing ${token}`);
   }
