@@ -72,7 +72,7 @@ export default function Imaging() {
       setPatients(data.map((patient) => ({ id: patient.id, first_name: patient.first_name, last_name: patient.last_name })));
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [patientSearch, user?.id]);
+  }, [patientSearch, user?.id, load]);
 
   const counters = useMemo(() => ({
     awaiting_release: orders.filter((order) => ['pending_payment_approval', 'pending_payment'].includes(order.status)).length,
