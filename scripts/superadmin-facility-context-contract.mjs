@@ -83,6 +83,8 @@ for (const needle of [
   "action: 'set_facility_membership'",
   "action: 'set_active_facility'",
   "facilityId",
+  "platform_set_user_facility_membership",
+  "platform_set_user_active_facility",
 ]) {
   if (!adminUsers.includes(needle) && !adminUserFunction.includes(needle)) throw new Error('Admin user facility onboarding missing: ' + needle);
 }
