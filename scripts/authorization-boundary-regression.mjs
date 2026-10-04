@@ -24,7 +24,7 @@ const contracts = [
   ["create_insurance_claim_draft", ["patient_id", "invoice does not belong to patient"]],
   ["create_pharmacy_pos_sale", ["pharmacy or front desk role required", "patient_id"]],
   ["transfer_patient_ward_bed_workflow", ["current_user_facility_id", "FOR UPDATE"]],
-  ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden", "it_admin", "abs(hashtext(_user_id::text || ':' || _key)::bigint")],
+  ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden", "it_admin", "abs(hashtext(_user_id::text || ':' || _key)::bigint")]],
   ["create_emergency_case", ["assert_patient_facility_context", "facility_id", "assigned_officer", "set search_path to ''"]],
   ["create_dental_record", ["assert_patient_facility_context", "facility_id", "performed_by", "set search_path to ''"]],
   ["create_anesthetic_assessment", ["assert_patient_facility_context", "facility_id", "cleared_by", "assessed_by", "set search_path to ''"]],
