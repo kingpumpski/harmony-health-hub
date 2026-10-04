@@ -324,7 +324,14 @@ Deno.serve(async (req) => {
       if (membershipError) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Initial facility membership failed: ' + membershipError.message }, 500); }
       const { error: activeError } = await service.from('user_active_facilities').upsert({ user_id: user.id, facility_id: requestedFacilityId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
       if (activeError) { await service.from('facility_memberships').update({ is_active: false }).eq('user_id', user.id).eq('facility_id', requestedFacilityId); await service.auth.admin.deleteUser(user.id); return json({ error: 'Initial facility context failed: ' + activeError.message }, 500); }
-      await writeAdminAudit({ action: 'platform_onboard_user_facility', entityId: user.id, metadata: { target_user_id: user.id, facility_id: requestedFacilityId, role: user.role, changed_by: caller.id } });
+      try {
+        await writeAdminAudit({ action: 'platform_onboard_user_facility', entityId: user.id, metadata: { target_user_id: user.id, facility_id: requestedFacilityId, role: user.role, changed_by: caller.id } });
+      } catch (auditError) {
+        await service.from('user_active_facilities').delete().eq('user_id', user.id).eq('facility_id', requestedFacilityId);
+        await service.from('facility_memberships').delete().eq('user_id', user.id).eq('facility_id', requestedFacilityId);
+        await service.auth.admin.deleteUser(user.id);
+        throw auditError;
+      }
     }
     return json({ ok: true, user, onboarding, facility_id: requestedFacilityId || null });
   } catch (error) {
