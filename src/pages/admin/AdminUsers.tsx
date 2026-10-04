@@ -103,7 +103,7 @@ export default function AdminUsers() {
     e.preventDefault(); if (!facilityUser || !facilitySelection || !canManage) return; setSavingFacility(true);
     const { error } = await supabase.rpc('platform_set_user_facility_membership', { _user_id: facilityUser.id, _facility_id: facilitySelection, _is_active: facilityActive, _access_scope: facilityScope });
     if (error) { setSavingFacility(false); return toast({ title: 'Facility membership update failed', description: error.message, variant: 'destructive' }); }
-    if (facilityActive) {
+    if (facilityActive && canManageSuperuser) {
       const { error: activeError } = await supabase.rpc('platform_set_user_active_facility', { _user_id: facilityUser.id, _facility_id: facilitySelection });
       if (activeError) { setSavingFacility(false); return toast({ title: 'Active facility update failed', description: activeError.message, variant: 'destructive' }); }
     }
