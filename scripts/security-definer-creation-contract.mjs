@@ -34,7 +34,7 @@ for (const file of files) {
   for (const match of declarations) {
     const block = match[0];
     definerCount += 1;
-    if (!/\bSET\s+search_path\s*=\s*''/i.test(block)) {
+    if (!/\bSET\s+search_path\s*(?:=|TO)\s*''/i.test(block)) {
       failures.push(
         `${path.relative(process.cwd(), file)}: ${match[1]} SECURITY DEFINER must use SET search_path = ''`,
       );
