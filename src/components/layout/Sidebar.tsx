@@ -86,11 +86,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const location = useLocation();
   if (!user) return null;
 
-  const roleGroups = roleNavGroups[user.role];
+  const navigationRole = user.role === 'it_admin' ? 'admin' : user.role;
+  const roleGroups = roleNavGroups[navigationRole];
   const unsupportedRole = !roleGroups;
+  const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
   const groups = (roleGroups ?? [])
-    .map(group => ({ ...group, items: group.items.filter(nav => permissions.has(nav.permission)) }))
+    .map(group => ({ ...group, items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)) }))
     .filter(group => group.items.length > 0);
 
   return (
