@@ -45,6 +45,7 @@ for (const [name, tokens] of contracts) {
 for (const signature of [
   "public.transfer_patient_ward_bed_workflow(uuid,uuid,uuid,uuid,text,text)",
   "public.create_admission_workflow(uuid,text,text,text)",
+  "public.create_ward_unit(text,text,text,text)",
 ]) {
   const normalized = source.replace(/\s+/g, " ").toLowerCase();
   assert(
