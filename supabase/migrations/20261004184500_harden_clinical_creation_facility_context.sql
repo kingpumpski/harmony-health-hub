@@ -170,4 +170,7 @@ GRANT EXECUTE ON FUNCTION public.create_emergency_case(uuid,text,text,text,uuid)
 GRANT EXECUTE ON FUNCTION public.create_dental_record(uuid,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_anesthetic_assessment(uuid,text,text,text,text,text,text,text,text,boolean) TO authenticated;
 
+REVOKE EXECUTE ON FUNCTION public.create_emergency_case(uuid,text,text,text,uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_dental_record(uuid,text,text,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_anesthetic_assessment(uuid,text,text,text,text,text,text,text,text,boolean) FROM PUBLIC;
 NOTIFY pgrst, 'reload schema';
