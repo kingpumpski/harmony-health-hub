@@ -27,12 +27,12 @@ export async function requireAdmin(service: SupabaseClient, token: string) {
     .from('user_roles')
     .select('role')
     .eq('user_id', caller.id)
-    .in('role', ['admin','system_superuser'])
+    .in('role', ['admin','it_admin','system_superuser'])
     .order('role', { ascending: true })
     .limit(1)
     .maybeSingle();
   if (roleError) throw new Error('Unable to verify administrator access');
-  if (!callerRole) throw new Error('Administrator or System Superuser access required');
+  if (!callerRole) throw new Error('Administrator, IT Admin or System Superuser access required');
 
   return caller;
 }
