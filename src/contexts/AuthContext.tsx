@@ -40,7 +40,8 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const roles = (roleRows ?? []).map((row) => row.role as UserRole).filter(Boolean);
   const resolvedRole = roles[0] ?? 'patient';
   const persistedRole = typeof window !== 'undefined' ? window.sessionStorage.getItem(activeRoleStorageKey(supabaseUser.id)) as UserRole | null : null;
-  const activeRole = persistedRole && roles.includes(persistedRole) ? persistedRole : resolvedRole;
+  const preferredRole = roles.includes('system_superuser') ? 'system_superuser' : resolvedRole;
+  const activeRole = persistedRole && roles.includes(persistedRole) ? persistedRole : preferredRole;
   if (profileError) console.warn('[auth] profile bootstrap unavailable:', profileError.message);
   if (roleError) console.warn('[auth] role bootstrap unavailable:', roleError.message);
 
