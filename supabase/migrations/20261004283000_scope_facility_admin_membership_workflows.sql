@@ -74,11 +74,7 @@ BEGIN
     SET access_scope=EXCLUDED.access_scope,is_active=EXCLUDED.is_active
   RETURNING * INTO v_membership;
 
-  IF _is_active THEN
-    INSERT INTO public.user_active_facilities(user_id,facility_id,updated_at)
-    VALUES(_user_id,_facility_id,pg_catalog.now())
-    ON CONFLICT(user_id) DO UPDATE SET facility_id=EXCLUDED.facility_id,updated_at=EXCLUDED.updated_at;
-  ELSE
+  IF NOT _is_active AND public.has_role(v_actor,'system_superuser'::public.app_role) THEN
     DELETE FROM public.user_active_facilities
     WHERE user_id=_user_id AND facility_id=_facility_id;
   END IF;
@@ -114,10 +110,8 @@ DECLARE
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
 
-  IF NOT public.has_role(v_actor,'system_superuser'::public.app_role)
-     AND NOT public.has_role(v_actor,'admin'::public.app_role)
-     AND NOT public.has_role(v_actor,'it_admin'::public.app_role) THEN
-    RAISE EXCEPTION 'Administrator access required';
+  IF NOT public.has_role(v_actor,'system_superuser'::public.app_role) THEN
+    RAISE EXCEPTION 'Only a System Superuser can set another user active facility context';
   END IF;
 
   SELECT * INTO v_membership
