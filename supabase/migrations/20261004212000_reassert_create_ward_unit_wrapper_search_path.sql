@@ -1,8 +1,8 @@
 BEGIN;
 
--- Keep the legacy four-argument ward wrapper facility-safe while removing
--- implicit name-resolution from its SECURITY DEFINER execution context.
-CREATE OR REPLACE FUNCTION public.create_ward_unit(
+DROP FUNCTION IF EXISTS public.create_ward_unit(text,text,text,text);
+
+CREATE FUNCTION public.create_ward_unit(
   _name text,
   _code text,
   _specialty text,
