@@ -25,9 +25,9 @@ const contracts = [
   ["create_pharmacy_pos_sale", ["pharmacy or front desk role required", "patient_id"]],
   ["transfer_patient_ward_bed_workflow", ["current_user_facility_id", "FOR UPDATE"]],
   ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden", "it_admin", "abs(hashtext(_user_id::text || ':' || _key)::bigint)"]],
-  ["create_emergency_case", ["assert_patient_facility_context", "facility_id", "assigned_officer"]],
-  ["create_dental_record", ["assert_patient_facility_context", "facility_id", "performed_by"]],
-  ["create_anesthetic_assessment", ["assert_patient_facility_context", "facility_id", "cleared_by", "assessed_by"]],
+  ["create_emergency_case", ["assert_patient_facility_context", "facility_id", "assigned_officer", "set search_path to ''"]],
+  ["create_dental_record", ["assert_patient_facility_context", "facility_id", "performed_by", "set search_path to ''"]],
+  ["create_anesthetic_assessment", ["assert_patient_facility_context", "facility_id", "cleared_by", "assessed_by", "set search_path to ''"]],
 ];
 
 for (const [name, tokens] of contracts) {
@@ -49,9 +49,6 @@ for (const signature of [
   "public.transfer_patient_ward_bed_workflow(uuid,uuid,uuid,uuid,text,text)",
   "public.create_admission_workflow(uuid,text,text,text)",
   "public.create_ward_unit(text,text,text,text)",
-  "public.create_emergency_case(uuid,text,text,text,uuid)",
-  "public.create_dental_record(uuid,text,text,text)",
-  "public.create_anesthetic_assessment(uuid,text,text,text,text,text,text,text,text,boolean)",
 ]) {
   const normalized = source.replace(/\s+/g, " ").toLowerCase();
   assert(
