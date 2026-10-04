@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
+import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { toast } from '@/hooks/use-toast';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { AlertTriangle, CreditCard, Image as ImageIcon, Plus, CheckCircle2, RefreshCw, BellRing } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function Imaging() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [orders, setOrders] = useState<ImagingOrder[]>([]);
   const [patientId, setPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
   const [modality, setModality] = useState('X-Ray');
   const [studyName, setStudyName] = useState('');
   const [bodySite, setBodySite] = useState('');
@@ -54,6 +56,24 @@ export default function Imaging() {
     return () => window.clearInterval(refreshTimer);
   }, [user]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const query = patientSearch.trim();
+    const timer = window.setTimeout(async () => {
+      if (!query) {
+        void load();
+        return;
+      }
+      const { data, error } = await searchPatientDirectory(query, 100);
+      if (error) {
+        toast({ title: 'Patient search unavailable', description: error.message, variant: 'destructive' });
+        return;
+      }
+      setPatients(data.map((patient) => ({ id: patient.id, first_name: patient.first_name, last_name: patient.last_name })));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [patientSearch, user?.id]);
+
   const counters = useMemo(() => ({
     awaiting_release: orders.filter((order) => ['pending_payment_approval', 'pending_payment'].includes(order.status)).length,
     ready: orders.filter((order) => ['released', 'queued'].includes(order.status)).length,
@@ -78,7 +98,7 @@ export default function Imaging() {
     const result = data as { status?: string } | null;
     playWorkflowSound(result?.status === 'released' ? 'success' : 'info');
     toast({ title: result?.status === 'released' ? 'Imaging request released' : 'Payment approval required', description: result?.status === 'released' ? 'The imaging department can proceed.' : 'Accounts must release the imaging order before it can be performed.' });
-    setPatientId(''); setStudyName(''); setBodySite(''); setIndication(''); setAmount(0); setPriority('routine');
+    setPatientId(''); setPatientSearch(''); setStudyName(''); setBodySite(''); setIndication(''); setAmount(0); setPriority('routine');
     void load();
   };
 
@@ -136,6 +156,8 @@ export default function Imaging() {
             </div>
             <form onSubmit={createOrder} className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               <div>
+                <label htmlFor="imaging-patient-search" className="mb-1 block text-xs font-semibold">Search patient by name or code</label>
+                <input id="imaging-patient-search" value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder="Type a name or patient code…" className="input-medical w-full mb-2" autoComplete="off" />
                 <label htmlFor="imaging-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
                 <select id="imaging-patient" value={patientId} onChange={e => setPatientId(e.target.value)} className="input-medical w-full" required><option value="">Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select>
               </div>
