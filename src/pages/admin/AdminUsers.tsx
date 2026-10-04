@@ -18,7 +18,7 @@ interface DirectoryRow { id: string; email: string | null; first_name: string | 
 type EditableUser = Omit<DirectoryRow, 'role' | 'facilities'>;
 
 export default function AdminUsers() {
-  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
+  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser'; const canManageFacilityUsers = canManageSuperuser || user?.role === 'admin' || user?.role === 'it_admin';
   const [users, setUsers] = useState<DirectoryRow[]>([]); const [facilities, setFacilities] = useState<FacilityOption[]>([]); const [searchEmail, setSearchEmail] = useState('');
   const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
