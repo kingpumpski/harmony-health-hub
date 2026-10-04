@@ -33,6 +33,17 @@ for (const [name, version] of Object.entries(required)) {
   );
 }
 
+const lockRoot = lock.packages[""] ?? {};
+for (const section of ["dependencies", "devDependencies"]) {
+  for (const [name, spec] of Object.entries(pkg[section] ?? {})) {
+    assert.equal(
+      lockRoot[section]?.[name],
+      spec,
+      `${section} lockfile spec for ${name} must match package.json`,
+    );
+  }
+}
+
 const locked = lock.packages;
 assert.equal(locked["node_modules/@supabase/supabase-js"]?.version, "2.109.0");
 assert.equal(locked["node_modules/react-router-dom"]?.version, "6.30.6");
