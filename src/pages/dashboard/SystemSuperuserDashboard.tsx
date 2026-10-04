@@ -3,22 +3,30 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+type SummaryCard = { key: string; value: number };
+
 export default function SystemSuperuserDashboard() {
-  const [facilityCount, setFacilityCount] = useState<number | null>(null);
+  const [summary, setSummary] = useState<SummaryCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase.rpc('platform_list_facilities');
+      const { data, error } = await supabase.rpc('get_role_dashboard_summary_for_role', {
+        _requested_role: 'system_superuser',
+      });
       if (!cancelled) {
-        setFacilityCount(error ? null : Array.isArray(data) ? data.length : 0);
+        setSummary(error || !data || !Array.isArray(data.cards) ? [] : data.cards);
         setLoading(false);
       }
     };
     void load();
     return () => { cancelled = true; };
   }, []);
+
+  const facilityCount = summary.find((card) => card.key === 'facilities')?.value ?? null;
+  const staffCount = summary.find((card) => card.key === 'staff')?.value ?? null;
+  const sharingCount = summary.find((card) => card.key === 'facility_sharing')?.value ?? null;
 
   const actions = [
     { href: '/admin/facility-onboarding', label: 'Facility Onboarding', description: 'Register and oversee facilities on the Harmony platform.', icon: Building2 },
@@ -39,9 +47,19 @@ export default function SystemSuperuserDashboard() {
             </p>
           </div>
         </div>
-        <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Registered facilities</p>
-          <p className="mt-1 text-2xl font-semibold">{loading ? '…' : facilityCount ?? 'Unavailable'}</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-xs text-muted-foreground">Registered facilities</p>
+            <p className="mt-1 text-2xl font-semibold">{loading ? '…' : facilityCount ?? 'Unavailable'}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-xs text-muted-foreground">Platform users</p>
+            <p className="mt-1 text-2xl font-semibold">{loading ? '…' : staffCount ?? 'Unavailable'}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-xs text-muted-foreground">Sharing agreements</p>
+            <p className="mt-1 text-2xl font-semibold">{loading ? '…' : sharingCount ?? 'Unavailable'}</p>
+          </div>
         </div>
       </section>
 
