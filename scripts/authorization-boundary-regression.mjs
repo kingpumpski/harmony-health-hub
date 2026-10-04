@@ -28,6 +28,9 @@ const contracts = [
   ["create_emergency_case", ["assert_patient_facility_context", "facility_id", "assigned_officer", "set search_path to ''"]],
   ["create_dental_record", ["assert_patient_facility_context", "facility_id", "performed_by", "set search_path to ''"]],
   ["create_anesthetic_assessment", ["assert_patient_facility_context", "facility_id", "cleared_by", "assessed_by", "set search_path to ''"]],
+  ["create_patient_appointment", ["assert_patient_facility_context", "set search_path to ''"]],
+  ["create_inpatient_review", ["assert_patient_facility_context", "facility_id", "set search_path to ''"]],
+  ["create_maternity_episode_workflow", ["assert_patient_facility_context", "facility_id", "set search_path to ''"]],
 ];
 
 for (const [name, tokens] of contracts) {
