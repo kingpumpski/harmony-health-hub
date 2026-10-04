@@ -16,11 +16,7 @@ function walk(dir) {
 
 for (const root of roots) walk(path.join(process.cwd(), root));
 
-const sqlSource = files
-  .filter((file) => file.endsWith(".sql"))
-  .map((file) => fs.readFileSync(file, "utf8"))
-  .join("\n");
-
+const sqlSource = files.filter((file) => file.endsWith(".sql")).map((file) => fs.readFileSync(file, "utf8")).join("\n");
 const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 
 const contracts = [
@@ -28,18 +24,7 @@ const contracts = [
   ["create_insurance_claim_draft", ["patient_id", "invoice does not belong to patient"]],
   ["create_pharmacy_pos_sale", ["pharmacy or front desk role required", "patient_id"]],
   ["transfer_patient_ward_bed_workflow", ["current_user_facility_id", "FOR UPDATE"]],
-  [
-    "notification_feature_enabled",
-    [
-      "_user_id",
-      "auth.uid()",
-      "_user_id is distinct from caller_id",
-      "request.jwt.claim.role",
-      "forbidden",
-      "it_admin",
-      "abs(hashtext(_user_id::text || ':' || _key)::bigint)",
-    ],
-  ],
+  ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden", "it_admin", "abs(hashtext(_user_id::text || ':' || _key)::bigint)"]],
   ["create_emergency_case", ["assert_patient_facility_context", "facility_id", "assigned_officer", "set search_path to ''"]],
   ["create_dental_record", ["assert_patient_facility_context", "facility_id", "performed_by", "set search_path to ''"]],
   ["create_anesthetic_assessment", ["assert_patient_facility_context", "facility_id", "cleared_by", "assessed_by", "set search_path to ''"]],
@@ -76,10 +61,7 @@ const contracts = [
 const normalizedSql = sqlSource.toLowerCase();
 
 for (const [name, tokens] of contracts) {
-  const definitionPattern = new RegExp(
-    "create\\s+(?:or\\s+replace\\s+)?function\\s+public\\." + name + "\\b",
-    "g",
-  );
+  const definitionPattern = new RegExp("create\\s+(?:or\\s+replace\\s+)?function\\s+public\\." + name + "\\b", "g");
   const matches = [...normalizedSql.matchAll(definitionPattern)];
   assert(matches.length > 0, `authorization contract function missing: ${name}`);
   const index = matches.at(-1).index;
@@ -87,55 +69,26 @@ for (const [name, tokens] of contracts) {
   for (const token of tokens) {
     const normalizedToken = token.toLowerCase();
     const searchPathEmpty = normalizedToken === "set search_path to ''" || normalizedToken === "set search_path = ''";
-    const present = searchPathEmpty
-      ? section.includes("set search_path to ''") || section.includes("set search_path = ''")
-      : section.includes(normalizedToken);
+    const present = searchPathEmpty ? /set\s+search_path(?:\s+(?:to|=))?\s*''/.test(section) : section.includes(normalizedToken);
     assert(present, `${name}: missing ${token}`);
   }
 }
 
 const normalized = source.replace(/\s+/g, " ").toLowerCase();
-
 const explicitSearchPathContracts = [
-  {
-    signature: "public.transfer_patient_ward_bed_workflow(uuid,uuid,uuid,uuid,text,text)",
-    definition: "create function public.transfer_patient_ward_bed_workflow",
-  },
-  {
-    signature: "public.create_admission_workflow(uuid,text,text,text)",
-    definition: "create function public.create_admission_workflow",
-  },
-  {
-    signature: "public.create_ward_unit(text,text,text,text)",
-    definition: "create function public.create_ward_unit",
-  },
-  {
-    signature: "public.activate_patient_visit_coverage(uuid,text,uuid,date)",
-    definition: "create function public.activate_patient_visit_coverage",
-  },
-  {
-    signature: "public.create_patient_document(uuid,text,text,text)",
-    definition: "create function public.create_patient_document",
-  },
-  {
-    signature: "public.create_patient_referral_workflow(uuid,text,text,text,text,text)",
-    definition: "create function public.create_patient_referral_workflow",
-  },
+  { signature: "public.transfer_patient_ward_bed_workflow(uuid,uuid,uuid,uuid,text,text)", definition: "create function public.transfer_patient_ward_bed_workflow" },
+  { signature: "public.create_admission_workflow(uuid,text,text,text)", definition: "create function public.create_admission_workflow" },
+  { signature: "public.create_ward_unit(text,text,text,text)", definition: "create function public.create_ward_unit" },
+  { signature: "public.activate_patient_visit_coverage(uuid,text,uuid,date)", definition: "create function public.activate_patient_visit_coverage" },
+  { signature: "public.create_patient_document(uuid,text,text,text)", definition: "create function public.create_patient_document" },
+  { signature: "public.create_patient_referral_workflow(uuid,text,text,text,text,text)", definition: "create function public.create_patient_referral_workflow" },
 ];
 
 for (const { signature, definition } of explicitSearchPathContracts) {
   const definitionIndex = normalized.lastIndexOf(definition);
-  const hasAlterOverride = normalized.includes(
-    `alter function ${signature.toLowerCase()} set search_path = ''`,
-  );
-  const hasCreateOverride =
-    definitionIndex >= 0 &&
-    normalized.slice(definitionIndex, definitionIndex + 12000).includes("set search_path = ''");
-
-  assert(
-    hasAlterOverride || hasCreateOverride,
-    `${signature} must have an explicit empty search_path override`,
-  );
+  const hasAlterOverride = normalized.includes(`alter function ${signature.toLowerCase()} set search_path = ''`);
+  const hasCreateOverride = definitionIndex >= 0 && normalized.slice(definitionIndex, definitionIndex + 12000).includes("set search_path = ''");
+  assert(hasAlterOverride || hasCreateOverride, `${signature} must have an explicit empty search_path override`);
 }
 
 console.log("Authorization boundary regression passed: authentication, ownership, workflow-state, concurrency, and privilege contracts remain covered.");
