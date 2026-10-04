@@ -1606,11 +1606,8 @@ export type Database = {
           insurance_number: string | null
           insurance_provider: string | null
           last_name: string
-          membership_expires_at: string | null
-          membership_type: string
           patient_code: string | null
           phone: string | null
-          registration_reason: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -1638,11 +1635,8 @@ export type Database = {
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name: string
-          membership_expires_at?: string | null
-          membership_type?: string
           patient_code?: string | null
           phone?: string | null
-          registration_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -1670,11 +1664,8 @@ export type Database = {
           insurance_number?: string | null
           insurance_provider?: string | null
           last_name?: string
-          membership_expires_at?: string | null
-          membership_type?: string
           patient_code?: string | null
           phone?: string | null
-          registration_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -2445,17 +2436,6 @@ export type Database = {
         Returns: boolean
       }
       is_clinical_staff: { Args: { _user_id: string }; Returns: boolean }
-      get_it_support_system_logs: {
-        Args: { _limit?: number; _module?: string | null; _severity?: string | null }
-        Returns: {
-          id: string
-          action: string
-          module: string
-          entity_type: string | null
-          severity: string
-          created_at: string
-        }[]
-      }
     }
     Enums: {
       app_role:
@@ -2470,9 +2450,7 @@ export type Database = {
         | "canteen"
         | "patient"
         | "specialist_nurse"
-        | "radiologist"
-        | "radiology_technician"
-        | "it_admin"
+        | "system_superuser"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2612,9 +2590,7 @@ export const Constants = {
         "canteen",
         "patient",
         "specialist_nurse",
-        "radiologist",
-        "radiology_technician",
-        "it_admin",
+        "system_superuser",
       ],
     },
   },
