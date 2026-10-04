@@ -15,7 +15,7 @@ type RoleValue = string;
 interface FacilityOption { id: string; name: string; facility_code: string; is_active: boolean }
 interface FacilityMembership { facility_id: string; facility_name: string | null; facility_code: string | null; access_scope: string; is_active: boolean; is_active_context: boolean }
 interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; phone: string | null; department: string | null; specialization: string | null; role: string; facilities: FacilityMembership[] }
-type EditableUser = Omit<DirectoryRow, 'role'>;
+type EditableUser = Omit<DirectoryRow, 'role' | 'facilities'>;
 
 export default function AdminUsers() {
   const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
