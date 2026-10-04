@@ -34,6 +34,9 @@ const contracts = [
   ["mark_meal_order_delivered", ["assert_patient_facility_context", "facility_id", "set search_path = ''"]],
   ["record_patient_deposit", ["assert_patient_facility_context", "facility_id", "set search_path = ''"]],
   ["prepare_patient_billable_items", ["assert_patient_facility_context", "facility_id", "set search_path = ''"]],
+  ["activate_patient_visit_coverage", ["facility_id", "patient facility attribution is unresolved"]],
+  ["create_patient_document", ["assert_patient_facility_context", "uploaded_by"]],
+  ["create_patient_referral_workflow", ["patient facility attribution is unresolved", "active facility context is required"]],
 ];
 
 for (const [name, tokens] of contracts) {
@@ -64,6 +67,18 @@ const explicitSearchPathContracts = [
   {
     signature: "public.create_ward_unit(text,text,text,text)",
     definition: "create function public.create_ward_unit",
+  },
+  {
+    signature: "public.activate_patient_visit_coverage(uuid,text,uuid,date)",
+    definition: "create function public.activate_patient_visit_coverage",
+  },
+  {
+    signature: "public.create_patient_document(uuid,text,text,text)",
+    definition: "create function public.create_patient_document",
+  },
+  {
+    signature: "public.create_patient_referral_workflow(uuid,text,text,text,text,text)",
+    definition: "create function public.create_patient_referral_workflow",
   },
 ];
 
