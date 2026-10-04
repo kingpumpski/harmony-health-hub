@@ -7,6 +7,10 @@ const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
 const notificationFunction = fs.readFileSync('supabase/functions/notification-provider-config/index.ts', 'utf8');
 const onboardingMigration = fs.readFileSync('supabase/migrations/20261004271000_complete_platform_facility_onboarding_bootstrap.sql', 'utf8');
 const lifecycleMigration = fs.readFileSync('supabase/migrations/20261004272000_add_platform_facility_lifecycle_workflows.sql', 'utf8');
+const userFacilityMigration = fs.readFileSync('supabase/migrations/20261004273000_complete_platform_user_facility_membership_workflows.sql', 'utf8');
+const adminUsers = fs.readFileSync('src/pages/admin/AdminUsers.tsx', 'utf8');
+const adminUserFunction = fs.readFileSync('supabase/functions/admin-create-user/index.ts', 'utf8');
+const adminUserProvisioning = fs.readFileSync('supabase/functions/_shared/admin-user-provisioning.ts', 'utf8');
 
 for (const needle of [
   'public.has_role(auth.uid(), \'system_superuser\'::public.app_role)',
@@ -64,4 +68,25 @@ for (const needle of [
 ]) {
   if (!lifecycleMigration.includes(needle)) throw new Error('Platform facility lifecycle migration missing guard: ' + needle);
 }
-console.log('Superadmin facility context, patient history, notification CORS, onboarding bootstrap, and facility lifecycle contract passed');
+for (const needle of [
+  "platform_list_user_facility_memberships(_user_id uuid)",
+  "platform_set_user_facility_membership(_user_id uuid",
+  "platform_set_user_active_facility(_user_id uuid",
+  "public.has_role(v_actor,'system_superuser'::public.app_role)",
+  "REVOKE ALL ON FUNCTION public.platform_set_user_facility_membership(uuid,uuid,boolean,text) FROM PUBLIC,anon,authenticated",
+  "GRANT EXECUTE ON FUNCTION public.platform_set_user_active_facility(uuid,uuid) TO authenticated",
+]) {
+  if (!userFacilityMigration.includes(needle)) throw new Error('Platform user facility workflow missing guard: ' + needle);
+}
+for (const needle of [
+  "user?.role === 'it_admin'",
+  "action: 'set_facility_membership'",
+  "action: 'set_active_facility'",
+  "facilityId",
+]) {
+  if (!adminUsers.includes(needle) && !adminUserFunction.includes(needle)) throw new Error('Admin user facility onboarding missing: ' + needle);
+}
+if (!adminUserFunction.includes("['admin','it_admin','system_superuser']") || !adminUserProvisioning.includes("['admin','it_admin','system_superuser']")) {
+  throw new Error('IT Admin must retain user-management authorization');
+}
+console.log('Superadmin facility context, patient history, notification CORS, onboarding bootstrap, facility lifecycle, and platform user-facility administration contract passed');
