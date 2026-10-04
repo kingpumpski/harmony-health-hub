@@ -24,6 +24,8 @@ assert.match(edge, /active facility context is required before viewing facility 
 assert.match(edge, /active facility context is required before editing facility users/);
 assert.match(edge, /Facility user directory lookup failed/);
 assert.match(edge, /callerRole !== 'system_superuser'/);
+assert.match(edge, /callerRolesError/);
+assert.match(edge, /find\(\(role\) => role === 'system_superuser'\)/);
 assert.match(ui, /!\['admin','it_admin','system_superuser'\]\.includes/);
 
 console.log('Admin user-management Edge audit/error contract passed');
