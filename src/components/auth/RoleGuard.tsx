@@ -21,7 +21,9 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!allowedRoles.includes(user.role) && user.role !== 'system_superuser') {
+  const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
+
+  if (!allowedRoles.includes(user.role) && !hasFullAdministrativeAccess) {
     return (
       <div className="mx-auto flex min-h-[50vh] max-w-xl items-center justify-center p-6">
         <section className="w-full rounded-2xl border bg-card p-6 text-center shadow-sm">
