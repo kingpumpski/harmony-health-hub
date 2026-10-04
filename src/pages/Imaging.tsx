@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -29,7 +29,7 @@ export default function Imaging() {
   const [loading, setLoading] = useState(false);
   const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
 
-  const load = async (announce = false) => {
+  const load = useCallback(async (announce = false) => {
     if (!user?.id) return;
     setLoading(true);
     const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
@@ -45,7 +45,7 @@ export default function Imaging() {
     setPatients(workspace.patients ?? []);
     setOrders(nextOrders);
     setLoading(false);
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
