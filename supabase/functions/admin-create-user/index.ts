@@ -164,6 +164,23 @@ Deno.serve(async (req) => {
       if (!userId || !email.includes('@') || !firstName || !lastName) return json({ error: 'userId, valid email, first name and last name are required' }, 400);
       const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);
       if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);
+      if (callerRole !== 'system_superuser') {
+        const { data: callerContext, error: callerContextError } = await service
+          .from('user_active_facilities')
+          .select('facility_id')
+          .eq('user_id', caller.id)
+          .maybeSingle();
+        if (callerContextError) return json({ error: 'Unable to determine administrator facility context: ' + callerContextError.message }, 500);
+        if (!callerContext?.facility_id) return json({ error: 'An active facility context is required before editing facility users.' }, 400);
+        const { data: targetMembership } = await service
+          .from('facility_memberships')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('facility_id', callerContext.facility_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (!targetMembership) return json({ error: 'Target user is not an active member of your facility.' }, 403);
+      }
       const { data: previousProfile, error: previousProfileError } = await service.from('profiles').select('email, first_name, last_name, phone, department, specialization').eq('id', userId).maybeSingle();
       if (previousProfileError) return json({ error: 'Unable to read current profile: ' + previousProfileError.message }, 500);
       const previousAuth = { email: target.user.email ?? '', user_metadata: target.user.user_metadata ?? {} };
