@@ -8,6 +8,7 @@ const notificationFunction = fs.readFileSync('supabase/functions/notification-pr
 const onboardingMigration = fs.readFileSync('supabase/migrations/20261004271000_complete_platform_facility_onboarding_bootstrap.sql', 'utf8');
 const lifecycleMigration = fs.readFileSync('supabase/migrations/20261004272000_add_platform_facility_lifecycle_workflows.sql', 'utf8');
 const userFacilityMigration = fs.readFileSync('supabase/migrations/20261004273000_complete_platform_user_facility_membership_workflows.sql', 'utf8');
+const userRoleMigration = fs.readFileSync('supabase/migrations/20261004275000_complete_platform_user_role_assignment_workflow.sql', 'utf8');
 const adminUsers = fs.readFileSync('src/pages/admin/AdminUsers.tsx', 'utf8');
 const adminUserFunction = fs.readFileSync('supabase/functions/admin-create-user/index.ts', 'utf8');
 const adminUserProvisioning = fs.readFileSync('supabase/functions/_shared/admin-user-provisioning.ts', 'utf8');
@@ -91,4 +92,6 @@ for (const needle of [
 if (!adminUserFunction.includes("['admin','it_admin','system_superuser']") || !adminUserProvisioning.includes("['admin','it_admin','system_superuser']")) {
   throw new Error('IT Admin must retain user-management authorization');
 }
+for (const needle of ["platform_set_user_role(_user_id uuid", "Only a System Superuser can assign platform administrator roles", "Target user is not an active member of your facility", "REVOKE ALL ON FUNCTION public.platform_set_user_role(uuid,public.app_role) FROM PUBLIC,anon,authenticated", "GRANT EXECUTE ON FUNCTION public.platform_set_user_role(uuid,public.app_role) TO authenticated"]) { if (!userRoleMigration.includes(needle)) throw new Error('Platform user role workflow missing guard: ' + needle); }
+if (!adminUsers.includes("platform_set_user_role")) throw new Error('Admin Users UI must use canonical platform role RPC');
 console.log('Superadmin facility context, patient history, notification CORS, onboarding bootstrap, facility lifecycle, and platform user-facility administration contract passed');
