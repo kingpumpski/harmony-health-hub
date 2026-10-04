@@ -41,10 +41,7 @@ const contracts = [
 
 for (const [name, tokens] of contracts) {
   const normalizedSql = sqlSource.toLowerCase();
-  const definitionPattern = new RegExp(
-    `(?:create\\s+(?:or\\s+replace\\s+)?function)\\s+public\\.${name}\\b`,
-    "g",
-  );
+  const definitionPattern = new RegExp("create\\s+(?:or\\s+replace\\s+)?function\\s+public\\." + name + "\\b", "g");
   const matches = [...normalizedSql.matchAll(definitionPattern)];
   assert(matches.length > 0, `authorization contract function missing: ${name}`);
   const index = matches.at(-1).index;
