@@ -6,7 +6,7 @@ REVOKE ALL ON FUNCTION public.get_workflow_notifications(integer) FROM PUBLIC,an
 GRANT EXECUTE ON FUNCTION public.get_workflow_notifications(integer) TO authenticated;
 ALTER FUNCTION public.mark_notification_read(uuid) SET search_path='';
 REVOKE ALL ON FUNCTION public.mark_notification_read(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.mark_notification_read(uuid[]) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_notification_read(uuid) TO authenticated;
 ALTER FUNCTION public.get_insurance_claim_reconciliation_context(uuid[]) SET search_path='';
 REVOKE ALL ON FUNCTION public.get_insurance_claim_reconciliation_context(uuid[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_insurance_claim_reconciliation_context(uuid[]) TO authenticated;
