@@ -57,8 +57,25 @@ Deno.serve(async (req) => {
         ? await service.from('user_roles').select('user_id, role').in('user_id', ids)
         : { data: [], error: null };
       if (roleError) return json({ error: 'Role directory lookup failed: ' + roleError.message }, 500);
+      const { data: memberships, error: membershipError } = ids.length
+        ? await service.from('facility_memberships').select('user_id, facility_id, access_scope, is_active, healthcare_facilities(name, facility_code)').in('user_id', ids)
+        : { data: [], error: null };
+      if (membershipError) return json({ error: 'Facility membership lookup failed: ' + membershipError.message }, 500);
+      const { data: activeContexts, error: activeContextError } = ids.length
+        ? await service.from('user_active_facilities').select('user_id, facility_id').in('user_id', ids)
+        : { data: [], error: null };
+      if (activeContextError) return json({ error: 'Active facility lookup failed: ' + activeContextError.message }, 500);
       const roleMap = new Map<string, string>();
       (roles ?? []).forEach((row) => roleMap.set(row.user_id, String(row.role)));
+      const activeMap = new Map<string, string>();
+      (activeContexts ?? []).forEach((row) => activeMap.set(row.user_id, row.facility_id));
+      const membershipMap = new Map<string, Array<Record<string, unknown>>>();
+      (memberships ?? []).forEach((row) => {
+        const list = membershipMap.get(row.user_id) ?? [];
+        const facility = Array.isArray(row.healthcare_facilities) ? row.healthcare_facilities[0] : row.healthcare_facilities;
+        list.push({ facility_id: row.facility_id, facility_name: facility?.name ?? null, facility_code: facility?.facility_code ?? null, access_scope: row.access_scope, is_active: row.is_active, is_active_context: activeMap.get(row.user_id) === row.facility_id });
+        membershipMap.set(row.user_id, list);
+      });
       return json({
         ok: true,
         users: (profiles ?? []).map((profile) => ({
@@ -70,8 +87,47 @@ Deno.serve(async (req) => {
           department: profile.department,
           specialization: profile.specialization,
           role: roleMap.get(profile.id) ?? 'patient',
+          facilities: membershipMap.get(profile.id) ?? [],
         })),
       });
+    }
+
+    if (body?.action === 'set_facility_membership') {
+      if (callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can manage cross-facility membership.' }, 403);
+      const userId = String(body?.userId ?? '').trim();
+      const facilityId = String(body?.facilityId ?? '').trim();
+      const isActive = body?.isActive !== false;
+      const accessScope = String(body?.accessScope ?? 'facility').trim().toLowerCase();
+      if (!userId || !facilityId || !['facility','district','regional','national'].includes(accessScope)) return json({ error: 'userId, facilityId and a supported access scope are required' }, 400);
+      const { data: target, error: targetError } = await service.auth.admin.getUserById(userId);
+      if (targetError || !target.user) return json({ error: 'Target user not found' }, 404);
+      const { data: facility, error: facilityError } = await service.from('healthcare_facilities').select('id,name,is_active').eq('id', facilityId).maybeSingle();
+      if (facilityError) return json({ error: 'Facility lookup failed: ' + facilityError.message }, 500);
+      if (!facility) return json({ error: 'Facility not found' }, 404);
+      if (isActive && !facility.is_active) return json({ error: 'Cannot activate membership for an inactive facility' }, 400);
+      const { data: membership, error: membershipError } = await service.from('facility_memberships').upsert({ user_id: userId, facility_id: facilityId, access_scope: accessScope, is_active: isActive }, { onConflict: 'facility_id,user_id' }).select('id, user_id, facility_id, access_scope, is_active').single();
+      if (membershipError) return json({ error: 'Facility membership update failed: ' + membershipError.message }, 500);
+      if (!isActive) {
+        const { error: activeDeleteError } = await service.from('user_active_facilities').delete().eq('user_id', userId).eq('facility_id', facilityId);
+        if (activeDeleteError) return json({ error: 'Active facility context cleanup failed: ' + activeDeleteError.message }, 500);
+      }
+      await writeAdminAudit({ action: 'platform_set_user_facility_membership', entityId: membership.id, metadata: { target_user_id: userId, facility_id: facilityId, is_active: isActive, access_scope: accessScope, changed_by: caller.id } });
+      return json({ ok: true, membership });
+    }
+
+    if (body?.action === 'set_active_facility') {
+      if (callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can set another user\'s active facility context.' }, 403);
+      const userId = String(body?.userId ?? '').trim();
+      const facilityId = String(body?.facilityId ?? '').trim();
+      if (!userId || !facilityId) return json({ error: 'userId and facilityId are required' }, 400);
+      const { data: membership } = await service.from('facility_memberships').select('facility_id').eq('user_id', userId).eq('facility_id', facilityId).eq('is_active', true).maybeSingle();
+      if (!membership) return json({ error: 'User must have an active membership before a facility can be selected as active context' }, 400);
+      const { data: facility } = await service.from('healthcare_facilities').select('id,name,is_active').eq('id', facilityId).maybeSingle();
+      if (!facility?.is_active) return json({ error: 'Facility is not active' }, 400);
+      const { error: activeError } = await service.from('user_active_facilities').upsert({ user_id: userId, facility_id: facilityId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (activeError) return json({ error: 'Active facility context update failed: ' + activeError.message }, 500);
+      await writeAdminAudit({ action: 'platform_set_user_active_facility', entityId: userId, metadata: { target_user_id: userId, facility_id: facilityId, changed_by: caller.id } });
+      return json({ ok: true, user_id: userId, facility_id: facilityId, facility_name: facility.name });
     }
 
     if (body?.action === 'update_profile') {
@@ -178,7 +234,19 @@ Deno.serve(async (req) => {
       throw auditError;
     }
 
-    return json({ ok: true, user, onboarding });
+    const requestedFacilityId = String(body?.facilityId ?? '').trim();
+    if (requestedFacilityId) {
+      if (callerRole !== 'system_superuser') return json({ error: 'Only a System Superuser can assign a facility during platform onboarding.' }, 403);
+      const { data: facility } = await service.from('healthcare_facilities').select('id,is_active').eq('id', requestedFacilityId).maybeSingle();
+      if (!facility) return json({ error: 'Requested facility not found' }, 400);
+      if (!facility.is_active) return json({ error: 'Requested facility is inactive' }, 400);
+      const { error: membershipError } = await service.from('facility_memberships').upsert({ user_id: user.id, facility_id: requestedFacilityId, access_scope: 'facility', is_active: true }, { onConflict: 'facility_id,user_id' });
+      if (membershipError) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Initial facility membership failed: ' + membershipError.message }, 500); }
+      const { error: activeError } = await service.from('user_active_facilities').upsert({ user_id: user.id, facility_id: requestedFacilityId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (activeError) { await service.from('facility_memberships').update({ is_active: false }).eq('user_id', user.id).eq('facility_id', requestedFacilityId); await service.auth.admin.deleteUser(user.id); return json({ error: 'Initial facility context failed: ' + activeError.message }, 500); }
+      await writeAdminAudit({ action: 'platform_onboard_user_facility', entityId: user.id, metadata: { target_user_id: user.id, facility_id: requestedFacilityId, role: user.role, changed_by: caller.id } });
+    }
+    return json({ ok: true, user, onboarding, facility_id: requestedFacilityId || null });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
