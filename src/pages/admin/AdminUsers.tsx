@@ -84,11 +84,11 @@ export default function AdminUsers() {
   };
   const saveFacilityAccess = async (e: React.FormEvent) => {
     e.preventDefault(); if (!facilityUser || !facilitySelection || !canManageSuperuser) return; setSavingFacility(true);
-    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { action: 'set_facility_membership', userId: facilityUser.id, facilityId: facilitySelection, isActive: facilityActive, accessScope: facilityScope } });
-    if (error || data?.error) { setSavingFacility(false); return toast({ title: 'Facility membership update failed', description: await getFunctionError(error, data, 'Unable to update facility membership'), variant: 'destructive' }); }
+    const { error } = await supabase.rpc('platform_set_user_facility_membership', { _user_id: facilityUser.id, _facility_id: facilitySelection, _is_active: facilityActive, _access_scope: facilityScope });
+    if (error) { setSavingFacility(false); return toast({ title: 'Facility membership update failed', description: error.message, variant: 'destructive' }); }
     if (facilityActive) {
-      const { data: activeData, error: activeError } = await supabase.functions.invoke('admin-create-user', { body: { action: 'set_active_facility', userId: facilityUser.id, facilityId: facilitySelection } });
-      if (activeError || activeData?.error) { setSavingFacility(false); return toast({ title: 'Active facility update failed', description: await getFunctionError(activeError, activeData, 'Membership was saved but active facility context could not be set'), variant: 'destructive' }); }
+      const { error: activeError } = await supabase.rpc('platform_set_user_active_facility', { _user_id: facilityUser.id, _facility_id: facilitySelection });
+      if (activeError) { setSavingFacility(false); return toast({ title: 'Active facility update failed', description: activeError.message, variant: 'destructive' }); }
     }
     setSavingFacility(false); setFacilityUser(null); toast({ title: 'Facility access updated', description: 'Membership and facility context have been recorded and audited.' }); void loadDirectory();
   };
