@@ -24,7 +24,7 @@ const contracts = [
   ["create_insurance_claim_draft", ["patient_id", "invoice does not belong to patient"]],
   ["create_pharmacy_pos_sale", ["pharmacy or front desk role required", "patient_id"]],
   ["transfer_patient_ward_bed_workflow", ["current_user_facility_id", "FOR UPDATE"]],
-  ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden"]],
+  ["notification_feature_enabled", ["_user_id", "auth.uid()", "_user_id is distinct from caller_id", "request.jwt.claim.role", "forbidden", "it_admin", "abs(hashtext(_user_id::text || ':' || _key)::bigint)"]],
 ];
 
 for (const [name, tokens] of contracts) {
