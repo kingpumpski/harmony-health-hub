@@ -36,7 +36,7 @@ const contracts = [
 for (const [name, tokens] of contracts) {
   const normalizedSql = sqlSource.toLowerCase();
   const definitionPattern = new RegExp(
-    `(?:create\\\\s+(?:or\\\\s+replace\\\\s+)?function)\\\\s+public\\\\.${name}\\\\b`,
+    `(?:create\\s+(?:or\\s+replace\\s+)?function)\\s+public\\.${name}\\b`,
     "g",
   );
   const matches = [...normalizedSql.matchAll(definitionPattern)];
@@ -48,7 +48,7 @@ for (const [name, tokens] of contracts) {
   }
 }
 
-const normalized = source.replace(/\\s+/g, " ").toLowerCase();
+const normalized = source.replace(/\s+/g, " ").toLowerCase();
 const explicitSearchPathContracts = [
   {
     signature: "public.transfer_patient_ward_bed_workflow(uuid,uuid,uuid,uuid,text,text)",
