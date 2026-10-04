@@ -5,6 +5,7 @@ const dashboard=read('src/pages/Dashboard.tsx');
 const permissions=read('src/lib/permissions.ts');
 const migration=read('supabase/migrations/20260926233000_role_dashboard_server_summary.sql');
 const activeRoleMigration=read('supabase/migrations/20260929203000_active_dashboard_role_context.sql');
+const superuserMigration=read('supabase/migrations/20261004270000_add_system_superuser_dashboard_contract.sql');
 const auth=read('src/contexts/AuthContext.tsx');
 
 if (!migration.includes('SECURITY INVOKER')) throw new Error('Dashboard summary must remain RLS-aware');
@@ -63,12 +64,13 @@ for (const needle of [
   "ELSIF v_role = 'front_desk'",
   "ELSIF v_role = 'canteen'",
   "ELSIF v_role = 'it_admin'",
-  "ELSIF v_role = 'system_superuser'",
+  
   "REVOKE ALL ON FUNCTION public.get_role_dashboard_summary() FROM PUBLIC, anon",
   "GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary() TO authenticated"
 ]) {
   if (!migration.includes(needle)) throw new Error(`Dashboard server contract missing: ${needle}`);
 }
+if (!superuserMigration.includes("system_superuser") || !superuserMigration.includes("Registered facilities") || !superuserMigration.includes("get_role_dashboard_summary_for_role(text)")) throw new Error('System Superuser dashboard migration contract missing');
 console.log(`Role dashboard contract passed for ${roles.length} roles`);
 const authSource=read('src/contexts/AuthContext.tsx');
 if (!authSource.includes('activeRoleStorageKey')) throw new Error('Active role session persistence contract missing');
