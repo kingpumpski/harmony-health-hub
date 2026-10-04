@@ -20,8 +20,12 @@ Deno.serve(async (req) => {
     );
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const caller = await requireAdmin(service, token);
-    const { data: callerRoleRow } = await service.from('user_roles').select('role').eq('user_id', caller.id).in('role', ['admin','it_admin','system_superuser']).limit(1).maybeSingle();
-    const callerRole = String(callerRoleRow?.role ?? '');
+    const { data: callerRoles, error: callerRolesError } = await service.from('user_roles').select('role').eq('user_id', caller.id).in('role', ['admin','it_admin','system_superuser']);
+    if (callerRolesError) return json({ error: 'Unable to verify administrator role: ' + callerRolesError.message }, 500);
+    const callerRole = (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'system_superuser')
+      ?? (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'it_admin')
+      ?? (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'admin')
+      ?? '';
     const body = await req.json();
 
     // This function is called with the service-role client, so auth.uid() is NULL.
