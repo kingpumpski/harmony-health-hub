@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     );
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const caller = await requireAdmin(service, token);
-    const { data: callerRoleRow } = await service.from('user_roles').select('role').eq('user_id', caller.id).in('role', ['admin','system_superuser']).limit(1).maybeSingle();
+    const { data: callerRoleRow } = await service.from('user_roles').select('role').eq('user_id', caller.id).in('role', ['admin','it_admin','system_superuser']).limit(1).maybeSingle();
     const callerRole = String(callerRoleRow?.role ?? '');
     const body = await req.json();
 
