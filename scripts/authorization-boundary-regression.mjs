@@ -55,7 +55,8 @@ for (const signature of [
 ]) {
   const normalized = source.replace(/\s+/g, " ").toLowerCase();
   assert(
-    (normalized.includes(`alter function ${signature.toLowerCase()} set search_path = ''`) ||\n      (normalized.includes(`create function ${signature.toLowerCase()}`) && normalized.includes(`set search_path = ''`))),
+    (normalized.includes(`alter function ${signature.toLowerCase()} set search_path = ''`) ||
+      (normalized.includes(`create function ${signature.toLowerCase()}`) && normalized.includes(`set search_path = ''`))),
     `${signature} must have an explicit empty search_path override`,
   );
 }
