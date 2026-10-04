@@ -17,6 +17,8 @@ assert.match(ui, /Role update failed/);
 assert.match(edge, /Only a System Superuser can assign platform administrator roles/);
 assert.match(edge, /Target user is not an active member of your facility/);
 assert.match(edge, /active facility context is required before creating facility users/);
+assert.match(edge, /active facility context is required before viewing facility users/);
+assert.match(edge, /Facility user directory lookup failed/);
 assert.match(edge, /callerRole !== 'system_superuser'/);
 assert.match(ui, /!\['admin','it_admin','system_superuser'\]\.includes/);
 
