@@ -12,6 +12,7 @@ const userRoleMigration = fs.readFileSync('supabase/migrations/20261004275000_co
 const adminUsers = fs.readFileSync('src/pages/admin/AdminUsers.tsx', 'utf8');
 const adminUserFunction = fs.readFileSync('supabase/functions/admin-create-user/index.ts', 'utf8');
 const adminUserProvisioning = fs.readFileSync('supabase/functions/_shared/admin-user-provisioning.ts', 'utf8');
+const activeContextRestrictionMigration = fs.readFileSync('supabase/migrations/20261004290000_restrict_user_active_facility_context_management.sql', 'utf8');
 
 for (const needle of [
   'public.has_role(auth.uid(), \'system_superuser\'::public.app_role)',
@@ -94,4 +95,5 @@ if (!adminUserFunction.includes("['admin','it_admin','system_superuser']") || !a
 }
 for (const needle of ["platform_set_user_role(_user_id uuid", "Only a System Superuser can assign platform administrator roles", "Target user is not an active member of your facility", "REVOKE ALL ON FUNCTION public.platform_set_user_role(uuid,public.app_role) FROM PUBLIC,anon,authenticated", "GRANT EXECUTE ON FUNCTION public.platform_set_user_role(uuid,public.app_role) TO authenticated"]) { if (!userRoleMigration.includes(needle)) throw new Error('Platform user role workflow missing guard: ' + needle); }
 if (!adminUsers.includes("platform_set_user_role")) throw new Error('Admin Users UI must use canonical platform role RPC');
+for (const needle of ["Only a System Superuser can set another user active facility context", "IF NOT _is_active AND public.has_role(v_actor,'system_superuser'::public.app_role)", "Facility administrators may only grant facility scope"]) { if (!activeContextRestrictionMigration.includes(needle)) throw new Error('Active facility context restriction missing guard: ' + needle); }
 console.log('Superadmin facility context, patient history, notification CORS, onboarding bootstrap, facility lifecycle, and platform user-facility administration contract passed');
