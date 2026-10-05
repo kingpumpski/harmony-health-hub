@@ -75,7 +75,7 @@ export default function Billing() {
   }, []);
 
   const loadPatients = useCallback(async () => {
-    const { data, error } = await supabase.from('patients').select('id,first_name,last_name,patient_code,membership_type,membership_expires_at,insurance_provider,insurance_number').order('created_at', { ascending: false }).limit(1000);
+    const { data, error } = await supabase.rpc('get_patient_directory', { _limit: 1000 });
     if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]);
     const { data: t } = await supabase.from('service_tariffs').select('id,service_code,service_name,department,unit,amount,active').eq('active', true).order('service_name');
     setTariffs((t ?? []) as Tariff[]);
