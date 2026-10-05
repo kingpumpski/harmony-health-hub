@@ -43,18 +43,26 @@ Deno.serve(async (req) => {
     let userPrompt = '';
 
     if (body.mode === 'portal') {
-      const { data: patient, error: patientError } = await supabase.from('patients').select('id,patient_code,first_name,last_name,date_of_birth,sex,phone,email').eq('user_id', callerId).maybeSingle();
+      if (!hasAnyRole(['patient'])) throw new Error('Patient portal access is not permitted');
+      const { data: patientRows, error: patientError } = await supabase.rpc('get_patient_portal_identity');
       if (patientError) throw patientError;
+      const patient = Array.isArray(patientRows) ? patientRows[0] : patientRows;
       if (!patient) throw new Error('Patient portal profile not found');
       const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
-        supabase.from('appointments').select('id,patient_id,scheduled_at,reason,status,department,treatment_status').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
-        supabase.from('video_sessions').select('id,patient_id,scheduled_at,status,payment_received,room_name').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
-        supabase.from('invoices').select('id,patient_id,invoice_number,total_amount,status,created_at').eq('patient_id', patient.id).order('created_at', { ascending: false }).limit(25),
+        supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }),
+        supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
+        supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
         supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
       ]);
       const portalErrors = [appointmentsError, videoError, invoicesError, reportsError].filter(Boolean);
       if (portalErrors.length) throw portalErrors[0];
-      return new Response(JSON.stringify({ patient, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({
+        patient,
+        appointments: appointments ?? [],
+        video_sessions: videoSessions ?? [],
+        invoices: invoices ?? [],
+        reports: reports ?? []
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (body.mode === 'clinical_context') {
