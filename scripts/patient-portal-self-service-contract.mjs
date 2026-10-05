@@ -30,6 +30,6 @@ for (const [name,source,needles] of [
   ['Sidebar',sidebar,["patient: [{ label: 'My Care'",'/patient-portal','/appointments','/telemedicine','/billing']],
 ]) for (const needle of needles) if (!source.includes(needle)) throw new Error(name+' missing UI contract: '+needle);
 
-if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("if (user?.roles?.includes('patient'))")) throw new Error('Telemedicine must branch before staff patient directory loading');
+if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
 console.log('Patient portal self-service contracts passed.');
