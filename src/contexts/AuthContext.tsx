@@ -38,14 +38,14 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
     supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).order('created_at', { ascending: true }),
   ]);
   const roles = (roleRows ?? []).map((row) => row.role as UserRole).filter(Boolean);
-  const resolvedRole = roles[0] ?? 'patient';
+  const fallbackRole = roles[0] ?? 'patient';
   const persistedRole = typeof window !== 'undefined' ? window.sessionStorage.getItem(activeRoleStorageKey(supabaseUser.id)) as UserRole | null : null;
-  const preferredRole = roles.includes('system_superuser') ? 'system_superuser' : resolvedRole;
+  const preferredRole = roles.includes('system_superuser') ? 'system_superuser' : fallbackRole;
   const activeRole = persistedRole && roles.includes(persistedRole) ? persistedRole : preferredRole;
   if (profileError) console.warn('[auth] profile bootstrap unavailable:', profileError.message);
   if (roleError) console.warn('[auth] role bootstrap unavailable:', roleError.message);
 
-  let permissions = getDefaultPermissions(resolvedRole);
+  let permissions = getDefaultPermissions(activeRole);
   try {
     const { data: permissionRows, error: permissionError } = await supabase.rpc('get_my_permissions' as never);
     if (permissionError) {
