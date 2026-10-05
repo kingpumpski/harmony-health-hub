@@ -29,7 +29,7 @@ export default function Triage() {
     setLoading(true);
     setError('');
     const [patientResponse, triageResponse] = await Promise.all([
-      supabase.from('patients').select('id, patient_code, first_name, last_name').order('created_at', { ascending: false }).limit(500),
+      supabase.rpc('get_patient_directory', { _limit: 500 }),
       (supabase as any).from('triage_assessments')
         .select('id, patient_id, priority, systolic, diastolic, temperature, oxygen_saturation, bmi, created_at, patients(first_name,last_name)')
         .order('created_at', { ascending: false })
