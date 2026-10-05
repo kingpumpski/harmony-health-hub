@@ -9,6 +9,10 @@ const anaesthesia = fs.readFileSync('src/pages/AnestheticAssessment.tsx','utf8')
 const billing = fs.readFileSync('src/pages/Billing.tsx','utf8');
 const transitions = fs.readFileSync('src/pages/CareTransitions.tsx','utf8');
 const globalSearch = fs.readFileSync('src/lib/globalWorkspaceSearch.ts','utf8');
+if (!globalSearch.includes("const DIRECTORY_ROLES = [...CLINICAL_ROLES, ...ACCOUNTING_ROLES, 'front_desk', 'canteen'];")) {
+  throw new Error('Global patient search role policy must include front desk and canteen directory roles');
+}
+
 const pages = fs.readFileSync('.github/workflows/pages.yml','utf8');
 const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
 const patientDirectory = fs.readFileSync('src/lib/patientDirectory.ts','utf8');
