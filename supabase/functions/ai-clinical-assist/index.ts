@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'report') {
       requirePatientId();
-      const { data: ownerPatient, error: ownerPatientError } = await supabase.from('patients').select('id').eq('id', body.patientId).eq('user_id', callerId).maybeSingle();
+      const { data: ownerPatient, error: ownerPatientError } = await supabase.from('patients').select('id').eq('id', body.patientId).or(`user_id.eq.${callerId},and(user_id.is.null,email.eq.${authData.user.email ?? ''})`).maybeSingle();
       if (ownerPatientError) throw ownerPatientError;
       const isOwner = Boolean(ownerPatient);
       const isClinical = hasAnyRole(aiClinicalRoles);
