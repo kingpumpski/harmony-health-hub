@@ -14,7 +14,7 @@ interface Session {
 }
 interface BillingStatus { id: string; status: string }
 
-export default function Telemedicine() {
+function StaffTelemedicine() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [billing, setBilling] = useState<Record<string, string>>({});
@@ -184,3 +184,5 @@ function PatientTelemedicine() {
     {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request New Telemedicine Session</h2><select required value={clinicianId} onChange={e=>setClinicianId(e.target.value)} className="input-medical w-full"><option value="">Select doctor…</option>{clinicians.map(c=><option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.specialization ? ` · ${c.specialization}` : ''}</option>)}</select><input required type="datetime-local" min={new Date().toISOString().slice(0,16)} value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} className="input-medical w-full"/><textarea required value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-28" placeholder="Reason for the visit"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary">Submit request</button></div></form></div>}
   </div>;
 }
+
+export default function Telemedicine() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />; }
