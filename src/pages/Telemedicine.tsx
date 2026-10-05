@@ -1,5 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { searchPatientDirectory } from '@/lib/patientDirectory';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -134,4 +135,52 @@ export default function Telemedicine() {
       </div>
     </div>
   );
+}
+
+function PatientTelemedicine() {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [clinicians, setClinicians] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [clinicianId, setClinicianId] = useState('');
+  const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 24*60*60*1000).toISOString().slice(0,16));
+  const [reason, setReason] = useState('');
+
+  const load = async () => {
+    const [{ data: identity, error: identityError }, { data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
+      supabase.rpc('get_patient_portal_identity'),
+      supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
+      supabase.rpc('get_patient_telemedicine_clinicians'),
+    ]);
+    if (identityError || sessionError || clinicianError) return;
+    setSessions(rows ?? []);
+    setClinicians(staff ?? []);
+  };
+  useEffect(() => { void load(); }, []);
+
+  const request = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await (supabase as any).rpc('request_patient_telemedicine_session', {
+      _clinician_id: clinicianId, _scheduled_at: new Date(scheduledAt).toISOString(), _reason: reason.trim(),
+    });
+    if (error) {
+      toast({ title: 'Unable to submit request', description: 'Service temporarily unavailable. Please try again later.' });
+      return;
+    }
+    toast({ title: 'Telemedicine request submitted', description: 'A clinician will review your preferred time.' });
+    setOpen(false); setClinicianId(''); setReason(''); void load();
+  };
+
+  const now = Date.now();
+  const upcoming = sessions.filter(s => new Date(s.scheduled_at).getTime() >= now).sort((a,b)=>new Date(a.scheduled_at).getTime()-new Date(b.scheduled_at).getTime());
+  const past = sessions.filter(s => new Date(s.scheduled_at).getTime() < now).sort((a,b)=>new Date(b.scheduled_at).getTime()-new Date(a.scheduled_at).getTime());
+
+  return <div className="space-y-6 animate-fade-in">
+    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+      <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Video className="w-6 h-6 text-primary" /> Telemedicine</h1><p className="text-muted-foreground">Request and join your telemedicine consultations.</p></div>
+      <button className="btn-primary inline-flex items-center gap-2" onClick={()=>setOpen(true)}><Plus className="w-4 h-4"/> Request New Telemedicine Session</button>
+    </div>
+    <div className="card-medical p-5"><h2 className="font-semibold mb-3">Upcoming sessions</h2>{upcoming.length ? upcoming.map(s=><div key={s.id} className="rounded-xl border border-border p-4 mb-3"><div className="flex justify-between gap-3"><div><p className="font-medium">{new Date(s.scheduled_at).toLocaleString()}</p><p className="text-sm text-muted-foreground">{s.notes || 'Telemedicine consultation'}</p></div><span className="text-xs rounded-full bg-info/15 px-2 py-1">{s.status}</span></div>{s.status === 'active' && s.room_name && <a href={`https://meet.jit.si/${s.room_name}`} target="_blank" rel="noreferrer" className="btn-primary text-xs mt-3 inline-flex items-center gap-1"><ExternalLink className="w-3 h-3"/> Join session</a>}</div>) : <p className="text-sm text-muted-foreground">You have no upcoming telemedicine sessions. Request one here.</p>}</div>
+    <div className="card-medical p-5"><h2 className="font-semibold mb-3">Past sessions</h2>{past.length ? past.map(s=><div key={s.id} className="rounded-xl border border-border p-4 mb-3"><p className="font-medium">{new Date(s.scheduled_at).toLocaleString()}</p><p className="text-sm text-muted-foreground">{s.notes || 'Telemedicine consultation'} · {s.status}</p></div>) : <p className="text-sm text-muted-foreground">You have no past telemedicine sessions.</p>}</div>
+    {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request New Telemedicine Session</h2><select required value={clinicianId} onChange={e=>setClinicianId(e.target.value)} className="input-medical w-full"><option value="">Select doctor…</option>{clinicians.map(c=><option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.specialization ? ` · ${c.specialization}` : ''}</option>)}</select><input required type="datetime-local" min={new Date().toISOString().slice(0,16)} value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} className="input-medical w-full"/><textarea required value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-28" placeholder="Reason for the visit"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary">Submit request</button></div></form></div>}
+  </div>;
 }
