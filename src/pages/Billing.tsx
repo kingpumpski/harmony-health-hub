@@ -39,6 +39,7 @@ const categoryLabel: Record<string, string> = { consultation: 'Consultation', la
 const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
 export default function Billing() {
+  if (user?.roles?.includes('patient')) return <PatientBilling />;
   const { user } = useAuth();
   const navigate = useNavigate();
   const canViewClaims = user?.roles?.some((role) => role === 'admin' || role === 'accountant') ?? false;
@@ -308,4 +309,23 @@ export default function Billing() {
       </OperationalWorklistShell>
     </>
   );
+}
+
+function PatientBilling() {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.rpc('get_patient_invoice_summary', { _limit: 100 });
+      if (!error) setInvoices(Array.isArray(data) ? data : []);
+      setLoading(false);
+    })();
+  }, []);
+  const payNow = () => toast.info('Online payment is not configured for this facility yet. Your invoice remains available for payment through the facility billing channel.');
+  return <div className="space-y-6 animate-fade-in">
+    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><CreditCard className="w-6 h-6 text-primary"/> My Billing</h1><p className="text-muted-foreground">Your invoices and payment status. This view is read-only.</p></div>
+    <div className="card-medical p-5">
+      {loading ? <p className="text-sm text-muted-foreground">Loading invoices…</p> : invoices.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="p-3">Date</th><th className="p-3">Description</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3"></th></tr></thead><tbody>{invoices.map(i=><tr key={i.id} className="border-b"><td className="p-3">{new Date(i.created_at).toLocaleDateString()}</td><td className="p-3">{i.invoice_number || i.notes || 'Invoice'}</td><td className="p-3">₵{Number(i.total_amount||0).toFixed(2)}</td><td className="p-3">{i.status}</td><td className="p-3">{Number(i.outstanding_amount||0)>0 && <button className="btn-primary text-xs" onClick={payNow}>Pay Now</button>}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">You have no invoices.</p>}
+    </div>
+  </div>;
 }
