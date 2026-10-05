@@ -12,6 +12,8 @@ const globalSearch = fs.readFileSync('src/lib/globalWorkspaceSearch.ts','utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml','utf8');
 const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
 const formNormalizer = fs.readFileSync('src/components/system/FormFieldIdentityNormalizer.tsx','utf8');
+const pharmacy = fs.readFileSync('src/pages/Pharmacy.tsx','utf8');
+const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx','utf8');
 
 for (const needle of [
   'create function public.get_patient_directory(',
@@ -38,6 +40,20 @@ for (const [name, source] of [
 ]) {
   if (!source.includes("get_patient_directory")) throw new Error(name + ' must use canonical patient directory');
   if (source.includes("supabase.from('patients')")) throw new Error(name + ' must not directly query patients');
+}
+
+for (const needle of [
+  "db.rpc('update_pharmacy_inventory_item', { _item_id: editingInventoryId, ...payload })",
+  '_unit_price: inventoryForm.unit_price',
+  '_stock_quantity: inventoryForm.stock_quantity',
+  '_reorder_level: inventoryForm.reorder_level',
+  'Number(item.unit_price ?? 0)',
+]) {
+  if (!pharmacy.includes(needle)) throw new Error('Pharmacy edit payload must preserve numeric zero values: ' + needle);
+}
+
+if (!patientHub.includes(".rpc('create_patient_appointment'")) {
+  throw new Error('Patient Hub appointment creation must use the canonical appointment RPC');
 }
 
 if (!aiClinicalAssist.includes("supabase.rpc('get_patient_directory', { _limit: 500 })")) {
