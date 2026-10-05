@@ -72,10 +72,9 @@ function workflowErrorMessage(error: unknown): string {
   return message || 'The requested workflow action could not be completed.';
 }
 
-export default function Appointments() 
-  if (user?.roles?.includes('patient')) return <PatientAppointments />;
-
+export default function Appointments() {
   const { user } = useAuth();
+  if (user?.roles?.includes('patient')) return <PatientAppointments />;
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [clinicians, setClinicians] = useState<Clinician[]>([]);
