@@ -21,6 +21,8 @@ for (const needle of [
   'unit_price=coalesce(_unit_price,0)',
   'if coalesce(_stock_quantity,0) > 0 and _expiry_date is null',
   'set drug_name=pg_catalog.btrim(_drug_name)',
+  'create or replace function public.create_pharmacy_inventory_item(',
+  'if coalesce(_stock_quantity,0) > 0 and _expiry_date is null',
 ]) {
   if (!migration.includes(needle)) throw new Error('Missing runtime migration contract: ' + needle);
 }
