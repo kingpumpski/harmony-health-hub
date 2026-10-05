@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
         { data: triage, error: triageError },
         { data: queue, error: queueError },
       ] = await Promise.all([
-        supabase.from('patients').select('id,patient_code,first_name,last_name').order('created_at', { ascending: false }).limit(500),
+        supabase.rpc('get_patient_directory', { _limit: 500 }),
         supabase.rpc('get_admission_workspace', { _limit: 250 }),
         supabase.from('medication_administrations').select('id,patient_id,prescription_id,medication_name,dose,route,scheduled_at,administered_at,status,reason,administered_by,witnessed_by,notes,due_window_minutes,locked_at,lock_reason,reopened_at,reopen_reason,alert_acknowledged_at,alert_acknowledged_by,created_at,updated_at').order('scheduled_at', { ascending: true }).limit(250),
         supabase.from('nursing_shift_handovers').select('id,patient_id,admission_id,outgoing_officer,incoming_officer,shift_date,shift_name,clinical_summary,outstanding_tasks,risks_and_alerts,escalation_required,acknowledged_at,created_at,pending_tasks,safety_concerns,shift_label').order('created_at', { ascending: false }).limit(100),
