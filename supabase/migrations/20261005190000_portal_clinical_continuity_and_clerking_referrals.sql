@@ -289,6 +289,8 @@ $function$;
 REVOKE ALL ON FUNCTION public.sync_encounter_clerking_followups(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sync_encounter_clerking_followups(uuid) TO authenticated;
 
+DROP FUNCTION IF EXISTS public.get_pending_specialist_referrals();
+
 CREATE OR REPLACE FUNCTION public.get_pending_specialist_referrals()
 RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
@@ -323,6 +325,8 @@ BEGIN
 END;
 $function$;
 
+DROP FUNCTION IF EXISTS public.get_pending_review_appointments();
+
 CREATE OR REPLACE FUNCTION public.get_pending_review_appointments()
 RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
@@ -355,6 +359,8 @@ BEGIN
   ),'[]'::jsonb);
 END;
 $function$;
+
+DROP FUNCTION IF EXISTS public.schedule_patient_referral_workflow(uuid);
 
 CREATE OR REPLACE FUNCTION public.schedule_patient_referral_workflow(_referral_id uuid)
 RETURNS jsonb
