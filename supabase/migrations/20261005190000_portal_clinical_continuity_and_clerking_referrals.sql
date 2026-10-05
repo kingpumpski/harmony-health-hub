@@ -360,6 +360,33 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.set_patient_referral_appointment_date(_referral_id uuid,_appointment_date timestamptz)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $function$
+DECLARE
+  uid uuid:=auth.uid();
+  v_ref public.patient_referrals%rowtype;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT (
+    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner')
+    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
+    OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')
+  ) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
+  IF _appointment_date IS NULL OR _appointment_date <= now() THEN RAISE EXCEPTION 'Choose a future appointment date and time'; END IF;
+  SELECT * INTO v_ref FROM public.patient_referrals WHERE id=_referral_id FOR UPDATE;
+  IF v_ref.id IS NULL THEN RAISE EXCEPTION 'Referral not found'; END IF;
+  IF v_ref.status NOT IN ('requested','accepted') THEN RAISE EXCEPTION 'Referral is not awaiting scheduling'; END IF;
+  IF NOT public.current_user_has_facility_access(v_ref.facility_id) THEN RAISE EXCEPTION 'Referral facility access is not permitted'; END IF;
+  UPDATE public.patient_referrals SET appointment_date=_appointment_date,updated_at=now() WHERE id=_referral_id RETURNING * INTO v_ref;
+  RETURN jsonb_build_object('referral_id',v_ref.id,'appointment_date',v_ref.appointment_date,'referral_type',v_ref.referral_type);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.set_patient_referral_appointment_date(uuid,timestamptz) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.set_patient_referral_appointment_date(uuid,timestamptz) TO authenticated;
+
 DROP FUNCTION IF EXISTS public.schedule_patient_referral_workflow(uuid);
 
 CREATE OR REPLACE FUNCTION public.schedule_patient_referral_workflow(_referral_id uuid)
@@ -405,6 +432,16 @@ BEGIN
   END IF;
 
   UPDATE public.patient_referrals SET status='scheduled',updated_at=now() WHERE id=_referral_id;
+
+  INSERT INTO public.notifications(recipient_role,recipient_user_id,title,message,severity,category,link,related_patient_id,related_entity_id,metadata)
+  SELECT 'patient'::public.app_role,p.user_id,
+    CASE WHEN v_ref.referral_type='review' THEN 'Review appointment scheduled' ELSE 'Specialist appointment scheduled' END,
+    concat('Your ',CASE WHEN v_ref.referral_type='review' THEN 'review' ELSE 'specialist' END,' appointment is scheduled for ',to_char(v_ref.appointment_date,'DD Mon YYYY HH24:MI')),
+    'info','appointment','/appointments',v_ref.patient_id,v_appointment_id,
+    jsonb_build_object('referral_id',v_ref.id,'referral_type',v_ref.referral_type,'appointment_date',v_ref.appointment_date,'specialty',v_ref.specialty)
+  FROM public.patients p
+  WHERE p.id=v_ref.patient_id AND p.user_id IS NOT NULL;
+
   PERFORM public.record_system_audit('referral_scheduled','care_transitions','patient_referral',_referral_id,'info',
     jsonb_build_object('patient_id',v_ref.patient_id,'specialty',v_ref.specialty,'referral_type',v_ref.referral_type,'appointment_id',v_appointment_id,'appointment_date',v_ref.appointment_date));
 
