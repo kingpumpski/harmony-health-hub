@@ -10,6 +10,7 @@ const billing = fs.readFileSync('src/pages/Billing.tsx','utf8');
 const transitions = fs.readFileSync('src/pages/CareTransitions.tsx','utf8');
 const globalSearch = fs.readFileSync('src/lib/globalWorkspaceSearch.ts','utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml','utf8');
+const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
 
 for (const needle of [
   'create function public.get_patient_directory(',
@@ -36,6 +37,10 @@ for (const [name, source] of [
 ]) {
   if (!source.includes("get_patient_directory")) throw new Error(name + ' must use canonical patient directory');
   if (source.includes("supabase.from('patients')")) throw new Error(name + ' must not directly query patients');
+}
+
+if (!aiClinicalAssist.includes("supabase.rpc('get_patient_directory', { _limit: 500 })")) {
+  throw new Error('AI nurse dashboard must use canonical patient directory');
 }
 
 if (pages.includes('cp dist/index.html dist/404.html')) {
