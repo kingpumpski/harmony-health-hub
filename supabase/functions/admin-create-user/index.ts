@@ -309,17 +309,6 @@ Deno.serve(async (req) => {
       password: String(body?.password ?? ''),
     });
 
-    try {
-      await writeAdminAudit({
-        action: 'admin_create_user',
-        entityId: user.id,
-        metadata: { email: user.email, role: user.role, onboarding, created_user_id: user.id, facility_id: requestedFacilityId || null },
-      });
-    } catch (auditError) {
-      await service.auth.admin.deleteUser(user.id);
-      throw auditError;
-    }
-
     if (requestedFacilityId) {
       const { data: facility } = await service.from('healthcare_facilities').select('id,is_active').eq('id', requestedFacilityId).maybeSingle();
       if (!facility) { await service.auth.admin.deleteUser(user.id); return json({ error: 'Requested facility not found' }, 400); }
@@ -337,6 +326,28 @@ Deno.serve(async (req) => {
         throw auditError;
       }
     }
+
+    try {
+      await writeAdminAudit({
+        action: 'admin_create_user',
+        entityId: user.id,
+        metadata: {
+          email: user.email,
+          role: user.role,
+          onboarding,
+          created_user_id: user.id,
+          facility_id: requestedFacilityId || null,
+        },
+      });
+    } catch (auditError) {
+      if (requestedFacilityId) {
+        await service.from('user_active_facilities').delete().eq('user_id', user.id).eq('facility_id', requestedFacilityId);
+        await service.from('facility_memberships').delete().eq('user_id', user.id).eq('facility_id', requestedFacilityId);
+      }
+      await service.auth.admin.deleteUser(user.id);
+      throw auditError;
+    }
+
     return json({ ok: true, user, onboarding, facility_id: requestedFacilityId || null });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
