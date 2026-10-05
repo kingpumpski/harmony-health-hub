@@ -36,7 +36,8 @@ REVOKE EXECUTE ON FUNCTION public.create_patient_admission(uuid,text,text,text) 
 GRANT EXECUTE ON FUNCTION public.create_patient_admission(uuid,text,text,text) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.hms_test_facility_id() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.hms_test_mode_enabled() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.generate_invoice_number() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.generate_invoice_number() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.generate_invoice_number() TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.search_clinical_diagnoses(text,uuid,integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.search_clinical_diagnoses(text,uuid,integer) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.get_patient_triage_history(uuid,integer) FROM PUBLIC, anon;
