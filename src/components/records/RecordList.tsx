@@ -44,7 +44,7 @@ function responsiveClass(hideBelow?: RecordColumn<unknown>['hideBelow']) {
 }
 
 export function StatusBadge({ status }: { status?: string | null }) {
-  const value = String(status ?? 'unknown').replaceAll('_', ' ');
+  const value = String(status ?? 'unknown').replace(/_/g, ' ');
   const normalized = value.toLowerCase();
   const tone = normalized.includes('critical') || normalized.includes('cancel') || normalized.includes('rejected') || normalized.includes('failed')
     ? 'badge-critical'
