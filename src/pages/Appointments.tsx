@@ -72,9 +72,8 @@ function workflowErrorMessage(error: unknown): string {
   return message || 'The requested workflow action could not be completed.';
 }
 
-export default function Appointments() {
+function StaffAppointments() {
   const { user } = useAuth();
-  if (user?.roles?.includes('patient')) return <PatientAppointments />;
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [clinicians, setClinicians] = useState<Clinician[]>([]);
@@ -475,3 +474,5 @@ function PatientAppointments() {
     {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request Appointment</h2><input required type="datetime-local" min={new Date().toISOString().slice(0,16)} value={when} onChange={e=>setWhen(e.target.value)} className="input-medical w-full"/><select value={department} onChange={e=>setDepartment(e.target.value)} className="input-medical w-full"><option>Clinical Consultation</option><option>Specialist Consultation</option><option>Laboratory</option><option>Radiology</option><option>Maternal Care</option></select><textarea value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-24" placeholder="Reason for the visit (optional)"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary">Submit request</button></div></form></div>}
   </div>;
 }
+
+export default function Appointments() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientAppointments /> : <StaffAppointments />; }
