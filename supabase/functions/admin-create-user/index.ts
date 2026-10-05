@@ -350,6 +350,13 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, user, onboarding, facility_id: requestedFacilityId || null });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
+    const message = error instanceof Error ? error.message : String(error);
+    const normalized = message.toLowerCase();
+    const status = normalized.includes('invalid authentication') ? 401
+      : normalized.includes('administrator, it admin or system superuser access required') ? 403
+      : normalized.includes('already been registered') || normalized.includes('already exists') || normalized.includes('duplicate key') ? 409
+      : normalized.includes('required') || normalized.includes('unsupported role') || normalized.includes('password onboarding') ? 400
+      : 500;
+    return json({ error: message }, status);
   }
 });
