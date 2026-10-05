@@ -1,0 +1,101 @@
+name: Reconcile main into PR 274
+
+on:
+  push:
+    branches:
+      - architecture/harmony-national-standard-roadmap
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: ${{ github.ref == 'refs/heads/architecture/harmony-national-standard-roadmap' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Reconcile main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+
+          if git merge origin/main --no-edit; then
+            :
+          else
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            echo "Conflicts detected:"
+            printf '%s\n' "$conflicts"
+
+            unexpected=""
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              case "$file" in
+                package.json)
+                  node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const fs = require('node:fs');
+          const ours = JSON.parse(execFileSync('git', ['show','HEAD:package.json'], {encoding:'utf8'}));
+          const theirs = JSON.parse(execFileSync('git', ['show','origin/main:package.json'], {encoding:'utf8'}));
+          const merged = { ...theirs, ...ours };
+          merged.scripts = { ...(theirs.scripts || {}), ...(ours.scripts || {}) };
+          merged.dependencies = { ...(theirs.dependencies || {}), ...(ours.dependencies || {}) };
+          merged.devDependencies = { ...(theirs.devDependencies || {}), ...(ours.devDependencies || {}) };
+          fs.writeFileSync('package.json', JSON.stringify(merged, null, 2) + '\n');
+          NODE
+                  git add package.json
+                  ;;
+                bun.lock)
+                  git checkout --theirs bun.lock
+                  node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const fs = require('node:fs');
+          const pr = execFileSync('git', ['show','HEAD:bun.lock'], {encoding:'utf8'});
+          let main = fs.readFileSync('bun.lock','utf8');
+          const viteBlock = pr.match(/^    "vite": \["vite@5\.4\.21",.*?^\n/m);
+          if (!viteBlock) throw new Error('Could not locate PR Vite lock entry');
+          const viteRe = /^    "vite": \["vite@[^\n]*\n/m;
+          if (!viteRe.test(main)) throw new Error('Could not locate main Vite lock entry');
+          main = main.replace(viteRe, viteBlock[0]);
+          fs.writeFileSync('bun.lock', main);
+          NODE
+                  git add bun.lock
+                  ;;
+                *)
+                  unexpected="$unexpected$file\n"
+                  ;;
+              esac
+            done <<< "$conflicts"
+
+            if [ -n "$unexpected" ]; then
+              echo "Unexpected merge conflicts remain:"
+              printf '%b' "$unexpected"
+              git merge --abort
+              exit 1
+            fi
+
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Unresolved merge conflicts remain."
+              git merge --abort
+              exit 1
+            fi
+          fi
+
+          # This workflow is deliberately ephemeral and must not become part of PR #274.
+          git rm -f .github/workflows/reconcile-main-into-pr.yml || true
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No reconciliation commit required."
+            exit 0
+          fi
+
+          git commit -m "chore: reconcile main into PR #274"
+          git push origin HEAD:architecture/harmony-national-standard-roadmap
