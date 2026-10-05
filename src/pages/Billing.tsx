@@ -38,8 +38,7 @@ const amountInWords = (value: number): string => {
 const categoryLabel: Record<string, string> = { consultation: 'Consultation', lab: 'Laboratory', imaging: 'Diagnostic imaging', pharmacy: 'Pharmacy / drugs', ward: 'Accommodation', feeding: 'Feeding', procedure: 'Medical service' };
 const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
-export default function Billing() {
-  if (user?.roles?.includes('patient')) return <PatientBilling />;
+function StaffBilling() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const canViewClaims = user?.roles?.some((role) => role === 'admin' || role === 'accountant') ?? false;
@@ -329,3 +328,5 @@ function PatientBilling() {
     </div>
   </div>;
 }
+
+export default function Billing() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientBilling /> : <StaffBilling />; }
