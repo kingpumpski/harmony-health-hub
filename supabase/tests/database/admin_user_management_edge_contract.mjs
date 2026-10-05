@@ -20,6 +20,9 @@ assert.match(edge, /active facility context is required before creating facility
 assert.match(edge, /Only a System Superuser can create or assign another System Superuser/);
 assert.match(edge, /const requestedRole = String\(body\?\.role/);
 assert.match(edge, /requestedFacilityId/);
+assert.match(edge, /platform_onboard_user_facility/);
+assert.match(edge, /action: 'admin_create_user'/);
+assert.ok(edge.indexOf("action: 'admin_create_user'") > edge.indexOf("action: 'platform_onboard_user_facility'"), 'Final user-created audit must occur after facility onboarding succeeds');
 assert.match(edge, /active facility context is required before viewing facility users/);
 assert.match(edge, /active facility context is required before editing facility users/);
 assert.match(edge, /Facility user directory lookup failed/);
