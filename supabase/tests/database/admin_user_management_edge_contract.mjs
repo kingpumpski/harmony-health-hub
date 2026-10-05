@@ -39,3 +39,8 @@ assert.match(edge, /admin_update_user_profile/);
 assert.match(ui, /Profile correction failed/);
 assert.match(ui, /action: 'update_profile'/);
 console.log('Account correction contract passed');
+
+assert.match(edge, /normalized\.includes\('invalid authentication'\)/);
+assert.match(edge, /normalized\.includes\('already been registered'\)/);
+assert.match(edge, /return json\(\{ error: message \}, status\)/);
+console.log('Admin provisioning HTTP error classification contract passed');
