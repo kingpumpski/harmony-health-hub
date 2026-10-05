@@ -13,7 +13,7 @@ export interface StaffPatient {
 }
 
 export async function searchPatientDirectory(query = '', limit = 300): Promise<{ data: StaffPatient[]; error: Error | null }> {
-  const { data, error } = await supabase.rpc('search_patient_directory' as never, {
+  const { data, error } = await supabase.rpc('get_patient_directory' as never, {
     _query: query.trim() || null,
     _limit: limit,
   } as never);
