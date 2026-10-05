@@ -11,6 +11,7 @@ const transitions = fs.readFileSync('src/pages/CareTransitions.tsx','utf8');
 const globalSearch = fs.readFileSync('src/lib/globalWorkspaceSearch.ts','utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml','utf8');
 const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
+const formNormalizer = fs.readFileSync('src/components/system/FormFieldIdentityNormalizer.tsx','utf8');
 
 for (const needle of [
   'create function public.get_patient_directory(',
@@ -41,6 +42,16 @@ for (const [name, source] of [
 
 if (!aiClinicalAssist.includes("supabase.rpc('get_patient_directory', { _limit: 500 })")) {
   throw new Error('AI nurse dashboard must use canonical patient directory');
+}
+
+for (const needle of [
+  'associateLabels()',
+  'label.htmlFor = nested.id',
+  'label.htmlFor = field.id',
+  'field.setAttribute(\"autocomplete\", value)',
+  'field.setAttribute(\"aria-label\", readableFieldName(field))',
+]) {
+  if (!formNormalizer.includes(needle)) throw new Error('Missing form accessibility hardening contract: ' + needle);
 }
 
 if (pages.includes('cp dist/index.html dist/404.html')) {
