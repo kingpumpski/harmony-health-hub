@@ -11,6 +11,7 @@ const transitions = fs.readFileSync('src/pages/CareTransitions.tsx','utf8');
 const globalSearch = fs.readFileSync('src/lib/globalWorkspaceSearch.ts','utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml','utf8');
 const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
+const patientDirectory = fs.readFileSync('src/lib/patientDirectory.ts','utf8');
 const formNormalizer = fs.readFileSync('src/components/system/FormFieldIdentityNormalizer.tsx','utf8');
 const pharmacy = fs.readFileSync('src/pages/Pharmacy.tsx','utf8');
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx','utf8');
@@ -54,6 +55,13 @@ for (const needle of [
 
 if (!patientHub.includes(".rpc('create_patient_appointment'")) {
   throw new Error('Patient Hub appointment creation must use the canonical appointment RPC');
+}
+
+if (!patientDirectory.includes("supabase.rpc('get_patient_directory' as never")) {
+  throw new Error('Patient directory helper must use the canonical get_patient_directory RPC');
+}
+if (patientDirectory.includes("supabase.rpc('search_patient_directory'")) {
+  throw new Error('Patient directory helper must not fall back to the legacy search_patient_directory RPC');
 }
 
 if (!aiClinicalAssist.includes("supabase.rpc('get_patient_directory', { _limit: 500 })")) {
