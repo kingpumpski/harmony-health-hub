@@ -1,6 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { supabase } from '@/integrations/supabase/client';
-import { Patient, VitalSigns } from '@/types';
+import { Patient } from '@/types';
 import { isNetworkError } from '@/lib/offlineSync';
 import { queueOfflinePatientRegistration } from '@/lib/offlinePatientRegistration';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
@@ -190,26 +190,3 @@ export async function analyzeDocument(document: File) {
 }
 export function registerPatientFromDocument(_document: File) { return Promise.resolve({ success:false, extracted:{}, message:'Clinical document extraction requires a configured, access-controlled OCR service.' }); }
 export function verifyGhanaCard(cardNumber: string) { return Promise.resolve({ success:cardNumber.startsWith('GHA'), verified:false, authority:'National Identification Authority Ghana', message:'Format validation only. This does not verify the identity or authenticity of a Ghana Card.' }); }
-export function evaluateTriagePriority(vitals: VitalSigns) {
-  if (vitals.temperature>=39||vitals.oxygenSaturation<=92||vitals.heartRate>=120||vitals.bloodPressure.systolic>=180) return 'Critical';
-  if (vitals.temperature>=38||vitals.oxygenSaturation<=94||vitals.heartRate>=100||vitals.bloodPressure.systolic>=160) return 'Urgent';
-  return 'Moderate';
-}
-export const recordTriageVitals=async(v:VitalSigns)=>({success:true,vitals:v});
-export const getCriticalPatients=async()=>[];
-export const getWaitingList=async()=>[];
-export const createConsultationEncounter=async(p:any)=>({success:true,encounter:p});
-export const addDiagnosisToConsultation=async(d:string)=>({success:true,diagnosis:d});
-export const setPrincipalDiagnosis=async(d:string)=>({success:true,principalDiagnosis:d});
-export const completeConsultation=async(d:any)=>({success:true,data:d});
-export const orderLabTest=async(p:any)=>({success:true,order:p});
-export const collectLabSample=async(id:string)=>({success:true,orderId:id});
-export const uploadLabResult=async(id:string,r:any)=>({success:true,orderId:id,result:r});
-export const validateLabResult=async(id:string)=>({success:true,orderId:id});
-export const getLabResults=async(patientId:string)=>[{patientId,results:[]}];
-export const configureSoundAlert=async(c:any)=>({success:true,config:c});
-export const listSoundAlerts=async()=>[];
-export const triggerSoundAlert=async(id:string)=>({success:true,alertId:id});
-export const generatePublicHealthReport=async(id:string)=>({success:true,report:id});
-export const generateRoster=async(d:string,w:string)=>({success:true,department:d,weekStart:w});
-export const analyzeWithAI=async(m:string,p:any)=>({success:true,module:m,payload:p});

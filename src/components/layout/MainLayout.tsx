@@ -8,8 +8,6 @@ import CriticalAlertOverlay from '@/components/CriticalAlertOverlay';
 import EncounterWorkflowOverlay from '@/components/EncounterWorkflowOverlay';
 import RouteLoadingScreen from '@/components/system/RouteLoadingScreen';
 
-const itAdminAllowedPaths = new Set(['/dashboard', '/profile', '/it-support', '/admin/logs', '/admin/offline-sync', '/notifications']);
-
 export default function MainLayout() {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
@@ -23,7 +21,6 @@ export default function MainLayout() {
 
   if (loading) return <RouteLoadingScreen />;
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
-  if (user.role === 'it_admin' && !itAdminAllowedPaths.has(location.pathname)) return <Navigate to="/it-support" replace />;
 
   return (
     <div className="min-h-screen bg-background">

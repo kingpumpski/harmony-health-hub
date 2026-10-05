@@ -1,9 +1,24 @@
 // Lightweight in-app sound helpers (no asset downloads).
-export function playSuccessSound() {
+function createUserActivatedAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    const ctx = new AudioContextCtor();
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
+    return ctx;
+  } catch {
+    return null;
+  }
+}
+
+export function playSuccessSound() {
+  const ctx = createUserActivatedAudioContext();
+  if (!ctx) return;
+  try {
     const now = ctx.currentTime;
-    const notes = [880, 1175]; // A5, D6 - pleasant 2-tone confirmation
+    const notes = [880, 1175];
     notes.forEach((freq, i) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -17,14 +32,15 @@ export function playSuccessSound() {
       o.start(now + i * 0.12);
       o.stop(now + i * 0.12 + 0.2);
     });
-  } catch (err) {
-    console.warn('[playSuccessSound]', err);
+  } catch {
+    try { void ctx.close(); } catch {}
   }
 }
 
 export function playAlertSound() {
+  const ctx = createUserActivatedAudioContext();
+  if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const now = ctx.currentTime;
     [660, 660, 880].forEach((freq, i) => {
       const o = ctx.createOscillator();
@@ -34,12 +50,11 @@ export function playAlertSound() {
       o.connect(g);
       g.connect(ctx.destination);
       g.gain.setValueAtTime(0.0001, now + i * 0.18);
-      g.gain.exponentialRampToValueAtTime(0.2, now + i * 0.18 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.16);
+      g.gain.exponentialRampToValueAtTime(0.2, now + i * 0.18 + 0.16);
       o.start(now + i * 0.18);
       o.stop(now + i * 0.18 + 0.2);
     });
-  } catch (err) {
-    console.warn('[playAlertSound]', err);
+  } catch {
+    try { void ctx.close(); } catch {}
   }
 }

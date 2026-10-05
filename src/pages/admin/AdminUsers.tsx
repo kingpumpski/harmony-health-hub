@@ -12,16 +12,18 @@ const availableRoles = [
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' }, { value: 'system_superuser', label: 'Super Admin' },
 ] as const;
 type RoleValue = string;
-interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; phone: string | null; department: string | null; specialization: string | null; role: string }
-type EditableUser = Omit<DirectoryRow, 'role'>;
+interface FacilityOption { id: string; name: string; facility_code: string; is_active: boolean }
+interface FacilityMembership { facility_id: string; facility_name: string | null; facility_code: string | null; access_scope: string; is_active: boolean; is_active_context: boolean }
+interface DirectoryRow { id: string; email: string | null; first_name: string | null; last_name: string | null; phone: string | null; department: string | null; specialization: string | null; role: string; facilities: FacilityMembership[] }
+type EditableUser = Omit<DirectoryRow, 'role' | 'facilities'>;
 
 export default function AdminUsers() {
-  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
-  const [users, setUsers] = useState<DirectoryRow[]>([]); const [searchEmail, setSearchEmail] = useState('');
+  const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
+  const [users, setUsers] = useState<DirectoryRow[]>([]); const [facilities, setFacilities] = useState<FacilityOption[]>([]); const [searchEmail, setSearchEmail] = useState('');
   const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
-  const [createPhone, setCreatePhone] = useState(''); const [createDepartment, setCreateDepartment] = useState(''); const [createSpecialization, setCreateSpecialization] = useState('');
-  const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false); const [editingUser, setEditingUser] = useState<EditableUser | null>(null); const [savingUser, setSavingUser] = useState(false);
+  const [createPhone, setCreatePhone] = useState(''); const [createDepartment, setCreateDepartment] = useState(''); const [createSpecialization, setCreateSpecialization] = useState(''); const [createFacilityId, setCreateFacilityId] = useState('');
+  const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false); const [editingUser, setEditingUser] = useState<EditableUser | null>(null); const [savingUser, setSavingUser] = useState(false); const [facilityUser, setFacilityUser] = useState<DirectoryRow | null>(null); const [facilitySelection, setFacilitySelection] = useState(''); const [facilityScope, setFacilityScope] = useState('facility'); const [facilityActive, setFacilityActive] = useState(true); const [savingFacility, setSavingFacility] = useState(false);
   const getFunctionError = async (error: unknown, data: unknown, fallback: string) => {
     if (data && typeof data === 'object' && data !== null && 'error' in data) {
       const message = (data as { error?: unknown }).error;
@@ -50,14 +52,37 @@ export default function AdminUsers() {
     setUsers(Array.isArray(data?.users) ? data.users : []);
     setLoading(false);
   };
-  useEffect(() => { if (canManage) void loadDirectory(); }, [canManage]);
+  const loadFacilities = async () => {
+    if (!canManage) return;
+    if (canManageSuperuser) {
+      const { data, error } = await supabase.rpc('platform_list_facilities');
+      if (error) return toast({ title: 'Facility directory unavailable', description: error.message, variant: 'destructive' });
+      setFacilities(Array.isArray(data) ? data : []);
+      return;
+    }
+    const { data: activeContext, error: contextError } = await supabase
+      .from('user_active_facilities')
+      .select('facility_id')
+      .eq('user_id', user?.id ?? '')
+      .maybeSingle();
+    if (contextError || !activeContext?.facility_id) return;
+    const { data, error } = await supabase
+      .from('healthcare_facilities')
+      .select('id,name,facility_code,is_active')
+      .eq('id', activeContext.facility_id)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) return toast({ title: 'Facility context unavailable', description: error.message, variant: 'destructive' });
+    setFacilities(data ? [data as FacilityOption] : []);
+  };
+  useEffect(() => { if (canManage) { void loadDirectory(); void loadFacilities(); } }, [canManage, canManageSuperuser, user?.id]);
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault(); setCreating(true);
-    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { email: createEmail, firstName: createFirstName, lastName: createLastName, phone: createPhone, department: createDepartment, specialization: createSpecialization, role: createRole, onboarding, ...(onboarding === 'password' ? { password: createPassword } : {}) } });
+    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: { email: createEmail, firstName: createFirstName, lastName: createLastName, phone: createPhone, department: createDepartment, specialization: createSpecialization, role: createRole, onboarding, ...(onboarding === 'password' ? { password: createPassword } : {}), ...(canManageSuperuser && createFacilityId ? { facilityId: createFacilityId } : {}) } });
     setCreating(false);
     if (error || data?.error) return toast({ title: 'User creation failed', description: await getFunctionError(error, data, 'Unable to create user'), variant: 'destructive' });
     toast({ title: onboarding === 'invite' ? 'Invitation sent' : 'User created', description: createFirstName + ' ' + createLastName + ' was added as ' + createRole + '.' });
-    setCreateEmail(''); setCreateFirstName(''); setCreateLastName(''); setCreatePhone(''); setCreateDepartment(''); setCreateSpecialization(''); setCreatePassword(''); setCreateRole('patient'); setOnboarding('invite');
+    setCreateEmail(''); setCreateFirstName(''); setCreateLastName(''); setCreatePhone(''); setCreateDepartment(''); setCreateSpecialization(''); setCreatePassword(''); setCreateRole('patient'); setOnboarding('invite'); setCreateFacilityId('');
     void loadDirectory();
   };
   const saveUserProfile = async (e: React.FormEvent) => {
@@ -67,20 +92,39 @@ export default function AdminUsers() {
     if (error || data?.error) return toast({ title: 'Profile correction failed', description: await getFunctionError(error, data, 'Unable to save account information'), variant: 'destructive' });
     setEditingUser(null); toast({ title: 'Account information corrected', description: 'The updated user information has been saved and audited.' }); void loadDirectory();
   };
+  const openFacilityManagement = (row: DirectoryRow) => {
+    setFacilityUser(row);
+    const active = row.facilities.find((item) => item.is_active_context && item.is_active) ?? row.facilities.find((item) => item.is_active);
+    setFacilitySelection(active?.facility_id ?? '');
+    setFacilityScope(active?.access_scope ?? 'facility');
+    setFacilityActive(active?.is_active ?? true);
+  };
+  const saveFacilityAccess = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!facilityUser || !facilitySelection || !canManage) return; setSavingFacility(true);
+    const { error } = await supabase.rpc('platform_set_user_facility_membership', { _user_id: facilityUser.id, _facility_id: facilitySelection, _is_active: facilityActive, _access_scope: facilityScope });
+    if (error) { setSavingFacility(false); return toast({ title: 'Facility membership update failed', description: error.message, variant: 'destructive' }); }
+    if (facilityActive && canManageSuperuser) {
+      const { error: activeError } = await supabase.rpc('platform_set_user_active_facility', { _user_id: facilityUser.id, _facility_id: facilitySelection });
+      if (activeError) { setSavingFacility(false); return toast({ title: 'Active facility update failed', description: activeError.message, variant: 'destructive' }); }
+    }
+    setSavingFacility(false); setFacilityUser(null); toast({ title: 'Facility access updated', description: 'Membership and facility context have been recorded and audited.' }); void loadDirectory();
+  };
+
   const assignRole = async (userId: string, role: RoleValue) => {
-    const { data, error } = await supabase.functions.invoke('admin-create-user', {
-      body: { action: 'update_role', userId, role },
-    });
-    if (error || data?.error) return toast({ title: 'Role update failed', description: await getFunctionError(error, data, 'Unable to update role'), variant: 'destructive' });
+    const { error } = await supabase.rpc('platform_set_user_role', { _user_id: userId, _role: role });
+    if (error) return toast({ title: 'Role update failed', description: error.message, variant: 'destructive' });
     setUsers(current => current.map(row => row.id === userId ? { ...row, role } : row));
     toast({ title: 'Role updated', description: 'Set to ' + role });
     void loadDirectory();
   };
   const promoteByEmail = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!searchEmail.trim()) return;
-    const { data: profile } = await supabase.from('profiles').select('id').eq('email', searchEmail.trim()).maybeSingle();
-    if (!profile) return toast({ title: 'User not found', description: 'Ask the user to sign up first, then assign the role.', variant: 'destructive' });
-    await assignRole(profile.id, newRole); setSearchEmail('');
+    e.preventDefault();
+    const email = searchEmail.trim().toLowerCase();
+    if (!email) return;
+    const target = users.find((row) => (row.email ?? '').toLowerCase() === email);
+    if (!target) return toast({ title: 'User not found in your directory', description: 'The account must already belong to your active facility before its role can be changed.', variant: 'destructive' });
+    await assignRole(target.id, newRole);
+    setSearchEmail('');
   };
   const directoryColumns: RecordColumn<DirectoryRow>[] = [
     {
@@ -95,6 +139,12 @@ export default function AdminUsers() {
       render: (row) => <div><p className="text-sm">{row.department || 'No department'}</p><p className="text-xs text-muted-foreground">{row.specialization || 'No specialization'}</p></div>,
     },
     {
+      key: 'facility',
+      header: 'Facility',
+      hideBelow: 'lg',
+      render: (row) => { const active = row.facilities.find((item) => item.is_active_context && item.is_active); const membership = row.facilities.filter((item) => item.is_active); return <div><p className="text-sm">{active?.facility_name || 'No active facility'}</p><p className="text-xs text-muted-foreground">{membership.length} active membership{membership.length === 1 ? '' : 's'}</p></div>; },
+    },
+    {
       key: 'role',
       header: 'Role',
       render: (row) => <StatusBadge status={availableRoles.find((role) => role.value === row.role)?.label ?? row.role} />,
@@ -104,18 +154,19 @@ export default function AdminUsers() {
       header: 'Actions',
       align: 'right',
       render: (row) => <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-        <button type="button" onClick={() => setEditingUser({ id: row.id, email: row.email, first_name: row.first_name, last_name: row.last_name, phone: row.phone, department: row.department, specialization: row.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button>
+        <button type="button" onClick={() => setEditingUser({ id: row.id, email: row.email, first_name: row.first_name, last_name: row.last_name, phone: row.phone, department: row.department, specialization: row.specialization })} className="btn-secondary inline-flex items-center gap-1 text-xs"><Pencil className="w-3 h-3" />Edit</button>{canManage && <button type="button" onClick={() => openFacilityManagement(row)} className="btn-secondary inline-flex items-center gap-1 text-xs"><Settings className="w-3 h-3" />Facility</button>}
         <select aria-label={`Change role for ${row.first_name || row.last_name || row.email || 'user'}`} value={row.role} onChange={e => void assignRole(row.id, e.target.value)} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary border-none">
-          {availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          {availableRoles.filter(r => canManageSuperuser || !['admin','it_admin','system_superuser'].includes(r.value)).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
       </div>,
     },
   ];
   if (!user) return null;
   return <div className="space-y-6 animate-fade-in">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">Admin User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold">User Management</h1><p className="text-muted-foreground">Multiple onboarding paths: create users directly, send invitations, or let users self-register and assign their role.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background p-3"><ShieldCheck className="w-5 h-5 text-success" /><span className="text-sm text-muted-foreground">Privileged access remains RLS-controlled.</span></div></div>
     {!canManage && <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">You must be an administrator or System Superuser to manage users.</div>}
-    {canManageSuperuser && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm"><b>Platform governance:</b> You can provision System Superuser accounts for platform leadership. Facility staff roles remain governed by their facility administration.</div>}
+    {canManageSuperuser && <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm"><b>Platform governance:</b> You can provision System Superuser accounts and manage cross-facility membership. Facility staff roles remain governed by their facility administration.</div>}
+    {canManage && !canManageSuperuser && <div className="rounded-2xl border border-border bg-muted/20 p-4 text-sm"><b>Facility administration:</b> You can manage users and membership only within your active facility. Broader platform roles and cross-facility access remain restricted.</div>}
     {canManage && <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
       <div className="min-w-0">
         <RecordList
@@ -129,6 +180,13 @@ export default function AdminUsers() {
           isRefreshing={loading}
           emptyState={{ title: 'No users yet.', description: 'No staff or patient accounts are available in the administrative directory.' }}
         />
+        {facilityUser && <form onSubmit={saveFacilityAccess} className="card-medical mt-4 space-y-3 border-t border-border p-5" aria-label="Manage user facility access">
+          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Facility access</h2><p className="text-xs text-muted-foreground">{facilityUser.first_name || ''} {facilityUser.last_name || ''} · {facilityUser.email || ''}</p></div><button type="button" disabled={savingFacility} onClick={() => setFacilityUser(null)} className="btn-secondary inline-flex items-center gap-1 text-xs"><X className="w-3 h-3" />Cancel</button></div>
+          <select value={facilitySelection} onChange={e=>setFacilitySelection(e.target.value)} className="input-medical w-full" required><option value="">Select facility</option>{facilities.filter(f=>f.is_active).map(f=><option key={f.id} value={f.id}>{f.name} ({f.facility_code})</option>)}</select>
+          <select value={facilityScope} onChange={e=>setFacilityScope(e.target.value)} className="input-medical w-full"><option value="facility">Facility</option>{canManageSuperuser && <><option value="district">District</option><option value="regional">Regional</option><option value="national">National</option></>}</select>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={facilityActive} onChange={e=>setFacilityActive(e.target.checked)} /> Active membership; System Superuser may also set the selected active context</label>
+          <button type="submit" disabled={savingFacility || !facilitySelection} className="btn-primary w-full">{savingFacility ? 'Saving…' : 'Save facility access'}</button>
+        </form>}
         {editingUser && <form onSubmit={saveUserProfile} className="card-medical mt-4 grid gap-2 border-t border-border p-5 md:grid-cols-2" aria-label="Edit user account">
           <div className="md:col-span-2 flex items-center justify-between gap-3"><div><h2 className="font-semibold">Edit account information</h2><p className="text-xs text-muted-foreground">Changes are saved through the existing server-authorized account workflow.</p></div><button type="button" disabled={savingUser} onClick={() => setEditingUser(null)} className="btn-secondary inline-flex items-center gap-1 text-xs"><X className="w-3 h-3" />Cancel</button></div>
           <input value={editingUser.first_name ?? ''} onChange={e=>setEditingUser({...editingUser,first_name:e.target.value})} className="input-medical" placeholder="First name" required/>
@@ -147,7 +205,8 @@ export default function AdminUsers() {
             <input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="input-medical w-full" placeholder="Email address" required />
             <input value={createPhone} onChange={e => setCreatePhone(e.target.value)} className="input-medical w-full" placeholder="Phone (optional)" />
             <div className="grid grid-cols-2 gap-2"><input value={createDepartment} onChange={e => setCreateDepartment(e.target.value)} className="input-medical" placeholder="Department" /><input value={createSpecialization} onChange={e => setCreateSpecialization(e.target.value)} className="input-medical" placeholder="Specialization" /></div>
-            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => r.value !== 'system_superuser' || canManageSuperuser).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+            <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="input-medical w-full">{availableRoles.filter(r => canManageSuperuser || !['admin','it_admin','system_superuser'].includes(r.value)).map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+            {canManageSuperuser && <select value={createFacilityId} onChange={e => setCreateFacilityId(e.target.value)} className="input-medical w-full"><option value="">No facility assignment yet</option>{facilities.filter(f=>f.is_active).map(f=><option key={f.id} value={f.id}>{f.name} ({f.facility_code})</option>)}</select>}
             <select value={onboarding} onChange={e => setOnboarding(e.target.value as 'invite' | 'password')} className="input-medical w-full"><option value="invite">Email invitation</option><option value="password">Create with password</option></select>
             {onboarding === 'password' && <input type="password" minLength={8} value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="input-medical w-full" placeholder="Initial password (8+ characters)" required />}
             <button type="submit" disabled={creating} className="btn-primary w-full"><UserPlus className="w-4 h-4" />{creating ? 'Creating…' : onboarding === 'invite' ? 'Create & Send Invitation' : 'Create User'}</button>

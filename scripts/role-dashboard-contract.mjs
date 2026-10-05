@@ -5,6 +5,7 @@ const dashboard=read('src/pages/Dashboard.tsx');
 const permissions=read('src/lib/permissions.ts');
 const migration=read('supabase/migrations/20260926233000_role_dashboard_server_summary.sql');
 const activeRoleMigration=read('supabase/migrations/20260929203000_active_dashboard_role_context.sql');
+const superuserMigration=read('supabase/migrations/20261004270000_add_system_superuser_dashboard_contract.sql');
 const auth=read('src/contexts/AuthContext.tsx');
 
 if (!migration.includes('SECURITY INVOKER')) throw new Error('Dashboard summary must remain RLS-aware');
@@ -13,7 +14,7 @@ if (!activeRoleMigration.includes('get_role_dashboard_summary_for_role(_requeste
 if (!activeRoleMigration.includes('Requested dashboard role is not assigned to the authenticated user')) throw new Error('Active dashboard role must be server-validated');
 if (!activeRoleMigration.includes('REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon')) throw new Error('Active dashboard function must not be executable anonymously');
 if (!activeRoleMigration.includes('GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated')) throw new Error('Active dashboard function must be authenticated-only');
-const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin'];
+const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin','system_superuser'];
 const expected=[
   ['admin','AdminDashboard'],
   ['practitioner','PractitionerDashboard'],
@@ -29,6 +30,7 @@ const expected=[
   ['canteen','CanteenDashboard'],
   ['patient','PatientDashboard'],
   ['it_admin','ITAdminDashboard'],
+  ['system_superuser','SystemSuperuserDashboard'],
 ];
 
 for (const [role,component] of expected) {
@@ -62,17 +64,23 @@ for (const needle of [
   "ELSIF v_role = 'front_desk'",
   "ELSIF v_role = 'canteen'",
   "ELSIF v_role = 'it_admin'",
+  
   "REVOKE ALL ON FUNCTION public.get_role_dashboard_summary() FROM PUBLIC, anon",
   "GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary() TO authenticated"
 ]) {
   if (!migration.includes(needle)) throw new Error(`Dashboard server contract missing: ${needle}`);
 }
+if (!superuserMigration.includes("system_superuser") || !superuserMigration.includes("Registered facilities") || !superuserMigration.includes("get_role_dashboard_summary_for_role(text)")) throw new Error('System Superuser dashboard migration contract missing');
 console.log(`Role dashboard contract passed for ${roles.length} roles`);
 const authSource=read('src/contexts/AuthContext.tsx');
 if (!authSource.includes('activeRoleStorageKey')) throw new Error('Active role session persistence contract missing');
 if (!authSource.includes('roles.includes(persistedRole)')) throw new Error('Persisted active role must be revalidated against assigned roles');
 if (!authSource.includes('sessionStorage.removeItem(activeRoleStorageKey(session.user.id))')) throw new Error('Active role context must clear on logout');
 
+
+const systemSuperuserDashboard = read('src/pages/dashboard/SystemSuperuserDashboard.tsx');
+if (!systemSuperuserDashboard.includes("get_role_dashboard_summary_for_role")) throw new Error('System Superuser dashboard must use the validated role-scoped summary RPC');
+if (!systemSuperuserDashboard.includes("_requested_role: 'system_superuser'")) throw new Error('System Superuser dashboard must request its assigned server role');
 
 const nurse = read('src/pages/dashboard/NurseDashboard.tsx');
 if (!nurse.includes("type InpatientFilter = 'all' | 'critical' | 'stable';")) throw new Error('Nursing dashboard must use the canonical inpatient filter statuses');

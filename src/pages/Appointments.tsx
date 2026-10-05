@@ -133,6 +133,17 @@ export default function Appointments() {
   }, [user?.id]);
 
   const patientMap = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  const appointmentPatient = (appointment: Appointment): Patient | undefined => {
+    if (appointment.patient_first_name || appointment.patient_last_name || appointment.patient_code) {
+      return {
+        id: appointment.patient_id,
+        patient_code: appointment.patient_code ?? '',
+        first_name: appointment.patient_first_name ?? '',
+        last_name: appointment.patient_last_name ?? '',
+      };
+    }
+    return patientMap.get(appointment.patient_id);
+  };
   const clinicianMap = useMemo(() => new Map(clinicians.map((c) => [c.id, c])), [clinicians]);
 
   const todayActive = useMemo(() => {
@@ -202,7 +213,15 @@ export default function Appointments() {
 
   const startEncounter = async (appointment: Appointment) => {
     if (!canClaim) return;
-    if (appointment.attending_officer_id !== currentUserId) {
+    if (appointment.attending_officer_id && appointment.attending_officer_id !== currentUserId) {
+      toast({
+        title: 'Appointment already assigned',
+        description: 'This appointment is assigned to another clinician. Open the patient or wait for the assigned clinician to continue the encounter.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!appointment.attending_officer_id) {
       const claimed = await claim(appointment);
       if (!claimed) return;
       appointment = { ...appointment, attending_officer_id: currentUserId, treatment_status: 'claimed' };
@@ -301,7 +320,7 @@ export default function Appointments() {
         ) : (
           <div className="divide-y divide-border">
             {todayActive.map((appointment) => {
-              const patient = patientMap.get(appointment.patient_id);
+              const patient = appointmentPatient(appointment);
               return (
                 <button
                   key={appointment.id}

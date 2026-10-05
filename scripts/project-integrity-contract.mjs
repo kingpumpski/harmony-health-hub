@@ -14,10 +14,13 @@ for (const token of ["get_user_facilities", "get_current_facility_context", "set
 }
 if (!facilityCleanup.includes("DROP TABLE IF EXISTS public.clinical_facility_reconciliation")) fail("deferred facility reconciliation cleanup must remain versioned");
 
-const encounter = normalizeSql(read("supabase/migrations/20260930020000_encounter_draft_edit_workflow.sql"));
+const encounter = normalizeSql(read("supabase/migrations/20261004253500_canonicalize_encounter_draft_edit_workflow.sql"));
 for (const token of [
   "FOR UPDATE",
   "status in ('completed','cancelled')",
+  "assert_patient_facility_context",
+  "system_superuser",
+  "set search_path = ''",
   "GRANT EXECUTE ON FUNCTION public.update_encounter_draft_workflow",
   "REVOKE ALL ON FUNCTION public.update_encounter_draft_workflow"
 ]) {

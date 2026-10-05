@@ -23,16 +23,16 @@ export async function requireAdmin(service: SupabaseClient, token: string) {
   const { data: { user: caller }, error: callerError } = await service.auth.getUser(token);
   if (callerError || !caller) throw new Error('Invalid authentication');
 
-  const { data: callerRole, error: roleError } = await service
+  const { data: callerRoles, error: roleError } = await service
     .from('user_roles')
     .select('role')
     .eq('user_id', caller.id)
-    .in('role', ['admin','system_superuser'])
-    .order('role', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .in('role', ['admin','it_admin','system_superuser']);
   if (roleError) throw new Error('Unable to verify administrator access');
-  if (!callerRole) throw new Error('Administrator or System Superuser access required');
+  const callerRole = (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'system_superuser')
+    ?? (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'it_admin')
+    ?? (callerRoles ?? []).map((row) => String(row.role)).find((role) => role === 'admin');
+  if (!callerRole) throw new Error('Administrator, IT Admin or System Superuser access required');
 
   return caller;
 }

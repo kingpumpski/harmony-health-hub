@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
+import { searchPatientDirectory } from "@/lib/patientDirectory";
 import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
 
 interface Patient {
@@ -271,11 +272,14 @@ export default function Encounters() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: pts }, { data: encs }, { data: staff }] = await Promise.all([
-      supabase.from("patients").select("id, first_name, last_name, patient_code").order("created_at", { ascending: false }).limit(200),
-      supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+      const [{ data: pts, error: patientError }, { data: encs, error: encounterError }, { data: staff, error: staffError }] = await Promise.all([
+      searchPatientDirectory('', 200),
+      db.rpc("get_encounter_worklist", { _limit: 50 }, { get: true }),
       db.rpc("get_appointment_clinicians", {}, { get: true }),
     ]);
+      if (patientError) throw patientError;
+      if (encounterError) throw encounterError;
+      if (staffError) throw staffError;
       setPatients((pts ?? []) as Patient[]);
       setClinicians((staff ?? []) as Clinician[]);
       setEncounters((encs ?? []) as Encounter[]);

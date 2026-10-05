@@ -15,6 +15,7 @@ import RadiologistDashboard from './dashboard/RadiologistDashboard';
 import RadiologyTechnicianDashboard from './dashboard/RadiologyTechnicianDashboard';
 import PatientDashboard from './dashboard/PatientDashboard';
 import ITAdminDashboard from './dashboard/ITAdminDashboard';
+import SystemSuperuserDashboard from './dashboard/SystemSuperuserDashboard';
 import { AlertTriangle } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -34,6 +35,7 @@ export default function Dashboard(){
     case'canteen':dashboard=<CanteenDashboard/>;break;
     case'patient':dashboard=<PatientDashboard/>;break;
     case'it_admin':dashboard=<ITAdminDashboard/>;break;
+    case'system_superuser':dashboard=<SystemSuperuserDashboard/>;break;
     case'front_desk':dashboard=<FrontDeskDashboard/>;break;
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
   }

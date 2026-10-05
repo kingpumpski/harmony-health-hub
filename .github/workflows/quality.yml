@@ -107,6 +107,42 @@ jobs:
       - name: Encounter facility-context reassertion contract
         run: npm run test:encounter-facility-context-reassertion
 
+      - name: Encounter workflow workspace facility contract
+        run: npm run test:encounter-workflow-workspace-facility
+
+      - name: Encounter worklist RPC contract
+        run: npm run test:encounter-worklist-rpc
+
+      - name: Encounter clinical context facility contract
+        run: npm run test:encounter-clinical-context-facility
+
+      - name: Encounter clerking facility contract
+        run: npm run test:encounter-clerking-facility
+
+      - name: Encounter lifecycle facility contract
+        run: npm run test:encounter-lifecycle-facility
+
+      - name: Encounter admission and order facility contract
+        run: npm run test:encounter-admission-order-facility
+
+      - name: Direct patient order facility contract
+        run: npm run test:direct-patient-order-facility
+
+      - name: Service order and invoice facility contract
+        run: npm run test:service-order-invoice-facility
+
+      - name: Billing workflow facility contract
+        run: npm run test:billing-workflow-facility
+
+      - name: Insurance claim facility contract
+        run: npm run test:insurance-claim-facility
+
+      - name: Patient, emergency and imaging facility contract
+        run: npm run test:patient-emergency-imaging-facility
+
+      - name: Encounter diagnosis facility contract
+        run: npm run test:encounter-diagnosis-facility
+
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 

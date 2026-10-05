@@ -11,7 +11,8 @@ if (sidebar.includes('roleNavGroups[user.role] ?? roleNavGroups.patient')) {
 }
 if (!sidebar.includes('const unsupportedRole = !roleGroups;')) throw new Error('Sidebar must explicitly detect unsupported roles');
 if (!sidebar.includes('Navigation is intentionally restricted')) throw new Error('Unsupported-role navigation must fail closed with an explicit message');
-if (!sidebar.includes('roleNavGroups[user.role]')) throw new Error('Sidebar must resolve navigation from the assigned role');
+if (!sidebar.includes("const navigationRole = user.role === 'it_admin' ? 'admin' : user.role;")) throw new Error("Sidebar must normalize IT Admin to the administrative navigation set");
+if (!sidebar.includes('roleNavGroups[navigationRole]')) throw new Error('Sidebar must resolve navigation from the effective administrative role');
 
 const requiredLinks = [
   ["canteen", "/orders", "orders"],

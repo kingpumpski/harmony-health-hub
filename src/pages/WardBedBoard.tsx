@@ -32,7 +32,7 @@ type Bed = {
 type Patient = { id: string; patient_code: string; first_name: string; last_name: string };
 type Facility = { id: string; name: string; facility_code: string | null; facility_type?: string | null };
 
-const managementRoles = ['admin', 'it_admin'];
+const managementRoles = ['admin', 'it_admin', 'system_superuser'];
 
 export default function WardBedBoard() {
   const { user } = useAuth();
@@ -57,6 +57,7 @@ export default function WardBedBoard() {
       return;
     }
     const payload = (workspace.data ?? {}) as { wards?: Ward[]; beds?: Bed[]; facilities?: Facility[] };
+    setPatients((patientsResult.data ?? []) as Patient[]);
     setWards(payload.wards ?? []);
     setBeds(payload.beds ?? []);
     setFacilities(payload.facilities ?? []);
@@ -195,9 +196,9 @@ export default function WardBedBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" />Ward configuration</h2>
-              <p className="text-xs text-muted-foreground">Admin and IT Admin control the structural ward/bed catalogue. Clinical users operate configured capacity without creating structural records.</p>
+              <p className="text-xs text-muted-foreground">Admin, IT Admin and System Superuser control the structural ward/bed catalogue. Clinical users operate configured capacity without creating structural records.</p>
             </div>
-            <span className="rounded-full bg-muted px-3 py-1 text-xs">Admin / IT Admin</span>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs">Admin / IT Admin / System Superuser</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <label className="text-xs">Ward name<input aria-label="Ward name" placeholder="Ward name" value={ward.name} onChange={(e) => setWard({ ...ward, name: e.target.value })} className="input-medical mt-1 w-full" /></label>

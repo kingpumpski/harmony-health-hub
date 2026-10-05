@@ -14,7 +14,7 @@
     "test:offline-replay": "node scripts/offline-replay-security-contract.mjs",
     "test:authorization-boundaries": "node scripts/authorization-boundary-regression.mjs",
     "test:security-best-practices": "node scripts/security-best-practices-audit.mjs",
-    "test": "npm run test:encounter-facility-context-reassertion && npm run test:pharmacy-global-catalogue-safety && npm run test:pharmacy-workspace-ui && npm run test:pharmacy-inventory-management && npm run test:clinical-results-production && npm run test:appointment-scheduling-facility && npm run test:appointment-active-facility-workflow && npm run test:test-mode-facility-isolation && npm run test:test-facility-fixture && npm run test:patient-hub-facility-context && npm run test:patient-hub-readonly-rpc && npm run test:patient-hub-read-rpc-get-compatibility && npm run test:patient-hub-section-load-errors && npm run test:patient-hub-encounter-context && npm run test:contracts && npm run test:clinical-report-access && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:project-integrity && npm run test:security-best-practices && npm run test:legacy-lineage-security && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:role-dashboards && npm run test:encounter-worklist-ui && npm run test:radiologist-dashboard-repair && npm run test:superadmin-facility-context && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation && npm run test:authenticated-security-definer-exposure && npm run test:new-security-definer-authorization && npm run test:rls-helper-performance",
+    "test": "npm run test:encounter-facility-context-reassertion && npm run test:pharmacy-global-catalogue-safety && npm run test:pharmacy-workspace-ui && npm run test:pharmacy-inventory-management && npm run test:clinical-results-production && npm run test:appointment-scheduling-facility && npm run test:appointment-active-facility-workflow && npm run test:test-mode-facility-isolation && npm run test:test-facility-fixture && npm run test:patient-hub-facility-context && npm run test:patient-hub-readonly-rpc && npm run test:patient-hub-read-rpc-get-compatibility && npm run test:patient-hub-section-load-errors && npm run test:patient-hub-encounter-context && npm run test:contracts && npm run test:clinical-report-access && npm run test:migration-filename-uniqueness && npm run test:migration-workflow-safety && npm run test:migration-workflow-concurrency && npm run test:offline-replay && npm run test:authorization-boundaries && npm run test:function-privilege && npm run test:function-privilege-audit && npm run test:default-privilege-audit && npm run test:authorization-high-risk && npm run test:authorization-manifest-reconciliation && npm run test:authorization-privilege-manifest && npm run test:default-function-execute && npm run test:project-integrity && npm run test:security-best-practices && npm run test:legacy-lineage-security && npm run test:security-definer-review && npm run test:index-lifecycle && npm run test:role-dashboards && npm run test:encounter-worklist-ui && npm run test:radiologist-dashboard-repair && npm run test:superadmin-facility-context && npm run test:sidebar-roles && npm run test:triage && npm run test:clinical-references && npm run test:public-view-security && npm run test:security-definer-creation && npm run test:authenticated-security-definer-exposure && npm run test:new-security-definer-authorization && npm run test:rls-helper-performance && npm run test:live-test-mode-privilege-audit && npm run test:legacy-health-api && npm run test:patient-emergency-imaging-facility && npm run test:patient-workflow-admin-roles",
     "verify:local": "node scripts/verify-local-repository.mjs",
     "preview": "vite preview",
     "test:spreadsheet-parser": "node scripts/spreadsheet-parser-regression.mjs",
@@ -59,7 +59,23 @@
     "test:pharmacy-workspace-ui": "node scripts/pharmacy-workspace-ui-contract.mjs && npm run test:pharmacy-global-catalogue-safety",
     "test:pharmacy-global-catalogue-safety": "node scripts/pharmacy-global-catalogue-safety-contract.mjs",
     "test:patient-hub-read-rpc-get-compatibility": "node scripts/patient-hub-read-rpc-get-compatibility-contract.mjs",
-    "test:encounter-facility-context-reassertion": "node scripts/encounter-facility-context-reassertion-contract.mjs"
+    "test:encounter-facility-context-reassertion": "node scripts/encounter-facility-context-reassertion-contract.mjs",
+    "test:encounter-workflow-workspace-facility": "node scripts/encounter-workflow-workspace-facility-contract.mjs",
+    "test:encounter-worklist-rpc": "node scripts/encounter-worklist-rpc-contract.mjs",
+    "test:encounter-clinical-context-facility": "node scripts/encounter-clinical-context-facility-contract.mjs",
+    "test:live-test-mode-privilege-audit": "node scripts/live-test-mode-privilege-audit-contract.mjs",
+    "test:legacy-health-api": "node scripts/legacy-health-api-contract.mjs",
+    "test:encounter-clerking-facility": "node scripts/encounter-clerking-facility-contract.mjs",
+    "test:encounter-diagnosis-facility": "node scripts/encounter-diagnosis-facility-contract.mjs",
+    "test:encounter-lifecycle-facility": "node scripts/encounter-lifecycle-facility-contract.mjs",
+    "test:encounter-admission-order-facility": "node scripts/encounter-admission-order-facility-contract.mjs",
+    "test:direct-patient-order-facility": "node scripts/direct-patient-order-facility-contract.mjs",
+    "test:service-order-invoice-facility": "node scripts/service-order-invoice-facility-contract.mjs",
+    "test:billing-workflow-facility": "node scripts/billing-workflow-facility-contract.mjs",
+    "test:insurance-claim-facility": "node scripts/insurance-claim-facility-contract.mjs",
+    "test:patient-emergency-imaging-facility": "node scripts/patient-emergency-imaging-facility-contract.mjs",
+    "test:patient-workflow-admin-roles": "node supabase/tests/database/patient_workflow_field_authorization_contract.mjs",
+    "test:migration-filename-uniqueness": "node scripts/migration-filename-uniqueness-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -136,6 +152,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.21"
   }
 }
