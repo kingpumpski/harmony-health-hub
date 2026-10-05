@@ -78,7 +78,7 @@ export async function searchWorkspaceData(query:string, roles:string[] = []):Pro
   const queries: Promise<GlobalSearchResult[]>[] = [];
   if (canSearchPatients) {
     queries.push(runQuery(
-      supabase.from('patients').select('id,patient_code,first_name,last_name,phone,insurance_number').or(`patient_code.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},phone.ilike.${term},insurance_number.ilike.${term}`).limit(8),
+      supabase.rpc('get_patient_directory', { _query: term, _limit: 8 }),
       (rows:any[])=>rows.map(p=>({id:p.id,kind:'patient',title:patientLabel(p),subtitle:[p.phone,p.insurance_number].filter(Boolean).join(' · ')||'Patient record',href:`/patients/${p.id}`,score:70}))
     ));
   }
