@@ -68,4 +68,10 @@ if (!wardDef.includes("v_role NOT IN ('admin','it_admin','system_superuser','pra
   throw new Error('Ward workspace role parity is incomplete');
 }
 
+for (const [name, source] of [['Sidebar', sidebar], ['GlobalWorkspaceSearch', search]]) {
+  if (source.includes('Clinical Operation')) {
+    throw new Error(name + ' must not expose the retired Clinical Operation label');
+  }
+}
+
 console.log('Inpatient runtime workspace and Healthcare navigation contracts passed.');
