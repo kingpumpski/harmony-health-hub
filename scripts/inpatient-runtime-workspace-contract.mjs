@@ -21,7 +21,7 @@ for (const [name, source, needles] of [
   ]],
   ['Sidebar', sidebar, [
     "item(Stethoscope, 'Healthcare', '/clinical-operations'",
-    "p className="truncate text-xs font-medium">Healthcare</p>",
+    'Healthcare',
   ]],
   ['GlobalWorkspaceSearch', search, [
     "title:'Healthcare'",
