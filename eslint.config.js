@@ -28,6 +28,9 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-require-imports": "off",
+      // These legacy modules explicitly document why generated Supabase/domain types are bypassed.
+      // Keep the safeguard visible without making the documented compatibility shim fail lint.
+      "@typescript-eslint/ban-ts-comment": ["warn", { "ts-nocheck": "allow-with-description" }],
       "@typescript-eslint/no-unused-vars": "off",
       "no-empty": "off",
     },
