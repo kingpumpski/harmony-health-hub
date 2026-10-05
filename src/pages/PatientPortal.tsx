@@ -14,6 +14,7 @@ export default function PatientPortal() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [clinicalSnapshot, setClinicalSnapshot] = useState<any>(null);
   const [requesting, setRequesting] = useState(false);
 
   const loadReports = async () => {
@@ -27,6 +28,10 @@ export default function PatientPortal() {
     setSessions(data.video_sessions ?? []);
     setInvoices(data.invoices ?? []);
     setReports(data.reports ?? []);
+    if (data.patient?.id) {
+      const { data: snapshot } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: data.patient.id });
+      setClinicalSnapshot(snapshot ?? null);
+    }
     return data;
   };
 
@@ -96,6 +101,15 @@ export default function PatientPortal() {
           <p className="text-xs uppercase text-muted-foreground">Patient ID</p>
           <h2 className="text-xl font-semibold">{patient.patient_code}</h2>
           <p className="text-sm">{patient.first_name} {patient.last_name} · {patient.email}</p>
+        </div>
+      )}
+
+      {patient && (
+        <div className="card-medical p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> My Medical Records</h3><p className="text-sm text-muted-foreground mt-1">Your encounters, diagnoses, laboratory results, radiology reports, medicines, vitals, admissions and documents stay accessible through your portal.</p><p className="text-xs text-muted-foreground mt-2">{(clinicalSnapshot?.encounters?.length ?? 0)} encounters · {(clinicalSnapshot?.labs?.length ?? 0)} lab results · {(clinicalSnapshot?.imaging?.length ?? 0)} radiology reports · {(clinicalSnapshot?.prescriptions?.length ?? 0)} prescriptions</p></div>
+            <Link to="/records" className="btn-primary inline-flex items-center justify-center gap-2">Open Medical Records</Link>
+          </div>
         </div>
       )}
 
