@@ -416,16 +416,16 @@ BEGIN
   SELECT a.id INTO v_existing
   FROM public.appointments a
   WHERE a.patient_id=v_ref.patient_id AND a.scheduled_at=v_ref.appointment_date
-    AND coalesce(a.department,'')=coalesce(v_ref.specialty,v_ref.destination,'specialist')
-    AND coalesce(a.reason,'')=coalesce(v_ref.reason,'')
+    AND coalesce(a.department,'')=CASE WHEN v_ref.referral_type='review' THEN 'Review' ELSE coalesce(v_ref.specialty,v_ref.destination,'specialist') END
+    AND coalesce(a.reason,'')=CASE WHEN v_ref.referral_type='review' THEN 'Review: '||coalesce(v_ref.reason,'Follow-up review') ELSE coalesce(v_ref.reason,'') END
     AND a.status NOT IN ('cancelled','no_show')
   ORDER BY a.created_at DESC LIMIT 1;
 
   IF v_existing IS NULL THEN
     SELECT id INTO v_appointment_id FROM public.create_appointment_workflow(
       v_ref.patient_id,v_ref.appointment_date,
-      coalesce(nullif(trim(v_ref.specialty),''),nullif(trim(v_ref.destination),''),'specialist'),
-      v_ref.reason
+      CASE WHEN v_ref.referral_type='review' THEN 'Review' ELSE coalesce(nullif(trim(v_ref.specialty),''),nullif(trim(v_ref.destination),''),'specialist') END,
+      CASE WHEN v_ref.referral_type='review' THEN 'Review: '||coalesce(v_ref.reason,'Follow-up review') ELSE v_ref.reason END
     );
   ELSE
     v_appointment_id:=v_existing;
