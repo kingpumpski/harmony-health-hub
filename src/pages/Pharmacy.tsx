@@ -63,6 +63,7 @@ export default function Pharmacy() {
   const [expandedPosId, setExpandedPosId] = useState<string | null>(null);
   const [prescriptionColumns, setPrescriptionColumns] = useState({ medication: false, dosage: false, status: false });
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const inventoryFormRef = useRef<HTMLFormElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,6 +126,7 @@ export default function Pharmacy() {
   };
   const editInventoryItem = (item: InventoryItem) => {
     setEditingInventoryId(item.id);
+    setTab('inventory');
     setInventoryForm({
       drug_name: item.drug_name ?? '', brand_name: item.brand_name ?? '', generic_name: item.generic_name ?? '', category: item.category ?? 'Uncategorized',
       strength: item.strength ?? '', form: item.form ?? '', supplier: item.supplier ?? '', batch_number: item.batch_number ?? '',
@@ -132,6 +134,7 @@ export default function Pharmacy() {
       reorder_level: Number(item.reorder_level ?? 0), unit_price: Number(item.unit_price ?? 0),
       nhis_patient_price: Number(item.nhis_patient_price ?? 0), nhis_claim_amount: Number(item.nhis_claim_amount ?? 0),
     });
+    window.requestAnimationFrame(() => inventoryFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   const saveInventory = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -342,7 +345,7 @@ export default function Pharmacy() {
           {tab === 'inventory' && (
             <div>
               <div className="border-b border-border p-5">
-                {canCreateItems && <form onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                {canCreateItems && <form ref={inventoryFormRef} onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {(['drug_name', 'brand_name', 'generic_name', 'category', 'strength', 'form', 'supplier', 'batch_number', 'barcode', 'expiry_date'] as const).map((field) => (
                     <div key={field}><label htmlFor={`inventory-${field}`} className="text-xs font-semibold block capitalize">{field === 'category' ? 'Global category (shared across facilities)' : field.replaceAll('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} disabled={Boolean(editingInventoryId) && ['drug_name', 'generic_name', 'strength', 'form'].includes(field)} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} placeholder={field === 'drug_name' ? 'e.g., Amoxicillin' : field === 'generic_name' ? 'e.g., Amoxicillin trihydrate' : field === 'category' ? 'e.g., Antibiotic' : field === 'strength' ? 'e.g., 500 mg' : field === 'form' ? 'e.g., Capsule' : field === 'barcode' ? 'Scan or enter barcode' : `Enter ${field.replaceAll('_', ' ')}`} className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
                   ))}
