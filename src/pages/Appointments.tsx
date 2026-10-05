@@ -72,7 +72,9 @@ function workflowErrorMessage(error: unknown): string {
   return message || 'The requested workflow action could not be completed.';
 }
 
-export default function Appointments() {
+export default function Appointments() 
+  if (user?.roles?.includes('patient')) return <PatientAppointments />;
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -435,4 +437,42 @@ export default function Appointments() {
       )}
     </div>
   );
+}
+
+function PatientAppointments() {
+  const [patient, setPatient] = useState<any>(null);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [when, setWhen] = useState(new Date(Date.now()+24*60*60*1000).toISOString().slice(0,16));
+  const [department, setDepartment] = useState('Clinical Consultation');
+  const [reason, setReason] = useState('');
+
+  const load = async () => {
+    const { data: identity } = await supabase.rpc('get_patient_portal_identity');
+    const p = Array.isArray(identity) ? identity[0] : identity;
+    if (!p) return;
+    const { data, error } = await supabase.rpc('get_patient_appointments', { _patient_id: p.id, _limit: 100 });
+    if (!error) { setPatient(p); setAppointments(Array.isArray(data) ? data : []); }
+  };
+  useEffect(() => { void load(); }, []);
+
+  const request = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!patient) return;
+    const { error } = await supabase.rpc('create_patient_appointment', {
+      _patient_id: patient.id, _scheduled_at: new Date(when).toISOString(), _department: department, _reason: reason.trim() || null,
+    });
+    if (error) {
+      toast({ title: 'Unable to submit appointment request', description: 'Service temporarily unavailable. Please try again later.' });
+      return;
+    }
+    toast({ title: 'Appointment request submitted', description: 'Your facility will review the requested time.' });
+    setOpen(false); setReason(''); void load();
+  };
+
+  return <div className="space-y-6 animate-fade-in">
+    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Calendar className="w-6 h-6 text-primary"/> My Appointments</h1><p className="text-muted-foreground">View your appointments and request a new one.</p></div><button className="btn-primary inline-flex items-center gap-2" onClick={()=>setOpen(true)}><Plus className="w-4 h-4"/> Request Appointment</button></div>
+    <div className="card-medical p-5"><div className="space-y-3">{appointments.length ? appointments.map(a=><div key={a.id} className="rounded-xl border border-border p-4"><div className="flex justify-between gap-3"><div><p className="font-medium">{new Date(a.scheduled_at).toLocaleString()}</p><p className="text-sm text-muted-foreground">{a.department || 'Clinical Consultation'}{a.reason ? ` · ${a.reason}` : ''}</p></div><span className="text-xs rounded-full bg-info/15 px-2 py-1">{a.status}</span></div></div>) : <p className="text-sm text-muted-foreground">You have no appointments. Request one here.</p>}</div></div>
+    {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request Appointment</h2><input required type="datetime-local" min={new Date().toISOString().slice(0,16)} value={when} onChange={e=>setWhen(e.target.value)} className="input-medical w-full"/><select value={department} onChange={e=>setDepartment(e.target.value)} className="input-medical w-full"><option>Clinical Consultation</option><option>Specialist Consultation</option><option>Laboratory</option><option>Radiology</option><option>Maternal Care</option></select><textarea value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-24" placeholder="Reason for the visit (optional)"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary">Submit request</button></div></form></div>}
+  </div>;
 }
