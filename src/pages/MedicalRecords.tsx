@@ -8,9 +8,8 @@ import PatientAvatar from '@/components/patients/PatientAvatar';
 
 interface Patient { id: string; patient_code: string; first_name: string; last_name: string; phone: string | null; status: string | null }
 
-export default function MedicalRecords() {
-  const { user } = useAuth();
-  if (user?.roles?.includes('patient')) return <PatientMedicalRecords />;
+function StaffMedicalRecords() {
+
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [query, setQuery] = useState('');
@@ -99,3 +98,5 @@ function PatientMedicalRecords() {
   const section = (title: string, value: any) => <div className="card-medical p-5"><h2 className="font-semibold mb-3">{title}</h2>{Array.isArray(value) && value.length ? <div className="space-y-2">{value.map((x:any,i:number)=><pre key={x.id||i} className="text-xs whitespace-pre-wrap rounded-lg bg-muted/40 p-3">{JSON.stringify(x,null,2)}</pre>)}</div> : <p className="text-sm text-muted-foreground">No records available.</p>}</div>;
   return <div className="space-y-6 animate-fade-in"><div><h1 className="text-2xl font-heading font-bold">Medical Records</h1><p className="text-muted-foreground">Read-only access to your available clinical records.</p></div>{loading ? <p className="text-sm text-muted-foreground">Loading medical records…</p> : snapshot ? <div className="grid gap-6">{section('Laboratory results',snapshot.lab_results||snapshot.labs)}{section('Radiology reports',snapshot.radiology_reports||snapshot.imaging)}{section('Clinical notes',snapshot.encounters||snapshot.clinical_notes)}</div> : <div className="card-medical p-5"><p className="text-sm text-muted-foreground">Your medical records are temporarily unavailable.</p></div>}</div>;
 }
+
+export default function MedicalRecords() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientMedicalRecords /> : <StaffMedicalRecords />; }
