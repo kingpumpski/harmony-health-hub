@@ -452,4 +452,6 @@ $function$;
 REVOKE ALL ON FUNCTION public.schedule_patient_referral_workflow(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.schedule_patient_referral_workflow(uuid) TO authenticated;
 
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
