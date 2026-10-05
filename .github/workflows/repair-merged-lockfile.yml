@@ -1,0 +1,30 @@
+name: Repair merged dependency lockfile
+
+on:
+  push:
+    branches:
+      - fix/post-merge-lockfile-reconciliation
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Regenerate npm lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          node -e "const p=require('./package.json'); const l=require('./package-lock.json'); for (const [k,v] of Object.entries({...p.dependencies,...p.devDependencies})) { if (l.packages[''].dependencies?.[k] !== v && l.packages[''].devDependencies?.[k] !== v) throw new Error('lock mismatch: '+k+' '+v); }"
+          git rm -f .github/workflows/repair-merged-lockfile.yml
+          git add package-lock.json package.json
+          git commit -m "fix: reconcile npm lockfile with merged dependencies"
+          git push origin HEAD:fix/post-merge-lockfile-reconciliation
