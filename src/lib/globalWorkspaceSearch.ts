@@ -8,6 +8,7 @@ type SearchModule = { title: string; description: string; href: string; keywords
 
 const CLINICAL_ROLES = ['practitioner','nurse','midwife','specialist_nurse','radiologist','radiology_technician','lab_technician'];
 const ACCOUNTING_ROLES = ['accountant'];
+const DIRECTORY_ROLES = [...CLINICAL_ROLES, ...ACCOUNTING_ROLES, 'front_desk', 'canteen'];
 const MODULES: SearchModule[] = [
   { title:'Dashboard', description:'Clinical and operational command center', href:'/dashboard', keywords:['home','command center','worklist','counters'] },
   { title:'Patients', description:'Patient registration, search and longitudinal records', href:'/patients', keywords:['patient','person','medical record','empi','registration'] },
@@ -67,7 +68,7 @@ export async function searchWorkspaceData(query:string, roles:string[] = []):Pro
   const q=escapeLike(query.trim()); if(!q || q.length < 2) return [];
   const term=`%${q}%`;
   const isAdmin = roles.includes('admin');
-  const canSearchPatients = isAdmin || roles.includes('patient') || hasAnyRole(roles, [...CLINICAL_ROLES, ...ACCOUNTING_ROLES]);
+  const canSearchPatients = isAdmin || hasAnyRole(roles, DIRECTORY_ROLES);
   const canSearchClinical = isAdmin || hasAnyRole(roles, CLINICAL_ROLES);
   const canSearchDocuments = isAdmin || hasAnyRole(roles, [...CLINICAL_ROLES, ...ACCOUNTING_ROLES]);
   const canSearchOutsideLab = isAdmin || hasAnyRole(roles, ['practitioner','nurse','midwife','specialist_nurse','lab_technician']);
@@ -78,7 +79,7 @@ export async function searchWorkspaceData(query:string, roles:string[] = []):Pro
   const queries: Promise<GlobalSearchResult[]>[] = [];
   if (canSearchPatients) {
     queries.push(runQuery(
-      supabase.from('patients').select('id,patient_code,first_name,last_name,phone,insurance_number').or(`patient_code.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},phone.ilike.${term},insurance_number.ilike.${term}`).limit(8),
+      supabase.rpc('get_patient_directory', { _query: term, _limit: 8 }),
       (rows:any[])=>rows.map(p=>({id:p.id,kind:'patient',title:patientLabel(p),subtitle:[p.phone,p.insurance_number].filter(Boolean).join(' · ')||'Patient record',href:`/patients/${p.id}`,score:70}))
     ));
   }

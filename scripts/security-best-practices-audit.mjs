@@ -53,24 +53,29 @@ for (const file of files) {
 }
 
 // Audit the effective migration state, not every historical snapshot. A later
-// ALTER FUNCTION can safely add search_path to an earlier SECURITY DEFINER.
+// CREATE OR REPLACE FUNCTION or ALTER FUNCTION supersedes an earlier declaration.
 const definitions = [
   ...normalizedSql.matchAll(
-    /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z0-9_]+)\s*\([\s\S]*?\)\s*returns[\s\S]*?security\s+definer/gi,
+    /create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.([a-z0-9_]+)\\s*\\([\\s\\S]*?\\)\\s*returns[\\s\\S]*?security\\s+definer/gi,
   ),
 ];
+
+const latestDefinitions = new Map();
 for (const match of definitions) {
-  const functionName = match[1];
+  latestDefinitions.set(match[1], match);
+}
+
+for (const [functionName, match] of latestDefinitions) {
   const definitionIndex = match.index ?? 0;
   const remainder = normalizedSql.slice(definitionIndex);
   const nextFunction = remainder.search(
-    /create\s+(?:or\s+replace\s+)?function\s+public\./i,
+    /create\\s+(?:or\\s+replace\\s+)?function\\s+public\\./i,
   );
   const block = nextFunction > 0 ? remainder.slice(0, nextFunction) : remainder;
-  const hasInlineSearchPath = /set\s+search_path\s*=/i.test(block);
+  const hasInlineSearchPath = /set\\s+search_path\\s*=/i.test(block);
   const overridePattern = new RegExp(
-    "alter\\s+function\\s+public\\." + functionName +
-      "\\b[\s\S]*?set\\s+search_path\\s*=",
+    "alter\\\\s+function\\\\s+public\\\\." + functionName +
+      "\\\\b[\\\\s\\\\S]*?set\\\\s+search_path\\\\s*=",
     "i",
   );
   const hasLaterOverride = overridePattern.test(normalizedSql.slice(definitionIndex));

@@ -8,7 +8,8 @@ import PatientAvatar from '@/components/patients/PatientAvatar';
 
 interface Patient { id: string; patient_code: string; first_name: string; last_name: string; phone: string | null; status: string | null }
 
-export default function MedicalRecords() {
+function StaffMedicalRecords() {
+
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [query, setQuery] = useState('');
@@ -82,3 +83,20 @@ export default function MedicalRecords() {
     </div>
   );
 }
+function PatientMedicalRecords() {
+  const [snapshot, setSnapshot] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data: identity } = await supabase.rpc('get_patient_portal_identity');
+      const p = Array.isArray(identity) ? identity[0] : identity;
+      if (!p) { setLoading(false); return; }
+      const { data } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id });
+      setSnapshot(data ?? null); setLoading(false);
+    })();
+  }, []);
+  const section = (title: string, value: any) => <div className="card-medical p-5"><h2 className="font-semibold mb-3">{title}</h2>{Array.isArray(value) && value.length ? <div className="space-y-2">{value.map((x:any,i:number)=><div key={x.id||i} className="rounded-lg border border-border p-3 text-sm"><div className="font-medium">{x.test_name || x.exam_name || x.title || x.name || title}</div><div className="text-muted-foreground">{x.result || x.findings || x.summary || x.notes || x.clinical_notes || x.status || 'Record available'}</div>{x.created_at && <div className="text-xs text-muted-foreground mt-1">{new Date(x.created_at).toLocaleString()}</div>}</div>)}</div> : <p className="text-sm text-muted-foreground">No records available.</p>}</div>;
+  return <div className="space-y-6 animate-fade-in"><div><h1 className="text-2xl font-heading font-bold">Medical Records</h1><p className="text-muted-foreground">Read-only access to your available clinical records.</p></div>{loading ? <p className="text-sm text-muted-foreground">Loading medical records…</p> : snapshot ? <div className="grid gap-6">{section('Laboratory results',snapshot.lab_results||snapshot.labs)}{section('Radiology reports',snapshot.radiology_reports||snapshot.imaging)}{section('Clinical notes',snapshot.encounters||snapshot.clinical_notes)}</div> : <div className="card-medical p-5"><p className="text-sm text-muted-foreground">Your medical records are temporarily unavailable.</p></div>}</div>;
+}
+
+export default function MedicalRecords() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientMedicalRecords /> : <StaffMedicalRecords />; }

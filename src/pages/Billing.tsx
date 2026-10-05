@@ -38,7 +38,7 @@ const amountInWords = (value: number): string => {
 const categoryLabel: Record<string, string> = { consultation: 'Consultation', lab: 'Laboratory', imaging: 'Diagnostic imaging', pharmacy: 'Pharmacy / drugs', ward: 'Accommodation', feeding: 'Feeding', procedure: 'Medical service' };
 const activeStatuses = new Set(['released', 'in_progress', 'completed']);
 
-export default function Billing() {
+function StaffBilling() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const canViewClaims = user?.roles?.some((role) => role === 'admin' || role === 'accountant') ?? false;
@@ -75,7 +75,7 @@ export default function Billing() {
   }, []);
 
   const loadPatients = useCallback(async () => {
-    const { data, error } = await supabase.from('patients').select('id,first_name,last_name,patient_code,membership_type,membership_expires_at,insurance_provider,insurance_number').order('created_at', { ascending: false }).limit(1000);
+    const { data, error } = await supabase.rpc('get_patient_directory', { _limit: 1000 });
     if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]);
     const { data: t } = await supabase.from('service_tariffs').select('id,service_code,service_name,department,unit,amount,active').eq('active', true).order('service_name');
     setTariffs((t ?? []) as Tariff[]);
@@ -309,3 +309,24 @@ export default function Billing() {
     </>
   );
 }
+
+function PatientBilling() {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.rpc('get_patient_invoice_summary', { _limit: 100 });
+      if (!error) setInvoices(Array.isArray(data) ? data : []);
+      setLoading(false);
+    })();
+  }, []);
+  const payNow = () => toast.info('Online payment is not configured for this facility yet. Your invoice remains available for payment through the facility billing channel.');
+  return <div className="space-y-6 animate-fade-in">
+    <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><CreditCard className="w-6 h-6 text-primary"/> My Billing</h1><p className="text-muted-foreground">Your invoices and payment status. This view is read-only.</p></div>
+    <div className="card-medical p-5">
+      {loading ? <p className="text-sm text-muted-foreground">Loading invoices…</p> : invoices.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="p-3">Date</th><th className="p-3">Description</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3"></th></tr></thead><tbody>{invoices.map(i=><tr key={i.id} className="border-b"><td className="p-3">{new Date(i.created_at).toLocaleDateString()}</td><td className="p-3">{i.invoice_number || i.notes || 'Invoice'}</td><td className="p-3">₵{Number(i.total_amount||0).toFixed(2)}</td><td className="p-3">{i.status}</td><td className="p-3">{Number(i.outstanding_amount||0)>0 && <button className="btn-primary text-xs" onClick={payNow}>Pay Now</button>}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">You have no invoices.</p>}
+    </div>
+  </div>;
+}
+
+export default function Billing() { const { user } = useAuth(); return user?.roles?.includes('patient') ? <PatientBilling /> : <StaffBilling />; }
