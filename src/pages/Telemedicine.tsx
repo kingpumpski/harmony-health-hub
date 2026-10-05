@@ -151,7 +151,7 @@ function PatientTelemedicine() {
       supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
       supabase.rpc('get_patient_telemedicine_clinicians'),
     ]);
-    if (identityError || sessionError || clinicianError) return;
+    if (identityError || sessionError || clinicianError) { toast({ title: 'Service temporarily unavailable', description: 'Telemedicine information could not be loaded.' }); return; }
     setSessions(rows ?? []);
     setClinicians(staff ?? []);
   };
