@@ -446,10 +446,10 @@ function PatientAppointments() {
   const [reason, setReason] = useState('');
 
   const load = async () => {
-    const { data: identity } = await supabase.rpc('get_patient_portal_identity');
+    const { data: identity } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
     const p = Array.isArray(identity) ? identity[0] : identity;
     if (!p) return;
-    const { data, error } = await supabase.rpc('get_patient_appointments', { _patient_id: p.id, _limit: 100 });
+    const { data, error } = await supabase.rpc('get_patient_appointments', { _patient_id: p.id, _limit: 100 }, { get: true });
     if (!error) { setPatient(p); setAppointments(Array.isArray(data) ? data : []); }
   };
   useEffect(() => { void load(); }, []);
