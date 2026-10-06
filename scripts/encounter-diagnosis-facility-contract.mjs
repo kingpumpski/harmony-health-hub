@@ -37,3 +37,7 @@ for (const signature of [
 ]) assert(lifecycle.includes(signature), 'Missing lifecycle execute privilege contract: ' + signature);
 
 console.log('Encounter facility attribution, diagnosis write, and diagnosis lifecycle contracts passed.');
+
+const encounters=fs.readFileSync('src/pages/Encounters.tsx','utf8');
+if(!encounters.includes('db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim(), _icd_code: null })')) throw new Error('Encounters must call canonical three-argument diagnosis RPC');
+console.log('Verified canonical Encounters diagnosis RPC transport.');
