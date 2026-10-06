@@ -99,7 +99,7 @@ function PatientMedicalRecords() {
       setLoading(false);
       return;
     }
-    const { data, error: snapshotError } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id });
+    const { data, error: snapshotError } = await supabase.rpc('get_patient_portal_medical_record', { _patient_id: p.id });
     if (snapshotError) setError(snapshotError.message);
     else setSnapshot(data ?? null);
     setLoading(false);
@@ -121,12 +121,12 @@ function PatientMedicalRecords() {
   if (loading) return <div className="card-medical p-5 text-sm text-muted-foreground">Loading medical records…</div>;
   if (error) return <div className="card-medical p-5"><p className="text-sm text-critical">{error}</p><button className="btn-secondary mt-3" onClick={() => void load()}>Retry</button></div>;
 
-  const encounters = rows(snapshot?.encounters);
-  const diagnoses = rows(snapshot?.diagnoses);
-  const labs = rows(snapshot?.labs);
-  const imaging = rows(snapshot?.imaging);
-  const prescriptions = rows(snapshot?.prescriptions);
-  const documents = rows(snapshot?.documents);
+  const visits = rows(snapshot?.visits);
+  const diagnoses = rows(snapshot?.confirmed_diagnoses);
+  const treatments = rows(snapshot?.treatments);
+  const labs = rows(snapshot?.laboratory_results);
+  const imaging = rows(snapshot?.imaging_results);
+  const prescriptions = rows(snapshot?.medications);
   const admissions = rows(snapshot?.admissions);
   const vitals = rows(snapshot?.vitals);
 
@@ -141,14 +141,14 @@ function PatientMedicalRecords() {
       <p className="text-sm text-muted-foreground">{snapshot?.patient?.patient_code}</p>
     </div>
     <div className="grid gap-6">
-      {section('Clinical encounters & clerking', encounters, (x) => <><div className="flex justify-between gap-3"><b>{x.encounter_type || 'Clinical encounter'}</b><span className="text-xs text-muted-foreground">{x.created_at ? new Date(x.created_at).toLocaleString() : ''}</span></div><p className="mt-2 whitespace-pre-wrap">{x.clerking_notes || x.symptoms || 'No narrative note recorded.'}</p>{x.principal_diagnosis && <p className="mt-2"><b>Diagnosis:</b> {x.principal_diagnosis}</p>}{x.treatment_plan && <p className="mt-1"><b>Plan:</b> {x.treatment_plan}</p>}</>)}
+      {section('Confirmed visits', visits, (x) => <><div className="flex justify-between gap-3"><b>{x.encounter_type || 'Clinical visit'}</b><span className="text-xs text-muted-foreground">{x.completed_at ? new Date(x.completed_at).toLocaleString() : ''}</span></div>{x.chief_complaint && <p className="mt-2"><b>Reason for visit:</b> {x.chief_complaint}</p>}{x.principal_diagnosis && <p className="mt-2"><b>Diagnosis:</b> {x.principal_diagnosis}</p>}{x.treatment_plan && <p className="mt-1"><b>Care plan:</b> {x.treatment_plan}</p>}{x.follow_up_date && <p className="mt-1 text-xs text-muted-foreground"><b>Follow-up:</b> {new Date(x.follow_up_date).toLocaleDateString()}</p>}</>)}
       {section('Diagnoses', diagnoses, (x) => <><b>{x.diagnosis}</b>{x.icd_code && <span className="ml-2 text-xs text-muted-foreground">{x.icd_code}</span>}<p className="text-xs text-muted-foreground mt-1">{x.is_principal ? 'Principal diagnosis' : 'Diagnosis'}{x.created_at ? ' · '+new Date(x.created_at).toLocaleString() : ''}</p></>)}
       {section('Laboratory results', labs, (x) => <><b>{x.test_name || 'Laboratory result'}</b><p className="mt-1 whitespace-pre-wrap">{x.result || x.result_data?.value || x.interpretation || 'Result available'}</p>{x.numeric_value != null && <p className="text-xs text-muted-foreground mt-1">{x.numeric_value} {x.unit || ''}{x.abnormal_flag ? ' · '+x.abnormal_flag : ''}</p>}{x.approved_at && <p className="text-xs text-muted-foreground mt-1">Approved {new Date(x.approved_at).toLocaleString()}</p>}</>)}
       {section('Radiology reports', imaging, (x) => <><b>{x.study_name || x.modality || 'Imaging report'}</b><p className="mt-1 whitespace-pre-wrap">{x.impression || x.report || 'Report available'}</p>{x.completed_at && <p className="text-xs text-muted-foreground mt-1">Completed {new Date(x.completed_at).toLocaleString()}</p>}</>)}
       {section('Prescriptions & medicines', prescriptions, (x) => <><b>{x.medication || x.medication_name}</b><p className="text-sm mt-1">{[x.dosage,x.frequency,x.route,x.duration].filter(Boolean).join(' · ') || 'Instructions recorded in clinical record'}</p><p className="text-xs text-muted-foreground mt-1">{x.status || 'recorded'}{x.created_at ? ' · '+new Date(x.created_at).toLocaleString() : ''}</p></>)}
       {section('Vital signs', vitals, (x) => <><b>{x.recorded_at ? new Date(x.recorded_at).toLocaleString() : 'Recorded vitals'}</b><p className="mt-1">BP {x.systolic ?? '—'}/{x.diastolic ?? '—'} · Pulse {x.pulse_rate ?? '—'} · Temp {x.temperature ?? '—'} · SpO₂ {x.oxygen_saturation ?? '—'}%</p><p className="text-xs text-muted-foreground mt-1">Weight {x.weight_kg ?? '—'} kg · Height {x.height_cm ?? '—'} cm · BMI {x.bmi ?? '—'}</p></>)}
       {section('Admissions & discharge history', admissions, (x) => <><b>{x.ward || 'Inpatient admission'}</b><p className="mt-1">{x.status} · Admitted {x.admitted_at ? new Date(x.admitted_at).toLocaleString() : '—'}</p>{x.discharged_at && <p className="text-xs text-muted-foreground mt-1">Discharged {new Date(x.discharged_at).toLocaleString()}</p>}{x.discharge_summary && <p className="mt-2 whitespace-pre-wrap">{x.discharge_summary}</p>}</>)}
-      {section('Documents', documents, (x) => <><b>{x.file_name || x.document_type || 'Patient document'}</b>{x.notes && <p className="mt-1">{x.notes}</p>}<p className="text-xs text-muted-foreground mt-1">{x.created_at ? new Date(x.created_at).toLocaleString() : ''}</p>{x.file_url && <a href={x.file_url} target="_blank" rel="noreferrer" className="text-xs text-primary mt-2 inline-flex">Open document</a>}</>)}
+      {section('Treatment history', treatments, (x) => <><b>{x.encounter_type || 'Treatment plan'}</b><p className="mt-1 whitespace-pre-wrap">{x.treatment_plan}</p>{x.follow_up_date && <p className="text-xs text-muted-foreground mt-1">Follow-up {new Date(x.follow_up_date).toLocaleDateString()}</p>}</>)}
     </div>
   </div>;
 }
