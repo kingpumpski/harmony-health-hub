@@ -18,6 +18,8 @@ const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/
 const patientDirectory = fs.readFileSync('src/lib/patientDirectory.ts','utf8');
 const formNormalizer = fs.readFileSync('src/components/system/FormFieldIdentityNormalizer.tsx','utf8');
 const pharmacy = fs.readFileSync('src/pages/Pharmacy.tsx','utf8');
+const canteenMeals = read('src/pages/CanteenMeals.tsx');
+const header = read('src/components/layout/Header.tsx');
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx','utf8');
 const platformWorkspace = fs.readFileSync('supabase/migrations/20261006113000_reconcile_platform_admin_workspace_context.sql','utf8').toLowerCase();
 
@@ -72,6 +74,8 @@ for (const needle of [
   if (!pharmacy.includes(needle)) throw new Error('Pharmacy edit payload must preserve numeric zero values: ' + needle);
 }
 
+if (!canteenMeals.includes("get_patient_portal_meal_menus', { _service_date: date }, { get: true }")) throw new Error('Patient meal menu STABLE read must use GET transport');
+if (!header.includes('void db.rpc("mark_notification_read", { _notification_id: n.id }).then(() => loadNotifications()).catch(() => loadNotifications())')) throw new Error('Notification read refresh must await RPC promise');
 if (!patientHub.includes(".rpc('create_patient_appointment'")) {
   throw new Error('Patient Hub appointment creation must use the canonical appointment RPC');
 }
