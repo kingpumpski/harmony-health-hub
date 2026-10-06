@@ -32,6 +32,12 @@ export default function CanteenMeals() {
   const [planRestrictions, setPlanRestrictions] = useState('');
 
   const loadMenus = useCallback(async () => {
+    if (!canManage) {
+      const { data, error } = await (supabase as any).rpc('get_patient_portal_meal_menus', { _service_date: date });
+      if (error) { toast({ title: 'Meal menu unavailable', description: error.message, variant: 'destructive' }); setMenus([]); return; }
+      setMenus((data ?? []) as Menu[]);
+      return;
+    }
     const { data: menuRows, error } = await (supabase as any).from('meal_menus').select('id,service_date,meal_period,available_from,available_until,status,notes').eq('service_date', date).order('meal_period');
     if (error) { toast({ title: 'Menu unavailable', description: error.message, variant: 'destructive' }); return; }
     const ids = (menuRows ?? []).map((m: any) => m.id);
@@ -42,7 +48,7 @@ export default function CanteenMeals() {
       itemRows = data ?? [];
     }
     setMenus((menuRows ?? []).map((m: any) => ({ ...m, items: itemRows.filter(i => i.menu_id === m.id) })));
-  }, [date]);
+  }, [date, canManage]);
 
   const loadOrders = useCallback(async () => {
     if (!canManage) return;

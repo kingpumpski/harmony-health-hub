@@ -1,5 +1,6 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Upload, FileText, Sparkles } from 'lucide-react';
@@ -8,6 +9,8 @@ import { playSuccessSound } from '@/lib/sounds';
 interface Doc { id: string; patient_id: string; document_type: string; title: string; storage_path: string; ai_analysis: string | null; created_at: string }
 
 export default function OutsideLabUploads() {
+  const { user } = useAuth();
+  const isPatient = user?.roles?.includes('patient') ?? false;
   const [docs, setDocs] = useState<Doc[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [pid, setPid] = useState('');
@@ -17,6 +20,15 @@ export default function OutsideLabUploads() {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
+    if (isPatient) {
+      const { data, error } = await supabase.rpc('get_patient_outside_lab_documents', { _limit: 50 });
+      if (error) {
+        toast({ title: 'Unable to load your outside diagnostics', description: error.message, variant: 'destructive' });
+        return;
+      }
+      setDocs((data ?? []) as Doc[]);
+      return;
+    }
     const { data, error } = await supabase.from('outside_lab_documents').select('id,patient_id,document_type,title,created_at,ai_analysis').order('created_at', { ascending: false }).limit(50);
     if (error) {
       toast({ title: 'Unable to load outside-lab documents', description: error.message, variant: 'destructive' });
@@ -28,7 +40,7 @@ export default function OutsideLabUploads() {
   useEffect(() => {
     void load();
     searchPatientDirectory('', 200).then(({ data }) => setPatients(data ?? []));
-  }, []);
+  }, [isPatient]);
 
   const upload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +87,11 @@ export default function OutsideLabUploads() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Upload className="w-6 h-6 text-primary" /> Outside Lab Uploads</h1>
-        <p className="text-muted-foreground">Upload external X-rays, scans, ECGs, PDFs. AI analyzes and notifies clinicians.</p>
+        <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Upload className="w-6 h-6 text-primary" /> {isPatient ? 'My Outside Diagnostics' : 'Outside Lab Uploads'}</h1>
+        <p className="text-muted-foreground">{isPatient ? 'Review outside diagnostic documents already linked to your medical record.' : 'Upload external X-rays, scans, ECGs, PDFs. AI analyzes and notifies clinicians.'}</p>
       </div>
 
-      <form onSubmit={upload} className="card-medical p-6 grid md:grid-cols-2 gap-3">
+      {!isPatient && <form onSubmit={upload} className="card-medical p-6 grid md:grid-cols-2 gap-3">
         <select value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical">
           <option value="">Select patient…</option>
           {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
@@ -91,7 +103,7 @@ export default function OutsideLabUploads() {
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="input-medical md:col-span-2" />
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-medical md:col-span-2" />
         <button disabled={busy} className="btn-primary md:col-span-2">{busy ? 'Uploading…' : 'Upload & analyze'}</button>
-      </form>
+      </form>}
 
       <div className="card-medical p-5">
         <h2 className="font-semibold mb-3">Recent uploads</h2>

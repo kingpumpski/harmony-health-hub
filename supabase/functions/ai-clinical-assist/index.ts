@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       if (!patient) throw new Error('Patient portal profile not found');
       const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
         supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }),
-        supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').eq('patient_id', patient.id).order('scheduled_at', { ascending: false }).limit(25),
+        supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }),
         supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
         supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
       ]);

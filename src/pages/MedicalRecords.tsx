@@ -133,7 +133,7 @@ function PatientMedicalRecords() {
   return <div className="space-y-6 animate-fade-in">
     <div>
       <h1 className="text-2xl font-heading font-bold">Medical Records</h1>
-      <p className="text-muted-foreground">Your longitudinal clinical record, available to you through your patient portal.</p>
+      <p className="text-muted-foreground">Your patient-facing longitudinal medical record, including confirmed diagnoses, documented treatment/care plans, results, medicines, admissions and follow-up information.</p>
     </div>
     <div className="card-medical p-5">
       <p className="text-xs uppercase text-muted-foreground">Patient</p>
