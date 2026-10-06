@@ -40,6 +40,7 @@ const checks = [
     "supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true })",
     "supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true })",
     "supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }, { get: true })",
+    "supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId }, { get: true })",
   ]],
 ];
 
