@@ -2,13 +2,18 @@ BEGIN;
 
 -- Patient self-service must not depend on staff active-facility context.
 CREATE OR REPLACE FUNCTION public.patient_has_active_admission()
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
-AS $$ SELECT EXISTS (
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $
+DECLARE uid uuid:=auth.uid();
+BEGIN
+ IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+ RETURN EXISTS (
   SELECT 1 FROM public.patients p JOIN public.admissions a ON a.patient_id=p.id
-  WHERE (p.user_id=auth.uid() OR (p.user_id IS NULL AND lower(p.email)=lower(auth.jwt()->>'email')))
+  WHERE (p.user_id=uid OR (p.user_id IS NULL AND lower(p.email)=lower(auth.jwt()->>'email')))
     AND coalesce(p.status,'active')<>'inactive' AND a.status='admitted'
     AND coalesce(a.discharged_at,now()+interval '1 second')>now()
-); $$;
+ );
+END; $;
 REVOKE ALL ON FUNCTION public.patient_has_active_admission() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.patient_has_active_admission() TO authenticated;
 
