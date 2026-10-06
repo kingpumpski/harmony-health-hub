@@ -91,7 +91,7 @@ BEGIN
   WHERE ii.invoice_id=inv ORDER BY ii.created_at;
 END;
 $function$
-
+;
 
 CREATE OR REPLACE FUNCTION public.submit_encounter_workflow(_encounter_id uuid, _specialty text DEFAULT NULL::text, _appointment_date timestamp with time zone DEFAULT NULL::timestamp with time zone, _referral_reason text DEFAULT NULL::text)
  RETURNS jsonb
@@ -128,6 +128,7 @@ begin
  return jsonb_build_object('encounter_id',v_enc.id,'status','completed','version_no',v_version,'referral_id',v_referral,'require_principal_diagnosis',v_require_principal);
 end;$function$
 
+;
 
 REVOKE ALL ON FUNCTION public.prepare_patient_billable_items(uuid,timestamptz,timestamptz) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.prepare_patient_billable_items(uuid,timestamptz,timestamptz) TO authenticated;
