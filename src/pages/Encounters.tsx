@@ -395,7 +395,7 @@ export default function Encounters() {
 
   const addDiagnosis = async () => {
     if (!selected || !newDx.trim()) return toast({ title: "Enter a diagnosis", description: "Document a provisional diagnosis before adding it.", variant: "destructive" });
-    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim() });
+    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim(), _icd_code: null });
     if (error) return toast({ title: "Diagnosis failed", description: error.message, variant: "destructive" });
     setNewDx("");
     void loadDetails(selected.id);
