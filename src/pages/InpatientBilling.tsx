@@ -46,6 +46,7 @@ export default function InpatientBilling(){
   setLoading(false);
  },[selected]);
  useEffect(()=>{void load()},[load]);
+ useEffect(()=>{if(patientId && patientId!==selected) setSelected(patientId)},[patientId,selected]);
  const selectedPatient=patients.find(p=>p.id===selected);
  const filtered=patients.filter(p=>`${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(search.toLowerCase()));
  const grouped=useMemo(()=>categories.map(category=>({category,items:rows.filter(r=>categoryFor(r)===category)})).filter(g=>g.items.length),[rows]);
