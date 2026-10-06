@@ -24,25 +24,32 @@ export default function PatientPortal() {
       toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient profile could not be identified.', variant: 'destructive' });
       return null;
     }
-    const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }, { data: snapshot, error: snapshotError }] = await Promise.all([
+    const requests = await Promise.allSettled([
       supabase.rpc('get_patient_appointments', { _patient_id: portalPatient.id, _limit: 25 }, { get: true }),
       supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true }),
       supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true }),
       supabase.rpc('get_ai_report_requests', { _patient_id: portalPatient.id, _limit: 25 }, { get: true }),
       supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: portalPatient.id }, { get: true }),
     ]);
-    const firstError = [appointmentsError, videoError, invoicesError, reportsError, snapshotError].find(Boolean);
-    if (firstError) {
-      toast({ title: 'Unable to load portal data', description: firstError.message, variant: 'destructive' });
-      return null;
-    }
+    const [appointmentsResult, videoResult, invoicesResult, reportsResult, snapshotResult] = requests;
+    const failedSections = requests.flatMap((result, index) => result.status === 'rejected' || result.value.error ? [index] : []);
     setPatient(portalPatient);
-    setAppts(appointments ?? []);
-    setSessions(videoSessions ?? []);
-    setInvoices(invoices ?? []);
-    setReports(reports ?? []);
-    setClinicalSnapshot(snapshot ?? null);
-    return { patient: portalPatient, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] };
+    setAppts(appointmentsResult.status === 'fulfilled' && !appointmentsResult.value.error ? (appointmentsResult.value.data ?? []) : []);
+    setSessions(videoResult.status === 'fulfilled' && !videoResult.value.error ? (videoResult.value.data ?? []) : []);
+    setInvoices(invoicesResult.status === 'fulfilled' && !invoicesResult.value.error ? (invoicesResult.value.data ?? []) : []);
+    setReports(reportsResult.status === 'fulfilled' && !reportsResult.value.error ? (reportsResult.value.data ?? []) : []);
+    setClinicalSnapshot(snapshotResult.status === 'fulfilled' && !snapshotResult.value.error ? (snapshotResult.value.data ?? null) : null);
+    if (failedSections.length) {
+      const labels = ['appointments', 'telemedicine', 'billing', 'reports', 'medical records'];
+      toast({ title: 'Some portal sections are temporarily unavailable', description: labels.filter((_, index) => failedSections.includes(index)).join(', ') + '. Available sections remain usable.', variant: 'destructive' });
+    }
+    return {
+      patient: portalPatient,
+      appointments: appointmentsResult.status === 'fulfilled' && !appointmentsResult.value.error ? (appointmentsResult.value.data ?? []) : [],
+      video_sessions: videoResult.status === 'fulfilled' && !videoResult.value.error ? (videoResult.value.data ?? []) : [],
+      invoices: invoicesResult.status === 'fulfilled' && !invoicesResult.value.error ? (invoicesResult.value.data ?? []) : [],
+      reports: reportsResult.status === 'fulfilled' && !reportsResult.value.error ? (reportsResult.value.data ?? []) : [],
+    };
   };
 
   useEffect(() => {
