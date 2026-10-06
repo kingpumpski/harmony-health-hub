@@ -1,7 +1,7 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, CheckCircle2, CreditCard, FileText, Loader2, Plus, Printer, RefreshCw, ShieldCheck, Wallet, ReceiptText, Activity, CircleDollarSign } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CreditCard, FileText, Loader2, Plus, Printer, RefreshCw, ShieldCheck, Wallet, ReceiptText, Activity, CircleDollarSign, BedDouble, Search, X, ArrowRight, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -60,9 +60,19 @@ function StaffBilling() {
   const [walkInSearch, setWalkInSearch] = useState('');
   const [createServiceName, setCreateServiceName] = useState('');
   const [walkInQty, setWalkInQty] = useState(1);
+  const [inpatientCount, setInpatientCount] = useState(0);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateSearch, setGenerateSearch] = useState('');
   const selectedPatient = patients.find((p) => p.id === patientId);
   const canCreateServices = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_services');
   const filteredTariffs = useMemo(() => tariffs.filter((t) => `${t.service_code} ${t.service_name} ${t.department}`.toLowerCase().includes(walkInSearch.toLowerCase())), [tariffs, walkInSearch]);
+
+  const loadInpatientCount = useCallback(async () => {
+    const { data, error } = await db.rpc('get_admission_workspace', { _limit: 500 });
+    if (error) { setInpatientCount(0); return; }
+    const rows = Array.isArray(data) ? data : (data?.admissions ?? []);
+    setInpatientCount(rows.filter((row: any) => row.status === 'admitted' && !row.discharged_at).length);
+  }, []);
 
   const loadBillingSummary = useCallback(async () => {
     const { data, error } = await db.rpc('get_billing_workspace_summary');
@@ -113,12 +123,13 @@ function StaffBilling() {
   useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
   useEffect(() => {
     void loadBillingSummary();
+    void loadInpatientCount();
     const channel = supabase.channel('billing-workspace-summary-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => void loadBillingSummary())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'insurance_claims' }, () => void loadBillingSummary())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [loadBillingSummary]);
+  }, [loadBillingSummary, loadInpatientCount]);
   useEffect(() => { void loadBillable(); }, [loadBillable]);
   useEffect(() => {
     if (!patientId || !canPrepareBill) return;
@@ -195,6 +206,7 @@ function StaffBilling() {
   const facilityCounters = [
     { label: 'NHIS claims pending', value: workspaceSummary ? String(workspaceSummary.nhis_pending_count) : '—', tone: 'text-warning', surface: 'bg-warning/5' },
     { label: 'Cash collected today', value: workspaceSummary ? money(workspaceSummary.cash_collected_today) : '—', tone: 'text-success', surface: 'bg-success/5' },
+    { label: 'Active Inpatients', value: String(inpatientCount), tone: 'text-primary', surface: 'bg-primary/5', onClick: () => navigate('/billing/inpatients') },
   ];
   const displayedCounters = [...facilityCounters, ...(patientId ? counters.map(({ label, value, tone, surface }) => ({ label, value, tone, surface })) : [])];
 
@@ -208,42 +220,19 @@ function StaffBilling() {
         description="Encounter-aware billing for Ghana Cedi accounts, with an insured and cash presentation that follows the patient's financial pathway."
         actions={
           <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setGenerateOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Generate Bill</button>
             {canViewClaims && <button type="button" onClick={() => navigate('/insurance-claims')} className="btn-secondary inline-flex items-center gap-2"><ShieldCheck className="w-4 h-4" aria-hidden="true" />NHIS / Insurance Claims</button>}
-            <button type="button" onClick={() => { playWorkflowSound('info'); void loadBillable(); void loadBillingSummary(); }} className="btn-secondary inline-flex items-center gap-2" disabled={!patientId || loading}>
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />Refresh
-            </button>
+            <button type="button" aria-label="Refresh billing" title="Refresh" onClick={() => { playWorkflowSound('info'); void loadBillable(); void loadBillingSummary(); void loadInpatientCount(); }} className="btn-secondary inline-flex items-center justify-center" disabled={loading}><RefreshCw className="w-4 h-4" aria-hidden="true" /></button>
             {billingWindow && <button type="button" onClick={() => void printReceipt()} className="btn-primary inline-flex items-center gap-2">
               <Printer className="w-4 h-4" aria-hidden="true" />Print receipt
             </button>}
           </div>
         }
         counters={displayedCounters}
-        beforeList={
-          <section className="card-medical p-5 space-y-4 print:hidden" aria-labelledby="billing-account-selector">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-primary font-semibold">Billing window</p>
-                <h2 id="billing-account-selector" className="text-lg font-semibold">Select a patient to automatically prepare the account</h2>
-                <p className="text-sm text-muted-foreground">The system resolves the active encounter/day and pulls consultations, laboratory, medication, diagnostic and procedure services already recorded for the patient.</p>
-              </div>
-              <span className="rounded-full bg-primary/5 text-primary px-3 py-1 text-xs font-medium">Server-authoritative</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_190px_auto] items-end">
-              <label className="text-sm space-y-1.5"><span className="font-medium">Patient</span><select aria-label="Select patient account" value={patientId} onChange={(e) => setPatientId(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}</select></label>
-              <label className="text-sm space-y-1.5"><span className="font-medium">Billing date</span><input aria-label="Billing date" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-medical w-full" /></label>
-              <button type="button" onClick={() => void loadBillable()} className="btn-primary inline-flex justify-center gap-2" disabled={!patientId || loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}Prepare billing window</button>
-            </div>
-            {selectedPatient && <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-              <div className="rounded-xl bg-muted/60 p-3"><span className="text-muted-foreground">Patient Type</span><p className="font-semibold mt-1">{billingWindow?.patient_type ?? 'Resolving…'}</p></div>
-              <div className="rounded-xl bg-muted/60 p-3"><span className="text-muted-foreground">Insurance Name</span><p className="font-semibold mt-1">{billingWindow?.insurance_name ?? 'Cash / Non-Insured'}</p></div>
-              <div className="rounded-xl bg-muted/60 p-3"><span className="text-muted-foreground">Encounter</span><p className="font-mono font-semibold mt-1 break-all">{billingWindow?.encounter_id ?? 'No active encounter'}</p></div>
-              <div className="rounded-xl bg-muted/60 p-3"><span className="text-muted-foreground">Account ID</span><p className="font-semibold mt-1">{billingWindow?.account_id ?? 'Preparing…'}</p></div>
-            </div>}
-          </section>
-        }
-        listTitle={billingWindow ? 'Dynamic billing window' : 'Patient account worklist'}
-        listDescription={billingWindow ? 'The table changes columns automatically according to the patient type.' : 'Select a patient to open the billing window.'}
-        listMeta={billingWindow ? billingWindow.items.length + ' service lines · ' + billingWindow.patient_type : 'Patient selection required'}
+        beforeList={null}
+        listTitle={billingWindow ? 'Dynamic billing window' : 'Billing worklist'}
+        listDescription={billingWindow ? 'The table changes columns automatically according to the patient type.' : 'Use Generate Bill for an on-demand patient account, or open Active Inpatients for discharge billing.'}
+        listMeta={billingWindow ? billingWindow.items.length + ' service lines · ' + billingWindow.patient_type : 'Ready for billing activity'}
         loading={loading}
         empty={Boolean(patientId) && !loading && Boolean(billingWindow) && billingWindow.items.length === 0}
         emptyTitle="No billable services"
@@ -304,7 +293,19 @@ function StaffBilling() {
 
           <p className="text-xs text-muted-foreground print:hidden">Invoice: {billingWindow.account_id} · Encounter: {billingWindow.encounter_id ?? 'not linked'} · Operator: {user?.email ?? 'authenticated user'}</p>
         </div>}
-        {!billingWindow && !loading && patientId && <div className="card-medical p-10 text-center text-muted-foreground">Select a patient to prepare the current billing window.</div>}
+        {!billingWindow && !loading && <div className="card-medical p-10 text-center">
+          <BedDouble className="mx-auto h-10 w-10 text-primary/60" />
+          <h3 className="mt-3 font-semibold">Billing is ready</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Open Active Inpatients for discharge billing or use Generate Bill for a specific outpatient or inpatient account.</p>
+          <div className="mt-4 flex justify-center gap-2"><button type="button" className="btn-secondary" onClick={() => navigate('/billing/inpatients')}>Active Inpatients <ArrowRight className="ml-2 h-4 w-4 inline" /></button><button type="button" className="btn-primary" onClick={() => setGenerateOpen(true)}>Generate Bill</button></div>
+        </div>}
+        {generateOpen && <div className="fixed inset-0 z-50 bg-slate-950/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Generate bill">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b p-5"><div><h2 className="font-semibold">Generate Bill</h2><p className="text-sm text-muted-foreground">Select an outpatient or inpatient patient. Existing unpaid items are preserved.</p></div><button aria-label="Close" onClick={() => setGenerateOpen(false)} className="btn-ghost"><X className="h-4 w-4" /></button></div>
+            <div className="p-5 space-y-4"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input autoFocus value={generateSearch} onChange={(e) => setGenerateSearch(e.target.value)} placeholder="Search patient name or code…" className="input-medical w-full pl-9" /></div>
+              <div className="max-h-80 overflow-y-auto divide-y">{patients.filter((p) => `${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(generateSearch.toLowerCase())).slice(0,50).map((p) => <button key={p.id} type="button" onClick={() => { setPatientId(p.id); setFrom(new Date().toISOString().slice(0,10)); setGenerateOpen(false); setGenerateSearch(''); }} className="w-full text-left p-3 hover:bg-muted flex items-center justify-between"><span><span className="font-medium">{p.first_name} {p.last_name}</span><span className="block text-xs text-muted-foreground">{p.patient_code}</span></span><ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground" /></button>)}{patients.filter((p) => `${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(generateSearch.toLowerCase())).length===0 && <p className="p-6 text-center text-sm text-muted-foreground">No matching patients.</p>}</div></div>
+          </div>
+        </div>}
       </OperationalWorklistShell>
     </>
   );
