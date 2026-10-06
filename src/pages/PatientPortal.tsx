@@ -18,21 +18,37 @@ export default function PatientPortal() {
   const [requesting, setRequesting] = useState(false);
 
   const loadReports = async () => {
-    const { data, error } = await supabase.functions.invoke('ai-clinical-assist', { body: { mode: 'portal' } });
-    if (error || data?.error) {
-      toast({ title: 'Unable to load portal data', description: data?.error ?? error?.message ?? 'Portal workspace unavailable.', variant: 'destructive' });
+    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity');
+    const patientRow = Array.isArray(identity) ? identity[0] : identity;
+    if (identityError || !patientRow) {
+      toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient portal profile could not be identified.', variant: 'destructive' });
       return null;
     }
-    setPatient(data.patient ?? null);
-    setAppts(data.appointments ?? []);
-    setSessions(data.video_sessions ?? []);
-    setInvoices(data.invoices ?? []);
-    setReports(data.reports ?? []);
-    if (data.patient?.id) {
-      const { data: snapshot } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: data.patient.id });
-      setClinicalSnapshot(snapshot ?? null);
+
+    const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
+      supabase.rpc('get_patient_appointments', { _patient_id: patientRow.id, _limit: 25 }),
+      supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').eq('patient_id', patientRow.id).order('scheduled_at', { ascending: false }).limit(25),
+      supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
+      supabase.rpc('get_ai_report_requests', { _patient_id: patientRow.id, _limit: 25 }),
+    ]);
+
+    const portalError = appointmentsError ?? videoError ?? invoicesError ?? reportsError;
+    if (portalError) {
+      toast({ title: 'Unable to load portal data', description: portalError.message, variant: 'destructive' });
+      return null;
     }
-    return data;
+
+    setPatient(patientRow);
+    setAppts(appointments ?? []);
+    setSessions(videoSessions ?? []);
+    setInvoices(invoices ?? []);
+    setReports(reports ?? []);
+
+    const { data: record, error: recordError } = await supabase.rpc('get_patient_portal_medical_record', { _patient_id: patientRow.id });
+    if (!recordError) setClinicalSnapshot(record ?? null);
+    else console.warn('Patient medical record projection unavailable', recordError);
+
+    return { patient: patientRow, appointments: appointments ?? [], video_sessions: videoSessions ?? [], invoices: invoices ?? [], reports: reports ?? [] };
   };
 
   useEffect(() => {
