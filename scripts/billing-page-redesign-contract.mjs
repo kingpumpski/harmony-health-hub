@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const billing=fs.readFileSync('src/pages/Billing.tsx','utf8');
+const app=fs.readFileSync('src/App.tsx','utf8');
+const inpatient=fs.readFileSync('src/pages/InpatientBilling.tsx','utf8');
+const shell=fs.readFileSync('src/components/workflow/OperationalWorklistShell.tsx','utf8');
+assert(!billing.includes('Prepare billing window'), 'main billing page must not expose the legacy billing-window form');
+assert(!billing.includes('Select a patient to automatically prepare the account'), 'main billing page must not expose the legacy patient billing-window form');
+assert(billing.includes("label: 'Active Inpatients'"), 'billing dashboard must expose Active Inpatients KPI');
+assert(billing.includes("navigate('/billing/inpatients')"), 'Active Inpatients KPI must route to inpatient billing');
+assert(billing.includes('Generate Bill'), 'billing header must provide on-demand Generate Bill');
+assert(billing.includes('Search patient name or code'), 'Generate Bill must support patient search');
+assert(app.includes('path="/billing/inpatients"') && app.includes('path="/billing/inpatients/:patientId"'), 'inpatient billing routes must exist');
+assert(inpatient.includes('prepare_patient_billable_items'), 'inpatient billing must use canonical billable-item materialization');
+for (const category of ['Consultation','Laboratory','Radiology','Drugs/Medications','Accommodation','Nursing Care','Consumables','Feeding','Other Services']) assert(inpatient.includes(category), 'missing billing category: '+category);
+assert(inpatient.includes('Grand Total Outstanding'), 'inpatient discharge billing must show a grand total');
+assert(shell.includes('onClick?: () => void'), 'operational KPI cards must support actions');
+console.log('Billing redesign contract passed.');
