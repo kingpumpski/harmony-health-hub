@@ -12,17 +12,20 @@ AS $$ SELECT EXISTS (
 REVOKE ALL ON FUNCTION public.patient_has_active_admission() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.patient_has_active_admission() TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.patient_can_read_meal_menus()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
+AS $ SELECT public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'canteen')
+  OR NOT public.has_role(auth.uid(),'patient') OR public.patient_has_active_admission(); $;
+REVOKE ALL ON FUNCTION public.patient_can_read_meal_menus() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.patient_can_read_meal_menus() TO authenticated;
+
 DROP POLICY IF EXISTS meal_menus_authenticated_read ON public.meal_menus;
-CREATE POLICY meal_menus_authenticated_read ON public.meal_menus FOR SELECT TO authenticated USING (
- status='published' AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'canteen')
- OR NOT public.has_role(auth.uid(),'patient') OR public.patient_has_active_admission())
-);
+CREATE POLICY meal_menus_authenticated_read ON public.meal_menus FOR SELECT TO authenticated
+USING (status='published' AND public.patient_can_read_meal_menus());
 DROP POLICY IF EXISTS meal_menu_items_authenticated_read ON public.meal_menu_items;
-CREATE POLICY meal_menu_items_authenticated_read ON public.meal_menu_items FOR SELECT TO authenticated USING (
- EXISTS (SELECT 1 FROM public.meal_menus m WHERE m.id=meal_menu_items.menu_id AND m.status='published'
- AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'canteen')
- OR NOT public.has_role(auth.uid(),'patient') OR public.patient_has_active_admission()))
-);
+CREATE POLICY meal_menu_items_authenticated_read ON public.meal_menu_items FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.meal_menus m WHERE m.id=meal_menu_items.menu_id AND m.status='published'
+  AND public.patient_can_read_meal_menus()));
 
 CREATE OR REPLACE FUNCTION public.create_patient_appointment(_patient_id uuid,_scheduled_at timestamptz,_department text DEFAULT NULL,_reason text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
