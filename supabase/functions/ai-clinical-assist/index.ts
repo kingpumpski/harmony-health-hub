@@ -48,20 +48,29 @@ Deno.serve(async (req) => {
       if (patientError) throw patientError;
       const patient = Array.isArray(patientRows) ? patientRows[0] : patientRows;
       if (!patient) throw new Error('Patient portal profile not found');
-      const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
+      const portalReads = await Promise.allSettled([
+
         supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }, { get: true }),
         supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true }),
         supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true }),
         supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }, { get: true }),
       ]);
-      const portalErrors = [appointmentsError, videoError, invoicesError, reportsError].filter(Boolean);
-      if (portalErrors.length) throw portalErrors[0];
+      const valueAt = <T,>(index: number, fallback: T): T => {
+        const result = portalReads[index];
+        return result?.status === 'fulfilled' && !result.value.error ? (result.value.data as T) : fallback;
+      };
+      const unavailable = portalReads.reduce<string[]>((acc, result, index) => {
+        if (result.status === 'rejected' || result.value.error) acc.push(['appointments','video_sessions','invoices','reports'][index]);
+        return acc;
+      }, []);
       return new Response(JSON.stringify({
         patient,
-        appointments: appointments ?? [],
-        video_sessions: videoSessions ?? [],
-        invoices: invoices ?? [],
-        reports: reports ?? []
+        appointments: valueAt(0, []),
+        video_sessions: valueAt(1, []),
+        invoices: valueAt(2, []),
+        reports: valueAt(3, []),
+        partial: unavailable.length > 0,
+        unavailable_sections: unavailable,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -103,11 +112,8 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'report') {
       requirePatientId();
-      const { data: ownerPatient, error: ownerPatientError } = await supabase.from('patients').select('id').eq('id', body.patientId).or(`user_id.eq.${callerId},and(user_id.is.null,email.eq.${authData.user.email ?? ''})`).maybeSingle();
-      if (ownerPatientError) throw ownerPatientError;
-      const isOwner = Boolean(ownerPatient);
       const isClinical = hasAnyRole(aiClinicalRoles);
-      if (!isOwner && !isClinical) throw new Error('Not authorised to generate this report');
+      if (!isClinical && !hasAnyRole(['patient'])) throw new Error('Not authorised to generate this report');
       const { data: scopedContext, error: contextError } = isClinical
         ? await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId })
         : await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId }, { get: true });
