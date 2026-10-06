@@ -111,7 +111,7 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
+      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId }, { get: true });
       if (!active) return;
       if (error) {
         toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
