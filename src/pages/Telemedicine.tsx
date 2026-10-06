@@ -178,7 +178,7 @@ function PatientTelemedicine() {
       _clinician_id: clinicianId, _scheduled_at: new Date(scheduledAt).toISOString(), _reason: reason.trim(),
     });
     if (error) {
-      toast({ title: 'Unable to submit request', description: 'Service temporarily unavailable. Please try again later.' });
+      toast({ title: 'Unable to submit request', description: error.message, variant: 'destructive' });
       return;
     }
     toast({ title: 'Telemedicine request submitted', description: 'A clinician will review your preferred time.' });
