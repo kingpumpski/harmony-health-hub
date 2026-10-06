@@ -423,7 +423,12 @@ export default function Encounters() {
   const addPrescription = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selected || !med.trim()) return;
-    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: selectedDiagnosisId || null });
+    const principalDiagnosis = diagnoses.find((diagnosis) => diagnosis.is_principal);
+    if (!principalDiagnosis) {
+      setPrincipalRequiredError(true);
+      return toast({ title: "Principal diagnosis required", description: "Set a principal diagnosis before prescribing medication.", variant: "destructive" });
+    }
+    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: principalDiagnosis.id });
     if (error) return toast({ title: "Prescription failed", description: error.message, variant: "destructive" });
     setMed("");
     setDose("");
@@ -724,7 +729,7 @@ export default function Encounters() {
             <div className="flex-1 overflow-auto p-3 sm:p-5">
               <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
-                <div className="space-y-5">
+                <div className="flex flex-col gap-5">
                   <section className="order-2 rounded-2xl border border-border bg-card p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3><p className="text-xs text-muted-foreground mt-1">Draft clinical documentation stays attached to this encounter. Finalized documents remain locked and versioned.</p></div>
