@@ -167,7 +167,6 @@ function PatientTelemedicine() {
       return;
     }
     setSessions(rows ?? []);
-    await loadClinicians();
   };
   useEffect(() => { void load(); }, []);
   useEffect(() => { void loadClinicians(); }, [scheduledAt]);
