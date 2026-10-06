@@ -19,6 +19,11 @@ for (const [name, source, needles] of [
     "workspace?.admissions ?? []",
     'searchPatientDirectory',
   ]],
+  ['App', fs.readFileSync('src/App.tsx', 'utf8'), [
+    "const inpatientRoles = ['admin', 'it_admin', 'system_superuser', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'] as const;",
+    '<Route path="/inpatient" element={<RoleGuard allowedRoles={inpatientRoles}><InpatientManagement /></RoleGuard>} />',
+    '<Route path="/inpatients" element={<RoleGuard allowedRoles={inpatientRoles}><InpatientManagement /></RoleGuard>}',
+  ]],
   ['Sidebar', sidebar, [
     "item(Stethoscope, 'Healthcare', '/clinical-operations'",
     'Healthcare',
