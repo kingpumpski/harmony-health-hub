@@ -21,7 +21,7 @@ export default function OutsideLabUploads() {
 
   const load = async () => {
     if (isPatient) {
-      const { data, error } = await supabase.rpc('get_patient_outside_lab_documents', { _limit: 50 });
+      const { data, error } = await supabase.rpc('get_patient_outside_lab_documents', { _limit: 50 }, { get: true });
       if (error) {
         toast({ title: 'Unable to load your outside diagnostics', description: error.message, variant: 'destructive' });
         return;
