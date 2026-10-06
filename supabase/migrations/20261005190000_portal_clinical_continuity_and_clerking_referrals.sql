@@ -325,6 +325,9 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.get_pending_specialist_referrals() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_pending_specialist_referrals() TO authenticated;
+
 DROP FUNCTION IF EXISTS public.get_pending_review_appointments();
 
 CREATE OR REPLACE FUNCTION public.get_pending_review_appointments()
@@ -359,6 +362,9 @@ BEGIN
   ),'[]'::jsonb);
 END;
 $function$;
+
+REVOKE ALL ON FUNCTION public.get_pending_review_appointments() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_pending_review_appointments() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.set_patient_referral_appointment_date(_referral_id uuid,_appointment_date timestamptz)
 RETURNS jsonb
