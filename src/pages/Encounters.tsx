@@ -383,7 +383,14 @@ export default function Encounters() {
     const updated = data as Encounter;
     setSelected(updated);
     setEncounters((current) => current.map((item) => item.id === updated.id ? updated : item));
-    toast({ title: "Encounter draft saved", description: "The clerking and treatment-plan changes are now persisted to this encounter." });
+    const { data: followUp, error: followUpError } = await db.rpc("sync_encounter_clerking_followups", { _encounter_id: updated.id });
+    if (followUpError) {
+      toast({ title: "Draft saved; follow-up extraction needs attention", description: followUpError.message, variant: "destructive" });
+    } else if (followUp?.referral_id) {
+      toast({ title: "Encounter draft saved", description: followUp.referral_type === "review" ? "A review appointment item was extracted from the clerking sheet." : "A specialist referral item was extracted from the clerking sheet." });
+    } else {
+      toast({ title: "Encounter draft saved", description: "The clerking and treatment-plan changes are now persisted to this encounter." });
+    }
   };
 
   const addDiagnosis = async () => {
@@ -445,10 +452,20 @@ export default function Encounters() {
       return;
     }
     setPrincipalRequiredError(false);
-    const { data, error } = await db.rpc("submit_encounter_workflow", { _encounter_id: selected.id, _specialty: null, _appointment_date: null, _referral_reason: null });
+    const { data: draftData, error: draftError } = await db.rpc("update_encounter_draft_workflow", {
+      _encounter_id: selected.id,
+      _symptoms: draftSymptoms || null,
+      _clerking_notes: draftClerking || null,
+      _treatment_plan: draftTreatmentPlan || null,
+    });
+    if (draftError) return toast({ title: "Encounter submission failed", description: draftError.message, variant: "destructive" });
+    const persisted = (draftData ?? selected) as Encounter;
+    const { data: followUp, error: followUpError } = await db.rpc("sync_encounter_clerking_followups", { _encounter_id: persisted.id });
+    if (followUpError) return toast({ title: "Referral extraction failed", description: followUpError.message, variant: "destructive" });
+    const { data, error } = await db.rpc("submit_encounter_workflow", { _encounter_id: persisted.id, _specialty: null, _appointment_date: null, _referral_reason: null });
     if (error) return toast({ title: "Encounter submission failed", description: error.message, variant: "destructive" });
-    setSelected({ ...selected, status: "completed", submitted_at: new Date().toISOString(), version_no: data?.version_no ?? selected.version_no ?? 1 });
-    toast({ title: "Encounter submitted", description: "The final clinical document has been locked and versioned." });
+    setSelected({ ...persisted, status: "completed", submitted_at: new Date().toISOString(), version_no: data?.version_no ?? persisted.version_no ?? 1 });
+    toast({ title: "Encounter submitted", description: followUp?.referral_id ? (followUp.referral_type === "review" ? "The final clinical document is locked and a review appointment item is queued." : "The final clinical document is locked and a specialist referral item is queued.") : "The final clinical document has been locked and versioned." });
     void loadAll();
   };
 
@@ -475,9 +492,15 @@ export default function Encounters() {
     });
     setAmendmentBusy(false);
     if (error) return toast({ title: "Amendment failed", description: error.message, variant: "destructive" });
-    setSelected({ ...selected, symptoms: amendmentSymptoms || null, clerking_notes: amendmentClerking || null, principal_diagnosis: amendmentPrincipal || null, treatment_plan: amendmentPlan || null, version_no: data?.version_no ?? (selected.version_no ?? 1) + 1 });
+    const amended = { ...selected, symptoms: amendmentSymptoms || null, clerking_notes: amendmentClerking || null, principal_diagnosis: amendmentPrincipal || null, treatment_plan: amendmentPlan || null, version_no: data?.version_no ?? (selected.version_no ?? 1) + 1 };
+    setSelected(amended);
+    const { data: followUp, error: followUpError } = await db.rpc("sync_encounter_clerking_followups", { _encounter_id: selected.id });
     setAmending(false);
-    toast({ title: "Encounter amended", description: "The previous finalized version remains preserved in the audit history." });
+    if (followUpError) {
+      toast({ title: "Encounter amended; referral extraction needs attention", description: followUpError.message, variant: "destructive" });
+    } else {
+      toast({ title: "Encounter amended", description: followUp?.referral_id ? "The updated clerking text has refreshed the linked follow-up item." : "The previous finalized version remains preserved in the audit history." });
+    }
     void loadAll();
   };
 
