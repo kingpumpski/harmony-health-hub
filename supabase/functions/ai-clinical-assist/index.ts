@@ -44,15 +44,15 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'portal') {
       if (!hasAnyRole(['patient'])) throw new Error('Patient portal access is not permitted');
-      const { data: patientRows, error: patientError } = await supabase.rpc('get_patient_portal_identity');
+      const { data: patientRows, error: patientError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
       if (patientError) throw patientError;
       const patient = Array.isArray(patientRows) ? patientRows[0] : patientRows;
       if (!patient) throw new Error('Patient portal profile not found');
       const [{ data: appointments, error: appointmentsError }, { data: videoSessions, error: videoError }, { data: invoices, error: invoicesError }, { data: reports, error: reportsError }] = await Promise.all([
-        supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }),
-        supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }),
-        supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
-        supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
+        supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }, { get: true }),
+        supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true }),
+        supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true }),
+        supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }, { get: true }),
       ]);
       const portalErrors = [appointmentsError, videoError, invoicesError, reportsError].filter(Boolean);
       if (portalErrors.length) throw portalErrors[0];
