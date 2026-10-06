@@ -145,17 +145,21 @@ function PatientTelemedicine() {
   const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 24*60*60*1000).toISOString().slice(0,16));
   const [reason, setReason] = useState('');
 
-  const load = async () => {
-    const [{ data: identity, error: identityError }, { data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_patient_portal_identity'),
-      supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
-      supabase.rpc('get_patient_telemedicine_clinicians'),
+  const load = async (at = scheduledAt) => {
+    const [{ data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
+      supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }),
+      supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }),
     ]);
-    if (identityError || sessionError || clinicianError) { toast({ title: 'Service temporarily unavailable', description: 'Telemedicine information could not be loaded.' }); return; }
+    if (sessionError || clinicianError) {
+      toast({ title: 'Service temporarily unavailable', description: sessionError?.message ?? clinicianError?.message ?? 'Telemedicine information could not be loaded.', variant: 'destructive' });
+      return;
+    }
     setSessions(rows ?? []);
     setClinicians(staff ?? []);
+    if (staff?.length && !staff.some((c: any) => c.id === clinicianId)) setClinicianId('');
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(scheduledAt); }, []);
+  useEffect(() => { if (open) void load(scheduledAt); }, [scheduledAt, open]);
 
   const request = async (e: React.FormEvent) => {
     e.preventDefault();
