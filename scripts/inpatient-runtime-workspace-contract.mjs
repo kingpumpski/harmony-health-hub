@@ -73,6 +73,10 @@ if (!admissionDef.includes("COALESCE(a.facility_id,b.facility_id,w.facility_id,p
   throw new Error('Admission workspace must enforce facility attribution');
 }
 
+const insuranceDef = migrations.slice(migrations.lastIndexOf("ELSIF _module='insurance'"));
+if (!insuranceDef.includes("IF NOT v_platform_admin AND v_role <> 'accountant'")) {
+  throw new Error('Insurance workspace must preserve platform-admin access');
+}
 const wardDef = migrations.slice(migrations.lastIndexOf("ELSIF _module='ward'"));
 if (!wardDef.includes('IF NOT v_platform_admin AND v_role NOT IN')) {
   throw new Error('Ward workspace must preserve platform-admin role bypass');
