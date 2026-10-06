@@ -72,7 +72,7 @@
     "test:encounter-admission-order-facility": "node scripts/encounter-admission-order-facility-contract.mjs",
     "test:direct-patient-order-facility": "node scripts/direct-patient-order-facility-contract.mjs",
     "test:service-order-invoice-facility": "node scripts/service-order-invoice-facility-contract.mjs",
-    "test:billing-workflow-facility": "node scripts/billing-workflow-facility-contract.mjs",
+    "test:billing-workflow-facility": "node scripts/billing-workflow-facility-contract.mjs",\n    "test:billing-page-redesign": "node scripts/billing-page-redesign-contract.mjs",
     "test:insurance-claim-facility": "node scripts/insurance-claim-facility-contract.mjs",
     "test:patient-emergency-imaging-facility": "node scripts/patient-emergency-imaging-facility-contract.mjs",
     "test:patient-workflow-admin-roles": "node supabase/tests/database/patient_workflow_field_authorization_contract.mjs",
