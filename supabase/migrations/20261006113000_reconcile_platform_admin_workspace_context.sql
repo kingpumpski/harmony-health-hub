@@ -150,7 +150,7 @@ BEGIN
       WHERE p.status <> 'inactive' AND (v_platform_admin AND v_facility IS NULL OR p.facility_id=v_facility)
       ORDER BY t.created_at DESC LIMIT v_limit)x),'[]'::jsonb)) INTO result;
   ELSIF _module='insurance' THEN
-    IF v_role NOT IN ('admin','accountant') THEN RAISE EXCEPTION 'Not authorised'; END IF;
+    IF NOT v_platform_admin AND v_role <> 'accountant' THEN RAISE EXCEPTION 'Not authorised'; END IF;
     SELECT jsonb_build_object('claims',COALESCE((SELECT jsonb_agg(to_jsonb(x)) FROM (
       SELECT i.id,i.patient_id,i.payer_name,i.member_number,i.claim_number,i.amount_claimed,i.amount_approved,i.amount_paid,i.status,i.rejection_reason,i.service_from,i.service_to,i.created_at
       FROM public.insurance_claims i JOIN public.patients p ON p.id=i.patient_id
