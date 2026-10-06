@@ -111,7 +111,7 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
+      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId }, { get: true });
       if (!active) return;
       if (error) {
         toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
@@ -395,7 +395,7 @@ export default function Encounters() {
 
   const addDiagnosis = async () => {
     if (!selected || !newDx.trim()) return toast({ title: "Enter a diagnosis", description: "Document a provisional diagnosis before adding it.", variant: "destructive" });
-    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim() });
+    const { error } = await db.rpc("add_encounter_diagnosis", { _encounter_id: selected.id, _diagnosis: newDx.trim(), _icd_code: null });
     if (error) return toast({ title: "Diagnosis failed", description: error.message, variant: "destructive" });
     setNewDx("");
     void loadDetails(selected.id);

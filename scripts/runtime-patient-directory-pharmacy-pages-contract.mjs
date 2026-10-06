@@ -19,6 +19,7 @@ const patientDirectory = fs.readFileSync('src/lib/patientDirectory.ts','utf8');
 const formNormalizer = fs.readFileSync('src/components/system/FormFieldIdentityNormalizer.tsx','utf8');
 const pharmacy = fs.readFileSync('src/pages/Pharmacy.tsx','utf8');
 const patientHub = fs.readFileSync('src/pages/patients/PatientHub.tsx','utf8');
+const platformWorkspace = fs.readFileSync('supabase/migrations/20261006113000_reconcile_platform_admin_workspace_context.sql','utf8').toLowerCase();
 
 for (const needle of [
   'create function public.get_patient_directory(',
@@ -34,6 +35,20 @@ for (const needle of [
   'if coalesce(_stock_quantity,0) > 0 and _expiry_date is null',
 ]) {
   if (!migration.includes(needle)) throw new Error('Missing runtime migration contract: ' + needle);
+}
+
+for (const needle of [
+  "is_platform_admin boolean;",
+  "is_platform_admin := public.has_role(uid,'admin'::public.app_role)",
+  "if not is_platform_admin and active_facility is null",
+  "(is_platform_admin and active_facility is null or p.facility_id = active_facility)",
+]) {
+  if (!platformWorkspace.includes(needle)) throw new Error('Platform-admin patient directory context contract missing: ' + needle);
+}
+
+const careTransitions = transitions;
+if (careTransitions.includes("supabase.rpc('get_admission_workspace', { _limit: 500 }, { get: true })") || careTransitions.includes("supabase.rpc('get_operational_workspace', { _module: 'ward', _limit: 500 }, { get: true })")) {
+  throw new Error('CareTransitions must keep VOLATILE workspace RPCs on POST transport');
 }
 
 for (const [name, source] of [
@@ -76,8 +91,8 @@ for (const needle of [
   'associateLabels()',
   'label.htmlFor = nested.id',
   'label.htmlFor = field.id',
-  'field.setAttribute(\"autocomplete\", value)',
-  'field.setAttribute(\"aria-label\", readableFieldName(field))',
+  'field.setAttribute("autocomplete", value)',
+  'field.setAttribute("aria-label", readableFieldName(field))',
 ]) {
   if (!formNormalizer.includes(needle)) throw new Error('Missing form accessibility hardening contract: ' + needle);
 }

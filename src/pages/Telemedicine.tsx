@@ -147,8 +147,8 @@ function PatientTelemedicine() {
 
   const load = async (at = scheduledAt) => {
     const [{ data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }),
-      supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }),
+      supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }, { get: true }),
+      supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }, { get: true }),
     ]);
     if (sessionError || clinicianError) {
       toast({ title: 'Service temporarily unavailable', description: sessionError?.message ?? clinicianError?.message ?? 'Telemedicine information could not be loaded.', variant: 'destructive' });

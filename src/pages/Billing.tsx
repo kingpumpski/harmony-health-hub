@@ -315,7 +315,7 @@ function PatientBilling() {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.rpc('get_patient_invoice_summary', { _limit: 100 });
+      const { data, error } = await supabase.rpc('get_patient_invoice_summary', { _limit: 100 }, { get: true });
       if (!error) setInvoices(Array.isArray(data) ? data : []);
       setLoading(false);
     })();

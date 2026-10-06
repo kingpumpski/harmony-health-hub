@@ -1,5 +1,6 @@
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
@@ -92,14 +93,14 @@ function PatientMedicalRecords() {
   const load = async () => {
     setLoading(true);
     setError(null);
-    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity');
+    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
     const p = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !p) {
       setError(identityError?.message ?? 'Your patient profile could not be identified.');
       setLoading(false);
       return;
     }
-    const { data, error: snapshotError } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id });
+    const { data, error: snapshotError } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id }, { get: true });
     if (snapshotError) setError(snapshotError.message);
     else setSnapshot(data ?? null);
     setLoading(false);
