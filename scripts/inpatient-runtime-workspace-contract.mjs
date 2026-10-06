@@ -43,6 +43,10 @@ for (const forbidden of [
   }
 }
 
+if (!fs.existsSync('supabase/migrations/20261006113000_reconcile_platform_admin_workspace_context.sql')) {
+  throw new Error('Platform-admin workspace context reconciliation migration is missing');
+}
+
 const migrations = fs.readdirSync('supabase/migrations')
   .filter((name) => name.endsWith('.sql'))
   .sort()
@@ -56,16 +60,25 @@ if (!admissionDef.includes("public.has_role(auth.uid(),'system_superuser'::publi
 if (!admissionDef.includes("public.has_role(auth.uid(),'it_admin'::public.app_role)")) {
   throw new Error('Admission workspace must resolve it_admin through has_role');
 }
-if (!admissionDef.includes("v_role <> 'system_superuser' AND v_facility IS NULL")) {
-  throw new Error('Admission workspace must require active facility for non-system-superuser roles');
+if (!admissionDef.includes("v_platform_admin := v_role IN ('admin','it_admin','system_superuser')")) {
+  throw new Error('Admission workspace must resolve platform administrator roles');
+}
+if (!admissionDef.includes("IF NOT v_platform_admin AND v_facility IS NULL")) {
+  throw new Error('Admission workspace must require active facility for non-platform roles');
+}
+if (!admissionDef.includes("v_platform_admin AND v_facility IS NULL")) {
+  throw new Error('Admission workspace must support platform administrators without a selected facility');
 }
 if (!admissionDef.includes("COALESCE(a.facility_id,b.facility_id,w.facility_id,p.facility_id)=v_facility")) {
   throw new Error('Admission workspace must enforce facility attribution');
 }
 
 const wardDef = migrations.slice(migrations.lastIndexOf("ELSIF _module='ward'"));
-if (!wardDef.includes("v_role NOT IN ('admin','it_admin','system_superuser','practitioner','nurse','midwife','specialist_nurse')")) {
-  throw new Error('Ward workspace role parity is incomplete');
+if (!wardDef.includes('IF NOT v_platform_admin AND v_role NOT IN')) {
+  throw new Error('Ward workspace must preserve platform-admin role bypass');
+}
+if (!wardDef.includes("v_platform_admin AND v_facility IS NULL")) {
+  throw new Error('Ward workspace must support platform administrators without a selected facility');
 }
 
 for (const [name, source] of [['Sidebar', sidebar], ['GlobalWorkspaceSearch', search]]) {
