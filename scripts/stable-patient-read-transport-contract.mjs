@@ -44,6 +44,8 @@ const checks = [
   ]],
 ];
 
+checks.push(['supabase/functions/ai-clinical-assist/index.ts', ["await Promise.allSettled([", "const isClinical = hasAnyRole(aiClinicalRoles);", "if (!isClinical && !hasAnyRole(['patient'])) throw new Error('Not authorised to generate this report');"]]);
+
 for (const [file, needles] of checks) {
   const source = fs.readFileSync(file, 'utf8');
   for (const needle of needles) assert.ok(source.includes(needle), file + ': stable patient read must use explicit GET transport: ' + needle);
