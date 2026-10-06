@@ -36,6 +36,11 @@ for (const needle of [
   if (!migration.includes(needle)) throw new Error('Missing runtime migration contract: ' + needle);
 }
 
+const careTransitions = transitions;
+if (careTransitions.includes("supabase.rpc('get_admission_workspace', { _limit: 500 }, { get: true })") || careTransitions.includes("supabase.rpc('get_operational_workspace', { _module: 'ward', _limit: 500 }, { get: true })")) {
+  throw new Error('CareTransitions must keep VOLATILE workspace RPCs on POST transport');
+}
+
 for (const [name, source] of [
   ['Triage', triage],
   ['AnestheticAssessment', anaesthesia],
