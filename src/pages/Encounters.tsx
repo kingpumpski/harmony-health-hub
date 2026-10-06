@@ -1,6 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   BedDouble,
@@ -220,7 +220,10 @@ function encounterAge(createdAt: string) {
 
 export default function Encounters() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { encounterId: routeEncounterId } = useParams<{ encounterId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const isStandaloneEncounter = Boolean(routeEncounterId);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [clinicians, setClinicians] = useState<Clinician[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -314,7 +317,7 @@ export default function Encounters() {
     return () => { void supabase.removeChannel(channel); };
   }, [loadAll, user?.id]);
   useEffect(() => {
-    const id = searchParams.get("encounter");
+    const id = routeEncounterId || searchParams.get("encounter");
     const p = searchParams.get("patient");
     if (p) setPatientId(p);
     if (id) {
@@ -324,7 +327,7 @@ export default function Encounters() {
         setIsHistoryOpen(false);
       }
     }
-  }, [searchParams, encounters]);
+  }, [searchParams, encounters, routeEncounterId]);
   useEffect(() => {
     if (!selected) return;
     setDraftSymptoms(selected.symptoms ?? "");
@@ -512,7 +515,8 @@ export default function Encounters() {
 
   const closeSelectedEncounter = () => {
     setSelected(null);
-    setSearchParams({});
+    if (isStandaloneEncounter) navigate("/encounters");
+    else setSearchParams({});
   };
 
   const draftCount = encounters.filter((item) => item.status !== "completed").length;
@@ -579,7 +583,7 @@ export default function Encounters() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className={`space-y-6 animate-fade-in ${isStandaloneEncounter ? "[&>div:first-child]:hidden" : ""}`}>
       <OperationalWorklistShell
         icon={Stethoscope}
         eyebrow="Patient Care · Clinical encounters"
@@ -693,8 +697,8 @@ export default function Encounters() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="active-encounter-title">
-          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+        <div className={isStandaloneEncounter ? "relative min-h-screen bg-background" : "fixed inset-0 z-[65] bg-slate-950/55 backdrop-blur-sm p-2 sm:p-4"} role={isStandaloneEncounter ? undefined : "dialog"} aria-modal={isStandaloneEncounter ? undefined : true} aria-labelledby="active-encounter-title">
+          <div className={isStandaloneEncounter ? "flex min-h-screen w-full flex-col bg-background" : "mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl"}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-4 sm:p-5">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Active clinical document</p>
@@ -707,7 +711,7 @@ export default function Encounters() {
                 <button type="button" onClick={() => void loadHistory(selected.id)} className="btn-secondary inline-flex items-center gap-2"><History className="w-4 h-4" /> Version history</button>
                 {selected.status !== "cancelled" && !selected.admission_id && <button type="button" onClick={() => void admitEncounter()} disabled={admitting} className="btn-primary inline-flex items-center gap-2"><BedDouble className="w-4 h-4" />{admitting ? "Admitting…" : "Initiate admission"}</button>}
                 {selected.admission_id && <span className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary"><BedDouble className="w-4 h-4" /> Admission active</span>}
-                {selected.status !== "completed" && <button type="button" onClick={() => void submitEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Submit for final</button>}
+                {selected.status !== "completed" && <button type="button" onClick={() => void submitEncounter()} className="btn-primary inline-flex items-center gap-2"><Send className="w-4 h-4" /> Complete</button>}
                 <button type="button" onClick={closeSelectedEncounter} className="btn-ghost" aria-label="Close active encounter"><X className="w-5 h-5" /></button>
               </div>
             </div>
@@ -721,7 +725,7 @@ export default function Encounters() {
               <div className="grid gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
                 <ClinicalSafetyContext patientId={activePatientId} encounterId={selected.id} />
                 <div className="space-y-5">
-                  <section className="rounded-2xl border border-border bg-card p-5">
+                  <section className="order-2 rounded-2xl border border-border bg-card p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div><h3 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Clerking sheet</h3><p className="text-xs text-muted-foreground mt-1">Draft clinical documentation stays attached to this encounter. Finalized documents remain locked and versioned.</p></div>
                       <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><UserRound className="w-3.5 h-3.5" /> {selected.practitioner_id === user?.id ? "Created by you" : "Attending clinician"}</span>
@@ -743,7 +747,7 @@ export default function Encounters() {
                       </div>
                     )}
                   </section>
-                  <section className="rounded-2xl border border-border bg-card p-5">
+                  <section className="order-3 rounded-2xl border border-border bg-card p-5">
                     <section className="rounded-2xl border border-border bg-card p-5">
                      <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnostic & service orders</h3><p className="text-xs text-muted-foreground">Orders attached to this encounter remain visible so downstream departments can continue treatment without leaving the clinical document.</p></div><span className="text-xs text-muted-foreground">{labOrders.length + imagingOrders.length + serviceOrders.length} order(s)</span></div>
                      <div className="grid gap-3 md:grid-cols-3">
@@ -752,14 +756,14 @@ export default function Encounters() {
                        <div className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Other services</span><span className="text-lg font-bold tabular-nums">{serviceOrders.length}</span></div><div className="mt-2 space-y-2">{serviceOrders.slice(0,4).map(o=><div key={o.id} className="text-xs flex items-center justify-between gap-2"><span className="truncate">{o.service_name || "Service"}</span><span className="rounded-full bg-muted px-2 py-0.5">{o.status || "ordered"}</span></div>)}{!serviceOrders.length && <p className="text-xs text-muted-foreground">No service orders.</p>}</div><Link to="/department-queue" className="mt-3 inline-flex text-xs text-primary">Open department queue</Link></div>
                      </div>
                    </section>
-                   <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
+                   <div className="order-1 flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold">Diagnoses</h3><p className="text-xs text-muted-foreground">New diagnoses are provisional by default. Mark the diagnosis driving treatment as principal.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium">{diagnoses.length} documented</span></div>
                     {selected.status !== "completed" && <div className="flex gap-2 mb-3"><input value={newDx} onChange={(e) => setNewDx(e.target.value)} placeholder="Add provisional diagnosis" className="input-medical flex-1" /><button type="button" onClick={() => void addDiagnosis()} className="btn-primary">Add</button></div>}
                     {principalRequiredError && <p role="alert" className="mb-3 rounded-lg border border-critical/40 bg-critical/5 p-3 text-sm text-critical">Please confirm the Principal Diagnosis to finalize this encounter. Select a provisional diagnosis and choose “Set principal”.</p>}
                     <div className="space-y-2">{diagnoses.map((dx) => <div key={dx.id} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3"><div><span className="font-medium text-sm">{dx.diagnosis}</span>{dx.is_principal ? <span className="ml-2 text-xs rounded-full bg-primary/10 text-primary px-2 py-1">Principal</span> : <span title={principalRequiredError ? "Please confirm the Principal Diagnosis to finalize this encounter." : "Provisional diagnosis"} className={`ml-2 text-xs rounded-full px-2 py-1 ${principalRequiredError ? "bg-critical/10 text-critical ring-1 ring-critical/40" : "bg-warning/10 text-warning"}`}>Provisional</span>}</div>{selected.status !== "completed" && <div className="flex gap-2">{!dx.is_principal && <button type="button" onClick={() => void setPrincipal(dx)} className="btn-ghost text-xs">Set principal</button>}<button type="button" onClick={() => void removeDiagnosis(dx.id)} className="text-destructive p-2" aria-label="Remove diagnosis"><Trash2 className="w-4 h-4" /></button></div>}</div>)}</div>
                   </section>
-                  <section className="rounded-2xl border border-border bg-card p-5">
+                  <section className="order-4 rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold flex items-center gap-2"><Pill className="w-4 h-4" /> Prescribing</h3><p className="text-xs text-muted-foreground">Treatment remains explicitly linked to the documented clinical assessment.</p></div><span className="text-xs text-muted-foreground">{prescriptions.length} prescription(s)</span></div>
-                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><select value={selectedDiagnosisId} onChange={(e) => setSelectedDiagnosisId(e.target.value)} className="input-medical md:col-span-2" required><option value="">Select diagnosis being treated…</option>{diagnoses.map((dx) => <option key={dx.id} value={dx.id}>{dx.diagnosis}{dx.is_principal ? " · Principal" : ""}</option>)}</select><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" disabled={!diagnoses.length} className="btn-primary md:col-span-2">Add prescription</button></form>}
+                    {selected.status !== "completed" && <form onSubmit={addPrescription} className="grid gap-2 md:grid-cols-2"><input value={med} onChange={(e) => setMed(e.target.value)} placeholder="Medication" className="input-medical" required /><input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Dose" className="input-medical" /><input value={freq} onChange={(e) => setFreq(e.target.value)} placeholder="Frequency" className="input-medical" /><input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Duration" className="input-medical" /><button type="submit" disabled={!diagnoses.length} className="btn-primary md:col-span-2">Add prescription</button></form>}
                     <div className="space-y-2 mt-3">{prescriptions.map((rx) => <div key={rx.id} className="rounded-xl border border-border p-3 text-sm flex justify-between gap-3"><span><b>{rx.medication}</b> · {rx.dosage || "Dose not recorded"} · {rx.frequency || "Frequency not recorded"} · {rx.duration || "Duration not recorded"}</span><span className="text-xs text-muted-foreground">{rx.status}</span></div>)}</div>
                   </section>
                 </div>
