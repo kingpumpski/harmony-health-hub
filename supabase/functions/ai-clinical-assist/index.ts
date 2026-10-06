@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       const isOwner = Boolean(ownerPatient);
       const isClinical = hasAnyRole(aiClinicalRoles);
       if (!isOwner && !isClinical) throw new Error('Not authorised to generate this report');
-      const contextRpc = isClinical ? 'get_ai_clinical_context' : 'get_patient_hub_clinical_snapshot';
+      const contextRpc = isClinical ? 'get_ai_clinical_context' : 'get_patient_portal_medical_record';
       const { data: scopedContext, error: contextError } = await supabase.rpc(contextRpc, { _patient_id: body.patientId });
       if (contextError) throw contextError;
       if (!scopedContext) throw new Error('Clinical context unavailable');
