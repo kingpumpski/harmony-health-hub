@@ -145,17 +145,32 @@ function PatientTelemedicine() {
   const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 24*60*60*1000).toISOString().slice(0,16));
   const [reason, setReason] = useState('');
 
-  const load = async () => {
-    const [{ data: identity, error: identityError }, { data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_patient_portal_identity'),
-      supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
-      supabase.rpc('get_patient_telemedicine_clinicians'),
-    ]);
-    if (identityError || sessionError || clinicianError) { toast({ title: 'Service temporarily unavailable', description: 'Telemedicine information could not be loaded.' }); return; }
-    setSessions(rows ?? []);
+  const loadClinicians = async () => {
+    const { data: staff, error } = await supabase.rpc('get_patient_telemedicine_clinicians', {
+      _scheduled_at: new Date(scheduledAt).toISOString(),
+    });
+    if (error) {
+      setClinicians([]);
+      toast({ title: 'Unable to load clinicians', description: error.message, variant: 'destructive' });
+      return;
+    }
     setClinicians(staff ?? []);
   };
+
+  const load = async () => {
+    const [{ data: identity, error: identityError }, { data: rows, error: sessionError }] = await Promise.all([
+      supabase.rpc('get_patient_portal_identity'),
+      supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
+    ]);
+    if (identityError || sessionError) {
+      toast({ title: 'Service temporarily unavailable', description: identityError?.message ?? sessionError?.message ?? 'Telemedicine information could not be loaded.', variant: 'destructive' });
+      return;
+    }
+    setSessions(rows ?? []);
+    await loadClinicians();
+  };
   useEffect(() => { void load(); }, []);
+  useEffect(() => { void loadClinicians(); }, [scheduledAt]);
 
   const request = async (e: React.FormEvent) => {
     e.preventDefault();
