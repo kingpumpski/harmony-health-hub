@@ -149,7 +149,7 @@ function PatientTelemedicine() {
     const [{ data: identity, error: identityError }, { data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
       supabase.rpc('get_patient_portal_identity'),
       supabase.from('video_sessions').select('id,patient_id,practitioner_id,scheduled_at,status,payment_received,room_name,notes').order('scheduled_at', { ascending: false }).limit(50),
-      supabase.rpc('get_patient_telemedicine_clinicians'),
+      supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(scheduledAt).toISOString() }),
     ]);
     if (identityError || sessionError || clinicianError) { toast({ title: 'Service temporarily unavailable', description: 'Telemedicine information could not be loaded.' }); return; }
     setSessions(rows ?? []);
