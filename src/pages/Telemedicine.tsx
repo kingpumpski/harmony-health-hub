@@ -155,7 +155,7 @@ function PatientTelemedicine() {
     setSessions(rows ?? []);
     setClinicians(staff ?? []);
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [scheduledAt]);
 
   const request = async (e: React.FormEvent) => {
     e.preventDefault();
