@@ -239,7 +239,7 @@ function StaffAppointments() {
     setSelected(null);
     await load(true);
     const encounterId = typeof data === 'string' ? data : String(data ?? '');
-    navigate(`/encounters?patient=${encodeURIComponent(appointment.patient_id)}&appointment=${encodeURIComponent(appointment.id)}${encounterId ? `&encounter=${encodeURIComponent(encounterId)}` : ''}`);
+    navigate(encounterId ? `/encounters/${encodeURIComponent(encounterId)}` : `/encounters?patient=${encodeURIComponent(appointment.patient_id)}&appointment=${encodeURIComponent(appointment.id)}`);
   };
 
   const clinicianName = (id?: string | null) => {
