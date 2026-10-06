@@ -50,8 +50,7 @@ export default function InpatientBilling(){
  const filtered=patients.filter(p=>`${p.first_name} ${p.last_name} ${p.patient_code}`.toLowerCase().includes(search.toLowerCase()));
  const grouped=useMemo(()=>categories.map(category=>({category,items:rows.filter(r=>categoryFor(r)===category)})).filter(g=>g.items.length),[rows]);
  const total=rows.reduce((sum,r)=>sum+Number(r.outstanding_amount??r.amount??0),0);
- const admissionDate=selected?undefined:undefined;
- if(patientId && !selected) setSelected(patientId);
+
  return <div className="space-y-6 animate-fade-in">
   <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="flex items-center gap-2 text-primary"><BedDouble className="h-6 w-6"/><span className="text-xs uppercase tracking-wide font-semibold">Billing · Inpatient</span></div><h1 className="mt-1 text-2xl font-heading font-bold">Inpatient Discharge Billing</h1><p className="text-sm text-muted-foreground">Reconcile all billable services from admission through the current discharge point. Unpaid items remain attached to the account.</p></div><div className="flex gap-2"><button className="btn-secondary inline-flex items-center gap-2" onClick={()=>navigate('/billing')}><ArrowLeft className="h-4 w-4"/> Billing</button><button aria-label="Refresh inpatient billing" title="Refresh" className="btn-secondary" onClick={()=>void load()} disabled={loading}><RefreshCw className={`h-4 w-4 ${loading?'animate-spin':''}`}/></button></div></header>
   <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
