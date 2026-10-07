@@ -2,7 +2,7 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
-import { BedDouble, Plus, RefreshCw, Building2, Link2 } from 'lucide-react';
+import { BedDouble, Plus,  Building2, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
