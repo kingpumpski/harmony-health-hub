@@ -1,6 +1,7 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BellRing, CreditCard, Package, Pencil, Pill, RefreshCw, Search, Settings2 } from 'lucide-react';
+<RefreshButton onClick={() => void load()} loading={false} label="Refresh pharmacy workspace" />
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
