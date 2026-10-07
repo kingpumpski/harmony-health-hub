@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Video, Plus, ExternalLink, AlertCircle } from 'lucide-react';
+import { Video, Plus, ExternalLink, AlertCircle, X } from 'lucide-react';
+import PageHeader from '@/components/layout/PageHeader';
 
 interface Patient { id: string; first_name: string; last_name: string }
 interface Session {
@@ -20,6 +21,8 @@ function StaffTelemedicine() {
   const [billing, setBilling] = useState<Record<string, string>>({});
   const [pid, setPid] = useState('');
   const [scheduledAt, setScheduledAt] = useState(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadAll = async () => {
     const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
@@ -43,7 +46,11 @@ function StaffTelemedicine() {
     }
     setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
   };
-  useEffect(() => { void loadAll(); }, []);
+  useEffect(() => {
+    void loadAll();
+    const channel = supabase.channel('telemedicine-workspace').on('postgres_changes', { event: '*', schema: 'public', table: 'video_sessions' }, () => { void loadAll(); }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
 
   const createSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +63,7 @@ function StaffTelemedicine() {
     if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Video session scheduled', description: 'Accounts must release the telemedicine service order in Billing before the consultation can start.' });
     setPid('');
+    setShowScheduler(false);
     void loadAll();
   };
 
@@ -87,10 +95,15 @@ function StaffTelemedicine() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Video className="w-6 h-6 text-primary" /> Telemedicine</h1>
-        <p className="text-muted-foreground">Video consultations with server-enforced billing and lifecycle controls.</p>
-      </div>
+      <PageHeader
+        icon={<Video className="w-6 h-6" aria-hidden="true" />}
+        eyebrow="Care coordination"
+        title="Telemedicine"
+        description="Video consultations with server-enforced billing and lifecycle controls."
+        primaryAction={<button type="button" onClick={() => setShowScheduler(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Schedule Session</button>}
+        onRefresh={() => { setRefreshing(true); void loadAll().finally(() => setRefreshing(false)); }}
+        refreshing={refreshing}
+      />
 
       <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm flex items-start gap-2">
         <AlertCircle className="w-4 h-4 text-info mt-0.5 shrink-0" />
@@ -98,15 +111,14 @@ function StaffTelemedicine() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
-        <form onSubmit={createSession} className="card-medical p-5 space-y-3 h-fit">
-          <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> Schedule Session</h2>
-          <select value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full">
-            <option value="">Select patient…</option>
-            {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-          </select>
-          <input required type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input-medical w-full" />
-          <button className="btn-primary w-full">Schedule</button>
-        </form>
+        {showScheduler && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="schedule-session-heading">
+          <form onSubmit={createSession} className="card-medical w-full max-w-lg space-y-4 p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4"><div><h2 id="schedule-session-heading" className="font-semibold">Schedule Session</h2><p className="mt-1 text-sm text-muted-foreground">Create a billable telemedicine consultation.</p></div><button type="button" className="btn-ghost" aria-label="Close schedule session" onClick={() => setShowScheduler(false)}><X className="h-4 w-4" /></button></div>
+            <select required value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select>
+            <input required type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input-medical w-full" />
+            <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setShowScheduler(false)}>Cancel</button><button className="btn-primary">Schedule</button></div>
+          </form>
+        </div>}
 
         <div className="card-medical p-5">
           <h2 className="font-semibold mb-3">Sessions</h2>
