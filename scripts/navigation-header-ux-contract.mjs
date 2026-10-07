@@ -5,6 +5,9 @@ const sidebar = read('src/components/layout/Sidebar.tsx');
 const header = read('src/components/layout/Header.tsx');
 const search = read('src/lib/globalWorkspaceSearch.ts');
 const app = read('src/App.tsx');
+const pageHeader = read('src/components/layout/PageHeader.tsx');
+const refreshButton = read('src/components/ui/RefreshButton.tsx');
+const recordList = read('src/components/records/RecordList.tsx');
 const failures = [];
 const check = (name, condition) => { if (!condition) failures.push(name); };
 
@@ -14,6 +17,9 @@ check('normal users do not get a facility switcher in the header', !header.inclu
 check('facility sharing administration is routed', app.includes('/admin/facility-sharing') && app.includes('FacilityDataSharing'));
 check('platform user management includes System Superuser', app.includes("path=\"/admin/users\"") && app.includes('system_superuser'));
 check('facility attribution administration is routed', app.includes('/admin/facility-attribution') && app.includes('FacilityAttributionReview'));
+check('shared refresh control is icon-only, circular and accessible', refreshButton.includes('rounded-full') && refreshButton.includes('aria-label={label}') && refreshButton.includes('RefreshCw'));
+check('shared page header places primary action before refresh', pageHeader.indexOf('primaryAction') < pageHeader.indexOf('onRefresh') && pageHeader.includes('<RefreshButton'));
+check('RecordList uses the shared refresh control and Add New before refresh', recordList.includes("RefreshButton") && recordList.indexOf('onAddNew') < recordList.indexOf('onRefresh'));
 
 
 const layout = read('src/components/layout/MainLayout.tsx');
