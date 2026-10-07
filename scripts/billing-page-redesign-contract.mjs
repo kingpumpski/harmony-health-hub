@@ -17,5 +17,7 @@ assert(inpatient.includes("get_inpatient_discharge_bill"), 'inpatient billing mu
 assert(!inpatient.includes('prepare_patient_billable_items'), 'inpatient billing read path must not mutate/materialize billing data');
 for (const category of ['Consultation','Laboratory','Radiology','Drugs/Medications','Accommodation','Nursing Care','Consumables','Feeding','Other Services']) assert(inpatient.includes(category), 'missing billing category: '+category);
 assert(inpatient.includes('Grand Total Outstanding'), 'inpatient discharge billing must show a grand total');
+assert(inpatient.includes('pendingRows'), 'inpatient billing must exclude fully paid items from pending services');
+assert(inpatient.includes('paidRows'), 'inpatient billing must preserve a paid-item reconciliation summary');
 assert(shell.includes('onClick?: () => void'), 'operational KPI cards must support actions');
 console.log('Billing redesign contract passed.');
