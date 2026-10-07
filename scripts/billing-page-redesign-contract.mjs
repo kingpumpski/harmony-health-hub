@@ -8,6 +8,7 @@ const shell=fs.readFileSync('src/components/workflow/OperationalWorklistShell.ts
 assert(!billing.includes('Prepare billing window'), 'main billing page must not expose the legacy billing-window form');
 assert(!billing.includes('Select a patient to automatically prepare the account'), 'main billing page must not expose the legacy patient billing-window form');
 assert(billing.includes("label: 'Active Inpatients'"), 'billing dashboard must expose Active Inpatients KPI');
+assert(billing.includes("get_active_inpatient_billing_queue"), 'billing KPI must use the billing-scoped inpatient queue');
 assert(billing.includes("navigate('/billing/inpatients')"), 'Active Inpatients KPI must route to inpatient billing');
 assert(billing.includes('Generate Bill'), 'billing header must provide on-demand Generate Bill');
 assert(billing.includes('Search patient name or code'), 'Generate Bill must support patient search');
