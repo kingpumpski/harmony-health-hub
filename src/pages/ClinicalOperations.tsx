@@ -3,7 +3,7 @@ import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useState, type ElementType } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, BedDouble, ClipboardList, Droplets, RefreshCw, ShieldCheck, Siren, Stethoscope } from 'lucide-react';
+import { Activity, BedDouble, ClipboardList, Droplets,  ShieldCheck, Siren, Stethoscope } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
