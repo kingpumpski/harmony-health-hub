@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CheckCircle2, Clock3, Plus, RefreshCw, Stethoscope, UserCheck, X } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock3, Plus, Stethoscope, UserCheck, X } from 'lucide-react';
 import { notifyRoles } from '@/lib/notifications';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
+import PageHeader from '@/components/layout/PageHeader';
 
 interface Patient {
   id: string;
@@ -260,24 +261,15 @@ function StaffAppointments() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-primary" />
-            <span className="text-xs font-medium uppercase tracking-wide text-primary">Care coordination</span>
-          </div>
-          <h1 className="text-2xl font-heading font-bold mt-1">Appointments</h1>
-          <p className="text-muted-foreground max-w-2xl">Today’s active appointment queue. Completed, cancelled and no-show appointments leave this worklist automatically.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void refresh()} disabled={loading || refreshing} className="btn-secondary inline-flex items-center gap-2">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
-          </button>
-          {canSchedule && <button type="button" onClick={() => setShowScheduler(true)} className="btn-primary inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" /> New appointment
-          </button>}
-        </div>
-      </header>
+      <PageHeader
+        icon={<Calendar className="w-6 h-6" aria-hidden="true" />}
+        eyebrow="Care coordination"
+        title="Appointments"
+        description="Today’s active appointment queue. Completed, cancelled and no-show appointments leave this worklist automatically."
+        primaryAction={canSchedule ? <button type="button" onClick={() => setShowScheduler(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" /> New appointment</button> : undefined}
+        onRefresh={() => void refresh()}
+        refreshing={loading || refreshing}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Today appointment counters">
         {[
