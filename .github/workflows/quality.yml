@@ -54,6 +54,9 @@ jobs:
 
       - name: Navigation and header UX contract
         run: node scripts/navigation-header-ux-contract.mjs
+      - name: Global UI standardization contract
+        run: npm run test:global-ui-standardization
+
 
       - name: Role dashboard contract
         run: npm run test:role-dashboards
