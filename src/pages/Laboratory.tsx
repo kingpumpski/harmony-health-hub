@@ -1,10 +1,11 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing, RefreshCw } from 'lucide-react';
+import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing} from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
@@ -263,9 +264,7 @@ export default function Laboratory() {
             <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit">
               <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
             </Link>
-            <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh laboratory workspace">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Refresh
-            </button>
+            <RefreshButton onClick={() => void loadAll()} loading={loading} label="Refresh laboratory workspace" />
           </>
         )}
         counters={[
