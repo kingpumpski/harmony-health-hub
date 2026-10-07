@@ -124,9 +124,7 @@ export default function Imaging() {
       title="Imaging Workspace"
       description="Request, release, perform and report diagnostic imaging through one central service queue with payment and urgent-case visibility."
       actions={(
-        <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh imaging workspace">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <RefreshButton onClick={() => { playWorkflowSound('info'); void load(); }} loading={loading} label="Refresh imaging workspace" />
       )}
       counters={[
         { label: 'Awaiting Accounts', value: counters.awaiting_release, surface: 'bg-warning/5', tone: 'text-warning' },
