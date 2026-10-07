@@ -52,3 +52,9 @@ for (const [file, needles] of checks) {
 }
 
 console.log('[stable-patient-read] All stable patient/portal RPC call sites use explicit GET transport.');
+
+
+const aiClinicalAssist = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts', 'utf8');
+assert.ok(aiClinicalAssist.includes("supabase.rpc('get_current_user_roles')"), 'AI clinical assist must resolve caller roles through the canonical security-definer role helper');
+assert.ok(!aiClinicalAssist.includes("supabase.from('user_roles').select('role').eq('user_id', callerId)"), 'AI clinical assist must not depend directly on user_roles RLS');
+console.log('[ai-clinical-role-resolution] canonical role helper contract passed.');
