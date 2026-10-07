@@ -57,9 +57,7 @@ export default function Dental() {
       title="Dental Clinic"
       description="Document examinations, treatment plans and procedures in a focused dental care worklist."
       actions={(
-        <button type="button" onClick={() => void load()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh dental records">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <RefreshButton onClick={() => void load()} loading={loading} label="Refresh dental records" />
       )}
       counters={[
         { label: 'Recent records', value: records.length, tone: 'text-primary', surface: 'bg-primary/5' },
