@@ -25,7 +25,7 @@ export default function InpatientBilling(){
  const [patients,setPatients]=useState<any[]>([]); const [rows,setRows]=useState<any[]>([]); const [selected,setSelected]=useState(patientId||''); const [search,setSearch]=useState(''); const [loading,setLoading]=useState(true); const [admission,setAdmission]=useState<any>(null);
  const load=useCallback(async()=>{
   setLoading(true);
-  const {data:ad,error}=await db.rpc('get_admission_workspace',{_limit:500});
+  const {data:ad,error}=await db.rpc('get_active_inpatient_billing_queue',{_limit:500});
   if(error){setLoading(false);toast.error(error.message);return;}
   const admissions=Array.isArray(ad)?ad:(ad?.admissions??[]);
   const active=admissions.filter((a:any)=>a.status==='admitted'&&!a.discharged_at);
