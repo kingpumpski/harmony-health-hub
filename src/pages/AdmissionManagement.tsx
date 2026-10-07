@@ -1,6 +1,6 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { BedDouble, CheckCircle2, LogOut, RefreshCw, Users, WalletCards } from 'lucide-react';
+import { BedDouble, CheckCircle2, LogOut,  Users, WalletCards } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
