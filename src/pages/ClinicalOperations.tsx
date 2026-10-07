@@ -1,4 +1,5 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
+import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useState, type ElementType } from 'react';
 import { Link } from 'react-router-dom';
@@ -209,7 +210,7 @@ export default function ClinicalOperations() {
       <header className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-7">
 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 <div><div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary"><Activity className="h-3.5 w-3.5" /> Clinical command · Operations</div><h1 className="text-2xl font-heading font-bold tracking-tight sm:text-3xl">Clinical Operations</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Coordinate capacity, nursing, emergency, theatre, transfusion and insurance workflows from one role-aware workspace.</p></div>
-<button onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2 self-start" aria-label="Refresh clinical operations" disabled={busy}><RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Refresh</button>
+<RefreshButton onClick={() => void load()} loading={busy} label="Refresh healthcare operations" />
 </div></header>
       <div className="card-medical rounded-2xl p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Clinical workflow access</div><p className="mt-1 text-xs text-muted-foreground">Role-permitted entry points for the next clinical action.</p></div><span className="text-[10px] rounded-full border border-border px-2 py-1 text-muted-foreground">{workflowLinks.length} available</span></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">{workflowLinks.map(([labelText, href]) => <Link key={href} to={href} className="btn-secondary">{labelText}</Link>)}</div></div>
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Clinical operations snapshot">
