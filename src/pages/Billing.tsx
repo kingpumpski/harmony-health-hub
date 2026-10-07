@@ -68,7 +68,7 @@ function StaffBilling() {
   const filteredTariffs = useMemo(() => tariffs.filter((t) => `${t.service_code} ${t.service_name} ${t.department}`.toLowerCase().includes(walkInSearch.toLowerCase())), [tariffs, walkInSearch]);
 
   const loadInpatientCount = useCallback(async () => {
-    const { data, error } = await db.rpc('get_admission_workspace', { _limit: 500 });
+    const { data, error } = await db.rpc('get_active_inpatient_billing_queue', { _limit: 500 });
     if (error) { setInpatientCount(0); return; }
     const rows = Array.isArray(data) ? data : (data?.admissions ?? []);
     setInpatientCount(rows.filter((row: any) => row.status === 'admitted' && !row.discharged_at).length);
