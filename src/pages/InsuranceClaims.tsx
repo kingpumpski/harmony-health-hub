@@ -2,7 +2,7 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCw, Save, ShieldCheck, Activity, Clock3, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
+import { Plus,  Save, ShieldCheck, Activity, Clock3, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useToast } from '@/hooks/use-toast';
