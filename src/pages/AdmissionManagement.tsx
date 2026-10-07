@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { BedDouble, CheckCircle2, LogOut, RefreshCw, Users, WalletCards } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,7 +77,7 @@ export default function AdmissionManagement() {
   const patientName = (id: string) => { const p = patients.find((item) => item.id === id); return p ? `${p.first_name} ${p.last_name} · ${p.patient_code}` : 'Unknown patient'; };
 
   return <div className="space-y-6 animate-fade-in">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><BedDouble className="w-6 h-6 text-primary" /> Admissions & Inpatient Flow</h1><p className="text-muted-foreground">Admission, ward/bed allocation, inpatient monitoring and discharge-to-billing handoff.</p></div><button onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Refresh</button></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><BedDouble className="w-6 h-6 text-primary" /> Admissions & Inpatient Flow</h1><p className="text-muted-foreground">Admission, ward/bed allocation, inpatient monitoring and discharge-to-billing handoff.</p></div><RefreshButton onClick={() => void load()} loading={loading} label="Refresh admissions" /></div>
     <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="card-medical p-4 bg-primary/5 border-primary/20 transition-all duration-300 hover:-translate-y-0.5"><p className="text-xs text-muted-foreground flex items-center gap-2"><Users className="w-4 h-4" /> Currently admitted</p><p className="text-3xl font-bold mt-1 animate-pulse">{counters.active}</p><p className="text-xs text-muted-foreground">Active inpatient care</p></div>
       <div className="card-medical p-4 bg-warning/5 border-warning/20 transition-all duration-300 hover:-translate-y-0.5"><p className="text-xs text-muted-foreground flex items-center gap-2"><BedDouble className="w-4 h-4" /> Admitted today</p><p className="text-3xl font-bold mt-1">{counters.today}</p><p className="text-xs text-muted-foreground">New inpatient episodes</p></div>
