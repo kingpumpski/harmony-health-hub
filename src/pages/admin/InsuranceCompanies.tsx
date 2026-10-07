@@ -1,4 +1,5 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useEffect, useState } from 'react';
 import { Building2, Pencil, Plus, RefreshCw, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +47,7 @@ export default function InsuranceCompanies() {
     </div>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
       <section className="card-medical overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border p-4"><div className="flex items-center gap-2"><Building2 className="h-5 w-5" /><span className="font-semibold">Payer directory</span></div><button type="button" onClick={()=>void load()} className="btn-secondary"><RefreshCw className="h-4 w-4" />Refresh</button></div>
+        <div className="flex items-center justify-between border-b border-border p-4"><div className="flex items-center gap-2"><Building2 className="h-5 w-5" /><span className="font-semibold">Payer directory</span></div><RefreshButton onClick={() => void load()} loading={loading} /></div>
         {loading ? <p className="p-6 text-sm text-muted-foreground">Loading insurers…</p> : rows.length===0 ? <p className="p-6 text-sm text-muted-foreground">No insurance companies configured yet.</p> : <div className="divide-y divide-border">{rows.map(row => <div key={row.id} className="flex items-center justify-between gap-4 p-4">
           <div><div className="font-medium">{row.name} <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs">{row.code}</span></div><div className="mt-1 text-xs text-muted-foreground">{row.contact_person || 'No contact'}{row.phone ? ' · '+row.phone : ''}{!row.active ? ' · Inactive' : ''}</div></div>
           <button type="button" className="btn-secondary" onClick={()=>{setEditing(row.id);setForm({code:row.code,name:row.name,short_name:row.short_name??'',phone:row.phone??'',email:row.email??'',address:row.address??'',contact_person:row.contact_person??'',active:row.active});}}><Pencil className="h-4 w-4" />Edit</button>
