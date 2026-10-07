@@ -1,6 +1,6 @@
 import type { ReactNode, ElementType } from 'react';
 
-type Counter = { label: string; value: ReactNode; tone?: string; surface?: string };
+type Counter = { label: string; value: ReactNode; tone?: string; surface?: string; onClick?: () => void };
 
 interface OperationalWorklistShellProps {
   icon: ElementType;
@@ -60,7 +60,7 @@ export default function OperationalWorklistShell({
       {counters.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label={`${title} counters`}>
           {counters.map((counter) => (
-            <div key={counter.label} className={`card-medical min-w-0 ${counter.surface ?? 'bg-card'} p-3`}>
+            <div key={counter.label} className={`relative card-medical min-w-0 ${counter.surface ?? 'bg-card'} p-3 ${counter.onClick ? 'cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/30' : ''}`}>{counter.onClick && <button type="button" aria-label={`Open ${counter.label}`} onClick={counter.onClick} className="absolute inset-0 h-full w-full rounded-xl focus:outline-none" />}
               <p className="truncate text-[11px] leading-tight text-muted-foreground">{counter.label}</p>
               <p className={`mt-1 text-xl font-bold ${counter.tone ?? 'text-foreground'}`}>{counter.value}</p>
             </div>
