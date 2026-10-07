@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { RefreshCw, Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal } from 'lucide-react';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
