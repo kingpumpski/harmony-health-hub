@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, RefreshCw, Settings2, X, Check } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, Settings2, X, Check } from 'lucide-react';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface WorklistColumn<T> {
