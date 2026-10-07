@@ -7,6 +7,7 @@ const billing = fs.readFileSync('src/pages/Billing.tsx','utf8');
 const records = fs.readFileSync('src/pages/MedicalRecords.tsx','utf8');
 const ai = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
 const sidebar = fs.readFileSync('src/components/layout/Sidebar.tsx','utf8');
+const aiReportRuntimeMigration = fs.readFileSync('supabase/migrations/20261007093000_reconcile_ai_report_runtime_search_paths.sql','utf8');
 
 for (const needle of [
   'create or replace function public.get_patient_portal_identity()',
@@ -32,4 +33,5 @@ for (const [name,source,needles] of [
 
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
+if (!aiReportRuntimeMigration.toLowerCase().includes('alter function public.get_ai_report_requests(uuid, integer)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_ai_report_request(uuid, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.complete_ai_report_request(uuid, text, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_patient_appointment(uuid, timestamptz, text, text)\n  set search_path = pg_catalog, public')) throw new Error('AI report and appointment SECURITY DEFINER runtime search paths must resolve public.has_role safely');
 console.log('Patient portal self-service contracts passed.');
