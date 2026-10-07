@@ -3,7 +3,6 @@ import { ArrowLeft, BedDouble, ChevronRight, Loader2, RefreshCw, Search, WalletC
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 
 const db=supabase as any;
 const money=(v:number)=>`₵${Number(v||0).toFixed(2)}`;
@@ -22,7 +21,7 @@ const categoryFor=(item:any)=>{
 };
 
 export default function InpatientBilling(){
- const navigate=useNavigate(); const {patientId}=useParams<{patientId?:string}>(); const {user}=useAuth();
+ const navigate=useNavigate(); const {patientId}=useParams<{patientId?:string}>();
  const [patients,setPatients]=useState<any[]>([]); const [rows,setRows]=useState<any[]>([]); const [selected,setSelected]=useState(patientId||''); const [search,setSearch]=useState(''); const [loading,setLoading]=useState(true); const [admission,setAdmission]=useState<any>(null);
  const load=useCallback(async()=>{
   setLoading(true);
@@ -39,7 +38,7 @@ export default function InpatientBilling(){
    const selectedAdmission=active.find((a:any)=>a.patient_id===selected); setAdmission(selectedAdmission??null);
    if(selectedAdmission){
     const from=new Date(selectedAdmission.admitted_at).toISOString(); const to=new Date().toISOString();
-    const {data:items,error:be}=await db.rpc('prepare_patient_billable_items',{_patient_id:selected,_from:from,_to:to});
+    const {data:items,error:be}=await db.rpc('get_inpatient_discharge_bill',{_patient_id:selected,_admission_id:selectedAdmission.id,_to:to});
     if(be) toast.error(be.message); else setRows(items??[]);
    }
   } else { setRows([]); setAdmission(null); }
