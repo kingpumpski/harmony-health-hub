@@ -1,46 +1,79 @@
--- Enterprise facility onboarding: a platform-control operation, not a facility-role permission.
+-- Enterprise facility onboarding compatibility migration.
+-- The canonical facility entity is healthcare_facilities; the later
+-- 20261008163500 reconciliation migration keeps the same platform-control
+-- semantics while adding the final platform listing/compatibility wrappers.
+--
+-- Facility creation is a platform privilege, not a facility/module permission.
 CREATE OR REPLACE FUNCTION public.platform_create_facility(
   _name text,
   _facility_code text DEFAULT NULL,
-  _facility_type text DEFAULT 'hospital',
-  _country_code text DEFAULT 'GH',
-  _timezone text DEFAULT 'Africa/Accra'
+  _facility_type text DEFAULT 'district_hospital',
+  _district text DEFAULT NULL,
+  _region text DEFAULT NULL,
+  _dhims2_uid text DEFAULT NULL
 )
-RETURNS uuid
+RETURNS public.healthcare_facilities
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path=public
+SET search_path=''
 AS $$
 DECLARE
-  v_id uuid;
+  v_user uuid := (SELECT auth.uid());
+  v_facility public.healthcare_facilities;
+  v_code text := nullif(btrim(_facility_code), '');
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'system_superuser'::public.app_role) THEN
-    RAISE EXCEPTION 'Platform Super Admin permission is required to onboard facilities';
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING errcode='42501';
   END IF;
-  IF nullif(trim(_name), '') IS NULL THEN
-    RAISE EXCEPTION 'Facility name is required';
+  IF NOT EXISTS (
+    SELECT 1 FROM public.user_roles ur
+    WHERE ur.user_id=v_user
+      AND ur.role='system_superuser'::public.app_role
+  ) THEN
+    RAISE EXCEPTION 'Only system super administrators may onboard facilities' USING errcode='42501';
   END IF;
-  IF _country_code IS NULL OR length(trim(_country_code)) <> 2 THEN
-    RAISE EXCEPTION 'A valid ISO country code is required';
+  IF nullif(btrim(coalesce(_name,'')), '') IS NULL THEN
+    RAISE EXCEPTION 'Facility name is required' USING errcode='22023';
+  END IF;
+  IF _facility_type NOT IN (
+    'chps_compound','health_centre','district_hospital','regional_hospital',
+    'teaching_hospital','specialist_hospital','polyclinic','clinic',
+    'maternity_home','other'
+  ) THEN
+    RAISE EXCEPTION 'Unsupported facility type' USING errcode='22023';
+  END IF;
+  IF v_code IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.healthcare_facilities hf WHERE hf.facility_code=v_code
+  ) THEN
+    RAISE EXCEPTION 'Facility code already exists' USING errcode='23505';
   END IF;
 
-  INSERT INTO public.facilities(name, facility_code, facility_type, country_code, timezone, is_active)
-  VALUES (trim(_name), nullif(trim(_facility_code), ''), lower(trim(_facility_type)), upper(trim(_country_code)), coalesce(nullif(trim(_timezone), ''), 'Africa/Accra'), true)
-  RETURNING id INTO v_id;
+  INSERT INTO public.healthcare_facilities(
+    name,facility_code,facility_type,district,region,dhims2_uid,created_by
+  )
+  VALUES(
+    btrim(_name),v_code,_facility_type,
+    nullif(btrim(_district),''),nullif(btrim(_region),''),
+    nullif(btrim(_dhims2_uid),''),v_user
+  )
+  RETURNING * INTO v_facility;
 
-  -- Seed the enterprise service catalogue through the canonical service-gating
-  -- function when available. This does not enable modules automatically.
-  INSERT INTO public.hms_facility_modules(facility_id, module_id, enabled, service_available, readiness_status)
-  SELECT v_id, m.module_id, false, false, 'not_available'
+  -- New facilities must never inherit an implicitly enabled enterprise module.
+  -- The catalogue is seeded only after the facility exists; service declaration
+  -- and module enablement remain separate, governed operations.
+  INSERT INTO public.hms_facility_modules(
+    facility_id,module_id,enabled,service_available,readiness_status,configured_by
+  )
+  SELECT v_facility.id,m.module_id,false,false,'not_available',v_user
   FROM public.hms_module_catalog m
-  ON CONFLICT (facility_id, module_id) DO NOTHING;
+  ON CONFLICT (facility_id,module_id) DO NOTHING;
 
-  RETURN v_id;
+  RETURN v_facility;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.platform_create_facility(text,text,text,text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) TO authenticated;
 
-COMMENT ON FUNCTION public.platform_create_facility(text,text,text,text,text) IS
-'Enterprise facility onboarding control. Only system_superuser may create facilities; normal facility permissions never grant onboarding authority.';
+COMMENT ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) IS
+'Platform facility onboarding. Only system_superuser may create facilities. New facilities receive disabled/not-available module rows and require explicit service readiness before activation.';
