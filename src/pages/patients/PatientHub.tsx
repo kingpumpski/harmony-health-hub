@@ -23,22 +23,54 @@ export default function PatientHub() {
   const canEdit = Boolean(user && editRoles.has(user.role)); const canClinicalWrite = Boolean(user && clinicalRoles.has(user.role)); const canBill = Boolean(user && billingRoles.has(user.role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); try { const data = await getPatientById(patientId); if (!data) { const matches = await searchPatients(patientId); if (matches[0]?.id) { navigate(`/patients/${matches[0].id}`, { replace: true }); return; } } setPatient(data); } catch (error: any) { toast.error(error.message ?? 'Unable to load patient'); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
-    if (!patientId) return; const db = supabase as any;
-    const specs = [
-      ['appointments', db.from('appointments').select('*').eq('patient_id', patientId).order('scheduled_at', { ascending: false }).limit(100)],
-      ['vitals', db.from('vital_signs').select('*').eq('patient_id', patientId).order('recorded_at', { ascending: false }).limit(100)],
-      ['encounters', db.from('encounters').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['labs', db.from('lab_orders').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['prescriptions', db.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['invoices', db.from('invoices').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['documents', db.from('patient_documents').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(100)],
-      ['admissions', db.from('admissions').select('*').eq('patient_id', patientId).order('admitted_at', { ascending: false }).limit(50)],
+    if (!patientId) return;
+    const db = supabase as any;
+    const readRequests: Array<[string, Promise<any>]> = [
+      ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })],
     ];
-    const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const next: Record<string, any[]> = {};
+    if (canClinicalWrite) {
+      readRequests.push(
+        ['clinical', db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })],
+        ['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })],
+      );
+    }
+    if (canBill) {
+      readRequests.push(['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]);
+    }
+
+    const settled = await Promise.allSettled(readRequests.map(async ([key, request]) => [key, await request] as const));
+    const next: Record<string, any[]> = {};
     const failed: string[] = [];
-    settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else next[key] = response.data ?? []; } else failed.push(key); });
-    setRows(next); if (failed.length) toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`);
-  }, [patientId]);
+
+    settled.forEach((item, index) => {
+      const key = readRequests[index][0];
+      if (item.status === 'fulfilled') {
+        const response = item.value[1];
+        if (response.error) {
+          failed.push(key);
+          return;
+        }
+        const data = response.data;
+        if (key === 'clinical') {
+          const snapshot = data && typeof data === 'object' ? data : {};
+          next.vitals = Array.isArray(snapshot.vitals) ? snapshot.vitals : [];
+          next.encounters = Array.isArray(snapshot.encounters) ? snapshot.encounters : [];
+          next.labs = Array.isArray(snapshot.labs) ? snapshot.labs : [];
+          next.prescriptions = Array.isArray(snapshot.prescriptions) ? snapshot.prescriptions : [];
+          next.documents = Array.isArray(snapshot.documents) ? snapshot.documents : [];
+        } else {
+          next[key] = Array.isArray(data) ? data : [];
+        }
+      } else {
+        failed.push(key);
+      }
+    });
+
+    setRows(next);
+    if (failed.length) {
+      toast.warning(`Some Patient Hub sections could not be loaded: ${failed.join(', ')}. Other sections remain available.`);
+    }
+  }, [patientId, canClinicalWrite, canBill]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const refresh = () => setRefreshKey((v) => v + 1);
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading patient record…</div>;
