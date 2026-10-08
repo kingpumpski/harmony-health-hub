@@ -23,8 +23,10 @@ export default function AdmissionManagement() {
   const [wards, setWards] = useState<Ward[]>([]);
   const [beds, setBeds] = useState<Bed[]>([]);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
     const [
       { data: p, error: pe },
       { data: workspace, error: ae },
@@ -36,6 +38,7 @@ export default function AdmissionManagement() {
     ]);
     if (pe || ae || oe) {
       toast.error((pe ?? ae ?? oe)?.message ?? 'Unable to load admissions');
+      setLoading(false);
       return;
     }
     setPatients(p ?? []);
@@ -43,6 +46,7 @@ export default function AdmissionManagement() {
     setRows(admissionRows as Admission[]);
     setWards((operational?.wards ?? []) as Ward[]);
     setBeds((operational?.beds ?? []) as Bed[]);
+    setLoading(false);
   }, []);
 
   useEffect(() => { void load(); return subscribeMasterDataChanged(['wards','beds','patients'], () => void load()); }, [load]);

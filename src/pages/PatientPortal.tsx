@@ -16,6 +16,10 @@ export default function PatientPortal() {
   const [reports, setReports] = useState<any[]>([]);
   const [clinicalSnapshot, setClinicalSnapshot] = useState<any>(null);
   const [requesting, setRequesting] = useState(false);
+  const [appointmentRequesting, setAppointmentRequesting] = useState(false);
+  const [appointmentDepartment, setAppointmentDepartment] = useState('General Outpatient');
+  const [appointmentTime, setAppointmentTime] = useState(() => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [appointmentReason, setAppointmentReason] = useState('');
 
   const loadReports = async () => {
     const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
@@ -56,6 +60,28 @@ export default function PatientPortal() {
     if (!user) return;
     void loadReports();
   }, [user?.id]);
+
+  const requestAppointment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!patient) return;
+    setAppointmentRequesting(true);
+    try {
+      const { error } = await supabase.rpc('create_patient_appointment', {
+        _patient_id: patient.id,
+        _scheduled_at: new Date(appointmentTime).toISOString(),
+        _department: appointmentDepartment,
+        _reason: appointmentReason.trim() || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Appointment request submitted', description: 'The facility team can now review and assign the appropriate clinician.' });
+      setAppointmentReason('');
+      await loadReports();
+    } catch (e: any) {
+      toast({ title: 'Unable to submit appointment request', description: e.message ?? 'Please try again.', variant: 'destructive' });
+    } finally {
+      setAppointmentRequesting(false);
+    }
+  };
 
   const requestAIReport = async () => {
     if (!patient) return;
@@ -192,7 +218,18 @@ export default function PatientPortal() {
         </div>
 
         <div className="card-medical p-5">
-          <h3 className="font-semibold flex items-center gap-2 mb-3"><Calendar className="w-4 h-4 text-primary" /> Appointments</h3>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div><h3 className="font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> Appointments</h3><p className="text-xs text-muted-foreground">Request a visit without needing staff scheduling permissions.</p></div>
+          </div>
+          <form onSubmit={requestAppointment} className="space-y-2 mb-4 rounded-xl border border-border p-3">
+            <label className="text-xs font-medium" htmlFor="portal-appointment-department">Department</label>
+            <input id="portal-appointment-department" value={appointmentDepartment} onChange={(e) => setAppointmentDepartment(e.target.value)} required autoComplete="organization-title" className="input-medical w-full" placeholder="e.g. General Outpatient" />
+            <label className="text-xs font-medium" htmlFor="portal-appointment-time">Preferred date and time</label>
+            <input id="portal-appointment-time" type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required className="input-medical w-full" />
+            <label className="text-xs font-medium" htmlFor="portal-appointment-reason">Reason for visit</label>
+            <textarea id="portal-appointment-reason" value={appointmentReason} onChange={(e) => setAppointmentReason(e.target.value)} className="input-medical w-full" rows={2} placeholder="Briefly describe what you need help with" />
+            <button type="submit" disabled={appointmentRequesting} className="btn-primary w-full">{appointmentRequesting ? 'Submitting…' : 'Request clinician appointment'}</button>
+          </form>
           <div className="space-y-2">
             {appts.map((a) => (
               <div key={a.id} className="rounded-xl border border-border p-3 text-sm">
