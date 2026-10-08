@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { Plus, MoreHorizontal, RefreshCw } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, MoreHorizontal } from 'lucide-react';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -85,16 +84,7 @@ export function RecordList<T>({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {onAddNew ? <button type="button" onClick={onAddNew} className="btn-primary h-10 px-3"><Plus className="h-4 w-4" />{addNewLabel}</button> : null}
-            {onRefresh ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" onClick={onRefresh} disabled={isRefreshing} className="btn-secondary h-10 w-10 p-0" aria-label="Refresh">
-                    <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Refresh</TooltipContent>
-              </Tooltip>
-            ) : null}
+            {onRefresh ? <RefreshButton onClick={onRefresh} loading={isRefreshing} /> : null}
           </div>
         </div>
         {(searchSlot || filterSlot) ? <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">{searchSlot}{filterSlot}</div> : null}
