@@ -71,6 +71,13 @@ BEGIN
     RAISE EXCEPTION 'Unsupported facility type';
   END IF;
 
+  IF nullif(btrim(_facility_code),'') IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.healthcare_facilities hf
+    WHERE hf.facility_code=nullif(btrim(_facility_code),'')
+  ) THEN
+    RAISE EXCEPTION 'Facility code already exists' USING errcode='23505';
+  END IF;
+
   INSERT INTO public.healthcare_facilities(
     name,facility_code,facility_type,district,region,dhims2_uid,created_by
   )
@@ -80,6 +87,13 @@ BEGIN
     nullif(btrim(_dhims2_uid),''),v_user
   )
   RETURNING * INTO v_facility;
+
+  INSERT INTO public.hms_facility_modules(
+    facility_id,module_id,enabled,service_available,readiness_status,configured_by
+  )
+  SELECT v_facility.id,m.module_id,false,false,'not_available',v_user
+  FROM public.hms_module_catalog m
+  ON CONFLICT (facility_id,module_id) DO NOTHING;
 
   BEGIN
     PERFORM public.seed_facility_reports(v_facility.id);
