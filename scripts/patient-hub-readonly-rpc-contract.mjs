@@ -5,7 +5,6 @@ const required = [
   "db.rpc('get_patient_current_treatment_snapshot', { _patient_id: patientId, _admission_id: currentAdmissionId })",
   "db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })",
   "db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })",
-  "db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })",
   "db.rpc('get_patient_admission_history', { _patient_id: patientId })",
 ];
 for (const call of required) {
