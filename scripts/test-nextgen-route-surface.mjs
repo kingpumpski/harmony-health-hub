@@ -34,6 +34,7 @@ const requiredRoutes = [
   ['/notifications', 'Notifications'],
   ['/admin/offline-sync', 'OfflineSyncCenter'],
   ['/admin/next-gen-platform', 'NextGenPlatformControlCenter'],
+  ['/enterprise/:moduleId', 'EnterpriseModuleWorkspace'],
 ];
 
 for (const [route, component] of requiredRoutes) {
