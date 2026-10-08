@@ -43,6 +43,8 @@ for (const needle of [
   "REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) FROM PUBLIC,anon",
   "RETURNS public.healthcare_facilities",
   "Facility code already exists",
+  "facility_onboarded",
+  "system_audit_log",
 ]) if (!onboarding.includes(needle)) throw new Error('Governed facility onboarding contract missing: ' + needle);
 
 for (const needle of [
