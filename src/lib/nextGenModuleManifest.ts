@@ -56,7 +56,17 @@ const contracts: ModuleContract[] = [
   { id: 'user-role-management', route: '/admin/roles', existingSurface: 'AdminUsers/RolePermissions', requiredCapabilities: ['role-catalogue', 'module-permission-matrix', 'least-privilege'], promotionChecks: ['RLS', 'security', 'audit'] },
   { id: 'ai-clinical-hub', route: '/ai-clinical', existingSurface: 'AIClinicalHub', requiredCapabilities: ['model-governance', 'provenance', 'human-review'], promotionChecks: ['AI-safety', 'privacy', 'audit'] },
   { id: 'ai-governance', existingSurface: 'Platform runtime', requiredCapabilities: ['model-registry', 'evaluation-evidence', 'intended-use-controls'], promotionChecks: ['AI-safety', 'privacy', 'audit'] },
-  { id: 'accessibility', existingSurface: 'Accessibility preferences/design system', requiredCapabilities: ['WCAG-2.2-AA', 'keyboard', 'screen-reader'], promotionChecks: ['accessibility', 'usability', 'regression'] },
+  { id: 'hr-payroll', existingSurface: 'HMS HR/Payroll foundation', requiredCapabilities: ['employee-records', 'leave', 'attendance', 'payroll', 'statutory-deductions'], promotionChecks: ['financial-integrity', 'RLS', 'audit'] },
+  { id: 'icu-critical-care', route: '/icu', existingSurface: 'HMS ICU foundation', requiredCapabilities: ['icu-stays', 'critical-observations', 'escalation', 'device-linkage'], promotionChecks: ['clinical-safety', 'concurrency', 'audit'] },
+  { id: 'mental-health', existingSurface: 'HMS mental-health foundation', requiredCapabilities: ['assessment', 'risk', 'care-plan', 'follow-up'], promotionChecks: ['clinical-safety', 'privacy', 'audit'] },
+  { id: 'social-work', existingSurface: 'HMS social-work foundation', requiredCapabilities: ['psychosocial-assessment', 'safeguarding', 'case-management'], promotionChecks: ['privacy', 'clinical-safety', 'audit'] },
+  { id: 'quality-compliance', existingSurface: 'HMS quality/compliance foundation', requiredCapabilities: ['incident-reporting', 'CAPA', 'evidence', 'review'], promotionChecks: ['RLS', 'audit', 'governance'] },
+  { id: 'infection-control', existingSurface: 'HMS IPC foundation', requiredCapabilities: ['surveillance', 'exposure-events', 'corrective-actions'], promotionChecks: ['privacy', 'clinical-safety', 'audit'] },
+  { id: 'mortuary', existingSurface: 'HMS mortuary foundation', requiredCapabilities: ['case-intake', 'custody', 'identity-verification', 'release'], promotionChecks: ['privacy', 'audit', 'RLS'] },
+  { id: 'ambulance', existingSurface: 'HMS ambulance/transport foundation', requiredCapabilities: ['dispatch', 'crew', 'trip-lifecycle', 'clinical-handover'], promotionChecks: ['clinical-safety', 'audit', 'RLS'] },
+  { id: 'research-portal', existingSurface: 'HMS research foundation', requiredCapabilities: ['project-governance', 'ethics-reference', 'dataset-request', 'retention'], promotionChecks: ['privacy', 'ethics', 'audit'] },
+  { id: 'external-audit', existingSurface: 'HMS external audit foundation', requiredCapabilities: ['scoped-access', 'evidence-request', 'engagement-lifecycle'], promotionChecks: ['privacy', 'RLS', 'audit'] },
+  { id: 'genomics', existingSurface: 'HMS genomics foundation', requiredCapabilities: ['genomic-order', 'specimen-provenance', 'consent', 'findings'], promotionChecks: ['clinical-safety', 'privacy', 'interoperability'] },  { id: 'accessibility', existingSurface: 'Accessibility preferences/design system', requiredCapabilities: ['WCAG-2.2-AA', 'keyboard', 'screen-reader'], promotionChecks: ['accessibility', 'usability', 'regression'] },
 ];
 
 export function getModuleContract(id: string): ModuleContract | undefined {
