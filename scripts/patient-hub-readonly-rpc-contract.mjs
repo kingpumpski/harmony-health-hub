@@ -24,7 +24,7 @@ for (const needle of [
 ]) {
   if (!migration.includes(needle)) throw new Error('Read-only facility-context contract missing: ' + needle);
 }
-if (source.includes("db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })")) {
+if (source.includes("db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 }, { get: true })")) {
   throw new Error('Volatile invoice history RPC must remain on POST');
 }
 
