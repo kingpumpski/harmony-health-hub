@@ -8,7 +8,7 @@ function isChunkLoadFailure(error: unknown) {
   return /failed to fetch dynamically imported module|loading chunk|chunkloaderror|importing a module script failed|failed to fetch/i.test(message);
 }
 
-export function lazyWithChunkRecovery<T extends ComponentType<unknown>>(
+export function lazyWithChunkRecovery<T extends ComponentType<any>>(
   loader: () => Promise<{ default: T }>,
 ) {
   return lazy(async () => {
