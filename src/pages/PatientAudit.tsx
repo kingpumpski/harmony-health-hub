@@ -18,7 +18,9 @@ interface AuditRow {
 export default function PatientAudit() {
   const { patientId } = useParams<{ patientId: string }>();
   const [rows, setRows] = useState<AuditRow[]>([]);
-  const [loading, setLoading] = useState(true);\n  const [query, setQuery] = useState('');\n  const filteredRows = useMemo(() => { const q = query.trim().toLowerCase(); if (!q) return rows; return rows.filter((row) => `${row.action} ${row.changed_by ?? ''} ${(row.changed_fields ?? []).join(' ')}`.toLowerCase().includes(q)); }, [rows, query]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const filteredRows = useMemo(() => { const q = query.trim().toLowerCase(); if (!q) return rows; return rows.filter((row) => `${row.action} ${row.changed_by ?? ''} ${(row.changed_fields ?? []).join(' ')}`.toLowerCase().includes(q)); }, [rows, query]);
 
   const load = async () => {
     if (!patientId) return;
@@ -110,7 +112,8 @@ export default function PatientAudit() {
         isLoading={loading}
         error={null}
         rowKey={(row) => row.id}
-        onRefresh={() => void load()}\n        searchSlot={<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="input-medical w-full" placeholder="Search action, actor or changed field…" aria-label="Search audit history" /></div>}
+        onRefresh={() => void load()}
+        searchSlot={<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="input-medical w-full" placeholder="Search action, actor or changed field…" aria-label="Search audit history" /></div>}
         emptyState={{
           title: 'No patient-record changes',
           description: 'No demographic or administrative changes have been recorded for this patient.',
