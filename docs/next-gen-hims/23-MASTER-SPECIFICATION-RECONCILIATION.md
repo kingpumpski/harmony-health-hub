@@ -55,3 +55,12 @@ The system remains a modular monolith. New infrastructure is introduced only whe
 
 ## Completion model
 Development completeness is distinct from production readiness. Development complete means required workflows, boundaries, configuration, contracts, tests and documentation exist. Production ready additionally requires exact-head CI, migration replay, RLS/security, accessibility, interoperability, performance/resilience, clinical safety, deployment and UAT evidence.
+
+
+## 2026-10-08 reconciliation update
+
+The tertiary-hospital gap assessment is now represented in executable architecture rather than only documentation. The module registry, module contracts and browser platform catalogue all contain the same 59 module IDs. New enterprise modules have server-side read/write workflow boundaries and facility service gating. Specialist identities are facility/department scoped assignments layered over canonical application roles.
+
+Patient self-service is treated as a distinct authorization boundary: patients may retrieve their own portal identity, appointments, invoices, telemedicine sessions and longitudinal clinical snapshot without inheriting clinical-staff permissions. Telemedicine clinician discovery and request submission remain facility-scoped.
+
+The remaining completion gap is evidence, not an architectural placeholder: the correct deployed Supabase project must be replayed from clean migrations and tested for RLS/security, exact-head CI must pass, accessibility/interoperability/performance/resilience/clinical-safety validation must be recorded, and the final deployed artifact must match the certified commit.
