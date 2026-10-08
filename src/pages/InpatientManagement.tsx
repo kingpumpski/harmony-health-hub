@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowUpRight, BedDouble, ClipboardList, Gauge, HeartPulse, LogOut, MoveRight, RefreshCw, Users } from 'lucide-react';
@@ -138,9 +139,7 @@ export default function InpatientManagement() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 self-start lg:self-auto">
-            <button type="button" onClick={() => void loadSummary()} disabled={loading} className="btn-secondary inline-flex items-center gap-2">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
+            <RefreshButton onClick={() => void loadSummary()} />
             <button type="button" onClick={() => setView('admissions')} className="btn-primary inline-flex items-center gap-2">
               New admission <ArrowUpRight className="h-4 w-4" />
             </button>
