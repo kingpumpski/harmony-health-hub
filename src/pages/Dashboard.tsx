@@ -2,7 +2,6 @@ import { ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SpecialistReferralCard from '@/components/SpecialistReferralCard';
 import FinancialSettlementCard from '@/components/FinancialSettlementCard';
-import OperationalHandoffPanel from '@/components/workflow/OperationalHandoffPanel';
 import FrontDeskDashboard from './dashboard/FrontDeskDashboard';
 import PractitionerDashboard from './dashboard/PractitionerDashboard';
 import NurseDashboard from './dashboard/NurseDashboard';
@@ -66,7 +65,6 @@ export default function Dashboard(){
 
       {showReferral && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"><SpecialistReferralCard /></div>}
       {showSettlement && <FinancialSettlementCard />}
-      <OperationalHandoffPanel />
       {dashboard}
     </div>
   );
