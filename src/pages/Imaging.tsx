@@ -1,4 +1,5 @@
 import RefreshButton from '@/components/ui/RefreshButton';
+import { ImageIcon, BellRing, Plus, CreditCard, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
