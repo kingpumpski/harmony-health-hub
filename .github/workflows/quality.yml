@@ -99,6 +99,8 @@ jobs:
       - name: Next-generation encounter admission and financial override tests
         run: npm run test:nextgen-encounter-admission
       - run: npm run test:nextgen-broader-hms
+      - name: Next-generation patient runtime reconciliation tests
+        run: npm run test:nextgen-patient-runtime
       - name: Next-generation HMS governance boundary tests
         run: npm run test:nextgen-governance
       - name: Next-generation HMS role permission boundary tests
