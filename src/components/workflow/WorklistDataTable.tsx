@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, Settings2, X, Check } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Filter, List, Settings2, X, Check, RefreshCw } from 'lucide-react';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -167,9 +167,7 @@ export default function WorklistDataTable<T>({
           {filters.length > 0 && <button type="button" className={`btn-secondary inline-flex items-center gap-2 ${filterOpen ? 'border-primary text-primary' : ''}`} onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen}>
             <Filter className="h-4 w-4" /> Filter {filters.some((filter) => filter.value && filter.value !== 'all') && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
           </button>}
-          {onRefresh && <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={onRefresh} disabled={refreshing} aria-label="Refresh worklist" title={formatUpdatedAt(lastUpdated)}>
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> <span className="hidden md:inline">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
-          </button>}
+          {onRefresh && <RefreshButton onClick={onRefresh} loading={refreshing} label="Refresh worklist" />}
           <div className="relative">
             <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Configure columns" aria-label="Configure columns" aria-expanded={columnMenuOpen} onClick={() => setColumnMenuOpen((open) => !open)}>
               <Settings2 className="h-4 w-4" /> <span className="hidden lg:inline">Columns</span>
