@@ -12,6 +12,10 @@ for(const id of ['physiotherapy','dietary-restaurant','teaching-research','asset
 const manifest=read('src/lib/nextGenModuleManifest.ts');
 for(const id of ['physiotherapy','dietary-restaurant','teaching-research','asset-biomedical','procurement','data-import','report-centre','user-role-management']) assert(manifest.includes(`id: '${id}'`),`missing broader module contract: ${id}`);
 
+const serviceExpansion=read('supabase/migrations/20261008130000_hms_service_availability_and_enterprise_modules.sql');
+for(const id of ['hr-payroll','icu-critical-care','mental-health','social-work','quality-compliance','infection-control','mortuary','ambulance','research-portal','external-audit','genomics']) assert(registry.modules.some(m=>m.id===id),`missing enterprise expansion module: ${id}`);
+for(const id of ['hr-payroll','icu-critical-care','mental-health','social-work','quality-compliance','infection-control','mortuary','ambulance','research-portal','external-audit','genomics']) assert(manifest.includes(`id: '${id}'`),`missing enterprise expansion contract: ${id}`);
+for(const token of ['service_available','readiness_status','set_hms_facility_module_service','hms_user_role_assignments','hms_hr_employees','hms_payroll_periods','hms_icu_stays','hms_mental_health_assessments','hms_social_work_cases','hms_quality_incidents','hms_ipc_events','hms_mortuary_cases','hms_ambulance_trips','hms_research_projects','hms_audit_engagements','hms_genomics_orders']) assert(serviceExpansion.includes(token),`service/enterprise boundary missing: ${token}`);
 const migration=read('supabase/migrations/20260918170000_broader_hms_enterprise_foundation.sql');
 const importWorkflow=read('supabase/migrations/20260918180000_hms_import_governed_lifecycle.sql');
 const importTemplate=read('supabase/migrations/20260918190000_hms_import_patient_template.sql');
