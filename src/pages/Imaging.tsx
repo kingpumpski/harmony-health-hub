@@ -181,7 +181,7 @@ export default function Imaging() {
     { key: 'search', label: 'Patient / study', value: completedSearch, onChange: setCompletedSearch, placeholder: 'Search patient or study' },
     { key: 'modality', label: 'Modality', value: completedModality, onChange: setCompletedModality, options: [{ value: 'all', label: 'All modalities' }, ...modalityOptions] },
     { key: 'priority', label: 'Priority', value: completedPriority, onChange: setCompletedPriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
-    { key: 'date', label: 'Completed date', value: completedDate, onChange: setCompletedDate, type: 'date' },
+    { key: 'date', label: 'Order date', value: completedDate, onChange: setCompletedDate, type: 'date' },
   ];
 
   return (
