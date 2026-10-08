@@ -269,7 +269,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
      AND fm.effective_from<=now() AND (fm.effective_to IS NULL OR fm.effective_to>now())
  ) OR (
    EXISTS(SELECT 1 FROM public.hms_module_catalog mc WHERE mc.module_id=_module_id AND mc.default_enabled=true)
-   AND NOT EXISTS(SELECT 1 FROM public.hms_facility_modules fm WHERE fm.facility_id=_facility_id AND fm.module_id=_module_id AND fm.enabled=false)
+   AND NOT EXISTS(SELECT 1 FROM public.hms_facility_modules fm WHERE fm.facility_id=_facility_id AND fm.module_id=_module_id)
  );
 $$;
 REVOKE ALL ON FUNCTION public.hms_module_is_enabled(uuid,text) FROM PUBLIC,anon;
