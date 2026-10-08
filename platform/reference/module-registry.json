@@ -57,7 +57,7 @@
     {"id":"quality-compliance","domain":"governance","tier":3,"safety":"high","offline":"restricted"},
     {"id":"infection-control","domain":"governance","tier":3,"safety":"high","offline":"restricted"},
     {"id":"mortuary","domain":"support","tier":3,"safety":"high","offline":"restricted"},
-    {"id":"ambulance","domain":"emergency","tier":3,safety":"high","offline":"restricted"},
+    {"id":"ambulance","domain":"emergency","tier":3,"safety":"high","offline":"restricted"},
     {"id":"research-portal","domain":"education","tier":4,"safety":"high","offline":"restricted"},
     {"id":"external-audit","domain":"governance","tier":4,"safety":"high","offline":"read-only"},
     {"id":"genomics","domain":"diagnostics","tier":4,"safety":"critical","offline":"restricted"},
