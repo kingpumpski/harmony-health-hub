@@ -112,7 +112,7 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId }, { get: true });
+      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
       if (!active) return;
       if (error) {
         toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
@@ -278,8 +278,8 @@ export default function Encounters() {
     try {
       const [{ data: pts, error: patientError }, { data: encs, error: encounterError }, { data: staff, error: staffError }] = await Promise.all([
       searchPatientDirectory('', 200),
-      db.rpc("get_encounter_worklist", { _limit: 50 }, { get: true }),
-      db.rpc("get_appointment_clinicians", {}, { get: true }),
+      db.rpc("get_encounter_worklist", { _limit: 50 }),
+      db.rpc("get_appointment_clinicians", {}),
     ]);
       if (patientError) throw patientError;
       if (encounterError) throw encounterError;

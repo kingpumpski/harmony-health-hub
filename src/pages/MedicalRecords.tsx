@@ -90,14 +90,14 @@ function PatientMedicalRecords() {
   const load = async () => {
     setLoading(true);
     setError(null);
-    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
     const p = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !p) {
       setError(identityError?.message ?? 'Your patient profile could not be identified.');
       setLoading(false);
       return;
     }
-    const { data, error: snapshotError } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id }, { get: true });
+    const { data, error: snapshotError } = await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: p.id });
     if (snapshotError) setError(snapshotError.message);
     else setSnapshot(data ?? null);
     setLoading(false);

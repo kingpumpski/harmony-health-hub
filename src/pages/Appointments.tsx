@@ -101,9 +101,9 @@ function StaffAppointments() {
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     const [{ data: pts, error: patientError }, { data: workspace, error: appointmentError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never, { get: true } as never),
-      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never, { get: true } as never),
-      supabase.rpc('get_appointment_clinicians' as never, {} as never, { get: true } as never),
+      supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never as never),
+      supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never as never),
+      supabase.rpc('get_appointment_clinicians' as never, {} as never as never),
     ]);
     if (patientError) toast({ title: 'Unable to load patients', description: patientError.message, variant: 'destructive' });
     if (appointmentError) toast({ title: 'Unable to load appointments', description: appointmentError.message, variant: 'destructive' });
@@ -438,10 +438,10 @@ function PatientAppointments() {
   const [reason, setReason] = useState('');
 
   const load = async () => {
-    const { data: identity } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+    const { data: identity } = await supabase.rpc('get_patient_portal_identity', {});
     const p = Array.isArray(identity) ? identity[0] : identity;
     if (!p) return;
-    const { data, error } = await supabase.rpc('get_patient_appointments', { _patient_id: p.id, _limit: 100 }, { get: true });
+    const { data, error } = await supabase.rpc('get_patient_appointments', { _patient_id: p.id, _limit: 100 });
     if (!error) { setPatient(p); setAppointments(Array.isArray(data) ? data : []); }
   };
   useEffect(() => { void load(); }, []);

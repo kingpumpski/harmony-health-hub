@@ -18,7 +18,7 @@ for (const signature of [
 }
 assert.ok(migration.includes("notify pgrst, 'reload schema'"));
 assert.ok(systemSuperuserMigration.includes("public.has_role(uid,'system_superuser')"), 'clinical snapshot must authorize system_superuser troubleshooting access');
-assert.ok(hub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })"));
-assert.ok(hub.includes("db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })"));
-assert.ok(hub.includes("db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })"));
-console.log('Patient Hub read RPC GET compatibility contract passed');
+assert.ok(hub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })"));
+assert.ok(hub.includes("db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })"));
+assert.ok(hub.includes("db.rpc('get_patient_admission_history', { _patient_id: patientId })"));
+console.log('Patient Hub read RPC transport compatibility contract passed');

@@ -11,7 +11,7 @@ for (const needle of [
   "failedSections.includes('clinical')",
   "failedSections.includes('invoices')",
   "failedSections.includes('admissions')",
-  "db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })"
+  "db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })"
 ]) {
   if (!source.includes(needle)) {
     throw new Error('Patient Hub section-load contract missing: ' + needle);
