@@ -33,7 +33,7 @@ export default function CanteenMeals() {
 
   const loadMenus = useCallback(async () => {
     if (!canManage) {
-      const { data, error } = await (supabase as any).rpc('get_patient_portal_meal_menus', { _service_date: date }, { get: true });
+      const { data, error } = await (supabase as any).rpc('get_patient_portal_meal_menus', { _service_date: date });
       if (error) { toast({ title: 'Meal menu unavailable', description: error.message, variant: 'destructive' }); setMenus([]); return; }
       setMenus((data ?? []) as Menu[]);
       return;
