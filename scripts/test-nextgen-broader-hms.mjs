@@ -17,6 +17,7 @@ const portalRuntime=read('supabase/migrations/20261006095000_patient_portal_self
 const portal=read('supabase/migrations/20261008140000_reconcile_patient_portal_and_telemedicine.sql');
 const enterprise=read('supabase/migrations/20261008150000_enterprise_workflow_completion.sql');
 const telemedicine=read('supabase/migrations/20261008151000_harden_telemedicine_clinician_availability.sql');
+const facilityScope=read('supabase/migrations/20261008152000_harden_facility_module_configuration_scope.sql');
 const enterpriseUi=read('src/pages/EnterpriseModuleWorkspace.tsx');
 const appointmentsUi=read('src/pages/Appointments.tsx');
 const mealsUi=read('src/pages/CanteenMeals.tsx');
@@ -30,6 +31,7 @@ for(const token of ['create_patient_appointment','Request Appointment']) assert(
 assert(mealsUi.includes('get_patient_portal_meal_menus') && mealsUi.includes("user?.role === 'patient'"), 'patient meal menu must be server-gated and role-separated');
 for(const token of ['hms_user_can','hms_assert_enterprise_access','set_hms_specialist_role','get_hms_my_specialist_roles','hms_get_enterprise_workspace','hms_create_enterprise_record']) assert(enterprise.includes(token),`enterprise workflow boundary missing: ${token}`);
 for(const token of ['get_patient_telemedicine_clinicians','_scheduled_at']) assert(telemedicine.includes(token),`telemedicine availability boundary missing: ${token}`);
+for(const token of ['Facility access denied','it_admin','hms_facility_modules_admin_read']) assert(facilityScope.includes(token),`facility module scope boundary missing: ${token}`);
 for(const token of ['hms_get_enterprise_workspace','hms_create_enterprise_record','user_active_facilities']) assert(enterpriseUi.includes(token),`enterprise workspace UI boundary missing: ${token}`);
 for(const route of ['/enterprise/:moduleId','/hr-payroll','/icu','/mental-health','/social-work','/quality-compliance','/infection-control','/mortuary','/ambulance','/research-portal','/external-audit','/genomics']) assert(app.includes(route),`enterprise route missing: ${route}`);
 const migration=read('supabase/migrations/20260918170000_broader_hms_enterprise_foundation.sql');
