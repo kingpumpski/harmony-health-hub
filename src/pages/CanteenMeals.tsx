@@ -32,7 +32,6 @@ function PatientMeals() {
 
 export default function CanteenMeals() {
   const { user } = useAuth();
-  if (user?.role === 'patient') return <PatientMeals />;
   const [patients, setPatients] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
@@ -46,6 +45,7 @@ export default function CanteenMeals() {
     setPatients(p ?? []); setOrders(o ?? []); setPlans(mp ?? []);
   };
   useEffect(() => { void load(); }, []);
+  if (user?.role === 'patient') return <PatientMeals />;
   const createPlan = async (e: React.FormEvent) => {
     e.preventDefault(); if (!pid) return;
     const { error } = await supabase.from('meal_plans').insert({ patient_id: pid, plan_type: planType, restrictions, created_by: user?.id });
