@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const migrationPath = 'supabase/migrations/20261002132500_patient_hub_read_rpc_get_compatibility.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8').toLowerCase();
 const hub = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
+const systemSuperuserMigration = fs.readFileSync('supabase/migrations/20261007145000_reconcile_patient_hub_system_superuser_access.sql', 'utf8').toLowerCase();
 
 for (const signature of [
   'public.get_patient_appointments(uuid, integer)',
@@ -16,7 +17,7 @@ for (const signature of [
   assert.ok(migration.includes(`alter function ${signature} stable`), `Missing STABLE volatility for ${signature}`);
 }
 assert.ok(migration.includes("notify pgrst, 'reload schema'"));
-assert.ok(migration.includes("public.has_role(uid,'system_superuser')"), 'clinical snapshot must authorize system_superuser troubleshooting access');
+assert.ok(systemSuperuserMigration.includes("public.has_role(uid,'system_superuser')"), 'clinical snapshot must authorize system_superuser troubleshooting access');
 assert.ok(hub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })"));
 assert.ok(hub.includes("db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })"));
 assert.ok(hub.includes("db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })"));
