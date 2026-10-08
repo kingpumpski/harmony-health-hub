@@ -19,7 +19,7 @@ const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
 const administrativeRoles = new Set(['admin', 'it_admin', 'system_superuser']);
 const editRoles = new Set(['admin', 'it_admin', 'system_superuser', 'practitioner', 'nurse', 'midwife', 'front_desk']);
 const clinicalRoles = new Set(['admin', 'it_admin', 'system_superuser', 'practitioner', 'nurse', 'midwife']);
-const clinicalHistoryRoles = new Set(['admin', 'system_superuser', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);
+const clinicalHistoryRoles = new Set(['admin', 'it_admin', 'system_superuser', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'lab_technician', 'pharmacist']);
 const billingRoles = new Set(['admin', 'accountant', 'front_desk']);
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'; }
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) { return <section className="card-medical p-5 space-y-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-lg font-semibold">{title}</h2>{action}</div>{children}</section>; }
