@@ -26,10 +26,10 @@ assert.ok(appointments.includes('description: workflowErrorMessage(error)'));
 assert.ok(patientHub.includes('No patient profile was returned for this record.'));
 assert.ok(!patientHub.includes('searchPatients(patientId)'), 'Do not try searching a UUID as a patient name/code after profile lookup fails.');
 for (const call of [
-  "db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })",
-  "db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId }, { get: true })",
-  "db.rpc('get_patient_admission_history', { _patient_id: patientId }, { get: true })"
-]) assert.ok(patientHub.includes(call), 'Read-only Patient Hub RPC must use GET: ' + call);
+  "db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })",
+  "db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })",
+  "db.rpc('get_patient_admission_history', { _patient_id: patientId })"
+]) assert.ok(patientHub.includes(call), 'Read-only Patient Hub RPC must use standard POST transport: ' + call);
 
 assert.ok(vite.includes('__hms_spa_redirect'), 'GitHub Pages fallback must preserve and restore deep links.');
 assert.ok(vite.includes('writeFileSync("dist/404.html", fallbackHtml)'), 'Production build must emit a redirecting 404 fallback.');
