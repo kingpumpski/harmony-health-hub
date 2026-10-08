@@ -114,3 +114,14 @@ A Vercel build-rate-limit failure or GitHub Actions infrastructure/startup failu
 - Preserved the existing clinical/canteen role requirement and did not introduce a second RBAC authority.
 - Added `test:nextgen-dietary-boundary` and wired it into Quality.
 - Live Supabase replay/RLS execution remains pending because the correct Harmony Supabase project is not connected in this environment.
+
+
+### 2026-10-08 — Enterprise workflow and patient-access reconciliation
+- Expanded the executable module registry and manifest to 59 synchronized modules.
+- Added server-authoritative facility service availability/readiness as the prerequisite to module enablement.
+- Added facility-scoped specialist-role authorization and a governed self-read RPC for active specialist assignments.
+- Operationalized the new enterprise modules through a facility-scoped read model and server-authorized create boundary: HR/payroll, ICU/critical care, mental health, social work, quality/compliance, infection control, mortuary, ambulance/transport, research portal, external audit and genomics.
+- Added lazy-loaded enterprise workspace routes with accessible forms, facility context, server-side authorization and audited creation.
+- Reconciled the patient portal to use self-service identity/appointment/invoice boundaries and preserved medical-record access without granting staff permissions.
+- Reconciled patient telemedicine scheduling so clinician discovery and session requests use the patient/facility boundary.
+- Exact Supabase migration replay, deployed RLS/security evidence, CI and target deployment verification remain required before the branch can be declared 96% complete or merged.
