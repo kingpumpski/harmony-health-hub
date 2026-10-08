@@ -5,7 +5,7 @@ RETURNS public.app_role[]
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
   SELECT COALESCE(array_agg(ur.role ORDER BY ur.created_at), ARRAY[]::public.app_role[])
   FROM public.user_roles ur
