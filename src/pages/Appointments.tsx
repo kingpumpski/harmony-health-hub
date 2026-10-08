@@ -58,9 +58,8 @@ function PatientAppointments() {
 }
 
 export default function Appointments() {
-  const { user } = useAuth();
+  const { user } = useAuth(); const navigate = useNavigate();
   if (user?.role === 'patient') return <PatientAppointments />;
-  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]); const [appts, setAppts] = useState<Appointment[]>([]);
   const [pid, setPid] = useState(''); const [when, setWhen] = useState(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
   const [dept, setDept] = useState('General Outpatient'); const [reason, setReason] = useState(''); const [editing, setEditing] = useState<Appointment | null>(null);
