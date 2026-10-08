@@ -38,3 +38,13 @@ The 40-role tertiary-hospital target is implemented as specialized role assignme
 
 ## ADR-013 — Enterprise gaps are additive and service-gated
 The assessment gaps for HR/payroll, ICU, mental health, social work, quality/compliance, infection prevention, mortuary, ambulance/transport, research, external audit and genomics are represented as canonical next-generation modules and governed data/workflow foundations. They do not replace existing clinical modules and remain unavailable at facilities that do not provide the corresponding service.
+
+
+## ADR-014 — Enterprise workspaces use canonical governed read/write boundaries
+New enterprise modules use a shared facility-scoped workspace contract and server-side command boundary. The UI does not receive unrestricted table mutation access. Each command verifies authentication, facility access, service availability, module state and role/specialist permissions before creating a record.
+
+## ADR-015 — Patient self-service is an explicit authorization domain
+Patient portal access is determined from the authenticated patient's linked identity (with a tightly scoped email fallback for legacy/unlinked records). Portal read functions return only that patient's records, while staff worklists retain their existing role/facility boundaries. Patient access must never be implemented by broadening staff permissions.
+
+## ADR-016 — Module registry, manifest and platform catalogue must converge
+The machine-readable module registry, executable module contracts and UI platform catalogue are release artifacts of the same architecture. A module is incomplete when any one of these surfaces is missing or inconsistent.
