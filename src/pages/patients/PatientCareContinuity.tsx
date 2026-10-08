@@ -27,7 +27,7 @@ export default function PatientCareContinuity() {
       const patientResult = await getPatientById(patientId);
       if (!patientResult) { setPatient(null); return; }
       setPatient(patientResult as Record<string, unknown>);
-      const { data, error } = await supabase.rpc('get_patient_care_continuity', { _patient_id: patientId }, { get: true });
+      const { data, error } = await supabase.rpc('get_patient_care_continuity', { _patient_id: patientId });
       if (error) throw error;
       const continuity = (data && typeof data === 'object' ? data : {}) as ContinuityData;
       const next: TimelineItem[] = [];
