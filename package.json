@@ -90,7 +90,8 @@
     "test:github-pages-deep-link": "node scripts/github-pages-deep-link-contract.mjs",
     "test:role-focused-navigation": "node scripts/role-focused-navigation-contract.mjs",
     "test:hr-payroll": "node scripts/hr-payroll-foundation-contract.mjs",
-    "test:github-pages-lazy-chunk-recovery": "node scripts/github-pages-lazy-chunk-recovery-contract.mjs"
+    "test:github-pages-lazy-chunk-recovery": "node scripts/github-pages-lazy-chunk-recovery-contract.mjs",
+    "test:github-pages-artifact-integrity": "node scripts/github-pages-artifact-integrity.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
