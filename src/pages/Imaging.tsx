@@ -30,9 +30,11 @@ export default function Imaging() {
   const [activeSearch, setActiveSearch] = useState('');
   const [activeModality, setActiveModality] = useState('all');
   const [activePriority, setActivePriority] = useState('all');
+  const [activeStatus, setActiveStatus] = useState('all');
   const [completedSearch, setCompletedSearch] = useState('');
   const [completedModality, setCompletedModality] = useState('all');
   const [completedPriority, setCompletedPriority] = useState('all');
+  const [completedDate, setCompletedDate] = useState('');
 
   const load = useCallback(async (announce = false) => {
     if (!user?.id) return;
@@ -136,16 +138,18 @@ export default function Imaging() {
     const q = activeSearch.trim().toLowerCase();
     return (!q || row.patient_name.toLowerCase().includes(q) || row.latest_order.study_name.toLowerCase().includes(q) || row.patient_id.toLowerCase().includes(q)) &&
       (activeModality === 'all' || row.latest_order.modality === activeModality) &&
-      (activePriority === 'all' || row.latest_order.priority === activePriority);
-  }), [activePatientRows, activeModality, activePriority, activeSearch]);
+      (activePriority === 'all' || row.latest_order.priority === activePriority) &&
+      (activeStatus === 'all' || row.latest_order.status === activeStatus);
+  }), [activePatientRows, activeModality, activePriority, activeSearch, activeStatus]);
 
   const filteredCompletedOrders = useMemo(() => orders.filter((order) => {
     if (order.status !== 'completed') return false;
     const q = completedSearch.trim().toLowerCase();
     return (!q || patientName(order).toLowerCase().includes(q) || order.study_name.toLowerCase().includes(q) || order.patient_id.toLowerCase().includes(q)) &&
       (completedModality === 'all' || order.modality === completedModality) &&
-      (completedPriority === 'all' || order.priority === completedPriority);
-  }), [orders, completedModality, completedPriority, completedSearch, patients]);
+      (completedPriority === 'all' || order.priority === completedPriority) &&
+      (!completedDate || order.created_at.slice(0, 10) === completedDate);
+  }), [orders, completedModality, completedPriority, completedSearch, completedDate, patients]);
 
   const modalityOptions = ['X-Ray', 'Ultrasound', 'CT', 'MRI', 'Mammography', 'Fluoroscopy'].map((value) => ({ value, label: value }));
   const priorityOptions = [{ value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }];
@@ -171,11 +175,13 @@ export default function Imaging() {
     { key: 'search', label: 'Patient / study', value: activeSearch, onChange: setActiveSearch, placeholder: 'Search patient or study' },
     { key: 'modality', label: 'Modality', value: activeModality, onChange: setActiveModality, options: [{ value: 'all', label: 'All modalities' }, ...modalityOptions] },
     { key: 'priority', label: 'Priority', value: activePriority, onChange: setActivePriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
+    { key: 'status', label: 'Status', value: activeStatus, onChange: setActiveStatus, options: [{ value: 'all', label: 'All active statuses' }, { value: 'pending_payment', label: 'Pending payment' }, { value: 'pending_payment_approval', label: 'Awaiting approval' }, { value: 'queued', label: 'Queued' }, { value: 'released', label: 'Released' }, { value: 'in_progress', label: 'In progress' }] },
   ];
   const completedFilters: WorklistFilter[] = [
     { key: 'search', label: 'Patient / study', value: completedSearch, onChange: setCompletedSearch, placeholder: 'Search patient or study' },
     { key: 'modality', label: 'Modality', value: completedModality, onChange: setCompletedModality, options: [{ value: 'all', label: 'All modalities' }, ...modalityOptions] },
     { key: 'priority', label: 'Priority', value: completedPriority, onChange: setCompletedPriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
+    { key: 'date', label: 'Completed date', value: completedDate, onChange: setCompletedDate, type: 'date' },
   ];
 
   return (
@@ -200,8 +206,8 @@ export default function Imaging() {
         </form></section>
     </>} listTitle='Radiology worklists' listDescription='Standardized filter panels, role-safe columns and the shared refresh control are used across the operational tables.' listMeta={lastUpdated ? 'Last updated ' + lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not synced yet'} bareList loading={false} empty={false}>
       <div className='space-y-6'>
-        <WorklistDataTable title='Active patient list' description='Patients with one or more imaging orders that are not yet completed.' rows={filteredActivePatients} columns={activeColumns} getRowId={(row) => row.patient_id} filters={activeFilters} onResetFilters={() => { setActiveSearch(''); setActiveModality('all'); setActivePriority('all'); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No active radiology patients match the current filters.' rowActions={(row) => row.latest_order.status === 'released' ? <button type='button' className='btn-primary text-xs' onClick={() => void start(row.latest_order)}>Start</button> : <span className='text-xs text-muted-foreground'>No action</span>} columnPreferenceKey='radiology-active-patients' />
-        <WorklistDataTable title='Completed order list' description='Completed imaging studies and final reporting context.' rows={filteredCompletedOrders} columns={completedColumns} getRowId={(row) => row.id} filters={completedFilters} onResetFilters={() => { setCompletedSearch(''); setCompletedModality('all'); setCompletedPriority('all'); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No completed radiology orders match the current filters.' columnPreferenceKey='radiology-completed-orders' />
+        <WorklistDataTable title='Active patient list' description='Patients with one or more imaging orders that are not yet completed.' rows={filteredActivePatients} columns={activeColumns} getRowId={(row) => row.patient_id} filters={activeFilters} onResetFilters={() => { setActiveSearch(''); setActiveModality('all'); setActivePriority('all'); setActiveStatus('all'); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No active radiology patients match the current filters.' rowActions={(row) => row.latest_order.status === 'released' ? <button type='button' className='btn-primary text-xs' onClick={() => void start(row.latest_order)}>Start</button> : <span className='text-xs text-muted-foreground'>No action</span>} columnPreferenceKey='radiology-active-patients' />
+        <WorklistDataTable title='Completed order list' description='Completed imaging studies and final reporting context.' rows={filteredCompletedOrders} columns={completedColumns} getRowId={(row) => row.id} filters={completedFilters} onResetFilters={() => { setCompletedSearch(''); setCompletedModality('all'); setCompletedPriority('all'); setCompletedDate(''); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No completed radiology orders match the current filters.' columnPreferenceKey='radiology-completed-orders' />
         {filteredActivePatients.some((row) => row.latest_order.status === 'in_progress') && <section className='card-medical p-4'><h2 className='font-semibold flex items-center gap-2'><CheckCircle2 className='w-4 h-4' aria-hidden='true' /> Reporting workspace</h2><p className='mt-1 text-xs text-muted-foreground'>Complete in-progress studies here without losing the active patient worklist context.</p><div className='mt-4 space-y-3'>{filteredActivePatients.filter((row) => row.latest_order.status === 'in_progress').map((row) => { const order = row.latest_order; const value = reports[order.id] ?? { report: order.report ?? '', impression: order.impression ?? '' }; return <div key={order.id} className='rounded-xl border border-border p-4'><div className='flex flex-wrap items-center justify-between gap-2'><div><p className='font-medium'>{row.patient_name} · {order.study_name}</p><p className='text-xs text-muted-foreground'>{order.modality} · {order.priority.toUpperCase()}</p></div><span className='rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary'>In progress</span></div><div className='mt-3 grid gap-3 lg:grid-cols-2'><div><label htmlFor={'imaging-report-' + order.id} className='mb-1 block text-xs font-semibold'>Radiology report</label><textarea id={'imaging-report-' + order.id} value={value.report} onChange={e => setReports({ ...reports, [order.id]: { ...value, report: e.target.value } })} rows={4} className='input-medical w-full' /></div><div><label htmlFor={'imaging-impression-' + order.id} className='mb-1 block text-xs font-semibold'>Impression</label><textarea id={'imaging-impression-' + order.id} value={value.impression} onChange={e => setReports({ ...reports, [order.id]: { ...value, impression: e.target.value } })} rows={4} className='input-medical w-full' /></div></div><div className='mt-3 flex justify-end'><button type='button' onClick={() => void saveReport(order)} className='btn-primary inline-flex items-center gap-2 text-xs'><CheckCircle2 className='w-4 h-4' aria-hidden='true' /> Save report & complete</button></div></div>; })}</div></section>}
       </div>
     </OperationalWorklistShell>
