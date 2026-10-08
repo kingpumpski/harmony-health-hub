@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, History } from 'lucide-react';
+import { ArrowLeft, History, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { RecordList, StatusBadge } from '@/components/records/RecordList';
@@ -19,6 +19,8 @@ export default function PatientAudit() {
   const { patientId } = useParams<{ patientId: string }>();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const filteredRows = useMemo(() => { const q = query.trim().toLowerCase(); if (!q) return rows; return rows.filter((row) => `${row.action} ${row.changed_by ?? ''} ${(row.changed_fields ?? []).join(' ')}`.toLowerCase().includes(q)); }, [rows, query]);
 
   const load = async () => {
     if (!patientId) return;
@@ -105,12 +107,13 @@ export default function PatientAudit() {
       <RecordList
         title="Audit history"
         description={`${rows.length} recorded change(s)`}
-        data={rows}
+        data={filteredRows}
         columns={columns}
         isLoading={loading}
         error={null}
         rowKey={(row) => row.id}
         onRefresh={() => void load()}
+        searchSlot={<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="input-medical w-full" placeholder="Search action, actor or changed field…" aria-label="Search audit history" /></div>}
         emptyState={{
           title: 'No patient-record changes',
           description: 'No demographic or administrative changes have been recorded for this patient.',

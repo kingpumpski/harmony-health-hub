@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, Filter, X } from 'lucide-react';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -74,6 +74,7 @@ export function RecordList<T>({
   total = data.length, onPageChange, isRefreshing = false,
 }: RecordListProps<T>) {
   const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
+  const [filterOpen, setFilterOpen] = React.useState(false);
   return (
     <section className="card-medical overflow-hidden" aria-labelledby={`record-list-${title.replace(/\s+/g, '-').toLowerCase()}`}>
       <header className="border-b border-border p-4 sm:p-5">

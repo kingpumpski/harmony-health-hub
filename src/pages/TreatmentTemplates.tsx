@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MedicalTermInput from '@/components/MedicalTermInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Layers, Plus, Sparkles } from 'lucide-react';
+import { Layers, Plus, Sparkles, Search } from 'lucide-react';
 import { RecordList, type RecordColumn } from '@/components/records/RecordList';
 
 interface Template { id: string; name: string; diagnosis: string; description: string; prescriptions: any; is_ai_generated: boolean; created_at: string }
@@ -18,6 +18,8 @@ export default function TreatmentTemplates() {
   const [rxText, setRxText] = useState('');
   const [synthBusy, setSynthBusy] = useState(false);
   const [synthDx, setSynthDx] = useState('');
+  const [listQuery, setListQuery] = useState('');
+  const [aiOnly, setAiOnly] = useState('all');
 
   const load = () => supabase.from('treatment_templates').select('id,name,diagnosis,description,prescriptions,is_ai_generated,created_at').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
   useEffect(() => { load(); }, []);
@@ -40,6 +42,8 @@ export default function TreatmentTemplates() {
     setName(''); setDiagnosis(''); setDescription(''); setRxText('');
     load();
   };
+
+  const visibleTemplates = templates.filter((t) => { const q = listQuery.trim().toLowerCase(); const matchesQuery = !q || `${t.name} ${t.diagnosis} ${t.description}`.toLowerCase().includes(q); const matchesAi = aiOnly === 'all' || (aiOnly === 'ai' ? t.is_ai_generated : !t.is_ai_generated); return matchesQuery && matchesAi; });
 
   const columns: RecordColumn<Template>[] = [
     { key: 'name', header: 'Template', sortable: true, render: (t) => <div><p className="font-medium">{t.name} {t.is_ai_generated && <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent">AI</span>}</p><p className="text-xs text-muted-foreground">{t.description || 'No description recorded.'}</p></div> },
@@ -74,7 +78,9 @@ export default function TreatmentTemplates() {
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name (e.g. Adult Malaria Protocol)" className="input-medical w-full" />
             <MedicalTermInput value={diagnosis} onChange={setDiagnosis} placeholder="Diagnosis covered" className="w-full" diagnosisOnly />
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description / when to apply" rows={2} className="input-medical w-full" />
-            <textarea value={rxText} onChange={(e) => setRxText(e.target.value)} placeholder={`One per line:\nMedication | Dose | Frequency | Duration\nAmoxicillin | 500mg | TDS | 7 days`} rows={4} className="input-medical w-full font-mono text-xs" />
+            <textarea value={rxText} onChange={(e) => setRxText(e.target.value)} placeholder={`One per line:
+Medication | Dose | Frequency | Duration
+Amoxicillin | 500mg | TDS | 7 days`} rows={4} className="input-medical w-full font-mono text-xs" />
             <button className="btn-primary w-full">Save template</button>
           </form>
 
@@ -90,10 +96,11 @@ export default function TreatmentTemplates() {
           <RecordList
             title="Template library"
             description={templates.length + " saved care plan" + (templates.length === 1 ? "" : "s")}
-            data={templates}
+            data={visibleTemplates}
             columns={columns}
             rowKey={(t) => t.id}
             onRefresh={load}
+            searchSlot={<div className="flex flex-col gap-2 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={listQuery} onChange={(e) => setListQuery(e.target.value)} className="input-medical w-full" placeholder="Search template, diagnosis or description…" aria-label="Search treatment templates" /></div><select value={aiOnly} onChange={(e) => setAiOnly(e.target.value)} className="input-medical sm:w-44" aria-label="Filter AI generated templates"><option value="all">All templates</option><option value="ai">AI generated</option><option value="manual">Manual</option></select></div>}
             emptyState={{ title: 'No treatment templates', description: 'Create a standardized care plan using the form.' }}
           />
         </div>
