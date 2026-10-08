@@ -220,6 +220,7 @@ export default function PatientPortal() {
         <div className="card-medical p-5 space-y-2">
           <h3 className="font-semibold flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-primary" /> Quick links</h3>
           <Link to="/records" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">Medical Records</Link>
+          <Link to="/appointments" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">Request / manage appointments</Link>
           <Link to="/notifications" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">My Notifications</Link>
           <Link to="/outside-lab" className="block rounded-xl border border-border p-3 hover:bg-muted/50 text-sm">Upload Outside Diagnostics</Link>
         </div>
