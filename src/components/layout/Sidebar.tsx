@@ -77,7 +77,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Meal Services', icon: Users, items: [item(FileText, 'Meal Orders', '/orders', 'orders'), item(Calendar, 'Menu', '/menu', 'meal_orders'), item(FileText, 'Dietary Plans', '/dietary-plans', 'dietary_plans')] },
   ],
-  patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Telemedicine', '/telemedicine', 'telemedicine'), item(CreditCard, 'Billing', '/billing', 'billing'), item(Calendar, 'Meal Menu', '/menu', 'meal_orders'), item(FileText, 'Medical Records', '/records', 'patient_portal'), item(Bell, 'Notifications', '/notifications', 'notifications')] }],
+  patient: [{ label: 'My Care', icon: Users, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(FileText, 'My Portal', '/patient-portal', 'patient_portal'), item(Calendar, 'My Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Telemedicine', '/telemedicine', 'telemedicine'), item(CreditCard, 'Billing', '/billing', 'billing'), item(FileText, 'Medical Records', '/records', 'patient_portal'), item(Bell, 'Notifications', '/notifications', 'notifications')] }],
 };
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
@@ -87,14 +87,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const location = useLocation();
   if (!user) return null;
 
-  const navigationRole = user.role === 'it_admin' ? 'admin' : user.role;
+  const navigationRole = user.role;
   const roleGroups = roleNavGroups[navigationRole];
   const unsupportedRole = !roleGroups;
   const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
-  const groups = (roleGroups ?? [])
+  const secondaryPermissions = new Set<Permission>(['clinical_references','insurance_companies','facility_attribution','it_support','system_settings','facility_sharing','financial_reports','accounts_approvals','claims']);
+  const primaryGroups = (roleGroups ?? [])
     .map(group => ({ ...group, items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)) }))
     .filter(group => group.items.length > 0);
+  const secondaryGroups = (roleGroups ?? []).map(group => ({ ...group, items: group.items.filter(nav => secondaryPermissions.has(nav.permission)) })).filter(group => group.items.length > 0);
+  const groups = primaryGroups.map(group => ({ ...group, items: group.items.filter(nav => !secondaryPermissions.has(nav.permission)) })).filter(group => group.items.length > 0);
 
   return (
     <>
@@ -122,7 +125,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               <div className="flex items-start gap-2">
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sidebar-primary" />
                 {!collapsed && <div><p className="font-semibold">Workspace unavailable</p><p className="mt-1 text-xs text-sidebar-foreground/60">Your assigned role is not configured for this workspace. Navigation is intentionally restricted until an administrator assigns a supported role.</p></div>}
-              </div>
+                {secondaryGroups.length > 0 && <section className="border-t border-sidebar-border pt-4"><div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40">More</div><ul className="space-y-1">{secondaryGroups.flatMap(group => group.items).map(nav => { const NavIcon=nav.icon; const active=location.pathname===nav.href||location.pathname.startsWith(nav.href+'/'); return <li key={nav.href}><Link to={nav.href} onClick={onMobileClose} title={collapsed?nav.label:undefined} className={cn('nav-link group relative',active&&'nav-link-active',collapsed&&'justify-center px-2')}>{active&&<span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary-foreground/80" />}<NavIcon className="h-[18px] w-[18px] shrink-0" />{!collapsed&&<span className="min-w-0 flex-1 truncate">{nav.label}</span>}</Link></li>; })}</ul></section>}
+            </div>
             </div>
           ) : (
             <div className="space-y-5">

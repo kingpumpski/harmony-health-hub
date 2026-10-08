@@ -24,6 +24,15 @@
   </head>
 
   <body>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var route = params.get('route');
+        if (!route) return;
+        var base = window.location.pathname.replace(/\/$/, '');
+        window.history.replaceState({}, '', base + (route.charAt(0) === '/' ? route : '/' + route));
+      }());
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

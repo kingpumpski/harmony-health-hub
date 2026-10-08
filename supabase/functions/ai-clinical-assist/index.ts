@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const callerId = authData.user.id;
-    const { data: callerRoles, error: callerRolesError } = await supabase.from('user_roles').select('role').eq('user_id', callerId);
+    const { data: callerRoles, error: callerRolesError } = await supabase.rpc('get_current_user_roles');
     if (callerRolesError || !callerRoles?.length) throw new Error('Authorisation role not found');
-    const callerRoleSet = new Set((callerRoles ?? []).map((row) => String(row.role ?? '')));
+    const callerRoleSet = new Set((callerRoles ?? []).map((role) => String(role ?? '')));
     const hasAnyRole = (roles: string[]) => roles.some((role) => callerRoleSet.has(role));
     const clinicalRoles = ['admin','practitioner','nurse','midwife','specialist_nurse','radiologist'];
     const aiClinicalRoles = [...clinicalRoles, 'pharmacist'];
