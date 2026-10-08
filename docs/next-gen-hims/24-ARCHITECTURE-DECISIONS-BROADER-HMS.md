@@ -29,3 +29,12 @@ The project documents its existing REST/RPC boundary using OpenAPI-compatible co
 
 ## ADR-010 — AI remains advisory
 No assistant may autonomously create, approve, finalize, dispense, administer, adjudicate or otherwise commit clinical truth.
+
+## ADR-011 — Facility service availability is a hard activation boundary
+Every optional or specialist module is disabled until the facility explicitly declares that it actually provides the represented service and is operationally ready. The facility module record carries service availability, readiness state, verification actor/time and notes. UI visibility is advisory; `hms_module_is_enabled` and `hms_assert_module_enabled` are authoritative. Explicit facility records override catalogue defaults.
+
+## ADR-012 — Specialist roles use scoped assignments, not duplicated application identities
+The 40-role tertiary-hospital target is implemented as specialized role assignments layered over the existing authenticated `app_role`. A user may hold a specialty role for a facility and department without creating a second authentication/RBAC system. Authorization evaluates both the compatibility app-role bridge and active facility-scoped specialist assignments.
+
+## ADR-013 — Enterprise gaps are additive and service-gated
+The assessment gaps for HR/payroll, ICU, mental health, social work, quality/compliance, infection prevention, mortuary, ambulance/transport, research, external audit and genomics are represented as canonical next-generation modules and governed data/workflow foundations. They do not replace existing clinical modules and remain unavailable at facilities that do not provide the corresponding service.
