@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Search, UserRound } from 'lucide-react';
@@ -31,7 +32,7 @@ function PatientMedicalRecords() {
   useEffect(() => { void load(); }, []);
 
   const rows = (value: unknown) => Array.isArray(value) ? value : [];
-  const section = (title: string, items: any[], render: (item: any) => React.ReactNode) => (
+  const section = (title: string, items: any[], render: (item: any) => ReactNode) => (
     <section className="card-medical p-5">
       <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-semibold">{title}</h2><span className="rounded-full border px-2.5 py-1 text-xs">{items.length}</span></div>
       {items.length ? <div className="space-y-2">{items.map((item: any, index: number) => <article key={item.id ?? item.result_id ?? item.lab_order_id ?? index} className="rounded-xl border border-border p-3 text-sm">{render(item)}</article>)}</div> : <p className="text-sm text-muted-foreground">No records available.</p>}
