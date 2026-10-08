@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const helper = fs.readFileSync('src/lib/lazyWithChunkRecovery.ts', 'utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
+const artifact = fs.readFileSync('scripts/github-pages-artifact-integrity.mjs', 'utf8');
 
 for (const needle of [
   "import { lazyWithChunkRecovery } from '@/lib/lazyWithChunkRecovery';",
@@ -21,9 +22,18 @@ for (const needle of [
 }
 
 for (const needle of [
+  'fs.existsSync',
+  'dist/.vite/manifest.json',
+  'index assets',
+]) {
+  if (!artifact.includes(needle)) throw new Error('Pages artifact integrity contract changed: ' + needle);
+}
+
+for (const needle of [
   'actions/upload-pages-artifact@v4',
   'actions/deploy-pages@v4',
   'path: ./dist',
+  'npm run test:github-pages-artifact-integrity',
 ]) {
   if (!pages.includes(needle)) throw new Error('GitHub Pages deployment contract changed: ' + needle);
 }
