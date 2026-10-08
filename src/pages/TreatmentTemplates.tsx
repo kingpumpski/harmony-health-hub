@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MedicalTermInput from '@/components/MedicalTermInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Layers, Plus, Sparkles } from 'lucide-react';
+import { Layers, Plus, Sparkles, Search } from 'lucide-react';
 import { RecordList, type RecordColumn } from '@/components/records/RecordList';
 
 interface Template { id: string; name: string; diagnosis: string; description: string; prescriptions: any; is_ai_generated: boolean; created_at: string }
@@ -17,7 +17,7 @@ export default function TreatmentTemplates() {
   const [description, setDescription] = useState('');
   const [rxText, setRxText] = useState('');
   const [synthBusy, setSynthBusy] = useState(false);
-  const [synthDx, setSynthDx] = useState('');
+  const [synthDx, setSynthDx] = useState('');\n  const [listQuery, setListQuery] = useState('');\n  const [aiOnly, setAiOnly] = useState('all');
 
   const load = () => supabase.from('treatment_templates').select('id,name,diagnosis,description,prescriptions,is_ai_generated,created_at').order('created_at', { ascending: false }).then(({ data }) => setTemplates((data ?? []) as Template[]));
   useEffect(() => { load(); }, []);
@@ -41,7 +41,7 @@ export default function TreatmentTemplates() {
     load();
   };
 
-  const columns: RecordColumn<Template>[] = [
+  const visibleTemplates = templates.filter((t) => { const q = listQuery.trim().toLowerCase(); const matchesQuery = !q || `${t.name} ${t.diagnosis} ${t.description}`.toLowerCase().includes(q); const matchesAi = aiOnly === 'all' || (aiOnly === 'ai' ? t.is_ai_generated : !t.is_ai_generated); return matchesQuery && matchesAi; });\n\n  const columns: RecordColumn<Template>[] = [
     { key: 'name', header: 'Template', sortable: true, render: (t) => <div><p className="font-medium">{t.name} {t.is_ai_generated && <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-accent/15 text-accent">AI</span>}</p><p className="text-xs text-muted-foreground">{t.description || 'No description recorded.'}</p></div> },
     { key: 'diagnosis', header: 'Diagnosis', sortable: true, hideBelow: 'md', render: (t) => t.diagnosis || '—' },
     { key: 'prescriptions', header: 'Protocol', hideBelow: 'lg', render: (t) => Array.isArray(t.prescriptions) && t.prescriptions.length > 0 ? <details onClick={(e) => e.stopPropagation()}><summary className="cursor-pointer text-sm text-primary">{t.prescriptions.length} medication{t.prescriptions.length === 1 ? '' : 's'}</summary><ul className="mt-2 space-y-1 text-xs">{t.prescriptions.map((p: any, i: number) => <li key={i}>• {p.medication} — {p.dosage} {p.frequency} × {p.duration}</li>)}</ul></details> : <span className="text-muted-foreground">No medications</span> },
@@ -90,10 +90,10 @@ export default function TreatmentTemplates() {
           <RecordList
             title="Template library"
             description={templates.length + " saved care plan" + (templates.length === 1 ? "" : "s")}
-            data={templates}
+            data={visibleTemplates}
             columns={columns}
             rowKey={(t) => t.id}
-            onRefresh={load}
+            onRefresh={load}\n            searchSlot={<div className="flex flex-col gap-2 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={listQuery} onChange={(e) => setListQuery(e.target.value)} className="input-medical w-full" placeholder="Search template, diagnosis or description…" aria-label="Search treatment templates" /></div><select value={aiOnly} onChange={(e) => setAiOnly(e.target.value)} className="input-medical sm:w-44" aria-label="Filter AI generated templates"><option value="all">All templates</option><option value="ai">AI generated</option><option value="manual">Manual</option></select></div>}
             emptyState={{ title: 'No treatment templates', description: 'Create a standardized care plan using the form.' }}
           />
         </div>
