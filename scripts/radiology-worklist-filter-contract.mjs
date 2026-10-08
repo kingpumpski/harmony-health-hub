@@ -13,7 +13,7 @@ const requiredImaging = [
   'lastUpdated={lastUpdated}',
 ];
 for (const marker of requiredImaging) if (!imaging.includes(marker)) throw new Error('Radiology worklist contract missing: ' + marker);
-const refreshImports = (imaging.match(/import RefreshButton from '@\\/components\\/ui\\/RefreshButton';/g) ?? []).length;
+const refreshImports = (imaging.split("import RefreshButton from '@/components/ui/RefreshButton';").length - 1);
 if (refreshImports !== 1) throw new Error('Radiology page must contain exactly one shared RefreshButton import.');
 if (!worklist.includes("import RefreshButton from '@/components/ui/RefreshButton';")) throw new Error('WorklistDataTable must use the shared RefreshButton.');
 if (!worklist.includes('RefreshCw')) throw new Error('WorklistDataTable loading indicator import is missing.');
