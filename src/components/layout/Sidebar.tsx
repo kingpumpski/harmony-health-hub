@@ -92,8 +92,32 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const unsupportedRole = !roleGroups;
   const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
+  const secondaryPermissions = new Set<Permission>([
+    'clinical_references',
+    'insurance_companies',
+    'facility_attribution',
+    'it_support',
+    'system_settings',
+    'facility_sharing',
+    'financial_reports',
+    'accounts_approvals',
+    'claims',
+  ]);
+
   const groups = (roleGroups ?? [])
-    .map(group => ({ ...group, items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)) }))
+    .map(group => ({
+      ...group,
+      items: (hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)))
+        .filter(nav => !secondaryPermissions.has(nav.permission)),
+    }))
+    .filter(group => group.items.length > 0);
+
+  const secondaryGroups = (roleGroups ?? [])
+    .map(group => ({
+      ...group,
+      items: (hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)))
+        .filter(nav => secondaryPermissions.has(nav.permission)),
+    }))
     .filter(group => group.items.length > 0);
 
   return (
@@ -140,6 +164,21 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   })}</ul>
                 </section>;
               })}
+              {secondaryGroups.length > 0 && (
+                <section className="border-t border-sidebar-border pt-4">
+                  {!collapsed && <div className="mb-2 flex items-center gap-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40"><Settings className="h-3.5 w-3.5" /><span>More</span></div>}
+                  <ul className="space-y-1">
+                    {secondaryGroups.flatMap(group => group.items).map(nav => {
+                      const NavIcon = nav.icon;
+                      const active = location.pathname === nav.href || location.pathname.startsWith(nav.href + '/');
+                      return <li key={nav.href}><Link to={nav.href} onClick={onMobileClose} title={collapsed ? nav.label : undefined} aria-current={active ? 'page' : undefined} className={cn('nav-link group relative', active && 'nav-link-active', collapsed && 'justify-center px-2')}>
+                        {active && <span className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary-foreground/80" />}
+                        <NavIcon className="h-[18px] w-[18px] shrink-0" />{!collapsed && <span className="min-w-0 flex-1 truncate">{nav.label}</span>}{!collapsed && active && <ChevronRight className="h-3.5 w-3.5 opacity-60" />}
+                      </Link></li>;
+                    })}
+                  </ul>
+                </section>
+              )}
             </div>
           )}
         </nav>
