@@ -87,7 +87,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const location = useLocation();
   if (!user) return null;
 
-  const navigationRole = user.role === 'it_admin' ? 'admin' : user.role;
+  const navigationRole = user.role;
   const roleGroups = roleNavGroups[navigationRole];
   const unsupportedRole = !roleGroups;
   const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
