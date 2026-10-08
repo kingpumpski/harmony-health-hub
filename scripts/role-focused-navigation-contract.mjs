@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const sidebar=fs.readFileSync('src/components/layout/Sidebar.tsx','utf8');
+const dashboard=fs.readFileSync('src/pages/Dashboard.tsx','utf8');
+const frontDesk=fs.readFileSync('src/pages/dashboard/FrontDeskDashboard.tsx','utf8');
+const workflow=fs.readFileSync('src/components/WorkflowSummary.tsx','utf8');
+assert.doesNotMatch(sidebar,/user\.role === 'it_admin' \? 'admin' : user\.role/);
+assert.match(sidebar,/const navigationRole = user\.role;/);
+assert.match(sidebar,/secondaryPermissions/);
+assert.match(sidebar,/>More<\/div>/);
+assert.doesNotMatch(sidebar,/item\(Calendar, 'Meal Menu', '\/menu'/);
+assert.doesNotMatch(dashboard,/OperationalHandoffPanel/);
+assert.doesNotMatch(frontDesk,/import Appointments/);
+for (const route of ['/registration','/appointments','/patients','/department-queue','/billing']) assert.match(frontDesk,new RegExp(route.replace('/','\\/')));
+assert.doesNotMatch(workflow,/if \(role === 'patient'\).*Meal menu/s);
+assert.match(workflow,/if \(role === 'canteen'\).*Meal menu/s);
+console.log('Role-focused navigation contract passed.');
