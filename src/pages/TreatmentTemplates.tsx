@@ -27,8 +27,7 @@ export default function TreatmentTemplates() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
-    const prescriptions = rxText.split('
-').filter(Boolean).map(line => {
+    const prescriptions = rxText.split('\\n').filter(Boolean).map(line => {
       const [med, dose, freq, dur] = line.split('|').map(s => s.trim());
       return { medication: med, dosage: dose, frequency: freq, duration: dur };
     });
