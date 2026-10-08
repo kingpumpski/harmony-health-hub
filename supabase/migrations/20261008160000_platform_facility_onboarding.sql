@@ -68,6 +68,12 @@ BEGIN
   FROM public.hms_module_catalog m
   ON CONFLICT (facility_id,module_id) DO NOTHING;
 
+  INSERT INTO public.system_audit_log(
+    actor_id,action,module,entity_type,entity_id,severity,metadata
+  ) VALUES (
+    v_user,'facility_onboarded','platform','facility',v_facility.id,'info',
+    jsonb_build_object('facility_code',v_facility.facility_code,'facility_type',v_facility.facility_type)
+  );
   RETURN v_facility;
 END;
 $$;
