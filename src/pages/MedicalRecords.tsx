@@ -63,10 +63,6 @@ function StaffMedicalRecords() {
         </h1>
         <p className="text-muted-foreground">Open a patient chart and review the complete clinical record.</p>
       </div>
-      <div className="card-medical p-4 flex items-center gap-3">
-        <Search className="w-5 h-5 text-muted-foreground" />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} className="input-medical flex-1" placeholder="Search by patient name, code or phone…" aria-label="Filter medical records" />
-      </div>
       <RecordList
         title="Patient medical records"
         description={`${filtered.length} patient record(s) available`}
@@ -77,6 +73,7 @@ function StaffMedicalRecords() {
         rowKey={(patient) => patient.id}
         onRowClick={(patient) => navigate(`/patients/${patient.id}`)}
         onRefresh={() => void load()}
+        searchSlot={<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="input-medical w-full" placeholder="Search by patient name, code or phone…" aria-label="Search medical records" /></div>}
         emptyState={{
           title: query.trim() ? 'No matching patient records' : 'No patient records',
           description: query.trim() ? 'Try another patient name, code or phone number.' : 'No patient records are currently available to this workspace.',
