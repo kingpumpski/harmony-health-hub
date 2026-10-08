@@ -44,16 +44,16 @@ Deno.serve(async (req) => {
 
     if (body.mode === 'portal') {
       if (!hasAnyRole(['patient'])) throw new Error('Patient portal access is not permitted');
-      const { data: patientRows, error: patientError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+      const { data: patientRows, error: patientError } = await supabase.rpc('get_patient_portal_identity', {});
       if (patientError) throw patientError;
       const patient = Array.isArray(patientRows) ? patientRows[0] : patientRows;
       if (!patient) throw new Error('Patient portal profile not found');
       const portalReads = await Promise.allSettled([
 
-        supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }, { get: true }),
-        supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true }),
-        supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true }),
-        supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }, { get: true }),
+        supabase.rpc('get_patient_appointments', { _patient_id: patient.id, _limit: 25 }),
+        supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }),
+        supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
+        supabase.rpc('get_ai_report_requests', { _patient_id: patient.id, _limit: 25 }),
       ]);
       const valueAt = <T,>(index: number, fallback: T): T => {
         const result = portalReads[index];
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
         // Preserve the existing portal identity fallback for legacy test patients
         // whose account is linked by verified email rather than user_id.
         if (!isPatientOwner) {
-          const { data: identityRows, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+          const { data: identityRows, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
           if (identityError) throw identityError;
           const identity = Array.isArray(identityRows) ? identityRows[0] : identityRows;
           isPatientOwner = Boolean(identity?.id && identity.id === body.patientId);
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
 
       const { data: scopedContext, error: contextError } = isClinical
         ? await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId })
-        : await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId }, { get: true });
+        : await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId });
       if (contextError) throw contextError;
       if (!scopedContext) throw new Error('Clinical context unavailable');
 
