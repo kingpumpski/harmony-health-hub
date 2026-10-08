@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus, Pencil, Save, X } from 'lucide-react';
+import { UserPlus, ShieldCheck, Settings, CheckCircle2, MailPlus, Pencil, Save, X, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { RecordList, type RecordColumn, StatusBadge } from '@/components/records/RecordList';
 
@@ -20,7 +20,7 @@ type EditableUser = Omit<DirectoryRow, 'role' | 'facilities'>;
 export default function AdminUsers() {
   const { user } = useAuth(); const canManage = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser'; const canManageSuperuser = user?.role === 'system_superuser';
   const [users, setUsers] = useState<DirectoryRow[]>([]); const [facilities, setFacilities] = useState<FacilityOption[]>([]); const [searchEmail, setSearchEmail] = useState('');
-  const [newRole, setNewRole] = useState<RoleValue>('practitioner'); const [loading, setLoading] = useState(false);
+  const [newRole, setNewRole] = useState<RoleValue>('practitioner');\n  const [directoryRoleFilter, setDirectoryRoleFilter] = useState('all'); const [loading, setLoading] = useState(false);
   const [createEmail, setCreateEmail] = useState(''); const [createFirstName, setCreateFirstName] = useState(''); const [createLastName, setCreateLastName] = useState('');
   const [createPhone, setCreatePhone] = useState(''); const [createDepartment, setCreateDepartment] = useState(''); const [createSpecialization, setCreateSpecialization] = useState(''); const [createFacilityId, setCreateFacilityId] = useState('');
   const [createRole, setCreateRole] = useState<RoleValue>('patient'); const [onboarding, setOnboarding] = useState<'invite' | 'password'>('invite'); const [createPassword, setCreatePassword] = useState(''); const [creating, setCreating] = useState(false); const [editingUser, setEditingUser] = useState<EditableUser | null>(null); const [savingUser, setSavingUser] = useState(false); const [facilityUser, setFacilityUser] = useState<DirectoryRow | null>(null); const [facilitySelection, setFacilitySelection] = useState(''); const [facilityScope, setFacilityScope] = useState('facility'); const [facilityActive, setFacilityActive] = useState(true); const [savingFacility, setSavingFacility] = useState(false);
@@ -172,11 +172,11 @@ export default function AdminUsers() {
         <RecordList
           title="Staff & Patient Directory"
           description="Assign or change the application role for existing accounts."
-          data={users}
+          data={users.filter((row) => directoryRoleFilter === 'all' || row.role === directoryRoleFilter)}
           columns={directoryColumns}
           isLoading={loading}
           rowKey={(row) => row.id}
-          onRefresh={() => void loadDirectory()}
+          onRefresh={() => void loadDirectory()}\n          searchSlot={<div className="flex flex-col gap-2 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} className="input-medical w-full" placeholder="Search email, name or phone…" aria-label="Search user directory" /></div><select value={directoryRoleFilter} onChange={(e) => setDirectoryRoleFilter(e.target.value)} className="input-medical sm:w-48" aria-label="Filter user directory by role"><option value="all">All roles</option>{availableRoles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>}
           isRefreshing={loading}
           emptyState={{ title: 'No users yet.', description: 'No staff or patient accounts are available in the administrative directory.' }}
         />
