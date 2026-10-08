@@ -41,7 +41,7 @@ if (!billing.includes("db.rpc('get_billing_workspace_summary')") || !billing.inc
 if (!billingSummaryMigration.includes('active_facility') || !billingSummaryMigration.includes("GRANT EXECUTE ON FUNCTION public.get_billing_workspace_summary() TO authenticated") || !billingSummaryMigration.includes("SET search_path = ''")) throw new Error('Billing summary RPC is missing facility or privilege hardening');
 if (!encounters.includes('get_appointment_clinicians')) throw new Error('Encounter worklist does not attempt to resolve clinician display names');
 if (!header.includes('setNotificationAttention(unreadRows.length > 0)')) throw new Error('Notification attention does not track unread acknowledgements');
-if (!patientHub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })")) throw new Error('Patient Hub appointment history must use GET for its STABLE RPC');
+if (!patientHub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })")) throw new Error('Patient Hub appointment history must use standard POST transport for its STABLE RPC');
 if (!submitMigration.includes('Completed or cancelled encounters are read-only')) throw new Error('Encounter draft lifecycle guard missing');
 if (!lifecycleMigration.includes('Principal diagnosis required before final submission')) throw new Error('Server-side principal diagnosis enforcement missing');
 
