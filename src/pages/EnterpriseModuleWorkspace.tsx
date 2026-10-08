@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { AlertCircle, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getModuleContract } from '@/lib/nextGenModuleManifest';
+import { useAuth } from '@/contexts/AuthContext';
+import { getNextGenFacilityContext, setNextGenFacilityContext } from '@/lib/nextGenFacilityContext';
 
 type Field = { key: string; label: string; required?: boolean; type?: 'text'|'date'|'datetime-local'|'textarea'|'select'; options?: string[]; json?: boolean };
 
@@ -50,9 +52,11 @@ function displayValue(value: unknown) {
 
 export default function EnterpriseModuleWorkspace() {
   const { moduleId = '' } = useParams();
+  const { user } = useAuth();
   const config = MODULES[moduleId];
   const contract = getModuleContract(moduleId);
   const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilities, setFacilities] = useState<Array<{ id: string; name: string; facility_code?: string | null }>>([]);
   const [data, setData] = useState<Record<string, unknown[]>>({});
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -61,11 +65,27 @@ export default function EnterpriseModuleWorkspace() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const loadFacility = useCallback(async () => {
-    const { data: rows, error: facilityError } = await supabase.from('user_active_facilities').select('facility_id').eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '').limit(1);
+    const authUser = (await supabase.auth.getUser()).data.user;
+    if (!authUser) throw new Error('Authentication is required.');
+    if (user?.role === 'system_superuser') {
+      const { data: platformFacilities, error: facilityError } = await supabase.rpc('platform_list_facilities');
+      if (facilityError) throw facilityError;
+      const activeFacilities = (platformFacilities ?? []).filter((facility: any) => facility.is_active);
+      setFacilities(activeFacilities);
+      const storedContext = getNextGenFacilityContext();
+      const selected = storedContext && activeFacilities.some((facility: any) => facility.id === storedContext)
+        ? storedContext
+        : activeFacilities[0]?.id ?? null;
+      setFacilityId(selected);
+      setNextGenFacilityContext(selected);
+      return selected;
+    }
+    const { data: rows, error: facilityError } = await supabase.from('user_active_facilities').select('facility_id').eq('user_id', authUser.id).limit(1);
     if (facilityError) throw facilityError;
-    setFacilityId(rows?.[0]?.facility_id ?? null);
-    return rows?.[0]?.facility_id ?? null;
-  }, []);
+    const selected = rows?.[0]?.facility_id ?? null;
+    setFacilityId(selected);
+    return selected;
+  }, [user?.role]);
 
   const load = useCallback(async () => {
     if (!config) return;
@@ -82,6 +102,7 @@ export default function EnterpriseModuleWorkspace() {
   }, [config, facilityId, loadFacility, moduleId]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (user?.role === 'system_superuser' && facilityId) setNextGenFacilityContext(facilityId); }, [facilityId, user?.role]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -115,6 +136,8 @@ export default function EnterpriseModuleWorkspace() {
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground"><span className="rounded-full border px-3 py-1">{moduleId}</span><span className="rounded-full border px-3 py-1">{contract?.requiredCapabilities.length ?? 0} capabilities</span><span className="rounded-full border px-3 py-1">{rows.length} records</span>{facilityId && <span className="rounded-full border px-3 py-1">Facility context active</span>}</div>
     </header>
     {error && <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm"><AlertCircle className="mr-2 inline h-4 w-4" />{error}</div>}
+    {user?.role === 'system_superuser' && facilities.length > 0 && <section className="rounded-2xl border bg-card p-4 shadow-sm" aria-labelledby="workspace-facility-context"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="workspace-facility-context" className="font-semibold">Facility workspace context</h2><p className="text-xs text-muted-foreground">System Super User access is platform-wide; choose the facility for this module.</p></div><select aria-label="Facility workspace context" className="w-full max-w-xl rounded-lg border bg-background px-3 py-2 text-sm" value={facilityId ?? ''} onChange={(event) => { const next = event.target.value || null; setFacilityId(next); setNextGenFacilityContext(next); }}>{facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}{facility.facility_code ? ` · ${facility.facility_code}` : ''}</option>)}</select></div></section>}
+
     {notice && <div role="status" className="rounded-xl border bg-muted p-4 text-sm">{notice}</div>}
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="records-title"><div className="flex items-center justify-between gap-3"><h2 id="records-title" className="text-lg font-semibold">Operational records</h2><span className="text-xs text-muted-foreground">{rows.length} loaded</span></div>{loading ? <p className="py-10 text-sm text-muted-foreground">Loading workspace…</p> : rows.length === 0 ? <p className="py-10 text-sm text-muted-foreground">No records found for the active facility.</p> : <div className="mt-4 overflow-auto rounded-xl border"><table className="w-full min-w-[720px] text-sm"><thead className="bg-muted/50 text-left"><tr>{Object.keys(rows[0]).slice(0,10).map(key => <th key={key} className="px-3 py-2 font-medium">{key.replaceAll('_',' ')}</th>)}</tr></thead><tbody>{rows.map((row,index) => <tr key={String(row.id ?? index)} className="border-t align-top">{Object.keys(rows[0]).slice(0,10).map(key => <td key={key} className="max-w-[260px] px-3 py-2">{displayValue(row[key])}</td>)}</tr>)}</tbody></table></div>}</section>
