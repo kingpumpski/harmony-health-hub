@@ -1,6 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, CheckCircle2, Clock3, Plus, RefreshCw, ShieldAlert, Utensils } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock3, Plus, ShieldAlert, Utensils } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -121,7 +121,7 @@ export default function CanteenMeals() {
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">{canManage ? 'Canteen operations' : 'Patient meal information'}</p><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Utensils className="h-6 w-6 text-primary" /> Meals & Dietary Services</h1><p className="mt-1 text-sm text-muted-foreground">{canManage ? 'Manage time-specific menus and serve each active patient according to documented dietary context.' : 'View the published meal options available by day and meal period.'}</p></div>
-        <button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" />{loading ? 'Refreshing…' : 'Refresh'}</button>
+        <RefreshButton onClick={() => void load()} loading={loading} label="Refresh meal operations" />
       </header>
 
       <section className="card-medical p-5">

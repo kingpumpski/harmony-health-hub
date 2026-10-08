@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,7 +6,7 @@ import OperationalWorklistShell from '@/components/workflow/OperationalWorklistS
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { toast } from '@/hooks/use-toast';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
-import { AlertTriangle, CreditCard, Image as ImageIcon, Plus, CheckCircle2, RefreshCw, BellRing } from 'lucide-react';
+<RefreshButton onClick={() => void load()} loading={false} label="Refresh imaging workspace" />
 
 interface ImagingOrder { id: string; patient_id: string; modality: string; study_name: string; body_site: string | null; priority: string; clinical_indication: string | null; amount: number; status: string; service_order_id: string | null; report: string | null; impression: string | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
 interface Patient { id: string; first_name: string; last_name: string }
@@ -123,9 +124,7 @@ export default function Imaging() {
       title="Imaging Workspace"
       description="Request, release, perform and report diagnostic imaging through one central service queue with payment and urgent-case visibility."
       actions={(
-        <button type="button" onClick={() => { playWorkflowSound('info'); void load(); }} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh imaging workspace">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <RefreshButton onClick={() => { playWorkflowSound('info'); void load(); }} loading={loading} label="Refresh imaging workspace" />
       )}
       counters={[
         { label: 'Awaiting Accounts', value: counters.awaiting_release, surface: 'bg-warning/5', tone: 'text-warning' },

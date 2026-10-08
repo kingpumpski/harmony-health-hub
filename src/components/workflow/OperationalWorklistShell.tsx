@@ -1,4 +1,5 @@
 import type { ReactNode, ElementType } from 'react';
+import PageHeader from '@/components/layout/PageHeader';
 
 type Counter = { label: string; value: ReactNode; tone?: string; surface?: string; onClick?: () => void };
 
@@ -45,17 +46,13 @@ export default function OperationalWorklistShell({
 }: OperationalWorklistShellProps) {
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Icon className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
-            <span className="text-xs font-medium uppercase tracking-wide text-primary">{eyebrow}</span>
-          </div>
-          <h1 className="mt-1 text-2xl font-heading font-bold">{title}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>
-        </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-      </header>
+      <PageHeader
+        icon={<Icon className="h-6 w-6 shrink-0" aria-hidden="true" />}
+        eyebrow={eyebrow}
+        title={title}
+        description={description}
+        actions={actions}
+      />
 
       {counters.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label={`${title} counters`}>

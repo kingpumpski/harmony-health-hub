@@ -1,7 +1,8 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
+import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCw, Save, ShieldCheck, Activity, Clock3, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
+import { Plus,  Save, ShieldCheck, Activity, Clock3, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +82,7 @@ export default function InsuranceClaims() {
       eyebrow="Business · Insurance"
       title="Insurance Claims"
       description="Live financial claim lifecycle, adjudication, rejection and resubmission control."
-      actions={<><button type="button" onClick={() => setShowCreate((value) => !value)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />{showCreate ? "Close draft form" : "New claim draft"}</button><button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh" disabled={busy}><RefreshCw className="h-4 w-4" /> Refresh</button></>}
+      actions={<><button type="button" onClick={() => setShowCreate((value) => !value)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />{showCreate ? "Close draft form" : "New claim draft"}</button><RefreshButton onClick={() => void load()} loading={busy} /></>}
       counters={cards.map(({ label, value, tone, surface }) => ({ label, value, tone, surface }))}
       beforeList={showCreate ? <section className="card-medical p-5 sm:p-6 space-y-4" aria-labelledby="claim-draft-heading"><div><h2 id="claim-draft-heading" className="font-semibold">Create claim draft</h2><p className="text-xs text-muted-foreground">Creates the draft through the server-authoritative claims workflow.</p></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><label className="space-y-1.5 text-sm"><span className="font-medium">Patient</span><select required value={draft.patientId} onChange={(event) => setDraft((current) => ({ ...current, patientId: event.target.value }))} className="input-medical w-full"><option value="">Select patient</option>{patients.map((item) => <option key={item.id} value={item.id}>{item.patient_code} — {item.first_name} {item.last_name}</option>)}</select></label><label className="space-y-1.5 text-sm"><span className="font-medium">Payer / insurer</span><input required placeholder="Payer / insurer" value={draft.payerName} onChange={(event) => setDraft((current) => ({ ...current, payerName: event.target.value }))} className="input-medical w-full" /></label><label className="space-y-1.5 text-sm"><span className="font-medium">Member number</span><input placeholder="Member number" value={draft.memberNumber} onChange={(event) => setDraft((current) => ({ ...current, memberNumber: event.target.value }))} className="input-medical w-full" /></label><label className="space-y-1.5 text-sm"><span className="font-medium">Amount claimed</span><input required type="number" min="0" step="0.01" placeholder="Amount claimed" value={draft.amountClaimed} onChange={(event) => setDraft((current) => ({ ...current, amountClaimed: event.target.value }))} className="input-medical w-full" /></label></div><button type="button" disabled={busy} onClick={() => void createDraft()} className="btn-primary disabled:opacity-50">{busy ? "Creating…" : "Create draft"}</button></section> : null}
       listTitle="Claims worklist"

@@ -1,5 +1,6 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Siren } from 'lucide-react';
+import { Siren } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -51,7 +52,7 @@ export default function EmergencyBoard() {
       eyebrow="Emergency care"
       title="Emergency"
       description="Emergency intake, officer assignment and controlled disposition workflow."
-      actions={<button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>}
+      actions={<RefreshButton onClick={() => void load()} loading={loading} />}
       counters={[
         { label: "Active cases", value: rows.filter((r) => !["discharged","referred","left_without_being_seen","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
         { label: "Resuscitation", value: rows.filter((r) => r.acuity === "resuscitation").length, tone: "text-critical", surface: "bg-critical/5" },

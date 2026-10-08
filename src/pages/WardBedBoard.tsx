@@ -1,7 +1,8 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
+import RefreshButton from '@/components/ui/RefreshButton';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
-import { BedDouble, Plus, RefreshCw, Building2, Link2 } from 'lucide-react';
+import { BedDouble, Plus,  Building2, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -184,7 +185,7 @@ export default function WardBedBoard() {
       eyebrow="Inpatient capacity"
       title="Ward & Bed Management"
       description="Canonical ward and bed configuration, capacity visibility, patient assignment, movement and release."
-      actions={<button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh ward and bed management"><RefreshCw className="h-4 w-4" />Refresh</button>}
+      actions={<RefreshButton onClick={() => void load()} loading={loading} label="Refresh ward and bed management" />}
       counters={[
         { label: 'Available beds', value: availableCount, tone: 'text-success' },
         { label: 'Occupied beds', value: occupiedCount },

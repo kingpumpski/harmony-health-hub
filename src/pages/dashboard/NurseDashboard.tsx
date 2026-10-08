@@ -1,6 +1,7 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, RefreshCw, Syringe, Users, X, Save } from 'lucide-react';
+import { Activity, AlertTriangle, BedDouble, BellRing, ClipboardList, FileText, HeartPulse, Pill, Syringe, Users, X, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/ui/StatCard';
 import { cn } from '@/lib/utils';
@@ -175,7 +176,7 @@ export default function NurseDashboard() {
             playWorkflowSound('critical');
             toast.success('Medication alerts enabled for this nursing session.');
           }} className={cn('btn-secondary', medAlertEnabled && 'border-primary/40 bg-primary/5')}><Pill className="w-4 h-4" /> {medAlertEnabled ? 'Alerts enabled' : 'Enable med alerts'}</button>
-          <button type="button" onClick={refresh} className="btn-ghost" aria-label="Refresh nursing dashboard"><RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /></button>
+          <RefreshButton onClick={refresh} loading={loading} label="Refresh nursing dashboard" />
         </div>
       </div>
 

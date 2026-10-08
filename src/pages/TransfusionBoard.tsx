@@ -1,6 +1,7 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Droplets, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Droplets} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
@@ -47,7 +48,7 @@ export default function TransfusionBoard() {
       eyebrow="Transfusion services"
       title="Transfusion"
       description="Consent-gated transfusion intake, documented lifecycle and reaction reporting. Compatibility is never inferred."
-      actions={<button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>}
+      actions={<RefreshButton onClick={() => void load()} loading={loading} />}
       counters={[
         { label: "Active records", value: rows.filter((r) => !["completed","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
         { label: "Planned", value: rows.filter((r) => r.status === "planned").length, tone: "text-info", surface: "bg-info/5" },

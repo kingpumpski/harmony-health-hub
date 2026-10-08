@@ -1,8 +1,9 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
-import { ClipboardCheck, RefreshCw } from 'lucide-react';
+import { ClipboardCheck} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import { toast } from '@/hooks/use-toast';
@@ -19,7 +20,7 @@ return (
     eyebrow="Nursing services"
     title="Nursing Shift Handover"
     description="Structured continuity, pending tasks and safety escalation."
-    actions={<button type="button" onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>}
+    actions={<RefreshButton onClick={() => void load()} loading={loading} />}
     counters={[
       { label: "Handover records", value: rows.length, tone: "text-primary", surface: "bg-primary/5" },
       { label: "Unacknowledged", value: rows.filter((r) => !r.acknowledged_at).length, tone: "text-warning", surface: "bg-warning/5" },

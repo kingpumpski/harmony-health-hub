@@ -83,7 +83,8 @@
     "test:patient-portal-self-service": "node scripts/patient-portal-self-service-contract.mjs",
     "test:edge-schema-role-inventory": "node scripts/edge-schema-role-inventory-contract.mjs",
     "test:stable-patient-read-transport": "node scripts/stable-patient-read-transport-contract.mjs",
-    "test:stable-referral-queue-transport": "node scripts/stable-referral-queue-transport-contract.mjs"
+    "test:stable-referral-queue-transport": "node scripts/stable-referral-queue-transport-contract.mjs",
+    "test:global-ui-standardization": "node scripts/global-ui-standardization-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

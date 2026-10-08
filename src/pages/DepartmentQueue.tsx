@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { completeServiceOrder, markServiceOrderInProgress, STATUS_LABEL, type ServiceOrderStatus } from '@/lib/workflow';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
-import { CheckCircle2, ClipboardList, PlayCircle, RefreshCw, BellRing } from 'lucide-react';
+import { CheckCircle2, ClipboardList, PlayCircle, BellRing } from 'lucide-react';
 
 interface QueueRpcRow {
   id: string; department: string; status: string; queued_at: string; service_order_id: string;
@@ -80,7 +81,7 @@ export default function DepartmentQueue() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h1 className="text-2xl font-heading font-bold flex items-center gap-2"><ClipboardList className="w-6 h-6 text-primary" /> Department Queue</h1><p className="text-muted-foreground">{department ? `Released work for ${department}.` : 'Your profile is not assigned to a department.'}</p></div>
-        <div className="flex items-center gap-2"><a href="/notifications" className="btn-secondary inline-flex items-center gap-2"><BellRing className="w-4 h-4" /> Notifications</a><span className="inline-flex items-center gap-1 rounded-full bg-primary/5 px-3 py-1 text-xs text-muted-foreground"><BellRing className="w-3.5 h-3.5" /> Live queue</span><button onClick={() => void load()} className="btn-secondary inline-flex items-center gap-2 self-start"><RefreshCw className="w-4 h-4" /> Refresh</button></div>
+        <div className="flex items-center gap-2"><a href="/notifications" className="btn-secondary inline-flex items-center gap-2"><BellRing className="w-4 h-4" /> Notifications</a><span className="inline-flex items-center gap-1 rounded-full bg-primary/5 px-3 py-1 text-xs text-muted-foreground"><BellRing className="w-3.5 h-3.5" /> Live queue</span><RefreshButton onClick={() => void load()} loading={loading} label="Refresh live queue" /></div>
       </div>
       {department && <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')} className={`${counterClass} bg-warning/5 ${counts.active > 0 ? 'animate-pulse' : ''}`}><p className="text-xs text-muted-foreground">Active patients</p><p className="text-3xl font-bold tabular-nums">{counts.active}</p><p className="mt-1 text-xs text-muted-foreground">Show all active work</p></button>
