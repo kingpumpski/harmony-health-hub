@@ -73,7 +73,8 @@ export function RecordList<T>({
   addNewLabel = 'Add New Record', filterSlot, searchSlot, emptyState, page = 1, pageSize = data.length || 1,
   total = data.length, onPageChange, isRefreshing = false,
 }: RecordListProps<T>) {
-  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));\n  const [filterOpen, setFilterOpen] = React.useState(false);
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
+  const [filterOpen, setFilterOpen] = React.useState(false);
   return (
     <section className="card-medical overflow-hidden" aria-labelledby={`record-list-${title.replace(/\s+/g, '-').toLowerCase()}`}>
       <header className="border-b border-border p-4 sm:p-5">
