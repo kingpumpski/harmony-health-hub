@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -596,9 +597,7 @@ export default function Encounters() {
         description="Review recent clinical encounters, start a new draft, and open the complete auditable encounter document without leaving the clinical workflow."
         actions={(
           <>
-            <button type="button" onClick={() => void loadAll()} disabled={loading} className="btn-secondary inline-flex items-center gap-2" aria-label="Refresh encounters">
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" /> Refresh
-            </button>
+            <RefreshButton onClick={() => void loadAll()} />
             <button type="button" onClick={() => setIsNewEncounterOpen(true)} className="btn-primary inline-flex items-center gap-2">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add Patient Encounter
             </button>
