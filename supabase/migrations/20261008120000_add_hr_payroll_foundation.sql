@@ -83,26 +83,26 @@ DROP POLICY IF EXISTS payroll_items_admin_it_accountant_select ON public.payroll
 DROP POLICY IF EXISTS payroll_items_admin_it_accountant_write ON public.payroll_items;
 
 CREATE POLICY hr_employees_admin_it_accountant_select ON public.hr_employees FOR SELECT TO authenticated
-USING (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()));
+USING ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())));
 CREATE POLICY hr_employees_admin_it_accountant_insert ON public.hr_employees FOR INSERT TO authenticated
-WITH CHECK ((public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role)) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()));
+WITH CHECK (((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role))) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())));
 CREATE POLICY hr_employees_admin_it_accountant_update ON public.hr_employees FOR UPDATE TO authenticated
-USING (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()))
-WITH CHECK (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()));
+USING ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())))
+WITH CHECK ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())));
 CREATE POLICY hr_employees_admin_it_accountant_delete ON public.hr_employees FOR DELETE TO authenticated
-USING (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role));
+USING ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)));
 
 CREATE POLICY payroll_periods_admin_it_accountant_select ON public.payroll_periods FOR SELECT TO authenticated
-USING (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()));
+USING ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())));
 CREATE POLICY payroll_periods_admin_it_accountant_write ON public.payroll_periods FOR ALL TO authenticated
-USING (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()))
-WITH CHECK (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND facility_id = public.current_user_facility_id()));
+USING ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())))
+WITH CHECK ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND facility_id = (select public.current_user_facility_id())));
 
 CREATE POLICY payroll_items_admin_it_accountant_select ON public.payroll_items FOR SELECT TO authenticated
-USING (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND p.facility_id = public.current_user_facility_id()))));
+USING (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND p.facility_id = (select public.current_user_facility_id())))));
 CREATE POLICY payroll_items_admin_it_accountant_write ON public.payroll_items FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND p.facility_id = public.current_user_facility_id()))))
-WITH CHECK (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR (public.current_user_has_role('accountant'::public.app_role) AND p.facility_id = public.current_user_facility_id()))));
+USING (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND p.facility_id = (select public.current_user_facility_id())))))
+WITH CHECK (EXISTS (SELECT 1 FROM public.payroll_periods p WHERE p.id = payroll_period_id AND ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR ((select public.current_user_has_role('accountant'::public.app_role)) AND p.facility_id = (select public.current_user_facility_id())))));
 
 CREATE OR REPLACE FUNCTION public.generate_payroll_items(_payroll_period_id uuid)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
@@ -110,10 +110,10 @@ AS $$
 DECLARE v_facility uuid; v_count integer;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.current_user_has_role('admin'::public.app_role) OR public.current_user_has_role('it_admin'::public.app_role) OR public.current_user_has_role('accountant'::public.app_role)) THEN RAISE EXCEPTION 'Payroll generation is not permitted for this role'; END IF;
+  IF NOT ((select public.current_user_has_role('admin'::public.app_role)) OR (select public.current_user_has_role('it_admin'::public.app_role)) OR (select public.current_user_has_role('accountant'::public.app_role))) THEN RAISE EXCEPTION 'Payroll generation is not permitted for this role'; END IF;
   SELECT facility_id INTO v_facility FROM public.payroll_periods WHERE id = _payroll_period_id;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Payroll period not found'; END IF;
-  IF public.current_user_has_role('accountant'::public.app_role) AND NOT (v_facility = public.current_user_facility_id()) THEN RAISE EXCEPTION 'Payroll period is outside the current facility scope'; END IF;
+  IF (select public.current_user_has_role('accountant'::public.app_role)) AND NOT (v_facility = (select public.current_user_facility_id())) THEN RAISE EXCEPTION 'Payroll period is outside the current facility scope'; END IF;
   INSERT INTO public.payroll_items (payroll_period_id, employee_id, basic_pay, allowances, other_earnings, statutory_deductions, other_deductions, gross_pay, net_pay)
   SELECT _payroll_period_id, e.id, e.base_salary, 0, 0, 0, 0, e.base_salary, e.base_salary
   FROM public.hr_employees e
