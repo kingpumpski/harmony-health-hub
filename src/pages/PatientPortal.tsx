@@ -22,18 +22,18 @@ export default function PatientPortal() {
   const [appointmentReason, setAppointmentReason] = useState('');
 
   const loadReports = async () => {
-    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
     const portalPatient = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !portalPatient) {
       toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient profile could not be identified.', variant: 'destructive' });
       return null;
     }
     const requests = await Promise.allSettled([
-      supabase.rpc('get_patient_appointments', { _patient_id: portalPatient.id, _limit: 25 }, { get: true }),
-      supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }, { get: true }),
-      supabase.rpc('get_patient_invoice_summary', { _limit: 25 }, { get: true }),
-      supabase.rpc('get_ai_report_requests', { _patient_id: portalPatient.id, _limit: 25 }, { get: true }),
-      supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: portalPatient.id }, { get: true }),
+      supabase.rpc('get_patient_appointments', { _patient_id: portalPatient.id, _limit: 25 }),
+      supabase.rpc('get_patient_portal_video_sessions', { _limit: 25 }),
+      supabase.rpc('get_patient_invoice_summary', { _limit: 25 }),
+      supabase.rpc('get_ai_report_requests', { _patient_id: portalPatient.id, _limit: 25 }),
+      supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: portalPatient.id }),
     ]);
     const [appointmentsResult, videoResult, invoicesResult, reportsResult, snapshotResult] = requests;
     const failedSections = requests.flatMap((result, index) => result.status === 'rejected' || result.value.error ? [index] : []);

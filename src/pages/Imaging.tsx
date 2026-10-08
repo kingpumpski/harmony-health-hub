@@ -1,4 +1,6 @@
 import RefreshButton from '@/components/ui/RefreshButton';
+import { ImageIcon, BellRing, Plus, CreditCard, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +8,6 @@ import OperationalWorklistShell from '@/components/workflow/OperationalWorklistS
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { toast } from '@/hooks/use-toast';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
-<RefreshButton onClick={() => void load()} loading={false} label="Refresh imaging workspace" />
 
 interface ImagingOrder { id: string; patient_id: string; modality: string; study_name: string; body_site: string | null; priority: string; clinical_indication: string | null; amount: number; status: string; service_order_id: string | null; report: string | null; impression: string | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
 interface Patient { id: string; first_name: string; last_name: string }
