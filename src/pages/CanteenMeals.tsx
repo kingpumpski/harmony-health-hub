@@ -44,7 +44,7 @@ export default function CanteenMeals() {
     ]);
     setPatients(p ?? []); setOrders(o ?? []); setPlans(mp ?? []);
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { if (user?.role !== 'patient') void load(); }, [user?.role]);
   if (user?.role === 'patient') return <PatientMeals />;
   const createPlan = async (e: React.FormEvent) => {
     e.preventDefault(); if (!pid) return;
