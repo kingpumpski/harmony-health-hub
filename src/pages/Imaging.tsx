@@ -1,4 +1,4 @@
-import { ImageIcon, BellRing, Plus, CreditCard, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ImageIcon, BellRing, Plus, CheckCircle2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,9 +11,6 @@ import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from '@/c
 
 interface ImagingOrder { id: string; patient_id: string; modality: string; study_name: string; body_site: string | null; priority: string; clinical_indication: string | null; amount: number; status: string; service_order_id: string | null; report: string | null; impression: string | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
 interface Patient { id: string; first_name: string; last_name: string }
-const queueFilters = ['all', 'awaiting_release', 'ready', 'in_progress', 'completed'] as const;
-type QueueFilter = typeof queueFilters[number];
-
 export default function Imaging() {
   const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -27,7 +24,6 @@ export default function Imaging() {
   const [indication, setIndication] = useState('');
   const [amount, setAmount] = useState(0);
   const [reports, setReports] = useState<Record<string, { report: string; impression: string }>>({});
-  const [filter, setFilter] = useState<QueueFilter>('all');
   const [loading, setLoading] = useState(false);
   const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -92,13 +88,7 @@ export default function Imaging() {
     urgent: orders.filter((order) => ['urgent', 'stat'].includes(order.priority) && order.status !== 'completed').length,
   }), [orders]);
 
-  const visibleOrders = useMemo(() => orders.filter((order) => {
-    if (filter === 'awaiting_release') return ['pending_payment_approval', 'pending_payment'].includes(order.status);
-    if (filter === 'ready') return ['released', 'queued'].includes(order.status);
-    if (filter === 'in_progress') return order.status === 'in_progress';
-    if (filter === 'completed') return order.status === 'completed';
-    return true;
-  }), [filter, orders]);
+
 
   const createOrder = async (e: React.FormEvent) => {
     e.preventDefault();
