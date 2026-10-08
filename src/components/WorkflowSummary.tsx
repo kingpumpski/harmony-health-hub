@@ -30,7 +30,7 @@ export default function WorkflowSummary() {
     if (role === 'accountant') return [make('Payment approvals','/accounts-approvals',CreditCard,'text-warning','bg-warning/5'),make('Billing','/billing',CreditCard,'text-success','bg-success/5'),make('Insurance claims','/insurance-claims',ShieldCheck),make('Finance queue','/finance',FileText,'text-warning','bg-warning/5'),make('Financial reports','/financial-reports',FileText)];
     if (role === 'front_desk') return [...common,make('Patient registration','/registration',Users),make('Department queue','/department-queue',Users,'text-warning','bg-warning/5'),make('Payment handoff','/billing',CreditCard,'text-success','bg-success/5')];
     if (role === 'canteen') return [make('Meal orders','/orders',Utensils),make('Dietary plans','/dietary-plans',FileText,'text-warning','bg-warning/5'),make('Meal menu','/menu',Utensils,'text-success','bg-success/5'),make('Delivery queue','/orders',Users,'text-warning','bg-warning/5')];
-    if (role === 'patient') return [make('My health record','/patient-portal',Activity),make('Appointments','/appointments',CalendarDays),make('Meal menu','/menu',Utensils,'text-success','bg-success/5'),make('Telemedicine','/telemedicine',Activity)];
+    if (role === 'patient') return [make('My health record','/patient-portal',Activity),make('Appointments','/appointments',CalendarDays),make('Telemedicine','/telemedicine',Activity)];
     if (role === 'it_admin') return [make('IT support','/it-support',ShieldCheck),make('Offline synchronization','/admin/offline-sync',Cloud),make('Audit logs','/admin/logs',FileText),make('System notifications','/notifications',Activity,'text-warning','bg-warning/5')];
     return [];
   }, [user]);
