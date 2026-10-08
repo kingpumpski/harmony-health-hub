@@ -74,7 +74,7 @@ for (const needle of [
   if (!pharmacy.includes(needle)) throw new Error('Pharmacy edit payload must preserve numeric zero values: ' + needle);
 }
 
-if (!canteenMeals.includes("get_patient_portal_meal_menus', { _service_date: date }, { get: true }")) throw new Error('Patient meal menu STABLE read must use GET transport');
+if (!canteenMeals.includes("get_patient_portal_meal_menus', { _service_date: date })")) throw new Error('Patient meal menu read must use standard POST transport');
 if (!header.includes('void db.rpc("mark_notification_read", { _notification_id: n.id }).then(() => loadNotifications()).catch(() => loadNotifications())')) throw new Error('Notification read refresh must await RPC promise');
 if (!patientHub.includes(".rpc('create_patient_appointment'")) {
   throw new Error('Patient Hub appointment creation must use the canonical appointment RPC');

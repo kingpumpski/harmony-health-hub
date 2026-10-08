@@ -42,11 +42,11 @@ if (/supabase\\.from\\(['\"]appointments['\"]\\)/.test(appointments) || /supabas
 }
 const appointmentPage = fs.readFileSync('src/pages/Appointments.tsx', 'utf8');
 for (const call of [
-  "supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never, { get: true } as never)",
-  "supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never, { get: true } as never)",
-  "supabase.rpc('get_appointment_clinicians' as never, {} as never, { get: true } as never)",
+  "supabase.rpc('get_appointment_schedulable_patients' as never, { _limit: 300 } as never as never)",
+  "supabase.rpc('get_appointment_worklist' as never, { _limit: 300 } as never as never)",
+  "supabase.rpc('get_appointment_clinicians' as never, {} as never as never)",
 ]) {
-  if (!appointmentPage.includes(call)) throw new Error('Read-only appointment RPC must use GET: ' + call);
+  if (!appointmentPage.includes(call)) throw new Error('Appointment read RPC must use standard POST transport: ' + call);
 }
 
 console.log('Active-facility appointment workflow contract passed');
