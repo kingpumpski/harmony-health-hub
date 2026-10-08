@@ -37,10 +37,12 @@ for (const needle of [
 
 for (const needle of [
   "NOT public.has_role(auth.uid(), 'system_superuser'::public.app_role)",
-  "Platform Super Admin permission is required to onboard facilities",
+  "Only system super administrators may onboard facilities",
   "INSERT INTO public.hms_facility_modules",
   "false, false, 'not_available'",
-  "REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text) FROM PUBLIC, anon",
+  "REVOKE ALL ON FUNCTION public.platform_create_facility(text,text,text,text,text,text) FROM PUBLIC,anon",
+  "RETURNS public.healthcare_facilities",
+  "Facility code already exists",
 ]) if (!onboarding.includes(needle)) throw new Error('Governed facility onboarding contract missing: ' + needle);
 
 for (const needle of [
