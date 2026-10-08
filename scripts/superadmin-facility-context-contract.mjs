@@ -41,8 +41,8 @@ for (const needle of [
 ]) {
   if (!settings.includes(needle)) throw new Error('Superadmin facility selector missing: ' + needle);
 }
-if (!patientHub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 }, { get: true })")) {
-  throw new Error('Patient appointment history must use GET RPC invocation for the STABLE read function');
+if (!patientHub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })")) {
+  throw new Error('Patient appointment history must use standard POST RPC invocation for the STABLE read function');
 }
 for (const needle of [
   'Access-Control-Allow-Origin',
