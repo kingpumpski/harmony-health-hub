@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Loader2, RefreshCw, Send, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -55,7 +56,7 @@ export default function SubmissionDashboard({ facilityId, period }: { facilityId
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div><h2 className="text-lg font-semibold">Submission dashboard</h2><p className="text-sm text-muted-foreground">Facility-level completeness and deadline tracking for the selected period.</p></div>
       <div className="flex flex-wrap gap-2">
-        <button disabled={saving} className="btn-secondary inline-flex items-center justify-center gap-2 disabled:opacity-50" onClick={() => void load()}><RefreshCw className="h-4 w-4" /> Refresh</button>
+        <RefreshButton onClick={() => void load()} />
         <button disabled={saving || !rows.some((row) => isOpenSubmission(row.status))} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50" onClick={() => void submitAllReady()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Mark outstanding as submitted</button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Plus, RefreshCw, Settings2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -130,7 +131,7 @@ export default function ReportsCenter() {
         </div>
         <div className="flex flex-wrap gap-2">
           {isAdmin && <button className="btn-secondary inline-flex items-center gap-2" onClick={() => setShowSetup((value) => !value)}><Plus className="h-4 w-4" /> Facility</button>}
-          <button className="btn-secondary inline-flex items-center gap-2" onClick={() => void load()}><RefreshCw className="h-4 w-4" /> Refresh</button>
+          <RefreshButton onClick={() => void load()} />
         </div>
       </div>
 
@@ -161,7 +162,7 @@ export default function ReportsCenter() {
             <button disabled={generating || !enabledConfigs.length} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50" onClick={() => void generateAll()}>{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}{generating ? 'Generating…' : 'Generate All Monthly Reports'}</button>
           </div>
           {run && <div className="mt-5 rounded-2xl border border-border p-4 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Run {run.period_start.slice(0, 7)}</p><p className="text-xs text-muted-foreground">{run.status} · {run.success_count} complete · {run.warning_count} warning · {run.failed_count} failed</p></div><div className="flex gap-2"><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void refreshRun()}><RefreshCw className="h-4 w-4" /> Refresh</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void downloadRunWorkbook(run, runItems, selectedFacility!)}><Download className="h-4 w-4" /> Excel</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => downloadManifestCsv(run, runItems, selectedFacility!)}><FileText className="h-4 w-4" /> Manifest CSV</button></div></div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Run {run.period_start.slice(0, 7)}</p><p className="text-xs text-muted-foreground">{run.status} · {run.success_count} complete · {run.warning_count} warning · {run.failed_count} failed</p></div><div className="flex gap-2"><RefreshButton onClick={() => void refreshRun()} /><button className="btn-secondary inline-flex items-center gap-2" onClick={() => void downloadRunWorkbook(run, runItems, selectedFacility!)}><Download className="h-4 w-4" /> Excel</button><button className="btn-secondary inline-flex items-center gap-2" onClick={() => downloadManifestCsv(run, runItems, selectedFacility!)}><FileText className="h-4 w-4" /> Manifest CSV</button></div></div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{runItems.map((item) => <div key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-start gap-2">{item.status === 'completed' ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" /> : item.status === 'warning' ? <TriangleAlert className="mt-0.5 h-4 w-4 text-warning" /> : <TriangleAlert className="mt-0.5 h-4 w-4 text-critical" />}<div className="min-w-0"><p className="text-sm font-medium truncate">{item.file_name ?? item.report_id}</p><p className="text-xs text-muted-foreground">{item.data_snapshot.total} source records · {item.status}</p>{item.validation_messages[0] && <p className="mt-1 text-xs text-warning line-clamp-2">{item.validation_messages[0]}</p>}</div></div></div>)}</div>
           </div>}
         </section>

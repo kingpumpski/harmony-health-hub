@@ -89,7 +89,7 @@ assert('report RPCs are not executable by anonymous callers',
   migration.includes('REVOKE ALL ON FUNCTION public.get_clinician_imaging_results(integer) FROM PUBLIC, anon'));
 assert('laboratory results route renders the report-only page',
   app.includes('<Route path="/lab-results" element={<RoleGuard allowedRoles={resultReviewRoles}><LaboratoryResults /></RoleGuard>} />') &&
-  app.includes("const LaboratoryResults = lazy(() => import('./pages/LaboratoryResults'))"));
+  app.includes("const LaboratoryResults = lazyWithChunkRecovery(() => import('./pages/LaboratoryResults'))"));
 assert('diagnostic department routes remain role-restricted',
   app.includes('<Route path="/laboratory" element={<RoleGuard allowedRoles={laboratoryWorkspaceRoles}><Laboratory /></RoleGuard>} />') &&
   app.includes('<Route path="/radiology" element={<RoleGuard allowedRoles={radiologyWorkspaceRoles}><Imaging /></RoleGuard>} />'));

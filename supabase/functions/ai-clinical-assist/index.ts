@@ -113,7 +113,30 @@ Deno.serve(async (req) => {
     if (body.mode === 'report') {
       requirePatientId();
       const isClinical = hasAnyRole(aiClinicalRoles);
-      if (!isClinical && !hasAnyRole(['patient'])) throw new Error('Not authorised to generate this report');
+      let isPatientOwner = false;
+
+      if (!isClinical && hasAnyRole(['patient'])) {
+        const { data: ownedPatient, error: ownershipError } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('id', body.patientId)
+          .eq('user_id', callerId)
+          .maybeSingle();
+        if (ownershipError) throw ownershipError;
+        isPatientOwner = Boolean(ownedPatient);
+
+        // Preserve the existing portal identity fallback for legacy test patients
+        // whose account is linked by verified email rather than user_id.
+        if (!isPatientOwner) {
+          const { data: identityRows, error: identityError } = await supabase.rpc('get_patient_portal_identity', {}, { get: true });
+          if (identityError) throw identityError;
+          const identity = Array.isArray(identityRows) ? identityRows[0] : identityRows;
+          isPatientOwner = Boolean(identity?.id && identity.id === body.patientId);
+        }
+      }
+
+      if (!isClinical && !isPatientOwner) throw new Error('Not authorised to generate this report');
+
       const { data: scopedContext, error: contextError } = isClinical
         ? await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId })
         : await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId }, { get: true });

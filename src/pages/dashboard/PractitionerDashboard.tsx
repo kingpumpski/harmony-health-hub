@@ -1,6 +1,7 @@
+import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, BedDouble, Calendar, ClipboardCheck, Clock3, Image as ImageIcon, FlaskConical, Stethoscope, Users } from 'lucide-react';
+import { AlertTriangle, BedDouble, Calendar, ClipboardCheck, Image as ImageIcon, FlaskConical, Stethoscope, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
@@ -76,7 +77,7 @@ export default function PractitionerDashboard() {
     <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Clinical command · Practitioner</p><h1 className="mt-1 text-2xl font-heading font-bold tracking-tight">Today's patient-care work</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Appointments, clinical reviews, critical attention and inpatient activity are surfaced here so the next action is visible without opening multiple pages.</p></div>
-        <div className="flex flex-wrap gap-2"><Link to="/appointments" className="btn-primary inline-flex items-center gap-2"><Calendar className="h-4 w-4" /> My schedule</Link><Link to="/encounters" className="btn-secondary inline-flex items-center gap-2"><Stethoscope className="h-4 w-4" /> Encounters</Link><button type="button" onClick={() => void load()} className="btn-ghost inline-flex items-center gap-2" aria-label="Refresh practitioner dashboard"><Clock3 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button></div>
+        <div className="flex flex-wrap gap-2"><Link to="/appointments" className="btn-primary inline-flex items-center gap-2"><Calendar className="h-4 w-4" /> My schedule</Link><Link to="/encounters" className="btn-secondary inline-flex items-center gap-2"><Stethoscope className="h-4 w-4" /> Encounters</Link><RefreshButton onClick={() => void load()} loading={loading} label="Refresh practitioner dashboard" /></div>
       </div>
     </section>
     {attention > 0 && <section className="rounded-2xl border border-critical/30 bg-critical/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-critical">Clinical attention required</p><p className="mt-1 text-xs text-muted-foreground">{attention} unread high-priority workflow event{attention === 1 ? '' : 's'} require acknowledgement.</p></div><Link to="/notifications" className="btn-secondary">Review alerts</Link></div></section>}

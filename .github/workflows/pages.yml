@@ -41,6 +41,9 @@ jobs:
       - name: Prepare clean SPA route entrypoints
         run: node scripts/prepare-github-pages-spa.mjs
 
+      - name: Verify Pages artifact integrity
+        run: npm run test:github-pages-artifact-integrity
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
