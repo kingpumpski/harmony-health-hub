@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harmony Health Hub</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var parts = window.location.pathname.split('/').filter(Boolean);
+        var base = parts.length ? '/' + parts[0] : '';
+        var route = '/' + parts.slice(1).join('/');
+        window.location.replace(base + '/?route=' + encodeURIComponent(route + window.location.search + window.location.hash));
+      }());
+    </script>
+    <p>Loading Harmony Health Hub…</p>
+  </body>
+</html>
