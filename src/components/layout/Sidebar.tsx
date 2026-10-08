@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Bell, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
+import { Activity, BarChart3, Bell, BriefcaseBusiness, CalendarClock, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
@@ -18,7 +18,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
     { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance')] },
-    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings')] },
+    { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
   practitioner: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
@@ -56,7 +56,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'NHIS / Insurance Claims', '/insurance-claims', 'claims'), item(BarChart3, 'Financial Reports', '/financial-reports', 'financial_reports')] },
+    { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance'), item(CreditCard, 'Accounts Approvals', '/accounts-approvals', 'accounts_approvals'), item(CreditCard, 'NHIS / Insurance Claims', '/insurance-claims', 'claims'), item(BarChart3, 'Financial Reports', '/financial-reports', 'financial_reports'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
   radiology_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
@@ -71,7 +71,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'System Operations', icon: Settings, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Bell, 'Notifications', '/notifications', 'notifications')] },
+    { label: 'System Operations', icon: Settings, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Bell, 'Notifications', '/notifications', 'notifications'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
