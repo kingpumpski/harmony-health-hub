@@ -9,7 +9,7 @@ export type Permission =
   | 'dental' | 'procedures' | 'anesthesia' | 'ophthalmology' | 'ai_clinical' | 'users'
   | 'system_library' | 'clinical_references' | 'insurance_companies' | 'offline_sync' | 'data_import' | 'inpatients' | 'meal_orders'
   | 'notifications' | 'outside_lab' | 'financial_reports' | 'inventory' | 'stock_alerts'
-  | 'patient_portal' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items' | 'facility_onboarding';
+  | 'patient_portal' | 'hr' | 'payroll' | 'orders' | 'dietary_plans' | 'create_services' | 'create_items' | 'facility_onboarding';
 
 export const permissionByHref: Record<string, Permission> = {
   '/dashboard':'dashboard','/patients':'patients','/finance':'finance','/administration':'administration','/it-support':'it_support','/registration':'registration','/appointments':'appointments',
@@ -22,7 +22,7 @@ export const permissionByHref: Record<string, Permission> = {
   '/procedures':'procedures','/anesthesia':'anesthesia','/ophthalmology':'ophthalmology','/ai-clinical':'ai_clinical',
   '/admin/users':'users','/admin/system':'system_library','/admin/clinical-references':'clinical_references','/admin/insurance-companies':'insurance_companies','/admin/offline-sync':'offline_sync','/admin/data-import':'data_import',
   '/inpatients':'inpatients','/menu':'meal_orders','/notifications':'notifications','/outside-lab':'outside_lab',
-  '/financial-reports':'financial_reports','/inventory':'inventory','/stock-alerts':'stock_alerts','/patient-portal':'patient_portal',
+  '/financial-reports':'financial_reports','/inventory':'inventory','/stock-alerts':'stock_alerts','/patient-portal':'patient_portal','/hr':'hr','/payroll':'payroll',
   '/orders':'orders','/dietary-plans':'dietary_plans','/admin/facility-onboarding':'facility_onboarding',
 };
 
@@ -35,13 +35,13 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   radiologist: ['dashboard','radiology','department_queue','patients','notifications','ai_clinical','create_services'],
   radiology_technician: ['dashboard','radiology','department_queue','patients','notifications','create_services'],
   front_desk: ['dashboard','patients','registration','appointments','triage','finance','billing'],
-  accountant: ['dashboard','finance','clinical_operations','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','create_services'],
+  accountant: ['dashboard','finance','hr','payroll','clinical_operations','reports','billing','tariff_adjustments','claims','accounts_approvals','financial_reports','create_services'],
   lab_technician: ['dashboard','department_queue','laboratory','outside_lab','reports','create_items','create_services'],
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing','meal_orders'],
   system_superuser: [...Object.values(permissionByHref), 'encounters_amend','create_services','create_items'],
-  it_admin: ['dashboard','it_support','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
+  it_admin: ['dashboard','it_support','hr','payroll','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
 
 export function getDefaultPermissions(role: UserRole): Permission[] {
