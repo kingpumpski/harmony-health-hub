@@ -11,6 +11,11 @@ const aiReportRuntimeMigration = fs.readFileSync('supabase/migrations/2026100709
 const localDateTime = fs.readFileSync('src/lib/dateTimeLocal.ts','utf8');
 
 if (!localDateTime.includes('getTimezoneOffset()') || !localDateTime.includes("toISOString().slice(0, 16)")) throw new Error('datetime-local formatter must compensate for the browser timezone before serializing');
+const patientPortalSource = fs.readFileSync('src/pages/PatientPortal.tsx','utf8');
+const identityFailureBranch = patientPortalSource.slice(patientPortalSource.indexOf('if (identityError || !portalPatient)'), patientPortalSource.indexOf('const requests = await Promise.allSettled'));
+for (const stateClear of ['setPatient(null)', 'setAppts([])', 'setSessions([])', 'setInvoices([])', 'setReports([])', 'setClinicalSnapshot(null)']) {
+  if (!identityFailureBranch.includes(stateClear)) throw new Error('Patient portal must clear stale data when identity verification fails: '+stateClear);
+}
 for (const [name, source] of [['PatientPortal', fs.readFileSync('src/pages/PatientPortal.tsx','utf8')], ['Telemedicine', telemedicine]]) {
   if (!source.includes("import { toLocalDateTimeInputValue } from '@/lib/dateTimeLocal'")) throw new Error(name+' must use the timezone-safe datetime-local formatter');
   if (source.includes('new Date().toISOString().slice(0,16)') || source.includes('new Date().toISOString().slice(0, 16)')) throw new Error(name+' must not derive datetime-local min values directly from UTC');
