@@ -76,7 +76,7 @@ for (const needle of [
   "Invoices are temporarily unavailable. Please refresh to try again.",
   "Reports are temporarily unavailable. Please refresh to try again.",
 ]) {
-  if (!portal.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
+  if (!patientPortalSource.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
 }
 
 console.log('Patient portal self-service contracts passed.');
