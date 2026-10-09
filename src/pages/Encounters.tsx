@@ -340,7 +340,7 @@ export default function Encounters() {
     setLoading(true);
     try {
       const [{ data: encs, error: encounterError }, patientDirectory, { data: staff }] = await Promise.all([
-        supabase.from("encounters").select("id, patient_id, symptoms, clerking_notes, principal_diagnosis, treatment_plan, encounter_type, status, admission_id, created_at, updated_at, practitioner_id, submitted_at, version_no").order("created_at", { ascending: false }).limit(50),
+        db.rpc("get_encounter_worklist", { _limit: 50 }),
         searchPatientDirectory("", 1000),
         db.rpc("get_appointment_clinicians", {}),
       ]);
