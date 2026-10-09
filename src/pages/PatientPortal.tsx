@@ -96,18 +96,11 @@ export default function PatientPortal() {
       requestId = request.id;
 
       const { data, error } = await supabase.functions.invoke('ai-clinical-assist', {
-        body: { mode: 'report', patientId: patient.id },
+        body: { mode: 'report', patientId: patient.id, reportRequestId: requestId },
       });
       if (error || data?.error || typeof data?.content !== 'string' || !data.content.trim()) {
         throw new Error(data?.error ?? error?.message ?? 'The report service returned no usable content.');
       }
-
-      const { error: completionError } = await supabase.rpc('complete_ai_report_request', {
-        _request_id: requestId,
-        _content: data.content,
-        _error: null,
-      });
-      if (completionError) throw completionError;
 
       playSuccessSound();
       toast({ title: 'Report ready', description: 'Your AI medical report is available below.' });
@@ -116,13 +109,12 @@ export default function PatientPortal() {
       const message = e?.message ?? 'The report could not be generated. Please try again.';
       // Keep the report lifecycle truthful: don't leave a failed request appearing indefinitely pending.
       if (requestId) {
-        const { error: completionError } = await supabase.rpc('complete_ai_report_request', {
+        const { error: failureError } = await supabase.rpc('fail_ai_report_request', {
           _request_id: requestId,
-          _content: null,
           _error: message,
         });
-        if (completionError) {
-          console.error('Unable to mark AI report request as failed', completionError.message);
+        if (failureError) {
+          console.error('Unable to mark AI report request as failed', failureError.message);
         }
         await loadReports();
       }
