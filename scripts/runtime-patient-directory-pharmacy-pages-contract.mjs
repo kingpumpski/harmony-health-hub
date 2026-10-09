@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 
+const read = (path) => fs.readFileSync(path, 'utf8');
+
 const migration = fs.readFileSync(
   'supabase/migrations/20261005123000_unify_runtime_patient_directory_and_pharmacy_zero_price_edits.sql',
   'utf8',
@@ -103,6 +105,19 @@ for (const needle of [
 
 if (pages.includes('cp dist/index.html dist/404.html')) {
   throw new Error('GitHub Pages workflow must preserve the generated redirecting 404.html');
+}
+
+
+for (const needle of [
+  "const [menuLoadError, setMenuLoadError] = useState('');",
+  'const menuLoadRequestRef = useRef(0);',
+  'const requestId = ++menuLoadRequestRef.current;',
+  'requestId !== menuLoadRequestRef.current',
+  'Menus could not be confirmed for this date.',
+  'Retry menu loading',
+  'const today = () => { const now = new Date();',
+]) {
+  if (!canteenMeals.includes(needle)) throw new Error('Canteen menu loading must be date-safe and distinguish failed loads from empty menus: ' + needle);
 }
 
 console.log('Runtime patient directory, pharmacy edit and GitHub Pages fallback contracts passed.');

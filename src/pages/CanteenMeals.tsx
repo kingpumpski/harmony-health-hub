@@ -1,5 +1,5 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, CheckCircle2, Clock3, Plus, ShieldAlert, Utensils } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,7 @@ type ActiveOrder = { order_id: string; patient_id: string; patient_code: string 
 
 const periods = ['breakfast','morning_snack','lunch','afternoon_snack','dinner','night_snack'];
 const periodLabel = (value: string) => value.replaceAll('_',' ').replace(/\b\w/g, m => m.toUpperCase());
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; };
 
 export default function CanteenMeals() {
   const { user } = useAuth();
@@ -19,6 +19,8 @@ export default function CanteenMeals() {
   const canManage = role === 'canteen' || role === 'admin';
   const [date, setDate] = useState(today());
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [menuLoadError, setMenuLoadError] = useState('');
+  const menuLoadRequestRef = useRef(0);
   const [orders, setOrders] = useState<ActiveOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,22 +34,40 @@ export default function CanteenMeals() {
   const [planRestrictions, setPlanRestrictions] = useState('');
 
   const loadMenus = useCallback(async () => {
-    if (!canManage) {
-      const { data, error } = await (supabase as any).rpc('get_patient_portal_meal_menus', { _service_date: date });
-      if (error) { toast({ title: 'Meal menu unavailable', description: error.message, variant: 'destructive' }); setMenus([]); return; }
-      setMenus((data ?? []) as Menu[]);
-      return;
+    const requestId = ++menuLoadRequestRef.current;
+    setMenuLoadError('');
+    const fail = (message: string) => {
+      if (requestId !== menuLoadRequestRef.current) return;
+      setMenus([]);
+      setMenuLoadError(message);
+      toast({ title: 'Meal menu unavailable', description: message, variant: 'destructive' });
+    };
+
+    try {
+      if (!canManage) {
+        const { data, error } = await (supabase as any).rpc('get_patient_portal_meal_menus', { _service_date: date });
+        if (requestId !== menuLoadRequestRef.current) return;
+        if (error) { fail(error.message ?? 'Published menus could not be loaded.'); return; }
+        setMenus((data ?? []) as Menu[]);
+        return;
+      }
+
+      const { data: menuRows, error } = await (supabase as any).from('meal_menus').select('id,service_date,meal_period,available_from,available_until,status,notes').eq('service_date', date).order('meal_period');
+      if (requestId !== menuLoadRequestRef.current) return;
+      if (error) { fail(error.message ?? 'Menus could not be loaded.'); return; }
+      const ids = (menuRows ?? []).map((m: any) => m.id);
+      let itemRows: any[] = [];
+      if (ids.length) {
+        const { data, error: itemError } = await (supabase as any).from('meal_menu_items').select('menu_id,name,description,dietary_tags,allergens,ingredients,sort_order,active').in('menu_id', ids).order('sort_order');
+        if (requestId !== menuLoadRequestRef.current) return;
+        if (itemError) { fail(itemError.message ?? 'Menu options could not be loaded.'); return; }
+        itemRows = data ?? [];
+      }
+      if (requestId !== menuLoadRequestRef.current) return;
+      setMenus((menuRows ?? []).map((m: any) => ({ ...m, items: itemRows.filter(i => i.menu_id === m.id) })));
+    } catch (error: any) {
+      fail(String(error?.message ?? 'A connection error prevented meal menus from loading.'));
     }
-    const { data: menuRows, error } = await (supabase as any).from('meal_menus').select('id,service_date,meal_period,available_from,available_until,status,notes').eq('service_date', date).order('meal_period');
-    if (error) { toast({ title: 'Menu unavailable', description: error.message, variant: 'destructive' }); return; }
-    const ids = (menuRows ?? []).map((m: any) => m.id);
-    let itemRows: any[] = [];
-    if (ids.length) {
-      const { data, error: itemError } = await (supabase as any).from('meal_menu_items').select('menu_id,name,description,dietary_tags,allergens,ingredients,sort_order,active').in('menu_id', ids).order('sort_order');
-      if (itemError) { toast({ title: 'Menu items unavailable', description: itemError.message, variant: 'destructive' }); return; }
-      itemRows = data ?? [];
-    }
-    setMenus((menuRows ?? []).map((m: any) => ({ ...m, items: itemRows.filter(i => i.menu_id === m.id) })));
   }, [date, canManage]);
 
   const loadOrders = useCallback(async () => {
@@ -126,10 +146,10 @@ export default function CanteenMeals() {
 
       <section className="card-medical p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><label className="text-sm font-medium">Service date<input type="date" value={date} onChange={e => setDate(e.target.value)} className="input-medical mt-1" /></label><div className="text-xs text-muted-foreground">Published menus are visible to authenticated users without exposing patient clinical information.</div></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {menuLoadError ? <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert"><p className="text-sm font-medium">Menus could not be confirmed for this date.</p><p className="mt-1 text-sm text-muted-foreground">{menuLoadError}</p><button type="button" onClick={() => void loadMenus()} className="btn-secondary mt-3">Retry menu loading</button></div> : <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {menus.map(menu => <button type="button" key={menu.id} onClick={() => canManage && editMenu(menu)} className="rounded-xl border border-border p-4 text-left hover:bg-muted/30"><div className="flex items-center justify-between gap-2"><span className="font-semibold">{periodLabel(menu.meal_period)}</span><span className="rounded-full border px-2 py-0.5 text-[10px] capitalize">{menu.status}</span></div><p className="mt-1 text-sm text-muted-foreground">{menu.items.length} option{menu.items.length === 1 ? '' : 's'}{menu.available_from ? ` · ${new Date(menu.available_from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</p><div className="mt-3 space-y-1">{menu.items.map(item => <div key={item.name} className="text-sm"><span className="font-medium">{item.name}</span>{item.dietary_tags?.length ? <span className="ml-2 text-xs text-muted-foreground">{item.dietary_tags.join(' · ')}</span> : null}</div>)}</div></button>)}
           {!menus.length && <p className="text-sm text-muted-foreground">No menu has been published for this service date.</p>}
-        </div>
+        </div>}
       </section>
 
       {canManage && <>
