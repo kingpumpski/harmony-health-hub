@@ -8,3 +8,8 @@ assert.ok(migration.includes('CREATE OR REPLACE FUNCTION public.get_current_user
 assert.ok(migration.includes('SECURITY DEFINER'));
 assert.ok(migration.includes('GRANT EXECUTE ON FUNCTION public.get_current_user_roles() TO authenticated'));
 console.log('AI clinical assistant canonical role resolution contract passed');
+
+assert.ok(source.includes('let protocolCaseCount = 0;'));
+assert.ok(source.includes('protocolCaseCount = cases.length;'));
+assert.ok(source.includes('_case_count: protocolCaseCount,'));
+assert.ok(!source.includes('_case_count: cases?.length ?? 0'), 'Protocol draft creation must not reference branch-scoped case data outside its declaration scope');
