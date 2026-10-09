@@ -121,7 +121,7 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.fail_ai_report_request(uuid, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fail_ai_report_request(uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.fail_ai_report_request(uuid, text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
