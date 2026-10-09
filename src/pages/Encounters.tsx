@@ -247,11 +247,11 @@ function QuickActionModal(props: any) {
           )}
           {action === "medication" && (
             <form onSubmit={addPrescription} className="space-y-3">
-              <div><label className="mb-1 block text-xs font-semibold">Select diagnosis being treated</label><select value={selectedDiagnosisId} onChange={(e) => setSelectedDiagnosisId(e.target.value)} className="input-medical w-full" required><option value="">Select diagnosis…</option>{diagnoses.map((dx:any) => <option key={dx.id} value={dx.id}>{dx.diagnosis}{dx.is_principal ? " · Principal" : ""}</option>)}</select></div>
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2"><p className="text-xs font-semibold">Principal diagnosis</p><p className="mt-1 text-sm">{diagnoses.find((dx:any) => dx.is_principal)?.diagnosis ?? "No principal diagnosis recorded"}</p><p className="mt-1 text-[11px] text-muted-foreground">Prescriptions are linked to the encounter's documented principal diagnosis automatically.</p></div>
               <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search medication catalogue" /></div>
               <div className="grid max-h-52 gap-2 overflow-y-auto">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading medication catalogue…</p> : filteredMeds.map((x:any) => <button type="button" key={x.id} onClick={() => { setSelectedMedication(x.name); setMed(x.name); }} className={`rounded-xl border p-3 text-left ${selectedMedication === x.name ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.name}</p><p className="text-[11px] text-muted-foreground">{[x.generic_name, x.strength, x.form].filter(Boolean).join(" · ") || "Catalogue item"}</p></button>)}</div>
               <div className="grid gap-3 sm:grid-cols-2"><input value={dose} onChange={(e) => setDose(e.target.value)} className="input-medical" placeholder="Dose" required /><input value={freq} onChange={(e) => setFreq(e.target.value)} className="input-medical" placeholder="Frequency (BD, TDS…)" required /><input value={duration} onChange={(e) => setDuration(e.target.value)} className="input-medical sm:col-span-2" placeholder="Duration" /></div>
-              <div className="flex justify-end"><button type="submit" disabled={!selectedDiagnosisId || !med.trim()} className="btn-primary">Add prescription</button></div>
+              <div className="flex justify-end"><button type="submit" disabled={!diagnoses.some((dx:any) => dx.is_principal) || !med.trim()} className="btn-primary">Add prescription</button></div>
             </form>
           )}
           {action === "service" && (
@@ -526,7 +526,9 @@ export default function Encounters() {
   const addPrescription = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selected || !med.trim()) return;
-    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: selectedDiagnosisId || null });
+    const principalDiagnosis = diagnoses.find((dx) => dx.is_principal);
+    if (!principalDiagnosis) return toast({ title: "Principal diagnosis required", description: "Record and mark the encounter's principal diagnosis before prescribing.", variant: "destructive" });
+    const { error } = await db.rpc("create_encounter_prescription", { _encounter_id: selected.id, _medication: med.trim(), _dosage: dose || null, _frequency: freq || null, _duration: duration || null, _diagnosis_id: principalDiagnosis.id });
     if (error) return toast({ title: "Prescription failed", description: error.message, variant: "destructive" });
     setMed("");
     setDose("");
