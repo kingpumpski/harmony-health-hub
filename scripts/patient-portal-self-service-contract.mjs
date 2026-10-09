@@ -50,6 +50,19 @@ if (!patientTelemedicine.includes("supabase.rpc('get_patient_portal_video_sessio
 if (patientTelemedicine.includes("supabase.from('video_sessions')")) {
   throw new Error('Patient telemedicine must not bypass the patient-scoped session RPC with a direct table read');
 }
+const patientLoadBlock = patientTelemedicine.slice(
+  patientTelemedicine.indexOf('const load = async (at = scheduledAt)'),
+  patientTelemedicine.indexOf('useEffect(() => { void load(scheduledAt); }, []);')
+);
+if (!patientLoadBlock.includes('if (sessionError)') || !patientLoadBlock.includes('if (clinicianError)')) {
+  throw new Error('Patient telemedicine must handle session and clinician availability errors independently');
+}
+if (patientLoadBlock.includes('if (sessionError || clinicianError)')) {
+  throw new Error('Clinician lookup failure must not hide the patient telemedicine session history');
+}
+if (!patientLoadBlock.includes('setSessions(rows ?? [])')) {
+  throw new Error('Patient telemedicine session history must load independently of clinician availability');
+}
 
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
