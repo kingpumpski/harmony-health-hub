@@ -26,6 +26,14 @@ export default function PatientPortal() {
     const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
     const portalPatient = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !portalPatient) {
+      // Clear previously loaded data on identity failure or account switching. Never
+      // leave one patient's records visible after the current identity cannot be verified.
+      setPatient(null);
+      setAppts([]);
+      setSessions([]);
+      setInvoices([]);
+      setReports([]);
+      setClinicalSnapshot(null);
       toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient profile could not be identified.', variant: 'destructive' });
       return null;
     }
