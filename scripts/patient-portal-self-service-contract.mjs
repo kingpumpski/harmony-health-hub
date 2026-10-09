@@ -93,4 +93,16 @@ for (const needle of [
   if (!patientPortalSource.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
 }
 
+
+const telemedicineOverloadMigration = fs.readFileSync(
+  'supabase/migrations/20261009183000_remove_legacy_patient_telemedicine_clinician_rpc.sql',
+  'utf8'
+);
+if (!telemedicineOverloadMigration.includes('DROP FUNCTION IF EXISTS public.get_patient_telemedicine_clinicians();')) {
+  throw new Error('Patient telemedicine migration must remove the obsolete zero-argument RPC overload');
+}
+if (!telemedicineOverloadMigration.includes("NOTIFY pgrst, 'reload schema'")) {
+  throw new Error('Patient telemedicine RPC overload reconciliation must refresh the PostgREST schema cache');
+}
+
 console.log('Patient portal self-service contracts passed.');
