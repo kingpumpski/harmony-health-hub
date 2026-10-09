@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
 
     let systemPrompt = '';
     let userPrompt = '';
+    let protocolCaseCount = 0;
 
     if (body.mode === 'portal') {
       if (!hasAnyRole(['patient'])) throw new Error('Patient portal access is not permitted');
@@ -192,6 +193,7 @@ Deno.serve(async (req) => {
       const { data: cases, error: casesError } = await supabase.rpc('get_ai_case_memory_for_diagnosis', { _diagnosis: body.diagnosis, _limit: 50 });
       if (casesError) throw casesError;
       if (!cases || cases.length < 3) return new Response(JSON.stringify({ error: 'Not enough historical cases to synthesize a protocol (need at least 3).' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      protocolCaseCount = cases.length;
       systemPrompt = 'You synthesize an evidence-informed in-house treatment protocol from past cases. Output a single concise protocol document.';
       userPrompt = `Diagnosis: ${body.diagnosis}\nCases (n=${cases.length}):\n${JSON.stringify(cases)}\n\nProduce a protocol with: Indication, Initial assessment, First-line therapy, Monitoring, Escalation.`;
     } else {
@@ -230,7 +232,7 @@ Deno.serve(async (req) => {
       const { error: draftError } = await supabase.rpc('create_ai_protocol_draft', {
         _diagnosis: body.diagnosis,
         _protocol_text: content,
-        _case_count: cases?.length ?? 0,
+        _case_count: protocolCaseCount,
         _icd_code: null,
       });
       if (draftError) throw draftError;
