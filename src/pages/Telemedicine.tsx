@@ -1,7 +1,7 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toLocalDateTimeInputValue } from '@/lib/dateTimeLocal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -155,29 +155,47 @@ function PatientTelemedicine() {
   const [clinicians, setClinicians] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [clinicianId, setClinicianId] = useState('');
+  const [clinicianAvailabilityError, setClinicianAvailabilityError] = useState('');
+  const [loadingClinicians, setLoadingClinicians] = useState(false);
+  const loadRequestRef = useRef(0);
   const [scheduledAt, setScheduledAt] = useState(toLocalDateTimeInputValue(new Date(Date.now() + 24*60*60*1000)));
   const [reason, setReason] = useState('');
 
   const load = async (at = scheduledAt) => {
-    const [{ data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
-      supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }),
-      supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }),
-    ]);
-    // Keep the patient's session history usable when clinician availability fails.
-    // These RPCs serve independent sections, so one failure must not hide the other.
-    if (sessionError) {
-      setSessions([]);
-      toast({ title: 'Unable to load telemedicine sessions', description: sessionError.message, variant: 'destructive' });
-    } else {
-      setSessions(rows ?? []);
-    }
-    if (clinicianError) {
+    const requestId = ++loadRequestRef.current;
+    setLoadingClinicians(true);
+    setClinicianAvailabilityError('');
+    try {
+      const [{ data: rows, error: sessionError }, { data: staff, error: clinicianError }] = await Promise.all([
+        supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }),
+        supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }),
+      ]);
+      // Date/time changes can overlap requests. Ignore stale results so clinicians
+      // from an earlier selected time are never offered for the latest time.
+      if (requestId !== loadRequestRef.current) return;
+      // These RPCs serve independent sections, so one failure must not hide the other.
+      if (sessionError) {
+        setSessions([]);
+        toast({ title: 'Unable to load telemedicine sessions', description: sessionError.message, variant: 'destructive' });
+      } else {
+        setSessions(rows ?? []);
+      }
+      if (clinicianError) {
+        setClinicians([]);
+        setClinicianId('');
+        setClinicianAvailabilityError('Clinician availability could not be loaded for this time. Your session history remains available. Retry or choose another future time.');
+      } else {
+        setClinicians(staff ?? []);
+        setClinicianAvailabilityError('');
+        if (!staff?.some((c: any) => c.id === clinicianId)) setClinicianId('');
+      }
+    } catch {
+      if (requestId !== loadRequestRef.current) return;
       setClinicians([]);
       setClinicianId('');
-      toast({ title: 'Clinician availability temporarily unavailable', description: 'Your sessions are still available. Please retry clinician availability or choose another time later.', variant: 'destructive' });
-    } else {
-      setClinicians(staff ?? []);
-      if (staff?.length && !staff.some((c: any) => c.id === clinicianId)) setClinicianId('');
+      setClinicianAvailabilityError('A connection error prevented clinician availability from loading. Retry when your connection is available.');
+    } finally {
+      if (requestId === loadRequestRef.current) setLoadingClinicians(false);
     }
   };
   useEffect(() => { void load(scheduledAt); }, []);
@@ -207,7 +225,7 @@ function PatientTelemedicine() {
     </div>
     <div className="card-medical p-5"><h2 className="font-semibold mb-3">Upcoming sessions</h2>{upcoming.length ? upcoming.map(s=><div key={s.id} className="rounded-xl border border-border p-4 mb-3"><div className="flex justify-between gap-3"><div><p className="font-medium">{new Date(s.scheduled_at).toLocaleString()}</p><p className="text-sm text-muted-foreground">{s.notes || 'Telemedicine consultation'}</p></div><span className="text-xs rounded-full bg-info/15 px-2 py-1">{s.status}</span></div>{s.status === 'active' && s.room_name && <a href={`https://meet.jit.si/${s.room_name}`} target="_blank" rel="noreferrer" className="btn-primary text-xs mt-3 inline-flex items-center gap-1"><ExternalLink className="w-3 h-3"/> Join session</a>}</div>) : <p className="text-sm text-muted-foreground">You have no upcoming telemedicine sessions. Request one here.</p>}</div>
     <div className="card-medical p-5"><h2 className="font-semibold mb-3">Past sessions</h2>{past.length ? past.map(s=><div key={s.id} className="rounded-xl border border-border p-4 mb-3"><p className="font-medium">{new Date(s.scheduled_at).toLocaleString()}</p><p className="text-sm text-muted-foreground">{s.notes || 'Telemedicine consultation'} · {s.status}</p></div>) : <p className="text-sm text-muted-foreground">You have no past telemedicine sessions.</p>}</div>
-    {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request New Telemedicine Session</h2><div><label className="mb-1 block text-sm font-medium" htmlFor="telemedicine-clinician">Available clinician</label><select id="telemedicine-clinician" required value={clinicianId} onChange={e=>setClinicianId(e.target.value)} className="input-medical w-full" disabled={!clinicians.length}><option value="">{clinicians.length ? "Select doctor…" : "No clinicians available for this time"}</option>{clinicians.map(c=><option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.specialization ? ` · ${c.specialization}` : ""}{c.is_on_duty ? " · On duty" : ""}</option>)}</select>{!clinicians.length && <p className="mt-1 text-xs text-muted-foreground">Choose another future time. Clinicians are matched to the selected facility and on-duty shift when shift schedules are configured.</p>}</div><div><label className="mb-1 block text-sm font-medium" htmlFor="telemedicine-scheduled-at">Preferred date and time</label><input id="telemedicine-scheduled-at" required type="datetime-local" min={toLocalDateTimeInputValue()} value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} className="input-medical w-full"/></div><textarea required value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-28" placeholder="Reason for the visit"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary">Submit request</button></div></form></div>}
+    {open && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={request} className="card-medical bg-background p-6 w-full max-w-lg space-y-4"><h2 className="text-lg font-semibold">Request New Telemedicine Session</h2><div><label className="mb-1 block text-sm font-medium" htmlFor="telemedicine-clinician">Available clinician</label><select id="telemedicine-clinician" required value={clinicianId} onChange={e=>setClinicianId(e.target.value)} className="input-medical w-full" disabled={!clinicians.length || loadingClinicians}><option value="">{loadingClinicians ? "Checking clinician availability…" : clinicians.length ? "Select doctor…" : "No clinicians available for this time"}</option>{clinicians.map(c=><option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.specialization ? ` · ${c.specialization}` : ""}{c.is_on_duty ? " · On duty" : ""}</option>)}</select>{loadingClinicians && <p className="mt-1 text-xs text-muted-foreground" role="status" aria-live="polite">Checking clinicians available at the selected time…</p>}{clinicianAvailabilityError && <div className="mt-2 rounded-lg border border-warning/40 bg-warning/5 p-3 text-sm" role="alert"><p>{clinicianAvailabilityError}</p><button type="button" className="btn-secondary mt-2 text-xs" onClick={() => void load(scheduledAt)} disabled={loadingClinicians}>Retry availability</button></div>}{!clinicians.length && !clinicianAvailabilityError && !loadingClinicians && <p className="mt-1 text-xs text-muted-foreground">No clinicians were returned for this time. Choose another future time. Availability is matched to your facility and configured on-duty shifts.</p>}</div><div><label className="mb-1 block text-sm font-medium" htmlFor="telemedicine-scheduled-at">Preferred date and time</label><input id="telemedicine-scheduled-at" required type="datetime-local" min={toLocalDateTimeInputValue()} value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} className="input-medical w-full"/></div><textarea required value={reason} onChange={e=>setReason(e.target.value)} className="input-medical w-full min-h-28" placeholder="Reason for the visit"/><div className="flex justify-end gap-2"><button type="button" className="btn-ghost" onClick={()=>setOpen(false)}>Cancel</button><button className="btn-primary" disabled={!clinicianId || loadingClinicians}>Submit request</button></div></form></div>}
   </div>;
 }
 
