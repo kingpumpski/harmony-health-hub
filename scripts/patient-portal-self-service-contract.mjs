@@ -63,6 +63,19 @@ if (patientLoadBlock.includes('if (sessionError || clinicianError)')) {
 if (!patientLoadBlock.includes('setSessions(rows ?? [])')) {
   throw new Error('Patient telemedicine session history must load independently of clinician availability');
 }
+for (const needle of [
+  'const requestId = ++loadRequestRef.current;',
+  'requestId !== loadRequestRef.current',
+  'setLoadingClinicians(true)',
+  'setLoadingClinicians(false)',
+  'setClinicianAvailabilityError(',
+  'Retry availability',
+  'Checking clinicians available at the selected time',
+]) {
+  if (!patientTelemedicine.includes(needle)) {
+    throw new Error('Patient telemedicine availability must expose recoverable, time-specific loading state: ' + needle);
+  }
+}
 
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
