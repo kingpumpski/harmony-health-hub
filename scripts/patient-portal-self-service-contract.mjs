@@ -8,6 +8,13 @@ const records = fs.readFileSync('src/pages/MedicalRecords.tsx','utf8');
 const ai = fs.readFileSync('supabase/functions/ai-clinical-assist/index.ts','utf8');
 const sidebar = fs.readFileSync('src/components/layout/Sidebar.tsx','utf8');
 const aiReportRuntimeMigration = fs.readFileSync('supabase/migrations/20261007093000_reconcile_ai_report_runtime_search_paths.sql','utf8');
+const localDateTime = fs.readFileSync('src/lib/dateTimeLocal.ts','utf8');
+
+if (!localDateTime.includes('getTimezoneOffset()') || !localDateTime.includes("toISOString().slice(0, 16)")) throw new Error('datetime-local formatter must compensate for the browser timezone before serializing');
+for (const [name, source] of [['PatientPortal', fs.readFileSync('src/pages/PatientPortal.tsx','utf8')], ['Telemedicine', telemedicine]]) {
+  if (!source.includes("import { toLocalDateTimeInputValue } from '@/lib/dateTimeLocal'")) throw new Error(name+' must use the timezone-safe datetime-local formatter');
+  if (source.includes('new Date().toISOString().slice(0,16)') || source.includes('new Date().toISOString().slice(0, 16)')) throw new Error(name+' must not derive datetime-local min values directly from UTC');
+}
 
 for (const needle of [
   'create or replace function public.get_patient_portal_identity()',
