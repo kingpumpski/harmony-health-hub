@@ -25,6 +25,7 @@ const requiredSchemaEntrypoints = [
   'activate_patient_visit_coverage',
   'approve_facility_data_sharing_agreement',
   'complete_ai_report_request',
+  'fail_ai_report_request',
   'create_ai_clinical_session',
   'create_ai_report_request',
   'create_anesthetic_assessment',
