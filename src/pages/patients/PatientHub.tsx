@@ -3,7 +3,7 @@ import RefreshButton from '@/components/ui/RefreshButton';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, CalendarDays, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, UserRound } from 'lucide-react';
+import { ArrowLeft, CalendarDays, RefreshCw, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, UserRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getPatientById, updatePatient } from '@/lib/healthApi';
 import { useAuth } from '@/contexts/AuthContext';
