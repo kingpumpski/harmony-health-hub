@@ -38,7 +38,7 @@ for (const [name,source,needles] of [
   ['Telemedicine',telemedicine,['PatientTelemedicine','request_patient_telemedicine_session','Request New Telemedicine Session','Select doctor']],
   ['Appointments',appointments,['PatientAppointments','get_patient_appointments','Request Appointment']],
   ['Billing',billing,['PatientBilling','get_patient_invoice_summary','Pay Now']],
-  ['MedicalRecords',records,['PatientMedicalRecords','get_patient_hub_clinical_snapshot','Read-only access']],
+  ['MedicalRecords',records,['PatientMedicalRecords','get_patient_hub_clinical_snapshot','patient-facing longitudinal medical record']],
   ['AI Clinical Assist',ai,["body.mode === 'portal'","hasAnyRole(['patient'])","get_patient_portal_identity"]],
   ['Sidebar',sidebar,["patient: [{ label: 'My Care'",'/patient-portal','/appointments','/telemedicine','/billing']],
 ]) for (const needle of needles) if (!source.includes(needle)) throw new Error(name+' missing UI contract: '+needle);
