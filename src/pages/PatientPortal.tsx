@@ -16,6 +16,7 @@ export default function PatientPortal() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [clinicalSnapshot, setClinicalSnapshot] = useState<any>(null);
+  const [unavailableSections, setUnavailableSections] = useState<string[]>([]);
   const [requesting, setRequesting] = useState(false);
   const [appointmentRequesting, setAppointmentRequesting] = useState(false);
   const [appointmentDepartment, setAppointmentDepartment] = useState('General Outpatient');
@@ -34,6 +35,7 @@ export default function PatientPortal() {
       setInvoices([]);
       setReports([]);
       setClinicalSnapshot(null);
+      setUnavailableSections([]);
       toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient profile could not be identified.', variant: 'destructive' });
       return null;
     }
@@ -54,6 +56,7 @@ export default function PatientPortal() {
     setClinicalSnapshot(snapshotResult.status === 'fulfilled' && !snapshotResult.value.error ? (snapshotResult.value.data ?? null) : null);
     if (failedSections.length) {
       const labels = ['appointments', 'telemedicine', 'billing', 'reports', 'medical records'];
+      setUnavailableSections(labels.filter((_, index) => failedSections.includes(index)));
       toast({ title: 'Some portal sections are temporarily unavailable', description: labels.filter((_, index) => failedSections.includes(index)).join(', ') + '. Available sections remain usable.', variant: 'destructive' });
     }
     return {
@@ -195,6 +198,7 @@ export default function PatientPortal() {
             </button>
           </div>
 
+          {unavailableSections.includes('reports') && <p role="status" className="mt-4 text-sm text-warning">Reports are temporarily unavailable. Please refresh to try again.</p>}
           {reports.length > 0 && (
             <div className="space-y-3 mt-4">
               {reports.map((r) => (
@@ -237,7 +241,7 @@ export default function PatientPortal() {
                 )}
               </div>
             ))}
-            {sessions.length === 0 && <p className="text-sm text-muted-foreground">No telemedicine sessions yet.</p>}
+            {sessions.length === 0 && <p role={unavailableSections.includes('telemedicine') ? 'status' : undefined} className={`text-sm ${unavailableSections.includes('telemedicine') ? 'text-warning' : 'text-muted-foreground'}`}>{unavailableSections.includes('telemedicine') ? 'Telemedicine sessions are temporarily unavailable. Please refresh to try again.' : 'No telemedicine sessions yet.'}</p>}
           </div>
         </div>
 
@@ -261,7 +265,7 @@ export default function PatientPortal() {
                 <p className="text-xs text-muted-foreground">{a.department} · {a.status}</p>
               </div>
             ))}
-            {appts.length === 0 && <p className="text-sm text-muted-foreground">No appointments.</p>}
+            {appts.length === 0 && <p role={unavailableSections.includes('appointments') ? 'status' : undefined} className={`text-sm ${unavailableSections.includes('appointments') ? 'text-warning' : 'text-muted-foreground'}`}>{unavailableSections.includes('appointments') ? 'Appointments are temporarily unavailable. Please refresh to try again.' : 'No appointments.'}</p>}
           </div>
         </div>
 
@@ -274,7 +278,7 @@ export default function PatientPortal() {
                 <span className={i.status === 'paid' ? 'text-success' : 'text-warning'}>GHS {i.total_amount} · {i.status}</span>
               </div>
             ))}
-            {invoices.length === 0 && <p className="text-sm text-muted-foreground">No invoices.</p>}
+            {invoices.length === 0 && <p role={unavailableSections.includes('billing') ? 'status' : undefined} className={`text-sm ${unavailableSections.includes('billing') ? 'text-warning' : 'text-muted-foreground'}`}>{unavailableSections.includes('billing') ? 'Invoices are temporarily unavailable. Please refresh to try again.' : 'No invoices.'}</p>}
           </div>
         </div>
 
