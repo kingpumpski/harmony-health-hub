@@ -67,4 +67,16 @@ if (!patientLoadBlock.includes('setSessions(rows ?? [])')) {
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
 if (!aiReportRuntimeMigration.toLowerCase().includes('alter function public.get_ai_report_requests(uuid, integer)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_ai_report_request(uuid, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.complete_ai_report_request(uuid, text, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_patient_appointment(uuid, timestamptz, text, text)\n  set search_path = pg_catalog, public')) throw new Error('AI report and appointment SECURITY DEFINER runtime search paths must resolve public.has_role safely');
+
+for (const needle of [
+  "const [unavailableSections, setUnavailableSections] = useState<string[]>([]);",
+  "setUnavailableSections(labels.filter((_, index) => failedSections.includes(index)))",
+  "Appointments are temporarily unavailable. Please refresh to try again.",
+  "Telemedicine sessions are temporarily unavailable. Please refresh to try again.",
+  "Invoices are temporarily unavailable. Please refresh to try again.",
+  "Reports are temporarily unavailable. Please refresh to try again.",
+]) {
+  if (!portal.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
+}
+
 console.log('Patient portal self-service contracts passed.');
