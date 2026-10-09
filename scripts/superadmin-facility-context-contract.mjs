@@ -1,5 +1,10 @@
 import fs from 'node:fs';
 
+const authContext = fs.readFileSync('src/contexts/AuthContext.tsx', 'utf8');
+const superuserRoleResolution = authContext.indexOf("const activeRole = roles.includes('system_superuser') ? 'system_superuser'");
+if (superuserRoleResolution < 0) throw new Error('A platform superuser must default to the platform workspace even when stale session storage contains another role');
+if (!authContext.includes("window.sessionStorage.setItem(activeRoleStorageKey(appUser.id), appUser.role)")) throw new Error('Resolved active role must be persisted consistently after authentication');
+
 const contextMigration = fs.readFileSync('supabase/migrations/20261002070000_allow_superadmin_facility_context_override.sql', 'utf8');
 const historyMigration = fs.readFileSync('supabase/migrations/20261002071000_superadmin_patient_history_context_access.sql', 'utf8');
 const settings = fs.readFileSync('src/pages/admin/Settings.tsx', 'utf8');
