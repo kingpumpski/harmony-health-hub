@@ -31,6 +31,14 @@ for (const [name,source,needles] of [
   ['Sidebar',sidebar,["patient: [{ label: 'My Care'",'/patient-portal','/appointments','/telemedicine','/billing']],
 ]) for (const needle of needles) if (!source.includes(needle)) throw new Error(name+' missing UI contract: '+needle);
 
+const patientTelemedicine = telemedicine.slice(telemedicine.indexOf('function PatientTelemedicine()'));
+if (!patientTelemedicine.includes("supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 })")) {
+  throw new Error('Patient telemedicine must load sessions through the ownership-checked portal RPC');
+}
+if (patientTelemedicine.includes("supabase.from('video_sessions')")) {
+  throw new Error('Patient telemedicine must not bypass the patient-scoped session RPC with a direct table read');
+}
+
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
 if (!aiReportRuntimeMigration.toLowerCase().includes('alter function public.get_ai_report_requests(uuid, integer)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_ai_report_request(uuid, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.complete_ai_report_request(uuid, text, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_patient_appointment(uuid, timestamptz, text, text)\n  set search_path = pg_catalog, public')) throw new Error('AI report and appointment SECURITY DEFINER runtime search paths must resolve public.has_role safely');
