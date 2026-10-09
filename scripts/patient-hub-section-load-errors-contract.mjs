@@ -2,6 +2,10 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('src/pages/patients/PatientHub.tsx', 'utf8');
 
+if (!source.match(/import\s*\{[^}]*\bRefreshCw\b[^}]*\}\s*from\s*'lucide-react'/s)) {
+  throw new Error('Patient Hub retry state uses RefreshCw, which must be imported from lucide-react');
+}
+
 for (const needle of [
   "function SectionUnavailable({ label, onRetry }",
   "The records have not been confirmed as empty. Retry to load this section.",
