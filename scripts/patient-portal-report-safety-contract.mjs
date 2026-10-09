@@ -35,14 +35,20 @@ for (const needle of [
   'TO authenticated',
 ]) if (!completionMigration.includes(needle)) throw new Error('AI report completion authorization migration missing: ' + needle);
 
-
 const printStart = portal.indexOf('const printReport =');
 const printEnd = portal.indexOf('\n  };', printStart);
 const printHandler = portal.slice(printStart, printEnd);
-for (const needle of ["text.replace(/[&<>\"']/g", "'&': '&amp;'", "'<': '&lt;'", "'\\\"': '&quot;'"]) {
+for (const needle of [
+  'text.replace(/[&<>\\"\']/g',
+  "'&': '&amp;'",
+  "'<': '&lt;'",
+  "'>': '&gt;'",
+  "'&quot;'",
+  "'&#39;'",
+]) {
   if (!printHandler.includes(needle)) throw new Error('Printable report HTML escaping missing: ' + needle);
 }
-if (!completionMigration.includes('v_request.requested_by = v_uid AND v_owned') || !completionMigration.includes("content = NULL")) {
+if (!completionMigration.includes('v_request.requested_by = v_uid AND v_owned') || !completionMigration.includes('content = NULL')) {
   throw new Error('Patient failure RPC must be requester-owned and must never write report content');
 }
 console.log('Patient portal AI report lifecycle and print-safety contract passed.');
