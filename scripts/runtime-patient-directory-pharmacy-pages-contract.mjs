@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 
+const read = (path) => fs.readFileSync(path, 'utf8');
+
 const migration = fs.readFileSync(
   'supabase/migrations/20261005123000_unify_runtime_patient_directory_and_pharmacy_zero_price_edits.sql',
   'utf8',
