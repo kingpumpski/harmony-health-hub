@@ -28,6 +28,27 @@ check('authenticated layout provides a keyboard skip link and focusable main lan
 check('route-aware loading status is announced accessibly and motion respects reduced-motion preferences', routeLoading.includes('aria-live="polite"') && routeLoading.includes('motion-reduce:animate-none') && routeLoading.includes('Loading {moduleName}'));
 check('mobile navigation closes when the route changes', layout.includes('setMobileNavOpen(false);') && layout.includes('[location.pathname]'));
 
+
+const facilityOnboarding = read('src/pages/admin/PlatformFacilityOnboarding.tsx');
+for (const [fieldId, label] of [
+  ['facility-name', 'Facility / hospital name'],
+  ['facility-code', 'Facility code (optional)'],
+  ['facility-type', 'Facility type'],
+  ['facility-district', 'District'],
+  ['facility-region', 'Region'],
+  ['facility-dhims2', 'DHIMS2 UID (optional)'],
+]) {
+  check(`facility onboarding field ${fieldId} has an associated visible label`,
+    facilityOnboarding.includes(`htmlFor="${fieldId}"`) &&
+    facilityOnboarding.includes(`id="${fieldId}"`) &&
+    facilityOnboarding.includes(label));
+}
+check('facility onboarding organization name exposes organization autocomplete',
+  facilityOnboarding.includes('name="facilityName" autoComplete="organization"'));
+check('facility onboarding district and region expose address autocomplete tokens',
+  facilityOnboarding.includes('name="facilityDistrict" autoComplete="address-level2"') &&
+  facilityOnboarding.includes('name="facilityRegion" autoComplete="address-level1"'));
+
 if (failures.length) {
   console.error('Navigation/header UX contract failures:');
   failures.forEach((failure) => console.error('- ' + failure));
