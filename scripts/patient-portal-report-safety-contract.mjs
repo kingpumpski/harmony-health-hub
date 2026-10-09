@@ -39,7 +39,7 @@ const printStart = portal.indexOf('const printReport =');
 const printEnd = portal.indexOf('\n  };', printStart);
 const printHandler = portal.slice(printStart, printEnd);
 for (const needle of [
-  'text.replace(/[&<>\\"\']/g',
+  'text.replace(/[&<>"\']/g',
   "'&': '&amp;'",
   "'<': '&lt;'",
   "'>': '&gt;'",
