@@ -75,6 +75,7 @@ for (const needle of [
   "Telemedicine sessions are temporarily unavailable. Please refresh to try again.",
   "Invoices are temporarily unavailable. Please refresh to try again.",
   "Reports are temporarily unavailable. Please refresh to try again.",
+  "Medical records are temporarily unavailable. Please refresh to try again.",
 ]) {
   if (!patientPortalSource.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
 }
