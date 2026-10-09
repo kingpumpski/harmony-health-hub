@@ -13,6 +13,8 @@ let audioContext: AudioContext | null = null;
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
+  // Realtime notifications can arrive before interaction; defer audio to avoid browser autoplay warnings.
+  if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
   try {
     audioContext ??= new AudioContext();
     if (audioContext.state === 'suspended') void audioContext.resume().catch(() => undefined);

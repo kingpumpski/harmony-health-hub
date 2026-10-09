@@ -14,4 +14,10 @@ check('provider secrets use references rather than direct UI persistence', onboa
 check('scheduler preserves facility scope', scheduler.includes('facility_id'));
 check('send endpoint accepts facility scope', send.includes('facility_id'));
 check('queue drain enforces facility configuration', drain.includes('facility_notification_config') && drain.includes('kill_switch') && drain.includes('rolloutAllows'));
+const workflowFeedback = read('src/lib/workflowFeedback.ts');
+check('notification audio is deferred until a user gesture is available',
+  workflowFeedback.includes('navigator.userActivation') &&
+  workflowFeedback.includes('!navigator.userActivation.hasBeenActive') &&
+  workflowFeedback.indexOf('navigator.userActivation') < workflowFeedback.indexOf('audioContext ??= new AudioContext()'));
+
 if (failures.length) { console.error('Notification provider security contract failures:'); failures.forEach((x) => console.error('- '+x)); process.exitCode=1; } else console.log('Notification provider security contract passed.');
