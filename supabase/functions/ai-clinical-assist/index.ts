@@ -9,6 +9,7 @@ const MODEL = 'google/gemini-2.5-flash';
 interface Body {
   mode: 'report' | 'recommend' | 'synthesize_protocol' | 'portal' | 'clinical_context' | 'nurse_dashboard';
   patientId?: string;
+  reportRequestId?: string;
   encounterId?: string;
   diagnosis?: string;
   context?: string;
@@ -16,6 +17,19 @@ interface Body {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  let serviceRoleClient: any = null;
+  let authorizedPatientReportRequestId: string | null = null;
+  const completeAuthorizedPatientReport = async (content: string | null, error: string | null) => {
+    if (!serviceRoleClient || !authorizedPatientReportRequestId) return;
+    const { error: completionError } = await serviceRoleClient.rpc('complete_ai_report_request', {
+      _request_id: authorizedPatientReportRequestId,
+      _content: content,
+      _error: error,
+    });
+    if (completionError) throw completionError;
+  };
+
   try {
     const body: Body = await req.json();
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -137,6 +151,26 @@ Deno.serve(async (req) => {
 
       if (!isClinical && !isPatientOwner) throw new Error('Not authorised to generate this report');
 
+      if (isPatientOwner) {
+        if (!body.reportRequestId) throw new Error('A pending report request is required');
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (!serviceRoleKey) throw new Error('Report service is not configured');
+        serviceRoleClient = createClient(Deno.env.get('SUPABASE_URL')!, serviceRoleKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: pendingRequest, error: requestError } = await serviceRoleClient
+          .from('ai_report_requests')
+          .select('id')
+          .eq('id', body.reportRequestId)
+          .eq('patient_id', body.patientId)
+          .eq('requested_by', callerId)
+          .eq('status', 'processing')
+          .maybeSingle();
+        if (requestError) throw requestError;
+        if (!pendingRequest) throw new Error('Report request is not owned by this account or is no longer pending');
+        authorizedPatientReportRequestId = body.reportRequestId;
+      }
+
       const { data: scopedContext, error: contextError } = isClinical
         ? await supabase.rpc('get_ai_clinical_context', { _patient_id: body.patientId })
         : await supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: body.patientId });
@@ -170,12 +204,27 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ model: MODEL, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
     });
 
-    if (aiRes.status === 429) return new Response(JSON.stringify({ error: 'AI rate limit reached, try again shortly.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    if (aiRes.status === 402) return new Response(JSON.stringify({ error: 'AI credits exhausted. Add funds in Workspace → Usage.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    if (!aiRes.ok) return new Response(JSON.stringify({ error: 'AI gateway error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (aiRes.status === 429) {
+      await completeAuthorizedPatientReport(null, 'AI rate limit reached, try again shortly.');
+      return new Response(JSON.stringify({ error: 'AI rate limit reached, try again shortly.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (aiRes.status === 402) {
+      await completeAuthorizedPatientReport(null, 'AI credits are temporarily unavailable. Please try again later.');
+      return new Response(JSON.stringify({ error: 'AI credits exhausted. Add funds in Workspace → Usage.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!aiRes.ok) {
+      await completeAuthorizedPatientReport(null, 'The report service is temporarily unavailable. Please try again.');
+      return new Response(JSON.stringify({ error: 'AI gateway error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const data = await aiRes.json();
     const content = data.choices?.[0]?.message?.content ?? '';
+    if (authorizedPatientReportRequestId && !String(content).trim()) {
+      throw new Error('The report service returned no usable content');
+    }
+    if (authorizedPatientReportRequestId) {
+      await completeAuthorizedPatientReport(String(content), null);
+    }
 
     if (body.mode === 'synthesize_protocol' && content) {
       const { error: draftError } = await supabase.rpc('create_ai_protocol_draft', {
@@ -189,6 +238,13 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ content }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
+    if (authorizedPatientReportRequestId && serviceRoleClient) {
+      try {
+        await completeAuthorizedPatientReport(null, 'Report generation failed. Please try again.');
+      } catch (completionError) {
+        console.error('Unable to finalize failed AI report request', completionError);
+      }
+    }
     console.error(e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
