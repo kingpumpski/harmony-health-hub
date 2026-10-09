@@ -42,4 +42,7 @@ const printHandler = portal.slice(printStart, printEnd);
 for (const needle of ["text.replace(/[&<>\"']/g", "'&': '&amp;'", "'<': '&lt;'", "'\\\"': '&quot;'"]) {
   if (!printHandler.includes(needle)) throw new Error('Printable report HTML escaping missing: ' + needle);
 }
+if (!completionMigration.includes('v_request.requested_by = v_uid AND v_owned') || !completionMigration.includes("content = NULL")) {
+  throw new Error('Patient failure RPC must be requester-owned and must never write report content');
+}
 console.log('Patient portal AI report lifecycle and print-safety contract passed.');
