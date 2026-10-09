@@ -42,7 +42,8 @@ async function loadAppUser(supabaseUser: SupabaseUser): Promise<AppUser> {
   const fallbackRole = roles[0] ?? 'patient';
   const persistedRole = typeof window !== 'undefined' ? window.sessionStorage.getItem(activeRoleStorageKey(supabaseUser.id)) as UserRole | null : null;
   const preferredRole = roles.includes('system_superuser') ? 'system_superuser' : fallbackRole;
-  const activeRole = persistedRole && roles.includes(persistedRole) ? persistedRole : preferredRole;
+  // A persisted facility-admin role can be stale from an earlier session. Platform superusers must land in the platform workspace after authentication; role switching remains available explicitly within the session.
+  const activeRole = roles.includes('system_superuser') ? 'system_superuser' : persistedRole && roles.includes(persistedRole) ? persistedRole : preferredRole;
   if (profileError) console.warn('[auth] profile bootstrap unavailable:', profileError.message);
   if (roleError) console.warn('[auth] role bootstrap unavailable:', roleError.message);
 
