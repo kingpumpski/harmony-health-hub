@@ -1,5 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useEffect, useState } from 'react';
+import { toLocalDateTimeInputValue } from '@/lib/dateTimeLocal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -18,13 +19,21 @@ export default function PatientPortal() {
   const [requesting, setRequesting] = useState(false);
   const [appointmentRequesting, setAppointmentRequesting] = useState(false);
   const [appointmentDepartment, setAppointmentDepartment] = useState('General Outpatient');
-  const [appointmentTime, setAppointmentTime] = useState(() => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [appointmentTime, setAppointmentTime] = useState(() => toLocalDateTimeInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [appointmentReason, setAppointmentReason] = useState('');
 
   const loadReports = async () => {
     const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
     const portalPatient = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !portalPatient) {
+      // Clear previously loaded data on identity failure or account switching. Never
+      // leave one patient's records visible after the current identity cannot be verified.
+      setPatient(null);
+      setAppts([]);
+      setSessions([]);
+      setInvoices([]);
+      setReports([]);
+      setClinicalSnapshot(null);
       toast({ title: 'Unable to load portal data', description: identityError?.message ?? 'Your patient profile could not be identified.', variant: 'destructive' });
       return null;
     }
@@ -240,7 +249,7 @@ export default function PatientPortal() {
             <label className="text-xs font-medium" htmlFor="portal-appointment-department">Department</label>
             <input id="portal-appointment-department" value={appointmentDepartment} onChange={(e) => setAppointmentDepartment(e.target.value)} required autoComplete="organization-title" className="input-medical w-full" placeholder="e.g. General Outpatient" />
             <label className="text-xs font-medium" htmlFor="portal-appointment-time">Preferred date and time</label>
-            <input id="portal-appointment-time" type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required className="input-medical w-full" />
+            <input id="portal-appointment-time" type="datetime-local" min={toLocalDateTimeInputValue()} value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required className="input-medical w-full" />
             <label className="text-xs font-medium" htmlFor="portal-appointment-reason">Reason for visit</label>
             <textarea id="portal-appointment-reason" value={appointmentReason} onChange={(e) => setAppointmentReason(e.target.value)} className="input-medical w-full" rows={2} placeholder="Briefly describe what you need help with" />
             <button type="submit" disabled={appointmentRequesting} className="btn-primary w-full">{appointmentRequesting ? 'Submitting…' : 'Request clinician appointment'}</button>
