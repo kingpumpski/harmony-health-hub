@@ -54,9 +54,9 @@ export default function PatientPortal() {
     setInvoices(invoicesResult.status === 'fulfilled' && !invoicesResult.value.error ? (invoicesResult.value.data ?? []) : []);
     setReports(reportsResult.status === 'fulfilled' && !reportsResult.value.error ? (reportsResult.value.data ?? []) : []);
     setClinicalSnapshot(snapshotResult.status === 'fulfilled' && !snapshotResult.value.error ? (snapshotResult.value.data ?? null) : null);
+    const labels = ['appointments', 'telemedicine', 'billing', 'reports', 'medical records'];
+    setUnavailableSections(labels.filter((_, index) => failedSections.includes(index)));
     if (failedSections.length) {
-      const labels = ['appointments', 'telemedicine', 'billing', 'reports', 'medical records'];
-      setUnavailableSections(labels.filter((_, index) => failedSections.includes(index)));
       toast({ title: 'Some portal sections are temporarily unavailable', description: labels.filter((_, index) => failedSections.includes(index)).join(', ') + '. Available sections remain usable.', variant: 'destructive' });
     }
     return {
