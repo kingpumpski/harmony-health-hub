@@ -49,6 +49,9 @@ check('facility onboarding district and region expose address autocomplete token
   facilityOnboarding.includes('name="facilityDistrict" autoComplete="address-level2"') &&
   facilityOnboarding.includes('name="facilityRegion" autoComplete="address-level1"'));
 
+check('platform facility onboarding tolerates a missing role array without crashing',
+  facilityOnboarding.includes("user?.roles?.includes('system_superuser') === true"));
+
 if (failures.length) {
   console.error('Navigation/header UX contract failures:');
   failures.forEach((failure) => console.error('- ' + failure));
