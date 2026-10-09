@@ -38,7 +38,7 @@ for (const [name,source,needles] of [
   ['Telemedicine',telemedicine,['PatientTelemedicine','request_patient_telemedicine_session','Request New Telemedicine Session','Select doctor']],
   ['Appointments',appointments,['PatientAppointments','get_patient_appointments','Request Appointment']],
   ['Billing',billing,['PatientBilling','get_patient_invoice_summary','Pay Now']],
-  ['MedicalRecords',records,['PatientMedicalRecords','get_patient_hub_clinical_snapshot','Read-only access']],
+  ['MedicalRecords',records,['PatientMedicalRecords','get_patient_hub_clinical_snapshot','patient-facing longitudinal medical record']],
   ['AI Clinical Assist',ai,["body.mode === 'portal'","hasAnyRole(['patient'])","get_patient_portal_identity"]],
   ['Sidebar',sidebar,["patient: [{ label: 'My Care'",'/patient-portal','/appointments','/telemedicine','/billing']],
 ]) for (const needle of needles) if (!source.includes(needle)) throw new Error(name+' missing UI contract: '+needle);
@@ -50,8 +50,34 @@ if (!patientTelemedicine.includes("supabase.rpc('get_patient_portal_video_sessio
 if (patientTelemedicine.includes("supabase.from('video_sessions')")) {
   throw new Error('Patient telemedicine must not bypass the patient-scoped session RPC with a direct table read');
 }
+const patientLoadBlock = patientTelemedicine.slice(
+  patientTelemedicine.indexOf('const load = async (at = scheduledAt)'),
+  patientTelemedicine.indexOf('useEffect(() => { void load(scheduledAt); }, []);')
+);
+if (!patientLoadBlock.includes('if (sessionError)') || !patientLoadBlock.includes('if (clinicianError)')) {
+  throw new Error('Patient telemedicine must handle session and clinician availability errors independently');
+}
+if (patientLoadBlock.includes('if (sessionError || clinicianError)')) {
+  throw new Error('Clinician lookup failure must not hide the patient telemedicine session history');
+}
+if (!patientLoadBlock.includes('setSessions(rows ?? [])')) {
+  throw new Error('Patient telemedicine session history must load independently of clinician availability');
+}
 
 if (telemedicine.includes("searchPatientDirectory('', 200)") && !telemedicine.includes("user?.roles?.includes('patient') ? <PatientTelemedicine /> : <StaffTelemedicine />")) throw new Error('Telemedicine must isolate patient and staff flows');
 if (ai.includes("body.mode === 'portal'") && !ai.includes("if (!hasAnyRole(['patient']))")) throw new Error('AI portal mode must be patient-role restricted');
 if (!aiReportRuntimeMigration.toLowerCase().includes('alter function public.get_ai_report_requests(uuid, integer)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_ai_report_request(uuid, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.complete_ai_report_request(uuid, text, text)\n  set search_path = pg_catalog, public') || !aiReportRuntimeMigration.toLowerCase().includes('alter function public.create_patient_appointment(uuid, timestamptz, text, text)\n  set search_path = pg_catalog, public')) throw new Error('AI report and appointment SECURITY DEFINER runtime search paths must resolve public.has_role safely');
+
+for (const needle of [
+  "const [unavailableSections, setUnavailableSections] = useState<string[]>([]);",
+  "setUnavailableSections(labels.filter((_, index) => failedSections.includes(index)))",
+  "Appointments are temporarily unavailable. Please refresh to try again.",
+  "Telemedicine sessions are temporarily unavailable. Please refresh to try again.",
+  "Invoices are temporarily unavailable. Please refresh to try again.",
+  "Reports are temporarily unavailable. Please refresh to try again.",
+  "Medical records are temporarily unavailable. Please refresh to try again.",
+]) {
+  if (!patientPortalSource.includes(needle)) throw new Error("Patient portal must distinguish unavailable data from empty results: " + needle);
+}
+
 console.log('Patient portal self-service contracts passed.');

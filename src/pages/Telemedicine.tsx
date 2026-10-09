@@ -163,13 +163,22 @@ function PatientTelemedicine() {
       supabase.rpc('get_patient_portal_video_sessions', { _limit: 50 }),
       supabase.rpc('get_patient_telemedicine_clinicians', { _scheduled_at: new Date(at).toISOString() }),
     ]);
-    if (sessionError || clinicianError) {
-      toast({ title: 'Service temporarily unavailable', description: sessionError?.message ?? clinicianError?.message ?? 'Telemedicine information could not be loaded.', variant: 'destructive' });
-      return;
+    // Keep the patient's session history usable when clinician availability fails.
+    // These RPCs serve independent sections, so one failure must not hide the other.
+    if (sessionError) {
+      setSessions([]);
+      toast({ title: 'Unable to load telemedicine sessions', description: sessionError.message, variant: 'destructive' });
+    } else {
+      setSessions(rows ?? []);
     }
-    setSessions(rows ?? []);
-    setClinicians(staff ?? []);
-    if (staff?.length && !staff.some((c: any) => c.id === clinicianId)) setClinicianId('');
+    if (clinicianError) {
+      setClinicians([]);
+      setClinicianId('');
+      toast({ title: 'Clinician availability temporarily unavailable', description: 'Your sessions are still available. Please retry clinician availability or choose another time later.', variant: 'destructive' });
+    } else {
+      setClinicians(staff ?? []);
+      if (staff?.length && !staff.some((c: any) => c.id === clinicianId)) setClinicianId('');
+    }
   };
   useEffect(() => { void load(scheduledAt); }, []);
   useEffect(() => { if (open) void load(scheduledAt); }, [scheduledAt, open]);
