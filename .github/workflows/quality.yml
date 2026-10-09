@@ -107,6 +107,12 @@ jobs:
       - name: Patient Hub section-load error contract
         run: npm run test:patient-hub-section-load-errors
 
+      - name: Patient portal self-service contract
+        run: npm run test:patient-portal-self-service
+
+      - name: Patient portal report safety contract
+        run: npm run test:patient-portal-report-safety
+
       - name: Encounter facility-context reassertion contract
         run: npm run test:encounter-facility-context-reassertion
 
