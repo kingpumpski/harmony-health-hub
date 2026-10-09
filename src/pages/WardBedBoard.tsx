@@ -185,7 +185,7 @@ export default function WardBedBoard() {
       eyebrow="Inpatient capacity"
       title="Ward & Bed Management"
       description="Canonical ward and bed configuration, capacity visibility, patient assignment, movement and release."
-      actions={<RefreshButton onClick={() => void load()} loading={loading} label="Refresh ward and bed management" />}
+      actions={<RefreshButton onClick={() => void load()} loading={busy} label="Refresh ward and bed management" />}
       counters={[
         { label: 'Available beds', value: availableCount, tone: 'text-success' },
         { label: 'Occupied beds', value: occupiedCount },
