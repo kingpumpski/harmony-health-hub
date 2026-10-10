@@ -187,3 +187,27 @@ for (const needle of [
 if ((telemedicineAvailabilityFacilityScope.match(/JOIN public\.facility_memberships shift_fm/g) || []).length !== 2) {
   throw new Error('Both displayed on-duty status and clinician filtering must enforce facility-scoped shifts');
 }
+
+
+// Regression guard: telemedicine shift checks must join active membership at the patient's facility.
+const telemedicineFacilityShiftMigration = fs.readFileSync(
+  'supabase/migrations/20261010170000_scope_patient_telemedicine_availability_shifts.sql',
+  'utf8'
+);
+for (const needle of [
+  'CREATE OR REPLACE FUNCTION public.get_patient_telemedicine_clinicians(',
+  'JOIN public.facility_memberships shift_fm',
+  'shift_fm.facility_id = v_facility',
+  'shift_fm.is_active = true',
+  's.starts_at <= v_at',
+  's.ends_at > v_at',
+  'REVOKE ALL ON FUNCTION public.get_patient_telemedicine_clinicians(timestamptz) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.get_patient_telemedicine_clinicians(timestamptz) TO authenticated',
+]) {
+  if (!telemedicineFacilityShiftMigration.includes(needle)) {
+    throw new Error('Telemedicine availability must enforce patient-facility shift membership: ' + needle);
+  }
+}
+if ((telemedicineFacilityShiftMigration.match(/JOIN public\.facility_memberships shift_fm/g) || []).length !== 2) {
+  throw new Error('Both clinician duty status and clinician filtering must enforce facility-scoped shifts');
+}
