@@ -11,3 +11,18 @@ for (const [file, token] of checks) {
   if (!source.includes(token)) throw new Error(file + ' must use standard POST transport for its referral queue read');
 }
 console.log('Stable referral queue transport contract passed');
+
+
+const specialistQueue = fs.readFileSync('src/pages/SpecialistReferralQueue.tsx', 'utf8');
+for (const token of [
+  'function toLocalDateTimeInput(value: string | Date)',
+  'date.getFullYear()',
+  'date.getHours()',
+  "min={toLocalDateTimeInput(new Date())}",
+  "toLocalDateTimeInput(row.appointment_date??'')",
+]) {
+  if (!specialistQueue.includes(token)) throw new Error('Specialist appointment input must preserve local time and reject past dates: ' + token);
+}
+if (specialistQueue.includes('new Date(row.appointment_date).toISOString().slice(0,16)')) {
+  throw new Error('UTC conversion must not be used to populate a local datetime-local input');
+}
