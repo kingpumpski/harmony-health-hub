@@ -126,6 +126,29 @@ if (!patientTelemedicineRequest.includes('catch {')) {
   throw new Error('Patient telemedicine request must handle rejected network calls without leaving the form stuck');
 }
 
+
+const telemedicineRequestGuard = fs.readFileSync(
+  'supabase/migrations/20261010140000_enforce_patient_telemedicine_request_availability.sql',
+  'utf8'
+);
+for (const needle of [
+  'CREATE OR REPLACE FUNCTION public.request_patient_telemedicine_session',
+  "nullif(trim(_reason), '') IS NULL",
+  "_scheduled_at <= now()",
+  'public.has_role(v_uid, \'patient\')',
+  'public.facility_memberships',
+  'public.staff_shift_assignments',
+  's.starts_at <= _scheduled_at',
+  's.ends_at > _scheduled_at',
+  'REVOKE ALL ON FUNCTION public.request_patient_telemedicine_session(uuid,timestamptz,text) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.request_patient_telemedicine_session(uuid,timestamptz,text) TO authenticated',
+  "NOTIFY pgrst, 'reload schema'"
+]) {
+  if (!telemedicineRequestGuard.includes(needle)) {
+    throw new Error('Server-side telemedicine request validation missing: ' + needle);
+  }
+}
+
 console.log('Patient portal self-service contracts passed.');
 
 const appointmentRequestHandler = patientPortalSource.slice(
