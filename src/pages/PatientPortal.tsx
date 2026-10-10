@@ -1,5 +1,5 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toLocalDateTimeInputValue } from '@/lib/dateTimeLocal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,8 @@ import { playSuccessSound } from '@/lib/sounds';
 export default function PatientPortal() {
   const { user } = useAuth();
   const [patient, setPatient] = useState<any>(null);
+  // Prevent slower requests from a previous login/refresh from overwriting the current patient's portal.
+  const loadVersion = useRef(0);
   const [appts, setAppts] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -24,7 +26,9 @@ export default function PatientPortal() {
   const [appointmentReason, setAppointmentReason] = useState('');
 
   const loadReports = async () => {
+    const version = ++loadVersion.current;
     const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
+    if (version !== loadVersion.current) return null;
     const portalPatient = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !portalPatient) {
       // Clear previously loaded data on identity failure or account switching. Never
@@ -46,6 +50,7 @@ export default function PatientPortal() {
       supabase.rpc('get_ai_report_requests', { _patient_id: portalPatient.id, _limit: 25 }),
       supabase.rpc('get_patient_hub_clinical_snapshot', { _patient_id: portalPatient.id }),
     ]);
+    if (version !== loadVersion.current) return null;
     const [appointmentsResult, videoResult, invoicesResult, reportsResult, snapshotResult] = requests;
     const failedSections = requests.flatMap((result, index) => result.status === 'rejected' || result.value.error ? [index] : []);
     setPatient(portalPatient);
@@ -69,8 +74,20 @@ export default function PatientPortal() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    // Invalidate in-flight requests before switching identities or leaving the portal.
+    loadVersion.current += 1;
+    if (!user) {
+      setPatient(null);
+      setAppts([]);
+      setSessions([]);
+      setInvoices([]);
+      setReports([]);
+      setClinicalSnapshot(null);
+      setUnavailableSections([]);
+      return;
+    }
     void loadReports();
+    return () => { loadVersion.current += 1; };
   }, [user?.id]);
 
   const requestAppointment = async (event: React.FormEvent) => {
