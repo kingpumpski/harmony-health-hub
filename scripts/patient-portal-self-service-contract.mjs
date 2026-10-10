@@ -208,6 +208,6 @@ for (const needle of [
     throw new Error('Telemedicine availability must enforce patient-facility shift membership: ' + needle);
   }
 }
-if ((telemedicineFacilityShiftMigration.match(/JOIN public\\.facility_memberships shift_fm/g) || []).length !== 2) {
+if ((telemedicineFacilityShiftMigration.match(/JOIN public\.facility_memberships shift_fm/g) || []).length !== 2) {
   throw new Error('Both clinician duty status and clinician filtering must enforce facility-scoped shifts');
 }
