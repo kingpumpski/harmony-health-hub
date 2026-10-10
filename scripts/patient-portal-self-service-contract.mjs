@@ -105,6 +105,27 @@ if (!telemedicineOverloadMigration.includes("NOTIFY pgrst, 'reload schema'")) {
   throw new Error('Patient telemedicine RPC overload reconciliation must refresh the PostgREST schema cache');
 }
 
+const patientTelemedicineRequest = patientTelemedicine.slice(
+  patientTelemedicine.indexOf('const request = async'),
+  patientTelemedicine.indexOf('const now = Date.now()')
+);
+for (const needle of [
+  'if (submittingRequest) return;',
+  'setSubmittingRequest(true)',
+  'setSubmittingRequest(false)',
+  'scheduledTimestamp <= Date.now()',
+  'const cleanReason = reason.trim()',
+  'disabled={!clinicianId || loadingClinicians || submittingRequest}',
+  'Submitting request…',
+]) {
+  if (!patientTelemedicineRequest.includes(needle) && !patientTelemedicine.includes(needle)) {
+    throw new Error('Patient telemedicine request must prevent duplicate/invalid submissions and expose pending state: ' + needle);
+  }
+}
+if (!patientTelemedicineRequest.includes('catch {')) {
+  throw new Error('Patient telemedicine request must handle rejected network calls without leaving the form stuck');
+}
+
 console.log('Patient portal self-service contracts passed.');
 
 const appointmentRequestHandler = patientPortalSource.slice(
