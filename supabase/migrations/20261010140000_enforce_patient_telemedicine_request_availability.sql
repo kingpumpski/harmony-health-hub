@@ -81,6 +81,10 @@ BEGIN
   IF v_has_shift_data AND NOT EXISTS (
     SELECT 1
     FROM public.staff_shift_assignments s
+    JOIN public.facility_memberships fm
+      ON fm.user_id = s.user_id
+     AND fm.facility_id = v_facility
+     AND fm.is_active = true
     WHERE s.user_id = _clinician_id
       AND s.active = true
       AND s.starts_at <= _scheduled_at
