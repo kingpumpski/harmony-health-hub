@@ -87,7 +87,17 @@ export default function PatientPortal() {
       if (error) throw error;
       toast({ title: 'Appointment request submitted', description: 'The facility team can now review and assign the appropriate clinician.' });
       setAppointmentReason('');
-      await loadReports();
+      try {
+        await loadReports();
+      } catch (refreshError: any) {
+        // A successful RPC must not be reported as a failed submission just because
+        // refreshing the portal data failed after the request was already created.
+        toast({
+          title: 'Request submitted; portal refresh failed',
+          description: refreshError?.message ?? 'Your request was submitted. Refresh the portal to see the latest status.',
+          variant: 'destructive',
+        });
+      }
     } catch (e: any) {
       toast({ title: 'Unable to submit appointment request', description: e.message ?? 'Please try again.', variant: 'destructive' });
     } finally {

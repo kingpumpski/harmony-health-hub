@@ -106,3 +106,17 @@ if (!telemedicineOverloadMigration.includes("NOTIFY pgrst, 'reload schema'")) {
 }
 
 console.log('Patient portal self-service contracts passed.');
+
+const appointmentRequestHandler = patientPortalSource.slice(
+  patientPortalSource.indexOf('const requestAppointment = async'),
+  patientPortalSource.indexOf('const requestAIReport = async')
+);
+if (!appointmentRequestHandler.includes("toast({ title: 'Appointment request submitted'")) {
+  throw new Error('Patient appointment request must confirm successful creation');
+}
+if (!appointmentRequestHandler.includes("title: 'Request submitted; portal refresh failed'")) {
+  throw new Error('Patient appointment request must distinguish a successful submission from a later portal refresh failure');
+}
+if (!appointmentRequestHandler.includes('try {\n        await loadReports();\n      } catch (refreshError: any)')) {
+  throw new Error('Patient appointment portal refresh must be isolated from appointment submission error handling');
+}
