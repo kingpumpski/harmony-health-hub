@@ -164,3 +164,26 @@ if (!appointmentRequestHandler.includes("title: 'Request submitted; portal refre
 if (!appointmentRequestHandler.includes('try {\n        await loadReports();\n      } catch (refreshError: any)')) {
   throw new Error('Patient appointment portal refresh must be isolated from appointment submission error handling');
 }
+
+
+const telemedicineAvailabilityFacilityScope = fs.readFileSync(
+  'supabase/migrations/20261010160000_scope_telemedicine_availability_shifts_to_patient_facility.sql',
+  'utf8'
+);
+for (const needle of [
+  'CREATE FUNCTION public.get_patient_telemedicine_clinicians(',
+  'JOIN public.facility_memberships shift_fm',
+  'shift_fm.facility_id = v_facility',
+  'shift_fm.is_active = true',
+  's.starts_at <= v_at',
+  's.ends_at > v_at',
+  'REVOKE ALL ON FUNCTION public.get_patient_telemedicine_clinicians(timestamptz) FROM PUBLIC, anon',
+  'GRANT EXECUTE ON FUNCTION public.get_patient_telemedicine_clinicians(timestamptz) TO authenticated',
+]) {
+  if (!telemedicineAvailabilityFacilityScope.includes(needle)) {
+    throw new Error('Telemedicine availability must scope every shift to the patient facility: ' + needle);
+  }
+}
+if ((telemedicineAvailabilityFacilityScope.match(/JOIN public\.facility_memberships shift_fm/g) || []).length !== 2) {
+  throw new Error('Both displayed on-duty status and clinician filtering must enforce facility-scoped shifts');
+}
