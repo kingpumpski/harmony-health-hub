@@ -27,7 +27,7 @@ function StaffTelemedicine() {
 
   const loadAll = async () => {
     const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
-      searchPatientDirectory('', 200).then(({ data }) => ({ data, error: null })),
+      searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
       supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
     ]);
     if (patientError || sessionError) {
