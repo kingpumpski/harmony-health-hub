@@ -211,11 +211,15 @@ export default function Laboratory() {
     }
     const created = data as unknown as CreateLabOrderResponse | null;
     if (created?.lab_order_id && catalogueId) {
-      const { error: catalogueError } = await supabase.rpc('attach_lab_catalogue_to_order', {
-        _lab_order_id: created.lab_order_id,
-        _catalogue_id: catalogueId,
-      } as never);
-      if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
+      try {
+        const { error: catalogueError } = await supabase.rpc('attach_lab_catalogue_to_order', {
+          _lab_order_id: created.lab_order_id,
+          _catalogue_id: catalogueId,
+        } as never);
+        if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
+      } catch (catalogueRequestError) {
+        toast({ title: 'Order created with catalogue link warning', description: catalogueRequestError instanceof Error ? catalogueRequestError.message : 'The order was created, but its catalogue link could not be confirmed.' });
+      }
     }
     setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setCatalogueSearch(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
     playWorkflowSound('success');
