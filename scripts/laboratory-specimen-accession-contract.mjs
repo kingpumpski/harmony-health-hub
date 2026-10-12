@@ -34,4 +34,6 @@ assert.match(source, /Required rejection reason/, 'laboratory UI must explain th
 assert.match(packageJson.scripts.test, /test:laboratory-specimen-accession/, 'specimen contract must be part of the required test chain');
 assert.equal(packageJson.scripts['test:laboratory-specimen-accession'], 'node scripts/laboratory-specimen-accession-contract.mjs');
 
+assert.match(migration, /A laboratory result already exists; specimen rejection is no longer permitted/, 'specimen rejection must be blocked when any result row already exists');
+
 console.log('Laboratory specimen accession contract passed.');
