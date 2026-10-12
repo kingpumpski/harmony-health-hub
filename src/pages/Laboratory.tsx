@@ -17,7 +17,7 @@ interface Patient { id: string; first_name: string; last_name: string; patient_c
 interface LabCatalogueItem {
   id: string; test_code: string; test_name: string; category: string | null; specimen_type: string | null;
   unit: string | null; reference_low: number | null; reference_high: number | null; reference_text: string | null;
-  default_charge: number; active: boolean;
+  default_charge: number; active: boolean; parameters?: Array<{code:string;name?:string;label?:string;unit?:string;reference_low?:number|null;reference_high?:number|null;reference_text?:string|null;required?:boolean;type?:string}>;
 }
 interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }
 interface LabOrder {
@@ -55,6 +55,10 @@ export default function Laboratory() {
   const [resultFor, setResultFor] = useState<string | null>(null);
   const [resultText, setResultText] = useState('');
   const [numericValue, setNumericValue] = useState('');
+  const [parameterValues, setParameterValues] = useState<Record<string, string>>({});
+  const [savingResultFor, setSavingResultFor] = useState<string | null>(null);
+  const [orderAction, setOrderAction] = useState<string | null>(null);
+  const [creatingOrder, setCreatingOrder] = useState(false);
   const [interpretation, setInterpretation] = useState('');
   const [isAbnormal, setIsAbnormal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -94,6 +98,8 @@ export default function Laboratory() {
       const matchingResult = (workspace.results ?? []).find((result) => result.id === requestedResultId);
       if (matchingResult) setAttentionOrderId(matchingResult.lab_order_id);
     }
+    } catch (error) {
+      toast({ title: 'Laboratory workspace unavailable', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -178,15 +184,26 @@ export default function Laboratory() {
 
   const createOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creatingOrder) return;
     const numericAmount = Number(amount);
     if (!pid || !testName || !Number.isFinite(numericAmount) || numericAmount < 0) {
       toast({ title: 'Complete the order details', description: 'Patient, test and a valid amount are required.', variant: 'destructive' });
       return;
     }
-    const { data, error } = await supabase.rpc('create_lab_order_with_payment_gate', {
-      _patient_id: pid, _test_name: testName, _test_category: category || null,
-      _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
-    } as never);
+    setCreatingOrder(true);
+    let data: any = null;
+    let error: any = null;
+    try {
+      ({ data, error } = await supabase.rpc('create_lab_order_with_payment_gate', {
+        _patient_id: pid, _test_name: testName, _test_category: category || null,
+        _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
+      } as never));
+    } catch (requestError) {
+      toast({ title: 'Failed to create lab order', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
+      return;
+    } finally {
+      setCreatingOrder(false);
+    }
     if (error) {
       playWorkflowSound('error');
       toast({ title: 'Failed to create lab order', description: error.message, variant: 'destructive' });
@@ -207,7 +224,17 @@ export default function Laboratory() {
   };
 
   const collectSample = async (id: string) => {
-    const { error } = await supabase.rpc('collect_lab_sample', { _lab_order_id: id } as never);
+    if (orderAction) return;
+    setOrderAction(id);
+    let error: any = null;
+    try {
+      ({ error } = await supabase.rpc('collect_lab_sample', { _lab_order_id: id } as never));
+    } catch (requestError) {
+      toast({ title: 'Could not collect sample', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
+      return;
+    } finally {
+      setOrderAction(null);
+    }
     if (error) {
       const blocked = /payment|release|approval|released/i.test(error.message);
       playWorkflowSound('error');
@@ -220,24 +247,67 @@ export default function Laboratory() {
   };
 
   const submitResult = async (orderId: string) => {
+    if (savingResultFor) return;
     const parsedNumeric = numericValue.trim() === '' ? null : Number(numericValue);
     if (numericValue.trim() !== '' && !Number.isFinite(parsedNumeric)) return toast({ title: 'Invalid numeric result', description: 'Enter a valid number or leave the numeric field empty.', variant: 'destructive' });
-    const { error } = await supabase.rpc('enter_lab_result', {
-      _lab_order_id: orderId,
-      _result_text: resultText,
-      _numeric_value: parsedNumeric,
-      _interpretation: interpretation || null,
-      _is_abnormal: isAbnormal,
-    } as never);
+    setSavingResultFor(orderId);
+    const order = orders.find((entry) => entry.id === orderId);
+    const catalogueItem = catalogue.find((entry) => entry.id === order?.lab_test_catalogue_id);
+    const parameters = catalogueItem?.parameters ?? [];
+    const structuredResults = Object.fromEntries(parameters.filter((parameter) => parameter.code).map((parameter) => [parameter.code, parameterValues[parameter.code]?.trim() ?? '']));
+    const missingRequired = parameters.find((parameter) => parameter.required && !structuredResults[parameter.code]);
+    if (missingRequired) {
+      setSavingResultFor(null);
+      return toast({ title: 'Required result missing', description: `Enter ${missingRequired.label ?? missingRequired.name ?? missingRequired.code} before submitting.`, variant: 'destructive' });
+    }
+    let error: any = null;
+    try {
+      if (parameters.length > 0) {
+        if (!Object.values(structuredResults).some((value) => value.length > 0) && !resultText.trim()) {
+          setSavingResultFor(null);
+          return toast({ title: 'Result required', description: 'Enter at least one structured parameter or a narrative result.', variant: 'destructive' });
+        }
+        ({ error } = await supabase.rpc('enter_lab_result_structured', {
+          _lab_order_id: orderId,
+          _parameter_results: structuredResults,
+          _result_text: resultText.trim() || null,
+          _interpretation: interpretation.trim() || null,
+          _is_abnormal: isAbnormal,
+        } as never));
+      } else {
+        ({ error } = await supabase.rpc('enter_lab_result', {
+          _lab_order_id: orderId,
+          _result_text: resultText,
+          _numeric_value: parsedNumeric,
+          _interpretation: interpretation || null,
+          _is_abnormal: isAbnormal,
+        } as never));
+      }
+    } catch (requestError) {
+      toast({ title: 'Failed to save result', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
+      return;
+    } finally {
+      setSavingResultFor(null);
+    }
     if (error) return toast({ title: 'Failed to save result', description: error.message, variant: 'destructive' });
-    setResultFor(null); setResultText(''); setNumericValue(''); setInterpretation(''); setIsAbnormal(false);
+    setResultFor(null); setResultText(''); setNumericValue(''); setParameterValues({}); setInterpretation(''); setIsAbnormal(false);
     playWorkflowSound(isAbnormal ? 'critical' : 'success');
     toast({ title: 'Result submitted', description: isAbnormal ? 'Abnormal result flagged for clinical attention.' : 'The result is ready for clinical approval.' });
     void loadAll();
   };
 
   const approveResult = async (resultId: string, orderId: string, patientId: string) => {
-    const { error } = await supabase.rpc('approve_lab_result', { _lab_result_id: resultId } as never);
+    if (orderAction) return;
+    setOrderAction(orderId);
+    let error: any = null;
+    try {
+      ({ error } = await supabase.rpc('approve_lab_result', { _lab_result_id: resultId } as never));
+    } catch (requestError) {
+      toast({ title: 'Approval failed', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
+      return;
+    } finally {
+      setOrderAction(null);
+    }
     if (error) {
       playWorkflowSound('error');
       return toast({ title: 'Approval failed', description: error.message, variant: 'destructive' });
@@ -415,9 +485,9 @@ export default function Laboratory() {
                       <td>
                         <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
                           <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
-                          {o.status === 'ordered' && <ClinicalTableAction label="Collect sample" onClick={() => void collectSample(o.id)} />}
+                          {o.status === 'ordered' && <ClinicalTableAction label={orderAction === o.id ? 'Collecting…' : 'Collect sample'} onClick={() => void collectSample(o.id)} />}
                           {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); setResultFor(o.id); }} />}
-                          {o.status === 'completed' && result && <ClinicalTableAction label="Approve" icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
+                          {o.status === 'completed' && result && <ClinicalTableAction label={orderAction === o.id ? 'Approving…' : 'Approve'} icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
                         </div>
                       </td>
                     </tr>
@@ -446,14 +516,32 @@ export default function Laboratory() {
                               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workflow action</p>
                               {resultFor === o.id && o.status === 'sample_collected' ? (
                                 <div className="mt-3 space-y-2">
+                                  {item?.parameters && item.parameters.length > 0 && (
+                                    <fieldset className="rounded-lg border border-border p-3 space-y-3">
+                                      <legend className="px-1 text-xs font-semibold">Structured test parameters</legend>
+                                      {item.parameters.filter((parameter) => parameter.code).map((parameter) => (
+                                        <div key={parameter.code} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
+                                          <label htmlFor={`lab-param-${o.id}-${parameter.code}`} className="text-sm">
+                                            {parameter.label ?? parameter.name ?? parameter.code}{parameter.required ? ' *' : ''}
+                                            {(parameter.unit || parameter.reference_text || parameter.reference_low != null || parameter.reference_high != null) && (
+                                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                                {[parameter.unit, parameter.reference_text, parameter.reference_low != null || parameter.reference_high != null ? `Reference ${parameter.reference_low ?? '—'}–${parameter.reference_high ?? '—'}` : ''].filter(Boolean).join(' · ')}
+                                              </span>
+                                            )}
+                                          </label>
+                                          <input id={`lab-param-${o.id}-${parameter.code}`} value={parameterValues[parameter.code] ?? ''} onChange={(e) => setParameterValues((current) => ({ ...current, [parameter.code]: e.target.value }))} className="input-medical w-full" inputMode={parameter.type === 'numeric' || parameter.type === 'number' ? 'decimal' : 'text'} aria-required={Boolean(parameter.required)} placeholder={`Enter ${parameter.label ?? parameter.name ?? parameter.code}`} />
+                                        </div>
+                                      ))}
+                                    </fieldset>
+                                  )}
                                   <div className="grid gap-2 sm:grid-cols-2">
-                                    <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Numeric result (${item.unit})` : 'Numeric result'} aria-label="Numeric result" />
+                                    <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Single numeric result (${item.unit})` : 'Single numeric result (optional for structured tests)'} aria-label="Numeric result" />
                                     {item?.unit && <div className="input-medical bg-muted/30 text-sm flex items-center">Unit: {item.unit}</div>}
                                   </div>
                                   <textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" aria-label="Result values or narrative" />
                                   <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
                                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
-                                  <div className="flex gap-2"><button type="button" onClick={() => void submitResult(o.id)} className="btn-primary text-xs">Submit result</button><button type="button" onClick={() => setResultFor(null)} className="btn-ghost text-xs">Cancel</button></div>
+                                  <div className="flex gap-2"><button type="button" disabled={savingResultFor === o.id} onClick={() => void submitResult(o.id)} className="btn-primary text-xs disabled:opacity-60">{savingResultFor === o.id ? 'Saving…' : 'Submit result'}</button><button type="button" disabled={savingResultFor === o.id} onClick={() => { setResultFor(null); setParameterValues({}); }} className="btn-ghost text-xs disabled:opacity-60">Cancel</button></div>
                                 </div>
                               ) : (
                                 <div className="mt-3 flex flex-wrap gap-2">
