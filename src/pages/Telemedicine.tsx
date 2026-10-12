@@ -24,28 +24,44 @@ function StaffTelemedicine() {
   const [scheduledAt, setScheduledAt] = useState(toLocalDateTimeInputValue(new Date(Date.now() + 60 * 60 * 1000)));
   const [showScheduler, setShowScheduler] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState('');
 
   const loadAll = async () => {
-    const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
-      searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
-      supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
-    ]);
-    if (patientError || sessionError) {
-      toast({ title: 'Unable to load telemedicine workspace', description: patientError?.message ?? sessionError?.message, variant: 'destructive' });
-      return;
-    }
-    setPatients(pts ?? []);
-    const loaded = (ss ?? []) as Session[];
-    setSessions(loaded);
+    setWorkspaceError('');
+    try {
+      const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
+        searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
+        supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
+      ]);
+      if (patientError || sessionError) {
+        const message = patientError?.message ?? sessionError?.message ?? 'The telemedicine workspace could not be loaded.';
+        setWorkspaceError(message);
+        toast({ title: 'Unable to load telemedicine workspace', description: message, variant: 'destructive' });
+        return;
+      }
+      setPatients(pts ?? []);
+      const loaded = (ss ?? []) as Session[];
+      setSessions(loaded);
 
-    const orderIds = loaded.map((s) => s.service_order_id).filter((id): id is string => Boolean(id));
-    if (!orderIds.length) return setBilling({});
-    const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
-    if (orderError) {
-      toast({ title: 'Unable to load telemedicine billing status', description: orderError.message, variant: 'destructive' });
-      return;
+      const orderIds = loaded.map((s) => s.service_order_id).filter((id): id is string => Boolean(id));
+      if (!orderIds.length) {
+        setBilling({});
+        return;
+      }
+      const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
+      if (orderError) {
+        const message = orderError.message ?? 'Telemedicine billing status is unavailable.';
+        setWorkspaceError(message);
+        toast({ title: 'Unable to load telemedicine billing status', description: message, variant: 'destructive' });
+        return;
+      }
+      setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'A network error prevented telemedicine from loading.';
+      setWorkspaceError(message);
+      toast({ title: 'Unable to load telemedicine workspace', description: message, variant: 'destructive' });
     }
-    setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
   };
   useEffect(() => {
     void loadAll();
@@ -56,16 +72,23 @@ function StaffTelemedicine() {
   const createSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pid) return toast({ title: 'Select a patient', variant: 'destructive' });
-    const { error } = await (supabase as any).rpc('schedule_video_session', {
-      _patient_id: pid,
-      _scheduled_at: new Date(scheduledAt).toISOString(),
-      _provider: 'jitsi',
-    });
-    if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
-    toast({ title: 'Video session scheduled', description: 'Accounts must release the telemedicine service order in Billing before the consultation can start.' });
-    setPid('');
-    setShowScheduler(false);
-    void loadAll();
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any).rpc('schedule_video_session', {
+        _patient_id: pid,
+        _scheduled_at: new Date(scheduledAt).toISOString(),
+        _provider: 'jitsi',
+      });
+      if (error) return toast({ title: 'Failed to schedule session', description: error.message, variant: 'destructive' });
+      toast({ title: 'Video session scheduled', description: 'Accounts must release the telemedicine service order in Billing before the consultation can start.' });
+      setPid('');
+      setShowScheduler(false);
+      void loadAll();
+    } catch (error) {
+      toast({ title: 'Failed to schedule session', description: error instanceof Error ? error.message : 'A network error prevented scheduling.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startSession = async (s: Session) => {
@@ -80,18 +103,26 @@ function StaffTelemedicine() {
     if (!['scheduled', 'ready'].includes(s.status) || !paymentSatisfied) {
       return toast({ title: 'Session not ready', description: 'The session must be assigned, within its start lifecycle, and released by Billing before joining.', variant: 'destructive' });
     }
-    const { data, error } = await (supabase as any).rpc('start_video_session', { _session_id: s.id });
-    if (error) return toast({ title: 'Unable to start session', description: error.message, variant: 'destructive' });
-    const started = Array.isArray(data) ? data[0] : data;
-    if (!started?.room_name) return toast({ title: 'Session room unavailable', variant: 'destructive' });
-    window.open(`https://meet.jit.si/${started.room_name}`, '_blank', 'noopener,noreferrer');
-    void loadAll();
+    try {
+      const { data, error } = await (supabase as any).rpc('start_video_session', { _session_id: s.id });
+      if (error) return toast({ title: 'Unable to start session', description: error.message, variant: 'destructive' });
+      const started = Array.isArray(data) ? data[0] : data;
+      if (!started?.room_name) return toast({ title: 'Session room unavailable', variant: 'destructive' });
+      window.open(`https://meet.jit.si/${started.room_name}`, '_blank', 'noopener,noreferrer');
+      void loadAll();
+    } catch (error) {
+      toast({ title: 'Unable to start session', description: error instanceof Error ? error.message : 'A network error prevented the session from starting.', variant: 'destructive' });
+    }
   };
 
   const endSession = async (id: string) => {
-    const { error } = await (supabase as any).rpc('end_video_session', { _session_id: id });
-    if (error) return toast({ title: 'Unable to end session', description: error.message, variant: 'destructive' });
-    void loadAll();
+    try {
+      const { error } = await (supabase as any).rpc('end_video_session', { _session_id: id });
+      if (error) return toast({ title: 'Unable to end session', description: error.message, variant: 'destructive' });
+      void loadAll();
+    } catch (error) {
+      toast({ title: 'Unable to end session', description: error instanceof Error ? error.message : 'A network error prevented the session from ending.', variant: 'destructive' });
+    }
   };
 
   return (
@@ -106,6 +137,8 @@ function StaffTelemedicine() {
         refreshing={refreshing}
       />
 
+      {workspaceError && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4"><p className="font-medium">Telemedicine workspace could not be refreshed.</p><p className="mt-1 text-sm text-muted-foreground">{workspaceError}</p><button type="button" onClick={() => { setRefreshing(true); void loadAll().finally(() => setRefreshing(false)); }} className="btn-secondary mt-3">Retry loading</button></div>}
+
       <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm flex items-start gap-2">
         <AlertCircle className="w-4 h-4 text-info mt-0.5 shrink-0" />
         <div><strong>Clinical safety:</strong> every scheduled consultation creates a billable TELEMEDICINE service order. Accounts releases it through Billing after payment or an authorized override; the practitioner cannot start the session before release. The current browser provider is Jitsi; replace it with an approved managed provider before regulated production telehealth traffic if your facility requires managed recording, identity assurance, or contractual controls.</div>
@@ -117,7 +150,7 @@ function StaffTelemedicine() {
             <div className="flex items-start justify-between gap-4"><div><h2 id="schedule-session-heading" className="font-semibold">Schedule Session</h2><p className="mt-1 text-sm text-muted-foreground">Create a billable telemedicine consultation.</p></div><button type="button" className="btn-ghost" aria-label="Close schedule session" onClick={() => setShowScheduler(false)}><X className="h-4 w-4" /></button></div>
             <select required value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical w-full"><option value="">Select patient…</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select>
             <input required type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="input-medical w-full" />
-            <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setShowScheduler(false)}>Cancel</button><button className="btn-primary">Schedule</button></div>
+            <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setShowScheduler(false)}>Cancel</button><button disabled={submitting} className="btn-primary disabled:opacity-50">{submitting ? 'Scheduling…' : 'Schedule'}</button></div>
           </form>
         </div>}
 
