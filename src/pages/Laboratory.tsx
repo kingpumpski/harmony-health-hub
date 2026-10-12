@@ -404,7 +404,7 @@ export default function Laboratory() {
               </div>
               <div className="lg:col-span-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground flex items-start gap-2"><LockKeyhole className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" /> Chargeable tests remain blocked until Accounts releases them.</p>
-                <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Order test</button>
+                <button type="submit" disabled={creatingOrder} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-60"><Plus className="w-4 h-4" aria-hidden="true" /> Order test</button>
               </div>
             </form>
           </section>
