@@ -112,13 +112,24 @@ function BMIContextCard({ patientId }: { patientId: string }) {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
-      if (!active) return;
-      if (error) {
-        toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
-        return;
+      setBmi(null);
+      try {
+        const { data, error } = await db.rpc("get_patient_bmi_context", { _patient_id: patientId });
+        if (!active) return;
+        if (error) {
+          toast({ title: "BMI context unavailable", description: error.message, variant: "destructive" });
+          return;
+        }
+        setBmi((data?.[0] ?? null) as BMIContext | null);
+      } catch (loadError) {
+        if (!active) return;
+        setBmi(null);
+        toast({
+          title: "BMI context unavailable",
+          description: loadError instanceof Error ? loadError.message : "Unable to load BMI context right now.",
+          variant: "destructive",
+        });
       }
-      setBmi((data?.[0] ?? null) as BMIContext | null);
     };
     void load();
     return () => {
@@ -154,11 +165,27 @@ function ClinicalSafetyContext({ patientId, encounterId }: { patientId: string; 
     let active = true;
     const load = async () => {
       setLoading(true);
-      const { data, error } = await db.rpc("get_encounter_clinical_context", { _patient_id: patientId, _encounter_id: encounterId ?? null });
-      if (!active) return;
-      if (error) toast({ title: "Clinical history unavailable", description: error.message, variant: "destructive" });
-      setContext((data ?? null) as ClinicalContext | null);
-      setLoading(false);
+      setContext(null);
+      try {
+        const { data, error } = await db.rpc("get_encounter_clinical_context", { _patient_id: patientId, _encounter_id: encounterId ?? null });
+        if (!active) return;
+        if (error) {
+          setContext(null);
+          toast({ title: "Clinical history unavailable", description: error.message, variant: "destructive" });
+          return;
+        }
+        setContext((data ?? null) as ClinicalContext | null);
+      } catch (loadError) {
+        if (!active) return;
+        setContext(null);
+        toast({
+          title: "Clinical history unavailable",
+          description: loadError instanceof Error ? loadError.message : "Unable to load patient safety context right now.",
+          variant: "destructive",
+        });
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     void load();
     return () => {
@@ -346,20 +373,28 @@ export default function Encounters() {
       ]);
       if (patientDirectory.error) {
         toast({ title: "Patient directory unavailable", description: patientDirectory.error.message, variant: "destructive" });
+      } else {
+        const directoryPatients = (patientDirectory.data ?? []) as StaffPatient[];
+        setPatients(directoryPatients.map((p) => ({
+          id: p.id,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          patient_code: p.patient_code,
+        })));
       }
       if (encounterError) {
         toast({ title: "Encounter list unavailable", description: encounterError.message, variant: "destructive" });
+      } else {
+        setEncounters((encs ?? []) as Encounter[]);
+        setLastUpdated(new Date());
       }
-      const directoryPatients = (patientDirectory.data ?? []) as StaffPatient[];
-      setPatients(directoryPatients.map((p) => ({
-        id: p.id,
-        first_name: p.first_name,
-        last_name: p.last_name,
-        patient_code: p.patient_code,
-      })));
       setClinicians((staff ?? []) as Clinician[]);
-      setEncounters((encs ?? []) as Encounter[]);
-      setLastUpdated(new Date());
+    } catch (loadError) {
+      toast({
+        title: "Encounter workspace unavailable",
+        description: loadError instanceof Error ? loadError.message : "Unable to load encounters right now. Existing results have been retained.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
