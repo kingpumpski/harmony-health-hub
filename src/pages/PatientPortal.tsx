@@ -153,19 +153,33 @@ export default function PatientPortal() {
 
       playSuccessSound();
       toast({ title: 'Report ready', description: 'Your AI medical report is available below.' });
-      await loadReports();
+      try {
+        await loadReports();
+      } catch (refreshError: any) {
+        // Generation already succeeded; a later refresh failure must not mark the report failed.
+        toast({ title: 'Report ready; portal refresh failed', description: refreshError?.message ?? 'Refresh the portal to see the latest report status.', variant: 'destructive' });
+      }
     } catch (e: any) {
       const message = e?.message ?? 'The report could not be generated. Please try again.';
       // Keep the report lifecycle truthful: don't leave a failed request appearing indefinitely pending.
       if (requestId) {
-        const { error: failureError } = await supabase.rpc('fail_ai_report_request', {
-          _request_id: requestId,
-          _error: message,
-        });
-        if (failureError) {
-          console.error('Unable to mark AI report request as failed', failureError.message);
+        try {
+          const { error: failureError } = await supabase.rpc('fail_ai_report_request', {
+            _request_id: requestId,
+            _error: message,
+          });
+          if (failureError) {
+            console.error('Unable to mark AI report request as failed', failureError.message);
+          }
+        } catch (failureUpdateError: any) {
+          // A failed transport must not suppress the original report error notification.
+          console.error('Unable to mark AI report request as failed', failureUpdateError?.message ?? failureUpdateError);
         }
-        await loadReports();
+        try {
+          await loadReports();
+        } catch (refreshError: any) {
+          console.error('Unable to refresh report status after failure', refreshError?.message ?? refreshError);
+        }
       }
       toast({ title: 'Report failed', description: message, variant: 'destructive' });
     } finally {
