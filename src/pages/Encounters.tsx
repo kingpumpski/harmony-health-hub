@@ -1,5 +1,5 @@
 import RefreshButton from '@/components/ui/RefreshButton';
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -320,6 +320,11 @@ export default function Encounters() {
   const [draftTreatmentPlan, setDraftTreatmentPlan] = useState("");
   const [latestVitals, setLatestVitals] = useState<ClinicalContext["recent_vitals"]>([]);
   const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSaveState, setDraftSaveState] = useState<"saved" | "pending" | "saving" | "error">("saved");
+  const hydratedEncounterRef = useRef<string | null>(null);
+  const persistedDraftRef = useRef<string | null>(null);
+  const attemptedDraftRef = useRef<string | null>(null);
+  const savingDraftRef = useRef(false);
   const [newDx, setNewDx] = useState("");
   const [med, setMed] = useState("");
   const [dose, setDose] = useState("");
@@ -437,10 +442,27 @@ export default function Encounters() {
     }
   }, [searchParams, encounters]);
   useEffect(() => {
-    if (!selected) return;
-    setDraftSymptoms(selected.symptoms ?? "");
-    setDraftClerking(selected.clerking_notes ?? "");
-    setDraftTreatmentPlan(selected.treatment_plan ?? "");
+    if (!selected) {
+      hydratedEncounterRef.current = null;
+      persistedDraftRef.current = null;
+      attemptedDraftRef.current = null;
+      setDraftSaveState("saved");
+      return;
+    }
+    if (hydratedEncounterRef.current !== selected.id) {
+      const initialDraft = JSON.stringify([
+        selected.symptoms ?? "",
+        selected.clerking_notes ?? "",
+        selected.treatment_plan ?? "",
+      ]);
+      hydratedEncounterRef.current = selected.id;
+      persistedDraftRef.current = initialDraft;
+      attemptedDraftRef.current = null;
+      setDraftSymptoms(selected.symptoms ?? "");
+      setDraftClerking(selected.clerking_notes ?? "");
+      setDraftTreatmentPlan(selected.treatment_plan ?? "");
+      setDraftSaveState("saved");
+    }
     void loadDetails(selected.id);
     void db.rpc("get_encounter_clinical_context", { _patient_id: selected.patient_id, _encounter_id: selected.id }).then(({ data, error }: any) => {
       if (error) return;
@@ -514,25 +536,84 @@ export default function Encounters() {
     void loadAll();
   };
 
-  const saveDraft = async () => {
-    if (!selected || selected.status === "completed" || draftSaving) return;
+  const saveDraft = useCallback(async (notify = false) => {
+    if (!selected || selected.status === "completed" || savingDraftRef.current) return false;
+    const encounterId = selected.id;
+    const draftValues = [draftSymptoms, draftClerking, draftTreatmentPlan];
+    const draftKey = JSON.stringify(draftValues);
+    if (!notify && draftKey === persistedDraftRef.current) {
+      setDraftSaveState("saved");
+      return true;
+    }
+    if (!notify && draftKey === attemptedDraftRef.current) return false;
+    savingDraftRef.current = true;
     setDraftSaving(true);
-    const { data, error } = await db.rpc("update_encounter_draft_workflow", {
-      _encounter_id: selected.id,
-      _symptoms: draftSymptoms || null,
-      _clerking_notes: draftClerking || null,
-      _treatment_plan: draftTreatmentPlan || null,
-    });
-    setDraftSaving(false);
-    if (error) {
-      toast({ title: "Draft save failed", description: error.message, variant: "destructive" });
+    setDraftSaveState("saving");
+    try {
+      const { data, error } = await db.rpc("update_encounter_draft_workflow", {
+        _encounter_id: selected.id,
+        _symptoms: draftSymptoms || null,
+        _clerking_notes: draftClerking || null,
+        _treatment_plan: draftTreatmentPlan || null,
+      });
+      if (error) {
+        if (hydratedEncounterRef.current === encounterId) {
+          attemptedDraftRef.current = draftKey;
+          setDraftSaveState("error");
+        }
+        toast({ title: "Encounter autosave failed", description: error.message, variant: "destructive" });
+        return false;
+      }
+      const updated = data as Encounter;
+      setEncounters((current) => current.map((item) => item.id === updated.id ? updated : item));
+      if (hydratedEncounterRef.current === encounterId) {
+        persistedDraftRef.current = draftKey;
+        attemptedDraftRef.current = null;
+        setSelected(updated);
+        setDraftSaveState("saved");
+      }
+      if (notify) toast({ title: "Encounter draft saved", description: "The clerking and treatment-plan changes are now persisted to this encounter." });
+      return true;
+    } catch (error) {
+      if (hydratedEncounterRef.current === encounterId) {
+        attemptedDraftRef.current = draftKey;
+        setDraftSaveState("error");
+      }
+      toast({
+        title: "Encounter autosave failed",
+        description: error instanceof Error ? error.message : "The server could not confirm that your changes were saved.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      savingDraftRef.current = false;
+      setDraftSaving(false);
+    }
+  }, [selected, draftSymptoms, draftClerking, draftTreatmentPlan]);
+
+  useEffect(() => {
+    if (!selected || selected.status === "completed" || hydratedEncounterRef.current !== selected.id) return;
+    const draftKey = JSON.stringify([draftSymptoms, draftClerking, draftTreatmentPlan]);
+    if (draftKey === persistedDraftRef.current) {
+      setDraftSaveState("saved");
       return;
     }
-    const updated = data as Encounter;
-    setSelected(updated);
-    setEncounters((current) => current.map((item) => item.id === updated.id ? updated : item));
-    toast({ title: "Encounter draft saved", description: "The clerking and treatment-plan changes are now persisted to this encounter." });
-  };
+    if (draftSaving || draftKey === attemptedDraftRef.current) return;
+    setDraftSaveState("pending");
+    const timer = window.setTimeout(() => {
+      void saveDraft();
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [selected, draftSymptoms, draftClerking, draftTreatmentPlan, draftSaving, saveDraft]);
+
+  useEffect(() => {
+    const saveWhenHidden = () => {
+      if (document.visibilityState !== "hidden") return;
+      void saveDraft();
+    };
+    document.addEventListener("visibilitychange", saveWhenHidden);
+    return () => document.removeEventListener("visibilitychange", saveWhenHidden);
+  }, [saveDraft]);
 
   const addDiagnosis = async () => {
     if (!selected || !newDx.trim()) return toast({ title: "Enter a diagnosis", description: "Document a provisional diagnosis before adding it.", variant: "destructive" });
@@ -890,7 +971,12 @@ export default function Encounters() {
                           <div><label className="mb-1 block text-xs font-semibold" htmlFor="draft-clerking">Clerking / history</label><textarea id="draft-clerking" value={draftClerking} onChange={(e) => setDraftClerking(e.target.value)} className="input-medical w-full" rows={5} placeholder="Record relevant history, examination and clinical findings" /></div>
                           <div className="md:col-span-2"><label className="mb-1 block text-xs font-semibold" htmlFor="draft-treatment-plan">Assessment / treatment plan</label><textarea id="draft-treatment-plan" value={draftTreatmentPlan} onChange={(e) => setDraftTreatmentPlan(e.target.value)} className="input-medical w-full" rows={4} placeholder="Document assessment, treatment plan and follow-up" /></div>
                         </div>
-                        <div className="flex justify-end"><button type="button" onClick={() => void saveDraft()} disabled={draftSaving} className="btn-secondary inline-flex items-center gap-2"><Save className="h-4 w-4" />{draftSaving ? "Saving draft…" : "Save clerking draft"}</button></div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p aria-live="polite" className={`text-xs ${draftSaveState === "error" ? "text-critical" : "text-muted-foreground"}`}>
+                            {draftSaveState === "saving" ? "Saving changes…" : draftSaveState === "pending" ? "Changes will save automatically…" : draftSaveState === "error" ? "Autosave failed. Retry or keep this encounter open." : "All changes saved"}
+                          </p>
+                          <button type="button" onClick={() => void saveDraft(true)} disabled={draftSaving} className="btn-secondary inline-flex items-center gap-2"><Save className="h-4 w-4" />{draftSaving ? "Saving draft…" : "Save now"}</button>
+                        </div>
                       </div>
                     ) : (
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
