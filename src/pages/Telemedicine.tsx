@@ -26,14 +26,17 @@ function StaffTelemedicine() {
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
+  const loadGeneration = useRef(0);
 
   const loadAll = async () => {
+    const request = ++loadGeneration.current;
     setWorkspaceError('');
     try {
       const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
         searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
         supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
       ]);
+      if (request !== loadGeneration.current) return;
       if (patientError || sessionError) {
         const message = patientError?.message ?? sessionError?.message ?? 'The telemedicine workspace could not be loaded.';
         setWorkspaceError(message);
@@ -50,6 +53,7 @@ function StaffTelemedicine() {
         return;
       }
       const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
+      if (request !== loadGeneration.current) return;
       if (orderError) {
         const message = orderError.message ?? 'Telemedicine billing status is unavailable.';
         setWorkspaceError(message);
@@ -58,6 +62,7 @@ function StaffTelemedicine() {
       }
       setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
     } catch (error) {
+      if (request !== loadGeneration.current) return;
       const message = error instanceof Error ? error.message : 'A network error prevented telemedicine from loading.';
       setWorkspaceError(message);
       toast({ title: 'Unable to load telemedicine workspace', description: message, variant: 'destructive' });
@@ -66,7 +71,7 @@ function StaffTelemedicine() {
   useEffect(() => {
     void loadAll();
     const channel = supabase.channel('telemedicine-workspace').on('postgres_changes', { event: '*', schema: 'public', table: 'video_sessions' }, () => { void loadAll(); }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { loadGeneration.current += 1; void supabase.removeChannel(channel); };
   }, []);
 
   const createSession = async (e: React.FormEvent) => {
