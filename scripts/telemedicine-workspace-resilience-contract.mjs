@@ -8,4 +8,8 @@ assert.ok(source.includes('Telemedicine workspace could not be refreshed.'), 'Wo
 assert.ok(source.includes('Retry loading'), 'Workspace error must offer a retry action');
 assert.ok(source.includes('setWorkspaceError(message)'), 'Returned RPC and query errors must be visible');
 assert.ok(source.includes('void loadAll().finally(() => setRefreshing(false))'), 'Manual refresh must reset its busy indicator on failure');
+assert.ok(source.includes('A network error prevented scheduling.'), 'Scheduling must catch thrown requests');
+assert.ok(source.includes('A network error prevented the session from starting.'), 'Starting a session must catch thrown requests');
+assert.ok(source.includes('A network error prevented the session from ending.'), 'Ending a session must catch thrown requests');
+assert.ok(source.includes('setSubmitting(false)'), 'Scheduling must always clear its submission state');
 console.log('Telemedicine workspace resilience contract passed');
