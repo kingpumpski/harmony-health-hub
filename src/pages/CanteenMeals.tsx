@@ -1,6 +1,7 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, CheckCircle2, Clock3, Plus, ShieldAlert, Utensils } from 'lucide-react';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
