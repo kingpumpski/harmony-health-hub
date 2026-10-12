@@ -24,6 +24,8 @@ assert.match(source, /_catalogue_id: catalogueId \|\| null/, 'selected catalogue
 assert.doesNotMatch(source, /attach_lab_catalogue_to_order/, 'catalogue attachment must not be a separate post-creation request');
 assert.match(atomicCatalogueOrderMigration, /public\.create_lab_order_with_payment_gate\(/, 'atomic wrapper must reuse the canonical payment-gated order workflow');
 assert.match(atomicCatalogueOrderMigration, /Selected laboratory catalogue item is missing or inactive/, 'atomic wrapper must reject stale or inactive catalogue entries');
+assert.match(atomicCatalogueOrderMigration, /Laboratory test name must match the selected catalogue item/, 'catalogue-linked orders must not drift from the selected test identity');
+assert.match(atomicCatalogueOrderMigration, /Laboratory test category must match the selected catalogue item/, 'catalogue-linked orders must preserve catalogue category identity');
 assert.match(atomicCatalogueOrderMigration, /Could not attach the selected catalogue item/, 'atomic wrapper must roll back when catalogue linkage fails');
 assert.match(atomicCatalogueOrderMigration, /REVOKE ALL ON FUNCTION public\.create_lab_order_with_catalogue_atomic/, 'atomic order RPC must not be executable by public or anonymous callers');
 assert.match(facilityScopeMigration, /AND facility_id = v_facility/, 'patient reads must be constrained to the active facility');
