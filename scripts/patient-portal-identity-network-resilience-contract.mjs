@@ -11,3 +11,8 @@ const failureBranch = source.slice(source.indexOf('if (identityError || !portalP
 for (const clear of ['setPatient(null)', 'setAppts([])', 'setSessions([])', 'setInvoices([])', 'setReports([])', 'setClinicalSnapshot(null)']) assert.ok(failureBranch.includes(clear), 'identity failure must clear stale portal data: '+clear);
 assert.match(failureBranch, /identityError\?\.message/, 'identity failure should expose a useful error message');
 console.log('Patient portal identity network resilience contract passed.');
+
+const reportHandler = source.slice(source.indexOf('const requestAIReport = async'), source.indexOf('const speakReport ='));
+assert.match(reportHandler, /Report ready; portal refresh failed/, 'a successful report must remain successful if refreshing the portal fails');
+assert.match(reportHandler, /catch \(failureUpdateError: any\)/, 'a rejected failure-status RPC must not suppress the original report error notification');
+assert.match(reportHandler, /catch \(refreshError: any\)/, 'report status refresh rejection must be handled');
