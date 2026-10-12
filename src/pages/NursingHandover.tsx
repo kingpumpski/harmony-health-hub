@@ -3,17 +3,17 @@ import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useState } from 'react';
-import { ClipboardCheck} from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import { toast } from '@/hooks/use-toast';
 
 type Patient={id:string;patient_code:string;first_name:string;last_name:string};
 type Handover={id:string;patient_id:string;shift_label:string;clinical_summary:string;pending_tasks:string|null;safety_concerns:string|null;escalation_required:boolean;acknowledged_at:string|null;created_at:string};
-export default function NursingHandover(){const{user}=useAuth();const[patients,setPatients]=useState<Patient[]>([]);const[rows,setRows]=useState<Handover[]>([]);const[patientId,setPatientId]=useState('');const[form,setForm]=useState({shift_label:'Morning',clinical_summary:'',pending_tasks:'',safety_concerns:'',escalation_required:false});
-const load=async()=>{const[p,h]=await Promise.all([searchPatientDirectory('', 300),(async()=>{const{data,error}=await getOperationalWorkspace('handover', 50);return{data:(data as any)?.handovers??[],error}})()]);if(p.error||h.error)toast({title:'Unable to load handovers',description:(p.error||h.error)?.message,variant:'destructive'});setPatients((p.data??[])as Patient[]);setRows((h.data??[])as Handover[])};useEffect(()=>{void load()},[]);
-const save=async()=>{if(!patientId||!form.clinical_summary.trim()){toast({title:'Complete the handover summary',variant:'destructive'});return}const{error}=await supabase.rpc('create_nursing_shift_handover',{_patient_id:patientId,_shift_label:form.shift_label,_clinical_summary:form.clinical_summary,_pending_tasks:form.pending_tasks||null,_safety_concerns:form.safety_concerns||null,_escalation_required:form.escalation_required}as never);if(error)toast({title:'Handover failed',description:error.message,variant:'destructive'});else{toast({title:'Handover recorded'});setPatientId('');setForm({shift_label:'Morning',clinical_summary:'',pending_tasks:'',safety_concerns:'',escalation_required:false});void load()}};
-const ack=async(id:string)=>{const{error}=await supabase.rpc('acknowledge_nursing_handover',{_handover_id:id}as never);if(error)toast({title:'Acknowledgement failed',description:error.message,variant:'destructive'});else{toast({title:'Handover acknowledged'});void load()}};const name=(id:string)=>{const p=patients.find(x=>x.id===id);return p?`${p.patient_code} — ${p.first_name} ${p.last_name}`:'Patient'};
+export default function NursingHandover(){const[patients,setPatients]=useState<Patient[]>([]);const[rows,setRows]=useState<Handover[]>([]);const[patientId,setPatientId]=useState('');const[loading,setLoading]=useState(false);const[saving,setSaving]=useState(false);const[acknowledgingId,setAcknowledgingId]=useState('');const[form,setForm]=useState({shift_label:'Morning',clinical_summary:'',pending_tasks:'',safety_concerns:'',escalation_required:false});
+const load=async()=>{setLoading(true);try{const[p,h]=await Promise.all([searchPatientDirectory('', 300),(async()=>{const{data,error}=await getOperationalWorkspace('handover', 50);return{data:(data as any)?.handovers??[],error}})()]);if(p.error||h.error){toast({title:'Unable to load handovers',description:(p.error||h.error)?.message,variant:'destructive'});return}setPatients((p.data??[])as Patient[]);setRows((h.data??[])as Handover[])}catch(error){toast({title:'Unable to load handovers',description:error instanceof Error?error.message:'A network error prevented handovers from loading.',variant:'destructive'})}finally{setLoading(false)}};useEffect(()=>{void load()},[]);
+const save=async()=>{if(!patientId||!form.clinical_summary.trim()){toast({title:'Complete the handover summary',variant:'destructive'});return}if(saving)return;setSaving(true);try{const{error}=await supabase.rpc('create_nursing_shift_handover',{_patient_id:patientId,_shift_label:form.shift_label,_clinical_summary:form.clinical_summary,_pending_tasks:form.pending_tasks||null,_safety_concerns:form.safety_concerns||null,_escalation_required:form.escalation_required}as never);if(error){toast({title:'Handover failed',description:error.message,variant:'destructive'});return}toast({title:'Handover recorded'});setPatientId('');setForm({shift_label:'Morning',clinical_summary:'',pending_tasks:'',safety_concerns:'',escalation_required:false});void load()}catch(error){toast({title:'Handover failed',description:error instanceof Error?error.message:'A network error prevented the handover from being saved.',variant:'destructive'})}finally{setSaving(false)}};
+const ack=async(id:string)=>{if(acknowledgingId)return;setAcknowledgingId(id);try{const{error}=await supabase.rpc('acknowledge_nursing_handover',{_handover_id:id}as never);if(error){toast({title:'Acknowledgement failed',description:error.message,variant:'destructive'});return}toast({title:'Handover acknowledged'});void load()}catch(error){toast({title:'Acknowledgement failed',description:error instanceof Error?error.message:'A network error prevented acknowledgement.',variant:'destructive'})}finally{setAcknowledgingId('')}};const name=(id:string)=>{const p=patients.find(x=>x.id===id);return p?p.patient_code+' — '+p.first_name+' '+p.last_name:'Patient'};
 return (
   <OperationalWorklistShell
     icon={ClipboardCheck}
@@ -40,7 +40,7 @@ return (
           <label className="space-y-1.5 text-sm"><span className="font-medium">Pending tasks</span><textarea aria-label="Pending tasks" placeholder="Pending tasks" value={form.pending_tasks} onChange={e=>setForm({...form,pending_tasks:e.target.value})} className="input-medical min-h-28 w-full"/></label>
           <label className="space-y-1.5 text-sm"><span className="font-medium">Safety concerns</span><textarea aria-label="Safety concerns" placeholder="Safety concerns" value={form.safety_concerns} onChange={e=>setForm({...form,safety_concerns:e.target.value})} className="input-medical min-h-28 w-full"/></label>
         </div>
-        <button type="button" onClick={()=>void save()} className="btn-primary inline-flex items-center gap-2"><ClipboardCheck className="h-4 w-4"/>Record handover</button>
+        <button type="button" onClick={()=>void save()} disabled={saving} className="btn-primary inline-flex items-center gap-2"><ClipboardCheck className="h-4 w-4"/>{saving ? "Recording…" : "Record handover"}</button>
       </section>
     }
     listTitle="Handover worklist"
@@ -62,7 +62,7 @@ return (
           {r.pending_tasks&&<p className="mt-3 text-xs"><span className="font-medium">Tasks:</span> {r.pending_tasks}</p>}
           {r.safety_concerns&&<p className="mt-1 text-xs"><span className="font-medium">Safety:</span> {r.safety_concerns}</p>}
         </div>
-        {!r.acknowledged_at && <button type="button" onClick={()=>void ack(r.id)} className="btn-secondary text-sm">Acknowledge</button>}
+        {!r.acknowledged_at && <button type="button" onClick={()=>void ack(r.id)} disabled={acknowledgingId === r.id} className="btn-secondary text-sm">{acknowledgingId === r.id ? "Acknowledging…" : "Acknowledge"}</button>}
       </div>
     </article>)}
   </OperationalWorklistShell>
