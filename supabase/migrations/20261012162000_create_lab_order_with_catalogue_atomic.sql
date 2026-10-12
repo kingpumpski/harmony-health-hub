@@ -39,6 +39,12 @@ BEGIN
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Selected laboratory catalogue item is missing or inactive';
     END IF;
+    IF pg_catalog.lower(pg_catalog.btrim(coalesce(_test_name,''))) IS DISTINCT FROM pg_catalog.lower(v_catalogue.test_name) THEN
+      RAISE EXCEPTION 'Laboratory test name must match the selected catalogue item';
+    END IF;
+    IF pg_catalog.lower(pg_catalog.btrim(coalesce(_test_category,''))) IS DISTINCT FROM pg_catalog.lower(coalesce(v_catalogue.category,'')) THEN
+      RAISE EXCEPTION 'Laboratory test category must match the selected catalogue item';
+    END IF;
   END IF;
 
   -- The existing RPC remains the single authority for clinical role,
