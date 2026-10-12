@@ -69,32 +69,37 @@ export default function InpatientManagement() {
     setLoading(true);
     setLoadError('');
 
-    const [{ data: admissionData, error: admissionError }, { data: wardData, error: wardError }] = await Promise.all([
-      supabase.rpc('get_admission_workspace', { _limit: 500 } as never),
-      supabase.rpc('get_operational_workspace', { _module: 'ward', _limit: 500 } as never),
-    ]);
+    try {
+      const [{ data: admissionData, error: admissionError }, { data: wardData, error: wardError }] = await Promise.all([
+        supabase.rpc('get_admission_workspace', { _limit: 500 } as never),
+        supabase.rpc('get_operational_workspace', { _module: 'ward', _limit: 500 } as never),
+      ]);
 
-    if (admissionError || wardError) {
+      if (admissionError || wardError) {
+        setSummary(emptySummary);
+        setLoadError(admissionError?.message ?? wardError?.message ?? 'Unable to load inpatient summary.');
+        return;
+      }
+
+      const admissions = (Array.isArray(admissionData) ? admissionData : (admissionData as { admissions?: Admission[] } | null)?.admissions ?? []) as Admission[];
+      const wards = ((wardData as { wards?: Ward[] } | null)?.wards ?? []) as Ward[];
+      const beds = ((wardData as { beds?: Bed[] } | null)?.beds ?? []) as Bed[];
+      const today = new Date().toDateString();
+
+      setSummary({
+        activeAdmissions: admissions.filter((row) => row.status === 'admitted' && !row.discharged_at).length,
+        admissionsToday: admissions.filter((row) => new Date(row.admitted_at).toDateString() === today).length,
+        availableBeds: beds.filter((row) => row.status === 'available' && !row.patient_id).length,
+        occupiedBeds: beds.filter((row) => row.status === 'occupied').length,
+        cleaningBeds: beds.filter((row) => row.status === 'cleaning').length,
+        wards: wards.filter((row) => row.active !== false).length,
+      });
+    } catch (error) {
       setSummary(emptySummary);
-      setLoadError(admissionError?.message ?? wardError?.message ?? 'Unable to load inpatient summary.');
+      setLoadError(error instanceof Error ? error.message : 'Unable to load inpatient summary. Check your connection and retry.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const admissions = (Array.isArray(admissionData) ? admissionData : (admissionData as { admissions?: Admission[] } | null)?.admissions ?? []) as Admission[];
-    const wards = ((wardData as { wards?: Ward[] } | null)?.wards ?? []) as Ward[];
-    const beds = ((wardData as { beds?: Bed[] } | null)?.beds ?? []) as Bed[];
-    const today = new Date().toDateString();
-
-    setSummary({
-      activeAdmissions: admissions.filter((row) => row.status === 'admitted' && !row.discharged_at).length,
-      admissionsToday: admissions.filter((row) => new Date(row.admitted_at).toDateString() === today).length,
-      availableBeds: beds.filter((row) => row.status === 'available' && !row.patient_id).length,
-      occupiedBeds: beds.filter((row) => row.status === 'occupied').length,
-      cleaningBeds: beds.filter((row) => row.status === 'cleaning').length,
-      wards: wards.filter((row) => row.active !== false).length,
-    });
-    setLoading(false);
   }, []);
 
   useEffect(() => {
