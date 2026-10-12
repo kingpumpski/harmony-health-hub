@@ -12,6 +12,8 @@ const hardeningMigration = readFileSync(new URL('../supabase/migrations/20261001
 assert.match(source, /parameters\?: Array</, 'catalogue rows must expose structured parameter definitions');
 assert.match(source, /item\?\.parameters && item\.parameters\.length > 0/, 'structured test catalogue entries must render parameter inputs');
 assert.match(source, /enter_lab_result_structured/, 'structured tests must use the structured result RPC');
+assert.match(source, /Object\.entries\(result\.parameter_results\)/, 'structured values must be visible in order details');
+assert.match(source, /if \(!map\[r\.lab_order_id\]\)/, 'workspace must retain the newest result for each order');
 assert.match(catalogueModal, /create_lab_test_catalogue_item_with_parameters/, 'catalogue creation must persist structured parameter definitions');
 assert.match(catalogueModal, /JSON\.parse\(parametersJson\)/, 'catalogue parameter JSON must be parsed before submission');
 assert.match(catalogueParametersMigration, /Laboratory parameter codes must be unique/, 'server must reject duplicate parameter codes');
