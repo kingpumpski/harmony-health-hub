@@ -20,7 +20,8 @@ assert.match(migration, /Provide a specimen rejection reason between 3 and 1000 
 assert.match(migration, /status='ordered', collected_by=NULL, sample_collected_at=NULL/, 'rejection must allow controlled recollection without erasing the rejected specimen');
 assert.match(migration, /recollection_of_id\s*\) VALUES[\s\S]*v_previous_specimen_id/, 'recollection must link the new specimen to the rejected specimen');
 assert.match(migration, /v_department text/, 'specimen reads must apply department-aware role authorization');
-assert.match(migration, /v_department IN \('laboratory','clinical'\)/, 'nursing and midwifery specimen reads must preserve department boundaries');
+assert.match(migration, /public\.has_role\(uid,'lab_technician'\) AND \(v_department IS NULL OR v_department='laboratory'\)/, 'specimen reads must be restricted to laboratory technicians in the laboratory department');
+assert.doesNotMatch(migration, /OR public\.has_role\(uid,'practitioner'\)|OR public\.has_role\(uid,'nurse'\)|OR public\.has_role\(uid,'midwife'\)|OR public\.has_role\(uid,'specialist_nurse'\)|OR public\.has_role\(uid,'radiologist'\)/, 'specimen listing must not expand access to non-laboratory clinical workspaces');
 assert.match(migration, /REVOKE ALL ON TABLE public\.lab_specimens FROM PUBLIC, anon, authenticated/, 'direct client table access must be denied');
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_specimens/, 'specimen reads must use a facility-scoped RPC');
 assert.match(migration, /WHERE o\.facility_id=v_facility/, 'specimen read RPC must scope orders to the active facility');
