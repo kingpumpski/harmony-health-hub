@@ -10,7 +10,7 @@ assert.match(loader, /const request = \+\+historyLoadGeneration\.current/);
 assert.match(loader, /if \(request !== historyLoadGeneration\.current\) return;/);
 assert.match(loader, /try\s*\{/);
 assert.match(loader, /catch \(error\)/);
-assert.match(loader, /finally\s*\{\s*setHistoryLoading\(false\);/);
+assert.match(loader, /finally\s*\{\s*if \(request === historyLoadGeneration\.current\) setHistoryLoading\(false\);/);
 assert.match(loader, /setFailedSections\(\['appointments', 'clinical', 'invoices', 'admissions'\]\)/);
 assert.match(loader, /setHistoryError\(message\)/);
 assert.match(loader, /if \(request === historyLoadGeneration\.current\) setHistoryLoading\(false\)/);
