@@ -60,7 +60,7 @@ function StaffBilling() {
   const [walkInSearch, setWalkInSearch] = useState('');
   const [createServiceName, setCreateServiceName] = useState('');
   const [walkInQty, setWalkInQty] = useState(1);
-  const [inpatientCount, setInpatientCount] = useState(0);
+  const [inpatientCount, setInpatientCount] = useState<number | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generateSearch, setGenerateSearch] = useState('');
   const selectedPatient = patients.find((p) => p.id === patientId);
@@ -68,27 +68,63 @@ function StaffBilling() {
   const filteredTariffs = useMemo(() => tariffs.filter((t) => `${t.service_code} ${t.service_name} ${t.department}`.toLowerCase().includes(walkInSearch.toLowerCase())), [tariffs, walkInSearch]);
 
   const loadInpatientCount = useCallback(async () => {
-    const { data, error } = await db.rpc('get_active_inpatient_billing_queue', { _limit: 500 });
-    if (error) { setInpatientCount(0); return; }
-    const rows = Array.isArray(data) ? data : (data?.admissions ?? []);
-    setInpatientCount(rows.filter((row: any) => row.status === 'admitted' && !row.discharged_at).length);
+    try {
+      const { data, error } = await db.rpc('get_active_inpatient_billing_queue', { _limit: 500 });
+      if (error) {
+        setInpatientCount(null);
+        toast.error('Unable to load the inpatient billing queue: ' + error.message);
+        return;
+      }
+      const rows = Array.isArray(data) ? data : (data?.admissions ?? []);
+      setInpatientCount(rows.filter((row: any) => row.status === 'admitted' && !row.discharged_at).length);
+    } catch (error) {
+      setInpatientCount(null);
+      toast.error(error instanceof Error ? error.message : 'Unable to load the inpatient billing queue. Retry from Billing.');
+    }
   }, []);
 
   const loadBillingSummary = useCallback(async () => {
-    const { data, error } = await db.rpc('get_billing_workspace_summary');
-    if (error) {
+    try {
+      const { data, error } = await db.rpc('get_billing_workspace_summary');
+      if (error) {
+        setWorkspaceSummary(null);
+        toast.error('Unable to load the billing summary: ' + error.message);
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      setWorkspaceSummary(row ? row as BillingWorkspaceSummary : null);
+    } catch (error) {
       setWorkspaceSummary(null);
-      return;
+      toast.error(error instanceof Error ? error.message : 'Unable to load the billing summary. Retry from Billing.');
     }
-    const row = Array.isArray(data) ? data[0] : data;
-    setWorkspaceSummary(row ? row as BillingWorkspaceSummary : null);
   }, []);
 
   const loadPatients = useCallback(async () => {
-    const { data, error } = await supabase.rpc('get_patient_directory', { _limit: 1000 });
-    if (error) toast.error(error.message); else setPatients((data ?? []) as Patient[]);
-    const { data: t } = await supabase.from('service_tariffs').select('id,service_code,service_name,department,unit,amount,active').eq('active', true).order('service_name');
-    setTariffs((t ?? []) as Tariff[]);
+    try {
+      const { data, error } = await supabase.rpc('get_patient_directory', { _limit: 1000 });
+      if (error) {
+        setPatients([]);
+        toast.error('Unable to load patients for billing: ' + error.message);
+      } else {
+        setPatients((data ?? []) as Patient[]);
+      }
+    } catch (error) {
+      setPatients([]);
+      toast.error(error instanceof Error ? error.message : 'Unable to load patients for billing. Check your connection and retry.');
+    }
+
+    try {
+      const { data, error } = await supabase.from('service_tariffs').select('id,service_code,service_name,department,unit,amount,active').eq('active', true).order('service_name');
+      if (error) {
+        setTariffs([]);
+        toast.error('Unable to load service tariffs: ' + error.message);
+      } else {
+        setTariffs((data ?? []) as Tariff[]);
+      }
+    } catch (error) {
+      setTariffs([]);
+      toast.error(error instanceof Error ? error.message : 'Unable to load service tariffs. Check your connection and retry.');
+    }
   }, []);
 
   const loadBillable = useCallback(async () => {
@@ -100,24 +136,34 @@ function StaffBilling() {
       return;
     }
     setLoading(true);
-    const { data, error } = await db.rpc('get_billing_window', {
-      _patient_id: patientId,
-      _at: from + 'T23:59:59.999Z',
-    });
-    setLoading(false);
-    if (error) {
+    try {
+      const { data, error } = await db.rpc('get_billing_window', {
+        _patient_id: patientId,
+        _at: from + 'T23:59:59.999Z',
+      });
+      if (error) {
+        setBillingWindow(null);
+        setItems([]);
+        setSelected([]);
+        playWorkflowSound('critical');
+        toast.error('Unable to prepare billing window: ' + error.message);
+        return;
+      }
+      const prepared = (data ?? null) as BillingWindow | null;
+      setBillingWindow(prepared);
+      setItems((prepared?.items ?? []) as BillableItem[]);
+      setInvoiceId(prepared?.invoice_id ?? '');
+      setSelected([]);
+    } catch (error) {
       setBillingWindow(null);
       setItems([]);
       setSelected([]);
+      setInvoiceId('');
       playWorkflowSound('critical');
-      toast.error('Unable to prepare billing window: ' + error.message);
-      return;
+      toast.error(error instanceof Error ? error.message : 'Unable to prepare the billing window. Check your connection and retry.');
+    } finally {
+      setLoading(false);
     }
-    const prepared = (data ?? null) as BillingWindow | null;
-    setBillingWindow(prepared);
-    setItems((prepared?.items ?? []) as BillableItem[]);
-    setInvoiceId(prepared?.invoice_id ?? '');
-    setSelected([]);
   }, [canPrepareBill, from, patientId]);
 
   useEffect(() => { void loadPatients(); return subscribeMasterDataChanged(['tariffs','services','patients'], () => void loadPatients()); }, [loadPatients]);
@@ -206,7 +252,7 @@ function StaffBilling() {
   const facilityCounters = [
     { label: 'NHIS claims pending', value: workspaceSummary ? String(workspaceSummary.nhis_pending_count) : '—', tone: 'text-warning', surface: 'bg-warning/5' },
     { label: 'Cash collected today', value: workspaceSummary ? money(workspaceSummary.cash_collected_today) : '—', tone: 'text-success', surface: 'bg-success/5' },
-    { label: 'Active Inpatients', value: String(inpatientCount), tone: 'text-primary', surface: 'bg-primary/5', onClick: () => navigate('/billing/inpatients') },
+    { label: 'Active Inpatients', value: inpatientCount === null ? '—' : String(inpatientCount), tone: 'text-primary', surface: 'bg-primary/5', onClick: () => navigate('/billing/inpatients') },
   ];
   const displayedCounters = [...facilityCounters, ...(patientId ? counters.map(({ label, value, tone, surface }) => ({ label, value, tone, surface })) : [])];
 
