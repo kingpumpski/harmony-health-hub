@@ -66,6 +66,8 @@ export default function Header({ onMenu }: HeaderProps) {
   const unread = notifications.filter((n) => !n.is_read).length;
   const hasCritical = notifications.some((n) => !n.is_read && ["critical", "warning", "high"].includes(String(n.severity).toLowerCase()));
   const pageLabel = location.pathname.split("/").filter(Boolean).filter(segment => !/^[0-9a-f-]{8,}$/i.test(segment)).pop()?.replace(/-/g, " ").replace(/\b\w/g, letter => letter.toUpperCase()) || "Dashboard";
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "User";
+  const greeting = `Welcome ${roleLabels[user?.role ?? "patient"]} ${displayName}`;
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -118,7 +120,7 @@ export default function Header({ onMenu }: HeaderProps) {
   return <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-5 lg:px-7">
     <div className="flex min-h-11 items-center gap-3">
       <button type="button" onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-      <div className="hidden min-w-0 flex-1 sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Harmony Health Hub</p><h2 className="truncate text-sm font-semibold">{pageLabel}</h2></div>
+      <div className="hidden min-w-0 flex-1 sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">{greeting}</p><h2 className="truncate text-sm font-semibold">{pageLabel}</h2></div>
       <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
         <div ref={searchContainerRef} className="relative min-w-0 flex-1 max-w-[400px] sm:mr-1 lg:mr-2">
           <form onSubmit={e => e.preventDefault()} className="relative">
