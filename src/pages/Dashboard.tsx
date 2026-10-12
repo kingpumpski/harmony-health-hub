@@ -42,7 +42,7 @@ export default function Dashboard(){
   const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(user.role);
   const showSettlement=['admin','accountant'].includes(user.role);
   return (
-    <div className="space-y-5">
+    <div className="dashboard-workspace space-y-5">
       {user.roles.length > 1 && (
         <div className="flex justify-end">
           <label className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium shadow-sm">

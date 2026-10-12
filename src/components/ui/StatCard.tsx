@@ -21,26 +21,32 @@ export default function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <div className={cn('stat-card', className)}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground font-medium">{title}</p>
-          <p className="text-3xl font-bold mt-2 font-heading">{value}</p>
+    <div className={cn('stat-card min-h-36 rounded-2xl border-border/80 p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md', className)}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight font-heading">{value}</p>
           {change && (
             <p
               className={cn(
-                'text-xs mt-2 font-medium',
+                'mt-3 flex items-center gap-1.5 text-xs font-medium',
                 changeType === 'positive' && 'text-success',
                 changeType === 'negative' && 'text-critical',
                 changeType === 'neutral' && 'text-muted-foreground'
               )}
             >
+              <span className={cn(
+                'h-1.5 w-1.5 shrink-0 rounded-full',
+                changeType === 'positive' && 'bg-success',
+                changeType === 'negative' && 'bg-critical',
+                changeType === 'neutral' && 'bg-muted-foreground'
+              )} aria-hidden="true" />
               {change}
             </p>
           )}
         </div>
-        <div className={cn('p-3 rounded-xl bg-muted', iconColor)}>
-          <Icon className="w-6 h-6" />
+        <div className={cn('shrink-0 rounded-xl bg-muted/70 p-3', iconColor)}>
+          <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       </div>
     </div>
