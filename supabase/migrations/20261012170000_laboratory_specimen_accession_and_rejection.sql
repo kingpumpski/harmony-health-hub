@@ -47,6 +47,7 @@ DECLARE
   o public.lab_orders%ROWTYPE;
   g public.service_orders%ROWTYPE;
   v_specimen_id uuid;
+  v_previous_specimen_id uuid;
   v_accession text;
   v_specimen_type text;
 BEGIN
@@ -82,14 +83,20 @@ BEGIN
     WHERE c.id=o.lab_test_catalogue_id AND c.active=true;
   END IF;
 
+  SELECT id INTO v_previous_specimen_id
+  FROM public.lab_specimens
+  WHERE lab_order_id=o.id AND status='rejected'
+  ORDER BY rejected_at DESC
+  LIMIT 1;
+
   v_accession := 'LAB-' || pg_catalog.to_char(pg_catalog.now() AT TIME ZONE 'UTC','YYYYMMDD')
     || '-' || pg_catalog.upper(pg_catalog.left(o.id::text,8))
     || '-' || pg_catalog.upper(pg_catalog.left(gen_random_uuid()::text,8));
 
   INSERT INTO public.lab_specimens(
-    lab_order_id, accession_number, barcode_value, specimen_type, status, collected_by
+    lab_order_id, accession_number, barcode_value, specimen_type, status, collected_by, recollection_of_id
   ) VALUES (
-    o.id, v_accession, v_accession, v_specimen_type, 'collected', uid
+    o.id, v_accession, v_accession, v_specimen_type, 'collected', uid, v_previous_specimen_id
   ) RETURNING id INTO v_specimen_id;
 
   UPDATE public.lab_orders
@@ -169,15 +176,21 @@ AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_facility uuid := public.current_user_facility_id();
+  v_department text;
   result jsonb;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility to access laboratory specimens'; END IF;
+  SELECT NULLIF(pg_catalog.lower(pg_catalog.btrim(p.department)), '') INTO v_department
+  FROM public.profiles p WHERE p.id=uid;
   IF NOT (
     public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist')
+    OR (public.has_role(uid,'lab_technician') AND (v_department IS NULL OR v_department='laboratory'))
+    OR public.has_role(uid,'practitioner')
+    OR (public.has_role(uid,'nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(uid,'midwife') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(uid,'specialist_nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(uid,'radiologist') AND (v_department IS NULL OR v_department='radiology'))
   ) THEN RAISE EXCEPTION 'Laboratory workspace access is not permitted'; END IF;
   _limit := LEAST(GREATEST(coalesce(_limit,300),1),500);
   SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.collected_at DESC),'[]'::jsonb)
