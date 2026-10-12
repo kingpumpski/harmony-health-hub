@@ -25,7 +25,7 @@ interface LabOrder {
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
 }
 interface LabResult {
-  id: string; lab_order_id: string; result_data: { value?: string } | null; interpretation: string | null;
+  id: string; lab_order_id: string; result_data: { value?: string } | null; parameter_results?: Record<string, unknown> | null; interpretation: string | null;
   is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
   numeric_value: number | null; unit: string | null; reference_low: number | null; reference_high: number | null; abnormal_flag: string | null;
 }
@@ -88,7 +88,7 @@ export default function Laboratory() {
     const nextOrders = workspace.orders ?? [];
     setOrders(nextOrders);
     const map: Record<string, LabResult> = {};
-    (workspace.results ?? []).forEach((r) => (map[r.lab_order_id] = r));
+    (workspace.results ?? []).forEach((r) => { if (!map[r.lab_order_id]) map[r.lab_order_id] = r; });
     setResultsByOrder(map);
     const requestedOrderId = searchParams.get('order');
     const requestedResultId = searchParams.get('result');
@@ -507,6 +507,7 @@ export default function Laboratory() {
                                 <div className="mt-3 space-y-1 text-sm">
                                   <p><strong>Value:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>
                                   {(result.reference_low !== null || result.reference_high !== null) && <p><strong>Reference:</strong> {result.reference_low ?? '—'} – {result.reference_high ?? '—'}{result.unit ? ` ${result.unit}` : ''}</p>}
+                                  {result.parameter_results && Object.keys(result.parameter_results).length > 0 && <dl className="mt-2 space-y-1 border-t border-border pt-2">{Object.entries(result.parameter_results).map(([code, value]) => <div key={code} className="flex flex-wrap justify-between gap-2"><dt className="text-muted-foreground">{code}</dt><dd className="font-medium break-all">{typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</dd></div>)}</dl>}
                                   {result.interpretation && <p><strong>Interpretation:</strong> {result.interpretation}</p>}
                                   {result.is_abnormal && <p className="mt-2 inline-flex items-center rounded-full bg-critical/10 px-2.5 py-1 text-xs font-semibold text-critical">Abnormal result · clinical attention required</p>}
                                 </div>
