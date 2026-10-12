@@ -44,6 +44,7 @@ AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_facility uuid := public.current_user_facility_id();
+  v_patient_facility uuid;
   o public.lab_orders%ROWTYPE;
   g public.service_orders%ROWTYPE;
   v_specimen_id uuid;
@@ -60,7 +61,15 @@ BEGIN
 
   SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
+  SELECT p.facility_id INTO v_patient_facility
+  FROM public.patients p WHERE p.id=o.patient_id FOR SHARE;
+  IF NOT FOUND OR v_patient_facility IS NULL THEN
+    RAISE EXCEPTION 'Laboratory patient facility attribution is unresolved';
+  END IF;
   IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
+  IF v_patient_facility IS DISTINCT FROM o.facility_id THEN
+    RAISE EXCEPTION 'Laboratory order and patient facility lineage do not match';
+  END IF;
   IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order belongs to a different facility context';
@@ -121,6 +130,7 @@ AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_facility uuid := public.current_user_facility_id();
+  v_patient_facility uuid;
   s public.lab_specimens%ROWTYPE;
   o public.lab_orders%ROWTYPE;
 BEGIN
@@ -137,7 +147,15 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory specimen not found'; END IF;
   SELECT * INTO o FROM public.lab_orders WHERE id=s.lab_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
+  SELECT p.facility_id INTO v_patient_facility
+  FROM public.patients p WHERE p.id=o.patient_id FOR SHARE;
+  IF NOT FOUND OR v_patient_facility IS NULL THEN
+    RAISE EXCEPTION 'Laboratory patient facility attribution is unresolved';
+  END IF;
   IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
+  IF v_patient_facility IS DISTINCT FROM o.facility_id THEN
+    RAISE EXCEPTION 'Laboratory order and patient facility lineage do not match';
+  END IF;
   IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory specimen belongs to a different facility context';
