@@ -27,7 +27,17 @@ export default function PatientPortal() {
 
   const loadReports = async () => {
     const version = ++loadVersion.current;
-    const { data: identity, error: identityError } = await supabase.rpc('get_patient_portal_identity', {});
+    let identity: any = null;
+    let identityError: any = null;
+    try {
+      const response = await supabase.rpc('get_patient_portal_identity', {});
+      identity = response.data;
+      identityError = response.error;
+    } catch (error: any) {
+      // Some transport failures reject instead of returning a Supabase { error } result.
+      // Feed both failure modes through the same stale-data clearing path below.
+      identityError = error;
+    }
     if (version !== loadVersion.current) return null;
     const portalPatient = Array.isArray(identity) ? identity[0] : identity;
     if (identityError || !portalPatient) {
