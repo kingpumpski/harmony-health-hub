@@ -197,6 +197,7 @@ export default function Laboratory() {
       ({ data, error } = await supabase.rpc('create_lab_order_with_payment_gate', {
         _patient_id: pid, _test_name: testName, _test_category: category || null,
         _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
+        _catalogue_id: catalogueId || null,
       } as never));
     } catch (requestError) {
       toast({ title: 'Failed to create lab order', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
@@ -210,17 +211,6 @@ export default function Laboratory() {
       return;
     }
     const created = data as unknown as CreateLabOrderResponse | null;
-    if (created?.lab_order_id && catalogueId) {
-      try {
-        const { error: catalogueError } = await supabase.rpc('attach_lab_catalogue_to_order', {
-          _lab_order_id: created.lab_order_id,
-          _catalogue_id: catalogueId,
-        } as never);
-        if (catalogueError) toast({ title: 'Order created with catalogue link warning', description: catalogueError.message });
-      } catch (catalogueRequestError) {
-        toast({ title: 'Order created with catalogue link warning', description: catalogueRequestError instanceof Error ? catalogueRequestError.message : 'The order was created, but its catalogue link could not be confirmed.' });
-      }
-    }
     setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setCatalogueSearch(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
     playWorkflowSound('success');
     toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
