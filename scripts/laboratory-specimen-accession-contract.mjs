@@ -16,6 +16,9 @@ assert.match(migration, /Laboratory order belongs to a different facility contex
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.reject_lab_specimen/, 'specimen rejection must use a governed RPC');
 assert.match(migration, /Provide a specimen rejection reason between 3 and 1000 characters/, 'rejection reason must be validated server-side');
 assert.match(migration, /status='ordered', collected_by=NULL, sample_collected_at=NULL/, 'rejection must allow controlled recollection without erasing the rejected specimen');
+assert.match(migration, /recollection_of_id\s*\) VALUES[\s\S]*v_previous_specimen_id/, 'recollection must link the new specimen to the rejected specimen');
+assert.match(migration, /v_department text/, 'specimen reads must apply department-aware role authorization');
+assert.match(migration, /v_department IN \('laboratory','clinical'\)/, 'nursing and midwifery specimen reads must preserve department boundaries');
 assert.match(migration, /REVOKE ALL ON TABLE public\.lab_specimens FROM PUBLIC, anon, authenticated/, 'direct client table access must be denied');
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_specimens/, 'specimen reads must use a facility-scoped RPC');
 assert.match(migration, /WHERE o\.facility_id=v_facility/, 'specimen read RPC must scope orders to the active facility');
