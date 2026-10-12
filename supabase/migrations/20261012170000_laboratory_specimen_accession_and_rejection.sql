@@ -167,6 +167,12 @@ BEGIN
     RAISE EXCEPTION 'Specimen rejection is only allowed before result entry';
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM public.lab_results r WHERE r.lab_order_id=o.id
+  ) THEN
+    RAISE EXCEPTION 'A laboratory result already exists; specimen rejection is no longer permitted';
+  END IF;
+
   UPDATE public.lab_specimens
   SET status='rejected', rejected_by=uid, rejected_at=pg_catalog.now(),
       rejection_reason=pg_catalog.btrim(_reason), updated_at=pg_catalog.now()
