@@ -1,7 +1,7 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import RefreshButton from '@/components/ui/RefreshButton';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BedDouble, Plus,  Building2, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,14 +48,17 @@ export default function WardBedBoard() {
   const [assignment, setAssignment] = useState<Record<string, string>>({});
   const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
   const [facilityChoice, setFacilityChoice] = useState<Record<string, string>>({});
+  const loadGeneration = useRef(0);
 
   const load = async () => {
+    const request = ++loadGeneration.current;
     setLoadError('');
     try {
       const [workspace, patientsResult] = await Promise.all([
         supabase.rpc('get_ward_management_workspace', { _limit: 1000 } as never),
         searchPatientDirectory('', 500),
       ]);
+      if (request !== loadGeneration.current) return;
       if (workspace.error || patientsResult.error) {
         const message = (workspace.error || patientsResult.error)?.message ?? 'The ward workspace could not be loaded.';
         setLoadError(message);
@@ -68,6 +71,7 @@ export default function WardBedBoard() {
       setBeds(payload.beds ?? []);
       setFacilities(payload.facilities ?? []);
     } catch (error) {
+      if (request !== loadGeneration.current) return;
       const message = error instanceof Error ? error.message : 'A network error prevented ward management from loading.';
       setLoadError(message);
       toast({ title: 'Unable to load ward management', description: message, variant: 'destructive' });
@@ -93,7 +97,11 @@ export default function WardBedBoard() {
 
   useEffect(() => {
     void load();
-    return subscribeMasterDataChanged(['wards', 'beds'], () => void load());
+    const unsubscribe = subscribeMasterDataChanged(['wards', 'beds'], () => void load());
+    return () => {
+      loadGeneration.current += 1;
+      unsubscribe();
+    };
   }, []);
 
   const createWard = async () => {
