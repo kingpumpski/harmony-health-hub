@@ -20,6 +20,11 @@ interface LabCatalogueItem {
   default_charge: number; active: boolean; parameters?: Array<{code:string;name?:string;label?:string;unit?:string;reference_low?:number|null;reference_high?:number|null;reference_text?:string|null;required?:boolean;type?:string}>;
 }
 interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }
+interface LabSpecimen {
+  id: string; lab_order_id: string; accession_number: string; barcode_value: string;
+  specimen_type: string | null; status: 'collected' | 'received' | 'processing' | 'rejected';
+  collected_at: string; rejected_at: string | null; rejection_reason: string | null;
+}
 interface LabOrder {
   id: string; patient_id: string; test_name: string; test_category: string | null;
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
@@ -37,6 +42,10 @@ export default function Laboratory() {
   const [catalogue, setCatalogue] = useState<LabCatalogueItem[]>([]);
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [resultsByOrder, setResultsByOrder] = useState<Record<string, LabResult>>({});
+  const [specimensByOrder, setSpecimensByOrder] = useState<Record<string, LabSpecimen[]>>({});
+  const [rejectingSpecimenId, setRejectingSpecimenId] = useState<string | null>(null);
+  const [specimenRejectionReason, setSpecimenRejectionReason] = useState('');
+  const [rejectingSpecimen, setRejectingSpecimen] = useState(false);
   const [pid, setPid] = useState(searchParams.get('patient') || '');
   const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');
   const [encounters, setEncounters] = useState<EncounterOption[]>([]);
@@ -89,6 +98,21 @@ export default function Laboratory() {
     const map: Record<string, LabResult> = {};
     (workspace.results ?? []).forEach((r) => { if (!map[r.lab_order_id]) map[r.lab_order_id] = r; });
     setResultsByOrder(map);
+    try {
+      const { data: specimenData, error: specimenError } = await supabase.rpc('get_laboratory_specimens', { _limit: 300 } as never);
+      if (specimenError) {
+        toast({ title: 'Specimen tracking unavailable', description: specimenError.message, variant: 'destructive' });
+        setSpecimensByOrder({});
+      } else {
+        const specimenRows = (specimenData ?? []) as unknown as LabSpecimen[];
+        setSpecimensByOrder(specimenRows.reduce<Record<string, LabSpecimen[]>>((grouped, specimen) => {
+          (grouped[specimen.lab_order_id] ??= []).push(specimen);
+          return grouped;
+        }, {}));
+      }
+    } catch (specimenError) {
+      toast({ title: 'Specimen tracking unavailable', description: specimenError instanceof Error ? specimenError.message : 'Retry to refresh specimen tracking.', variant: 'destructive' });
+    }
     const requestedOrderId = searchParams.get('order');
     const requestedResultId = searchParams.get('result');
     if (requestedOrderId && nextOrders.some((order) => order.id === requestedOrderId)) {
@@ -234,8 +258,35 @@ export default function Laboratory() {
       return;
     }
     playWorkflowSound('success');
-    toast({ title: 'Sample collected', description: 'The order is now in laboratory processing.' });
+    toast({ title: 'Sample collected and accessioned', description: 'A specimen accession number and barcode value have been generated.' });
     void loadAll();
+  };
+
+  const rejectSpecimen = async (specimenId: string) => {
+    if (rejectingSpecimen || specimenRejectionReason.trim().length < 3) {
+      if (specimenRejectionReason.trim().length < 3) toast({ title: 'Rejection reason required', description: 'Enter at least 3 characters explaining why the specimen cannot be processed.', variant: 'destructive' });
+      return;
+    }
+    setRejectingSpecimen(true);
+    try {
+      const { error } = await supabase.rpc('reject_lab_specimen', {
+        _specimen_id: specimenId,
+        _reason: specimenRejectionReason.trim(),
+      } as never);
+      if (error) {
+        toast({ title: 'Could not reject specimen', description: error.message, variant: 'destructive' });
+        return;
+      }
+      playWorkflowSound('success');
+      toast({ title: 'Specimen rejected', description: 'The rejection reason was recorded. The order is available for recollection.' });
+      setRejectingSpecimenId(null);
+      setSpecimenRejectionReason('');
+      void loadAll();
+    } catch (error) {
+      toast({ title: 'Could not reject specimen', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+    } finally {
+      setRejectingSpecimen(false);
+    }
   };
 
   const submitResult = async (orderId: string) => {
@@ -494,6 +545,38 @@ export default function Laboratory() {
                                   <p className="mt-1 font-medium">{o.test_name}</p>
                                 </div>
                                 <ClinicalStatusBadge status={result?.status ?? o.status} />
+                              </div>
+                              <div className="mt-3 rounded-lg border border-border p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Specimen accession & traceability</p>
+                                {(specimensByOrder[o.id] ?? []).length === 0 ? (
+                                  <p className="mt-2 text-sm text-muted-foreground">No specimen accession has been recorded.</p>
+                                ) : (
+                                  <div className="mt-2 space-y-2">
+                                    {(specimensByOrder[o.id] ?? []).map((specimen) => (
+                                      <div key={specimen.id} className="rounded-md bg-muted/30 p-2 text-sm">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <span className="font-semibold">{specimen.accession_number}</span>
+                                          <ClinicalStatusBadge status={specimen.status} />
+                                        </div>
+                                        <p className="mt-1 text-xs text-muted-foreground">Barcode value: {specimen.barcode_value}</p>
+                                        <p className="text-xs text-muted-foreground">Type: {specimen.specimen_type ?? 'Not specified'} · Collected: {new Date(specimen.collected_at).toLocaleString()}</p>
+                                        {specimen.rejection_reason && <p className="mt-1 text-xs text-critical">Rejected: {specimen.rejection_reason}</p>}
+                                        {specimen.status !== 'rejected' && o.status === 'sample_collected' && (user?.roles.some((role) => ['admin','it_admin','lab_technician'].includes(role))) && (
+                                          <button type="button" className="btn-ghost mt-2 text-xs" disabled={rejectingSpecimen} onClick={() => { setRejectingSpecimenId(rejectingSpecimenId === specimen.id ? null : specimen.id); setSpecimenRejectionReason(''); }}>Reject specimen</button>
+                                        )}
+                                        {rejectingSpecimenId === specimen.id && (
+                                          <div className="mt-2 space-y-2">
+                                            <textarea value={specimenRejectionReason} onChange={(event) => setSpecimenRejectionReason(event.target.value)} maxLength={1000} rows={2} className="input-medical w-full" placeholder="Required rejection reason (3–1000 characters)" aria-label="Specimen rejection reason" />
+                                            <div className="flex gap-2">
+                                              <button type="button" disabled={rejectingSpecimen || specimenRejectionReason.trim().length < 3} className="btn-primary text-xs disabled:opacity-60" onClick={() => void rejectSpecimen(specimen.id)}>{rejectingSpecimen ? 'Recording…' : 'Confirm rejection'}</button>
+                                              <button type="button" disabled={rejectingSpecimen} className="btn-ghost text-xs" onClick={() => { setRejectingSpecimenId(null); setSpecimenRejectionReason(''); }}>Cancel</button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               {result ? (
                                 <div className="mt-3 space-y-1 text-sm">
