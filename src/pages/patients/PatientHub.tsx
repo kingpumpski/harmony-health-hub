@@ -107,14 +107,20 @@ function ProfileTab({ patient, canEdit, canManageInsurance, onSaved }: { patient
     let active = true;
     setInsurersLoading(true);
     void (async () => {
-      const { data, error } = await (supabase as any).rpc('list_insurance_companies', { _include_inactive: false });
-      if (!active) return;
-      setInsurersLoading(false);
-      if (error) {
-        toast.error(error.message ?? 'Unable to load insurance companies');
-        return;
+      try {
+        const { data, error } = await (supabase as any).rpc('list_insurance_companies', { _include_inactive: false });
+        if (!active) return;
+        if (error) {
+          toast.error(error.message ?? 'Unable to load insurance companies');
+          return;
+        }
+        setInsurers((data ?? []) as Array<{id:string;code:string;name:string}>);
+      } catch (error: any) {
+        if (!active) return;
+        toast.error(error?.message ?? 'Unable to load insurance companies. Check your connection and retry.');
+      } finally {
+        if (active) setInsurersLoading(false);
       }
-      setInsurers((data ?? []) as Array<{id:string;code:string;name:string}>);
     })();
     return () => { active = false; };
   }, [canManageInsurance]);
