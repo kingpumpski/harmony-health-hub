@@ -43,25 +43,52 @@ export default function WardBedBoard() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [ward, setWard] = useState({ name: '', code: '', specialty: '', gender_policy: 'mixed', facility_id: '' });
   const [assignment, setAssignment] = useState<Record<string, string>>({});
   const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
   const [facilityChoice, setFacilityChoice] = useState<Record<string, string>>({});
 
   const load = async () => {
-    const [workspace, patientsResult] = await Promise.all([
-      supabase.rpc('get_ward_management_workspace', { _limit: 1000 } as never),
-      searchPatientDirectory('', 500),
-    ]);
-    if (workspace.error || patientsResult.error) {
-      toast({ title: 'Unable to load ward management', description: (workspace.error || patientsResult.error)?.message, variant: 'destructive' });
-      return;
+    setLoadError('');
+    try {
+      const [workspace, patientsResult] = await Promise.all([
+        supabase.rpc('get_ward_management_workspace', { _limit: 1000 } as never),
+        searchPatientDirectory('', 500),
+      ]);
+      if (workspace.error || patientsResult.error) {
+        const message = (workspace.error || patientsResult.error)?.message ?? 'The ward workspace could not be loaded.';
+        setLoadError(message);
+        toast({ title: 'Unable to load ward management', description: message, variant: 'destructive' });
+        return;
+      }
+      const payload = (workspace.data ?? {}) as { wards?: Ward[]; beds?: Bed[]; facilities?: Facility[] };
+      setPatients((patientsResult.data ?? []) as Patient[]);
+      setWards(payload.wards ?? []);
+      setBeds(payload.beds ?? []);
+      setFacilities(payload.facilities ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'A network error prevented ward management from loading.';
+      setLoadError(message);
+      toast({ title: 'Unable to load ward management', description: message, variant: 'destructive' });
     }
-    const payload = (workspace.data ?? {}) as { wards?: Ward[]; beds?: Bed[]; facilities?: Facility[] };
-    setPatients((patientsResult.data ?? []) as Patient[]);
-    setWards(payload.wards ?? []);
-    setBeds(payload.beds ?? []);
-    setFacilities(payload.facilities ?? []);
+  };
+
+  const withBusy = async (title: string, action: () => Promise<{ error: { message?: string } | null }>) => {
+    setBusy(true);
+    try {
+      const { error } = await action();
+      if (error) {
+        toast({ title, description: error.message ?? 'The request could not be completed.', variant: 'destructive' });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      toast({ title, description: error instanceof Error ? error.message : 'A network error prevented the request from completing.', variant: 'destructive' });
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -71,19 +98,14 @@ export default function WardBedBoard() {
 
   const createWard = async () => {
     if (!ward.name.trim() || !ward.code.trim() || !ward.facility_id) return;
-    setBusy(true);
-    const { error } = await supabase.rpc('create_ward_unit', {
+    const succeeded = await withBusy('Ward creation failed', () => supabase.rpc('create_ward_unit', {
       _name: ward.name.trim(),
       _code: ward.code.trim(),
       _specialty: ward.specialty.trim() || null,
       _gender_policy: ward.gender_policy,
       _facility_id: ward.facility_id,
-    } as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Ward creation failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    } as never));
+    if (!succeeded) return;
     setWard({ name: '', code: '', specialty: '', gender_policy: 'mixed', facility_id: ward.facility_id });
     toast({ title: 'Ward created', description: 'The ward is now part of the canonical ward configuration.' });
     notifyMasterDataChanged('wards');
@@ -93,17 +115,12 @@ export default function WardBedBoard() {
   const assignFacility = async (ward: Ward) => {
     const facilityId = facilityChoice[ward.id];
     if (!facilityId) return;
-    setBusy(true);
     const rpc = ward.is_legacy ? 'import_legacy_ward' : 'assign_ward_unit_facility';
     const args = ward.is_legacy
       ? { _legacy_ward_id: ward.legacy_id, _facility_id: facilityId }
       : { _ward_id: ward.id, _facility_id: facilityId };
-    const { error } = await supabase.rpc(rpc as never, args as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Facility assignment failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    const succeeded = await withBusy('Facility assignment failed', () => supabase.rpc(rpc as never, args as never));
+    if (!succeeded) return;
     toast({ title: 'Facility assigned' });
     notifyMasterDataChanged('wards');
     void load();
@@ -112,13 +129,8 @@ export default function WardBedBoard() {
   const addBed = async (wardId: string) => {
     const number = window.prompt('Bed number');
     if (!number?.trim()) return;
-    setBusy(true);
-    const { error } = await supabase.rpc('create_ward_bed', { _ward_id: wardId, _bed_number: number.trim() } as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Bed creation failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    const succeeded = await withBusy('Bed creation failed', () => supabase.rpc('create_ward_bed', { _ward_id: wardId, _bed_number: number.trim() } as never));
+    if (!succeeded) return;
     toast({ title: 'Bed added', description: 'The bed is now stored against the ward and facility.' });
     notifyMasterDataChanged('beds');
     void load();
@@ -127,13 +139,8 @@ export default function WardBedBoard() {
   const assign = async (bedId: string) => {
     const patientId = assignment[bedId];
     if (!patientId) return;
-    setBusy(true);
-    const { error } = await supabase.rpc('assign_ward_bed', { _bed_id: bedId, _patient_id: patientId, _admission_id: null } as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Assignment failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    const succeeded = await withBusy('Assignment failed', () => supabase.rpc('assign_ward_bed', { _bed_id: bedId, _patient_id: patientId, _admission_id: null } as never));
+    if (!succeeded) return;
     setAssignment((current) => { const next = { ...current }; delete next[bedId]; return next; });
     toast({ title: 'Bed assigned' });
     notifyMasterDataChanged('beds');
@@ -144,13 +151,8 @@ export default function WardBedBoard() {
     const targetId = transferTarget[bedId];
     const source = beds.find((b) => b.id === bedId);
     if (!source?.admission_id || !targetId) return;
-    setBusy(true);
-    const { error } = await supabase.rpc('transfer_inpatient_bed', { _admission_id: source.admission_id, _target_bed_id: targetId, _summary: 'Bed transfer from ward board' } as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Transfer failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    const succeeded = await withBusy('Transfer failed', () => supabase.rpc('transfer_inpatient_bed', { _admission_id: source.admission_id, _target_bed_id: targetId, _summary: 'Bed transfer from ward board' } as never));
+    if (!succeeded) return;
     setTransferTarget((current) => { const next = { ...current }; delete next[bedId]; return next; });
     toast({ title: 'Patient transferred' });
     notifyMasterDataChanged('beds');
@@ -158,13 +160,8 @@ export default function WardBedBoard() {
   };
 
   const release = async (bedId: string) => {
-    setBusy(true);
-    const { error } = await supabase.rpc('release_ward_bed', { _bed_id: bedId, _notes: 'Released from ward board' } as never);
-    setBusy(false);
-    if (error) {
-      toast({ title: 'Release failed', description: error.message, variant: 'destructive' });
-      return;
-    }
+    const succeeded = await withBusy('Release failed', () => supabase.rpc('release_ward_bed', { _bed_id: bedId, _notes: 'Released from ward board' } as never));
+    if (!succeeded) return;
     toast({ title: 'Bed moved to cleaning' });
     notifyMasterDataChanged('beds');
     void load();
@@ -192,7 +189,10 @@ export default function WardBedBoard() {
         { label: 'Cleaning beds', value: cleaningCount, tone: 'text-warning' },
         { label: 'Wards', value: wards.length },
       ]}
-      beforeList={canManage ? (
+      beforeList={(
+        <>
+          {loadError && <section role="alert" className="mx-4 mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><p className="font-medium">Ward workspace could not be refreshed.</p><p className="mt-1 text-sm text-muted-foreground">{loadError}</p><button type="button" onClick={() => void load()} className="btn-secondary mt-3">Retry loading</button></section>}
+          {canManage && (
         <section className="card-medical p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
@@ -210,7 +210,9 @@ export default function WardBedBoard() {
             <button type="button" disabled={busy || !ward.facility_id} onClick={() => void createWard()} className="btn-primary self-end disabled:opacity-50"><Plus className="inline w-4 h-4 mr-1" />Create ward</button>
           </div>
         </section>
-      ) : null}
+          )}
+        </>
+      )}
       listTitle="Ward capacity worklist"
       listDescription="Configured wards remain grouped with their beds so operational and structural context stays together."
       listMeta={`${wards.length} ward${wards.length === 1 ? '' : 's'} · ${beds.length} bed${beds.length === 1 ? '' : 's'}`}
