@@ -24,28 +24,43 @@ function StaffTelemedicine() {
   const [scheduledAt, setScheduledAt] = useState(toLocalDateTimeInputValue(new Date(Date.now() + 60 * 60 * 1000)));
   const [showScheduler, setShowScheduler] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState('');
 
   const loadAll = async () => {
-    const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
-      searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
-      supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
-    ]);
-    if (patientError || sessionError) {
-      toast({ title: 'Unable to load telemedicine workspace', description: patientError?.message ?? sessionError?.message, variant: 'destructive' });
-      return;
-    }
-    setPatients(pts ?? []);
-    const loaded = (ss ?? []) as Session[];
-    setSessions(loaded);
+    setWorkspaceError('');
+    try {
+      const [{ data: pts, error: patientError }, { data: ss, error: sessionError }] = await Promise.all([
+        searchPatientDirectory('', 200).then(({ data, error }) => ({ data, error })),
+        supabase.from('video_sessions').select('id,patient_id,practitioner_id,room_name,provider,scheduled_at,status,payment_required,payment_received,service_order_id').order('scheduled_at', { ascending: false }).limit(50),
+      ]);
+      if (patientError || sessionError) {
+        const message = patientError?.message ?? sessionError?.message ?? 'The telemedicine workspace could not be loaded.';
+        setWorkspaceError(message);
+        toast({ title: 'Unable to load telemedicine workspace', description: message, variant: 'destructive' });
+        return;
+      }
+      setPatients(pts ?? []);
+      const loaded = (ss ?? []) as Session[];
+      setSessions(loaded);
 
-    const orderIds = loaded.map((s) => s.service_order_id).filter((id): id is string => Boolean(id));
-    if (!orderIds.length) return setBilling({});
-    const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
-    if (orderError) {
-      toast({ title: 'Unable to load telemedicine billing status', description: orderError.message, variant: 'destructive' });
-      return;
+      const orderIds = loaded.map((s) => s.service_order_id).filter((id): id is string => Boolean(id));
+      if (!orderIds.length) {
+        setBilling({});
+        return;
+      }
+      const { data: orders, error: orderError } = await (supabase as any).from('service_orders').select('id,status').in('id', orderIds);
+      if (orderError) {
+        const message = orderError.message ?? 'Telemedicine billing status is unavailable.';
+        setWorkspaceError(message);
+        toast({ title: 'Unable to load telemedicine billing status', description: message, variant: 'destructive' });
+        return;
+      }
+      setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'A network error prevented telemedicine from loading.';
+      setWorkspaceError(message);
+      toast({ title: 'Unable to load telemedicine workspace', description: message, variant: 'destructive' });
     }
-    setBilling(Object.fromEntries(((orders ?? []) as BillingStatus[]).map((o) => [o.id, o.status])));
   };
   useEffect(() => {
     void loadAll();
@@ -105,6 +120,8 @@ function StaffTelemedicine() {
         onRefresh={() => { setRefreshing(true); void loadAll().finally(() => setRefreshing(false)); }}
         refreshing={refreshing}
       />
+
+      {workspaceError && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4"><p className="font-medium">Telemedicine workspace could not be refreshed.</p><p className="mt-1 text-sm text-muted-foreground">{workspaceError}</p><button type="button" onClick={() => { setRefreshing(true); void loadAll().finally(() => setRefreshing(false)); }} className="btn-secondary mt-3">Retry loading</button></div>}
 
       <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm flex items-start gap-2">
         <AlertCircle className="w-4 h-4 text-info mt-0.5 shrink-0" />
