@@ -1,5 +1,5 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Building2, Plus, ShieldCheck, Pencil, Power, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,9 +11,28 @@ const types=[['chps_compound','CHPS Compound'],['health_centre','Health Centre']
 
 export default function PlatformFacilityOnboarding(){
  const {user}=useAuth(); const allowed=user?.role==='system_superuser' || user?.roles?.includes('system_superuser') === true;
- const [facilities,setFacilities]=useState<Facility[]>([]); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
+ const [facilities,setFacilities]=useState<Facility[]>([]); const [loading,setLoading]=useState(true); const [loadError,setLoadError]=useState(''); const [saving,setSaving]=useState(false); const loadGeneration=useRef(0);
  const [name,setName]=useState(''); const [listQuery,setListQuery]=useState(''); const [statusFilter,setStatusFilter]=useState('all'); const [code,setCode]=useState(''); const [type,setType]=useState('district_hospital'); const [district,setDistrict]=useState(''); const [region,setRegion]=useState(''); const [dhims,setDhims]=useState(''); const [editing,setEditing]=useState<Facility|null>(null);
- const load=async()=>{setLoading(true); let {data,error}=await supabase.rpc('platform_list_facilities'); const missingFunction=(candidate:typeof error)=>Boolean(candidate && (candidate.code==='PGRST202'||/could not find the function/i.test(candidate.message??''))); if(missingFunction(error)){const legacy=await supabase.rpc('platform_list_facilitys'); data=legacy.data; error=legacy.error;} if(error) toast({title:'Facility directory unavailable',description:error.message,variant:'destructive'}); else setFacilities((data??[]) as Facility[]); setLoading(false);};
+ const load=async()=>{
+  const request=++loadGeneration.current;
+  setLoading(true);
+  setLoadError('');
+  try {
+   let {data,error}=await supabase.rpc('platform_list_facilities');
+   const missingFunction=(candidate:typeof error)=>Boolean(candidate && (candidate.code==='PGRST202'||/could not find the function/i.test(candidate.message??'')));
+   if(missingFunction(error)){const legacy=await supabase.rpc('platform_list_facilitys'); data=legacy.data; error=legacy.error;}
+   if(request!==loadGeneration.current)return;
+   if(error){setLoadError(error.message);toast({title:'Facility directory unavailable',description:error.message,variant:'destructive'});}
+   else setFacilities((data??[]) as Facility[]);
+  } catch (error) {
+   if(request!==loadGeneration.current)return;
+   const message=error instanceof Error?error.message:'Unexpected network error while loading facilities.';
+   setLoadError(message);
+   toast({title:'Facility directory unavailable',description:message,variant:'destructive'});
+  } finally {
+   if(request===loadGeneration.current)setLoading(false);
+  }
+ };
  useEffect(()=>{if(allowed) void load(); else setLoading(false);},[allowed]);
  const create=async(e:React.FormEvent)=>{e.preventDefault(); if(!allowed){toast({title:'Access denied',description:'Only a System Superuser can onboard facilities.',variant:'destructive'});return;} if(!name.trim()){toast({title:'Facility name required',description:'Enter the facility name before onboarding.',variant:'destructive'});return;} setSaving(true);const {data,error}=await supabase.rpc('platform_create_facility',{_name:name,_facility_code:code||null,_facility_type:type,_district:district||null,_region:region||null,_dhims2_uid:dhims||null});setSaving(false);if(error){toast({title:'Facility onboarding failed',description:error.message,variant:'destructive'});return;}toast({title:'Facility onboarded',description:String(data?.name??name)+' is now registered on the platform.'});setName('');setCode('');setDistrict('');setRegion('');setDhims('');void load();};
  const edit=async(facility:Facility)=>{setEditing(facility);setName(facility.name);setCode(facility.facility_code??'');setType(facility.facility_type);setDistrict(facility.district??'');setRegion(facility.region??'');setDhims('');};
@@ -39,7 +58,7 @@ export default function PlatformFacilityOnboarding(){
     <div className="flex gap-2"><button className="btn-primary flex-1 inline-flex items-center justify-center gap-2" disabled={saving}><Plus className="h-4 w-4"/>{saving?(editing?'Saving…':'Onboarding…'):(editing?'Save Changes':'Onboard Facility')}</button>{editing&&<button type="button" className="btn-secondary" onClick={()=>{setEditing(null);setName('');setCode('');setDistrict('');setRegion('');setDhims('')}}>Cancel</button>}</div>
     <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground flex gap-2"><ShieldCheck className="h-4 w-4 shrink-0 text-primary"/>The platform superuser does not become a facility staff member simply by onboarding the facility.</div>
    </form>
-   <RecordList title="Platform Facility Registry" description="All registered facilities visible to the platform superuser." data={facilities.filter(f=>{const q=listQuery.trim().toLowerCase(); const hay=`${f.name} ${f.facility_code??''} ${f.district??''} ${f.region??''} ${f.facility_type}`.toLowerCase(); return (!q||hay.includes(q))&&(statusFilter==='all'||(statusFilter==='active'?f.is_active:!f.is_active));})} columns={columns} isLoading={loading} rowKey={r=>r.id} onRefresh={()=>void load()} searchSlot={<div className="flex flex-col gap-2 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground"/><input value={listQuery} onChange={e=>setListQuery(e.target.value)} className="input-medical w-full" placeholder="Search facility, code or location…" aria-label="Search facilities"/></div><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="input-medical sm:w-40" aria-label="Filter facilities by status"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>} isRefreshing={loading} emptyState={{title:'No facilities onboarded yet.',description:'Use the onboarding form to register the first facility.'}}/>
+   <RecordList title="Platform Facility Registry" description="All registered facilities visible to the platform superuser." data={facilities.filter(f=>{const q=listQuery.trim().toLowerCase(); const hay=`${f.name} ${f.facility_code??''} ${f.district??''} ${f.region??''} ${f.facility_type}`.toLowerCase(); return (!q||hay.includes(q))&&(statusFilter==='all'||(statusFilter==='active'?f.is_active:!f.is_active));})} columns={columns} isLoading={loading} rowKey={r=>r.id} onRefresh={()=>void load()} searchSlot={<div className="flex flex-col gap-2 sm:flex-row"><div className="flex min-w-0 flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground"/><input value={listQuery} onChange={e=>setListQuery(e.target.value)} className="input-medical w-full" placeholder="Search facility, code or location…" aria-label="Search facilities"/></div><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="input-medical sm:w-40" aria-label="Filter facilities by status"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>} isRefreshing={loading} emptyState={{title:loadError?'Facility directory could not be loaded.':'No facilities onboarded yet.',description:loadError?'Check the connection and refresh to retry.':'Use the onboarding form to register the first facility.'}}/>
   </div>
  </div>;
 }
