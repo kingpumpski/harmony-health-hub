@@ -193,7 +193,7 @@ export default function Laboratory() {
     let data: any = null;
     let error: any = null;
     try {
-      ({ data, error } = await supabase.rpc('create_lab_order_with_payment_gate', {
+      ({ data, error } = await supabase.rpc('create_lab_order_with_catalogue_atomic', {
         _patient_id: pid, _test_name: testName, _test_category: category || null,
         _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
         _catalogue_id: catalogueId || null,
