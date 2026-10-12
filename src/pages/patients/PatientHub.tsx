@@ -33,6 +33,7 @@ export default function PatientHub() {
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); setPatientLoadError(''); try { const data = await getPatientById(patientId); if (!data) { setPatient(null); setPatientLoadError('This patient record was not found in your active facility, or your account does not have permission to view it. Verify the hospital ID and active facility. If TEST MODE is active, use a patient registered under TEST-0001; records assigned to another facility remain blocked. If the record has no verified facility attribution, an administrator must reconcile it before it can be opened.'); return; } setPatient(data); } catch (error: any) { const message = String(error?.message ?? 'Unable to load patient record.'); setPatient(null); setPatientLoadError(message.toLowerCase().includes('active facility') ? 'Your account has no active facility context. Patient records are facility-scoped. Ask an administrator to assign your facility or select an active facility, then reopen this record.' : message.toLowerCase().includes('facility context') ? 'This patient belongs to a different facility context. Switch to the patient’s facility, then reopen the record. Test-mode accounts are restricted to the test facility.' : message.toLowerCase().includes('facility attribution is unresolved') ? 'This patient has no verified facility attribution. An administrator or IT administrator must reconcile the record before it can be opened.' : message); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
     if (!patientId) return; const db = supabase as any; setHistoryLoading(true); setHistoryError(''); setFailedSections([]);
+    try {
     if (currentAdmissionId) {
       const { data, error } = await db.rpc('get_patient_current_treatment_snapshot', { _patient_id: patientId, _admission_id: currentAdmissionId });
       if (error) {
@@ -51,7 +52,7 @@ export default function PatientHub() {
           nursing_notes: snapshot.nursing_notes ?? [],
         });
       }
-      setHistoryLoading(false); return;
+      return;
     }
     const specs = [
       ['appointments', db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })],
@@ -62,7 +63,16 @@ export default function PatientHub() {
     const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const nextRows: Record<string, any[]> = {};
     const failed: string[] = [];
     settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; nextRows.vitals = snapshot.vitals ?? []; nextRows.encounters = snapshot.encounters ?? []; nextRows.labs = snapshot.labs ?? []; nextRows.prescriptions = snapshot.prescriptions ?? []; nextRows.documents = snapshot.documents ?? []; } else nextRows[key] = response.data ?? []; } else failed.push(key); });
-    setRows(nextRows); setFailedSections(failed); if (failed.length) { const message = `Some sections could not be loaded: ${failed.join(', ')}.`; setHistoryError(message); toast.warning(`${message} Other sections remain available.`); } setHistoryLoading(false);
+    setRows(nextRows); setFailedSections(failed); if (failed.length) { const message = `Some sections could not be loaded: ${failed.join(', ')}.`; setHistoryError(message); toast.warning(`${message} Other sections remain available.`); }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load patient history. Check your connection and retry.';
+      setRows({});
+      setFailedSections(['appointments', 'clinical', 'invoices', 'admissions']);
+      setHistoryError(message);
+      toast.error(message);
+    } finally {
+      setHistoryLoading(false);
+    }
   }, [patientId, roleSet, canClinicalHistory, currentAdmissionId]);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const tabCounts = useMemo<Record<TabKey, number>>(() => ({ profile: 1, appointments: rows.appointments?.length ?? 0, vitals: rows.vitals?.length ?? 0, encounters: rows.encounters?.length ?? 0, labs: rows.labs?.length ?? 0, prescriptions: rows.prescriptions?.length ?? 0, billing: rows.invoices?.length ?? 0, documents: rows.documents?.length ?? 0, admission: rows.admissions?.length ?? 0 }), [rows]);
