@@ -24,6 +24,7 @@ export default function CanteenMeals() {
   const [orders, setOrders] = useState<ActiveOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [orderAction, setOrderAction] = useState('');
   const [mealPeriod, setMealPeriod] = useState('lunch');
   const [fromTime, setFromTime] = useState('12:00');
   const [untilTime, setUntilTime] = useState('14:00');
@@ -72,12 +73,25 @@ export default function CanteenMeals() {
 
   const loadOrders = useCallback(async () => {
     if (!canManage) return;
-    const { data, error } = await (supabase as any).rpc('get_canteen_active_patient_orders');
-    if (error) { toast({ title: 'Active patient orders unavailable', description: error.message, variant: 'destructive' }); return; }
-    setOrders((data ?? []) as ActiveOrder[]);
+    try {
+      const { data, error } = await (supabase as any).rpc('get_canteen_active_patient_orders');
+      if (error) { toast({ title: 'Active patient orders unavailable', description: error.message, variant: 'destructive' }); return; }
+      setOrders((data ?? []) as ActiveOrder[]);
+    } catch (error) {
+      toast({ title: 'Active patient orders unavailable', description: error instanceof Error ? error.message : 'A connection error prevented orders from loading. Please retry.', variant: 'destructive' });
+    }
   }, [canManage]);
 
-  const load = useCallback(async () => { setLoading(true); await Promise.all([loadMenus(), loadOrders()]); setLoading(false); }, [loadMenus, loadOrders]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadMenus(), loadOrders()]);
+    } catch (error) {
+      toast({ title: 'Meal operations could not be refreshed', description: error instanceof Error ? error.message : 'Please retry.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [loadMenus, loadOrders]);
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
@@ -110,31 +124,55 @@ export default function CanteenMeals() {
   };
 
   const saveMenu = async (publish: boolean) => {
+    if (saving) return;
     const validItems = items.filter(i => i.name.trim());
     if (!validItems.length) { toast({ title: 'Add at least one meal option', variant: 'destructive' }); return; }
+    if (fromTime && untilTime && fromTime >= untilTime) { toast({ title: 'Invalid menu availability', description: 'The end time must be later than the start time.', variant: 'destructive' }); return; }
     setSaving(true);
-    const from = fromTime ? new Date(`${date}T${fromTime}:00`).toISOString() : null;
-    const until = untilTime ? new Date(`${date}T${untilTime}:00`).toISOString() : null;
-    const { error } = await (supabase as any).rpc('save_canteen_menu', { _service_date: date, _meal_period: mealPeriod, _available_from: from, _available_until: until, _items: validItems, _notes: notes || null, _publish: publish });
-    setSaving(false);
-    if (error) { toast({ title: 'Menu could not be saved', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: publish ? 'Menu published' : 'Menu saved as draft' }); await loadMenus();
+    try {
+      const from = fromTime ? new Date(`${date}T${fromTime}:00`).toISOString() : null;
+      const until = untilTime ? new Date(`${date}T${untilTime}:00`).toISOString() : null;
+      const { error } = await (supabase as any).rpc('save_canteen_menu', { _service_date: date, _meal_period: mealPeriod, _available_from: from, _available_until: until, _items: validItems, _notes: notes || null, _publish: publish });
+      if (error) { toast({ title: 'Menu could not be saved', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: publish ? 'Menu published' : 'Menu saved as draft' });
+      await loadMenus();
+    } catch (error) {
+      toast({ title: 'Menu could not be saved', description: error instanceof Error ? error.message : 'A network error prevented saving. Please retry.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const createPlan = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (orderAction) return;
     if (!planPatientId) { toast({ title: 'Select an active patient order first', variant: 'destructive' }); return; }
-    const { error } = await supabase.rpc('create_meal_plan_workflow', { _patient_id: planPatientId, _plan_type: planType, _restrictions: planRestrictions || null });
-    if (error) { toast({ title: 'Dietary plan could not be created', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Dietary plan created' });
-    setPlanPatientId(''); setPlanRestrictions('');
-    await loadOrders();
+    setOrderAction('plan');
+    try {
+      const { error } = await supabase.rpc('create_meal_plan_workflow', { _patient_id: planPatientId, _plan_type: planType, _restrictions: planRestrictions || null });
+      if (error) { toast({ title: 'Dietary plan could not be created', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Dietary plan created' });
+      setPlanPatientId(''); setPlanRestrictions('');
+      await loadOrders();
+    } catch (error) {
+      toast({ title: 'Dietary plan could not be created', description: error instanceof Error ? error.message : 'A network error prevented saving. Please retry.', variant: 'destructive' });
+    } finally {
+      setOrderAction('');
+    }
   };
 
   const markDelivered = async (id: string) => {
-    const { error } = await supabase.rpc('mark_meal_order_delivered', { _order_id: id });
-    if (error) { toast({ title: 'Delivery update failed', description: error.message, variant: 'destructive' }); return; }
-    await loadOrders();
+    if (orderAction) return;
+    setOrderAction(id);
+    try {
+      const { error } = await supabase.rpc('mark_meal_order_delivered', { _order_id: id });
+      if (error) { toast({ title: 'Delivery update failed', description: error.message, variant: 'destructive' }); return; }
+      await loadOrders();
+    } catch (error) {
+      toast({ title: 'Delivery update failed', description: error instanceof Error ? error.message : 'A network error prevented updating delivery. Please retry.', variant: 'destructive' });
+    } finally {
+      setOrderAction('');
+    }
   };
 
   return (
@@ -166,13 +204,13 @@ export default function CanteenMeals() {
           <form onSubmit={createPlan} className="mt-4 grid gap-3 md:grid-cols-3">
             <select value={planPatientId} onChange={e => setPlanPatientId(e.target.value)} className="input-medical"><option value="">Select active patient…</option>{orders.map(order => <option key={order.patient_id} value={order.patient_id}>{order.patient_name}{order.patient_code ? ` · ${order.patient_code}` : ''}</option>)}</select>
             <select value={planType} onChange={e => setPlanType(e.target.value)} className="input-medical"><option>Regular</option><option>Diabetic</option><option>Low-sodium</option><option>Soft / post-op</option><option>Liquid</option><option>High-protein</option></select>
-            <div className="flex gap-2"><input value={planRestrictions} onChange={e => setPlanRestrictions(e.target.value)} placeholder="Documented dietary restrictions" className="input-medical min-w-0 flex-1" /><button className="btn-primary">Save plan</button></div>
+            <div className="flex gap-2"><input value={planRestrictions} onChange={e => setPlanRestrictions(e.target.value)} placeholder="Documented dietary restrictions" className="input-medical min-w-0 flex-1" /><button className="btn-primary" disabled={orderAction !== ''}>{orderAction === 'plan' ? 'Saving…' : 'Save plan'}</button></div>
           </form>
         </section>
 
         <section className="card-medical p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /> Active patient meal orders</h2><p className="text-xs text-muted-foreground">Live operational context only: underlying documented conditions, current active diagnoses and dietary plan restrictions. No clinical notes, medications or unrelated chart data are exposed to the canteen.</p></div><span className="rounded-full border px-2.5 py-1 text-xs">{orders.length} active</span></div>
-          <div className="mt-4 space-y-3">{orders.map(order => <article key={order.order_id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{order.patient_name}</h3>{order.patient_code ? <span className="text-xs text-muted-foreground">{order.patient_code}</span> : null}<span className="rounded-full border px-2 py-0.5 text-[10px] capitalize">{order.order_status}</span></div><p className="mt-1 text-sm"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{periodLabel(order.meal_type)} · {new Date(order.scheduled_for).toLocaleString()}</p></div>{order.order_status !== 'delivered' && <button type="button" onClick={() => void markDelivered(order.order_id)} className="btn-ghost inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Mark delivered</button>}</div>
+          <div className="mt-4 space-y-3">{orders.map(order => <article key={order.order_id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{order.patient_name}</h3>{order.patient_code ? <span className="text-xs text-muted-foreground">{order.patient_code}</span> : null}<span className="rounded-full border px-2 py-0.5 text-[10px] capitalize">{order.order_status}</span></div><p className="mt-1 text-sm"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{periodLabel(order.meal_type)} · {new Date(order.scheduled_for).toLocaleString()}</p></div>{order.order_status !== 'delivered' && <button type="button" disabled={orderAction !== ''} onClick={() => void markDelivered(order.order_id)} className="btn-ghost inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> {orderAction === order.order_id ? 'Updating…' : 'Mark delivered'}</button>}</div>
             <div className="mt-3 grid gap-3 md:grid-cols-3"><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Underlying conditions</p><p className="mt-1 text-sm">{order.underlying_conditions || 'None documented'}</p></div><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Current diagnoses</p>{order.current_diagnoses?.length ? <ul className="mt-1 space-y-1 text-sm">{order.current_diagnoses.map((d,i) => <li key={i}>{d.diagnosis}{d.icd_code ? <span className="ml-1 text-xs text-muted-foreground">({d.icd_code})</span> : null}{d.provisional ? <span className="ml-1 text-[10px] text-muted-foreground">provisional</span> : null}</li>)}</ul> : <p className="mt-1 text-sm">No active diagnosis documented</p>}</div><div className="rounded-lg bg-muted/30 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Dietary plan</p><p className="mt-1 text-sm">{order.plan_type || 'No plan recorded'}</p>{order.dietary_restrictions ? <p className="mt-1 text-xs text-muted-foreground">{order.dietary_restrictions}</p> : null}</div></div>
             <p className="mt-3 text-[10px] text-muted-foreground">Clinical context is displayed to support meal-service safety; it is not a diagnosis or dietary prescription. Follow the documented dietary plan and clinical instructions.</p>
           </article>)}{!orders.length && <p className="py-6 text-center text-sm text-muted-foreground">No active meal orders in the current operational window.</p>}</div>
