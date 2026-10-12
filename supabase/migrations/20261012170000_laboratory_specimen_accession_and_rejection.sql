@@ -204,12 +204,7 @@ BEGIN
   IF NOT (
     public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
     OR (public.has_role(uid,'lab_technician') AND (v_department IS NULL OR v_department='laboratory'))
-    OR public.has_role(uid,'practitioner')
-    OR (public.has_role(uid,'nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(uid,'midwife') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(uid,'specialist_nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(uid,'radiologist') AND (v_department IS NULL OR v_department='radiology'))
-  ) THEN RAISE EXCEPTION 'Laboratory workspace access is not permitted'; END IF;
+  ) THEN RAISE EXCEPTION 'Laboratory specimen access is not permitted'; END IF;
   _limit := LEAST(GREATEST(coalesce(_limit,300),1),500);
   SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.collected_at DESC),'[]'::jsonb)
   INTO result
