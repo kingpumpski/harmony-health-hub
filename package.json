@@ -106,7 +106,8 @@
     "test:patient-insurance-directory-resilience": "node scripts/patient-insurance-directory-resilience-contract.mjs",
     "test:nursing-handover-resilience": "node scripts/nursing-handover-resilience-contract.mjs",
     "test:care-transitions-network-resilience": "node scripts/care-transitions-network-resilience-contract.mjs",
-    "test:patient-portal-identity-network-resilience": "node scripts/patient-portal-identity-network-resilience-contract.mjs"
+    "test:patient-portal-identity-network-resilience": "node scripts/patient-portal-identity-network-resilience-contract.mjs",
+    "test:maternity-workflow-network-resilience": "node scripts/maternity-workflow-network-resilience-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
