@@ -12,7 +12,9 @@ assert.match(migration, /idx_lab_specimens_one_active_per_order/, 'a laboratory 
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.collect_lab_sample/, 'sample collection must be replaced with the atomic accession workflow');
 assert.match(migration, /INSERT INTO public\.lab_specimens/, 'specimen accession must be persisted in the collection transaction');
 assert.match(migration, /Payment approval required before sample collection/, 'payment gate must remain before collection');
-assert.match(migration, /Laboratory order belongs to a different facility context/, 'collection must preserve facility isolation');
+assert.match(migration, /Laboratory order belongs to a different facility context/, 'collection must preserve active-facility isolation');
+assert.equal((migration.match(/Laboratory order and patient facility lineage do not match/g) ?? []).length, 2, 'collection and rejection must validate patient-to-order facility lineage');
+assert.equal((migration.match(/Laboratory patient facility attribution is unresolved/g) ?? []).length, 2, 'collection and rejection must fail closed for unresolved patient facility attribution');
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.reject_lab_specimen/, 'specimen rejection must use a governed RPC');
 assert.match(migration, /Provide a specimen rejection reason between 3 and 1000 characters/, 'rejection reason must be validated server-side');
 assert.match(migration, /status='ordered', collected_by=NULL, sample_collected_at=NULL/, 'rejection must allow controlled recollection without erasing the rejected specimen');
