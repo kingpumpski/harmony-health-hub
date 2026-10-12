@@ -29,7 +29,6 @@ interface LabResult {
   is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
   numeric_value: number | null; unit: string | null; reference_low: number | null; reference_high: number | null; abnormal_flag: string | null;
 }
-interface CreateLabOrderResponse { lab_order_id: string; service_order_id: string; status: string }
 
 export default function Laboratory() {
   const { user } = useAuth();
@@ -210,7 +209,6 @@ export default function Laboratory() {
       toast({ title: 'Failed to create lab order', description: error.message, variant: 'destructive' });
       return;
     }
-    const created = data as unknown as CreateLabOrderResponse | null;
     setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setCatalogueSearch(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
     playWorkflowSound('success');
     toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
