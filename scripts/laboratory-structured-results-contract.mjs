@@ -5,6 +5,7 @@ const source = readFileSync(new URL('../src/pages/Laboratory.tsx', import.meta.u
 const catalogueModal = readFileSync(new URL('../src/components/catalogue/CatalogueCreateModal.tsx', import.meta.url), 'utf8');
 const facilityScopeMigration = readFileSync(new URL('../supabase/migrations/20261012160000_scope_laboratory_workspace_to_active_facility.sql', import.meta.url), 'utf8');
 const catalogueParametersMigration = readFileSync(new URL('../supabase/migrations/20261012161000_create_laboratory_catalogue_parameters.sql', import.meta.url), 'utf8');
+const atomicCatalogueOrderMigration = readFileSync(new URL('../supabase/migrations/20261012162000_create_lab_order_with_catalogue_atomic.sql', import.meta.url), 'utf8');
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const structuredMigration = readFileSync(new URL('../supabase/migrations/20260930001902_structured_lab_parameter_result_workflow.sql', import.meta.url), 'utf8');
 const hardeningMigration = readFileSync(new URL('../supabase/migrations/20261001095001_harden_encounter_appointment_lab_lineage.sql', import.meta.url), 'utf8');
@@ -18,6 +19,13 @@ assert.match(catalogueModal, /create_lab_test_catalogue_item_with_parameters/, '
 assert.match(catalogueModal, /JSON\.parse\(parametersJson\)/, 'catalogue parameter JSON must be parsed before submission');
 assert.match(catalogueParametersMigration, /Laboratory parameter codes must be unique/, 'server must reject duplicate parameter codes');
 assert.match(catalogueParametersMigration, /Laboratory parameters must be a JSON array/, 'server must validate parameter JSON shape');
+assert.match(source, /create_lab_order_with_catalogue_atomic/, 'lab order creation must atomically attach the selected catalogue item');
+assert.match(source, /_catalogue_id: catalogueId \|\| null/, 'selected catalogue identity must be passed to the atomic order RPC');
+assert.doesNotMatch(source, /attach_lab_catalogue_to_order/, 'catalogue attachment must not be a separate post-creation request');
+assert.match(atomicCatalogueOrderMigration, /public\.create_lab_order_with_payment_gate\(/, 'atomic wrapper must reuse the canonical payment-gated order workflow');
+assert.match(atomicCatalogueOrderMigration, /Selected laboratory catalogue item is missing or inactive/, 'atomic wrapper must reject stale or inactive catalogue entries');
+assert.match(atomicCatalogueOrderMigration, /Could not attach the selected catalogue item/, 'atomic wrapper must roll back when catalogue linkage fails');
+assert.match(atomicCatalogueOrderMigration, /REVOKE ALL ON FUNCTION public\.create_lab_order_with_catalogue_atomic/, 'atomic order RPC must not be executable by public or anonymous callers');
 assert.match(facilityScopeMigration, /AND facility_id = v_facility/, 'patient reads must be constrained to the active facility');
 assert.match(facilityScopeMigration, /lo\.facility_id = v_facility/, 'laboratory orders must be constrained to the active facility');
 assert.match(facilityScopeMigration, /lr\.facility_id = v_facility/, 'laboratory results must be constrained to the active facility');
