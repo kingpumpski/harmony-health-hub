@@ -89,24 +89,30 @@ export default function Settings(){
 
  async function load(){
    setLoading(true);
-   const [{data,error}, facilityResult, contextResult] = await Promise.all([
-     db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override,require_principal_diagnosis_for_final,inherit_inpatient_diagnoses,notification_sound_enabled').limit(1).maybeSingle(),
-     canControlTestMode
-       ? db.rpc('list_facilities_for_superadmin_context').then(({data,error}:any)=>{if(error)throw error;return data??[]}).catch((error:unknown)=>{toast.error(error instanceof Error?error.message:'Unable to load facilities.');return [];})
-       : listFacilities().catch(()=>[]),
-     canControlTestMode ? db.rpc('get_current_facility_context') : Promise.resolve({data:null,error:null}),
-   ]);
-   if(error) toast.error(error.message);
-   if(contextResult?.error && canControlTestMode) toast.error(contextResult.error.message);
-   setConfig(data as Config|null);
-   setFacilities(facilityResult);
-   const currentContext = Array.isArray(contextResult?.data) ? contextResult.data[0] : contextResult?.data;
-   const initial = currentContext?.facility_id ?? facilityResult[0]?.id ?? '';
-   setActiveContextFacilityId(initial);
-   setFacilityId(initial);
-   setLoading(false);
-   if(initial) void loadNotificationSettings(initial);
-   if(canControlTestMode) void loadEnvironmentMode();
+   try {
+     const [{data,error}, facilityResult, contextResult] = await Promise.all([
+       db.from('facility_configuration').select('id,facility_name,facility_code,phone,email,address,country,currency,timezone,routing_mode,appointment_buffer_minutes,maintenance_mode,allow_treatment_before_deposit,admission_financial_override_enabled,require_accounts_release_after_deposit,allow_clinical_emergency_override,require_principal_diagnosis_for_final,inherit_inpatient_diagnoses,notification_sound_enabled').limit(1).maybeSingle(),
+       canControlTestMode
+         ? db.rpc('list_facilities_for_superadmin_context').then(({data,error}:any)=>{if(error)throw error;return data??[]}).catch((error:unknown)=>{toast.error(error instanceof Error?error.message:'Unable to load facilities.');return [];})
+         : listFacilities().catch((error:unknown)=>{toast.error(error instanceof Error?error.message:'Unable to load facilities.');return [];}),
+       canControlTestMode ? db.rpc('get_current_facility_context') : Promise.resolve({data:null,error:null}),
+     ]);
+     if(error) throw new Error(error.message);
+     if(contextResult?.error && canControlTestMode) throw new Error(contextResult.error.message);
+     const safeFacilities = Array.isArray(facilityResult) ? facilityResult : [];
+     setConfig(data as Config|null);
+     setFacilities(safeFacilities);
+     const currentContext = Array.isArray(contextResult?.data) ? contextResult.data[0] : contextResult?.data;
+     const initial = currentContext?.facility_id ?? safeFacilities[0]?.id ?? '';
+     setActiveContextFacilityId(initial);
+     setFacilityId(initial);
+     if(initial) void loadNotificationSettings(initial);
+     if(canControlTestMode) void loadEnvironmentMode();
+   } catch(error) {
+     toast.error(error instanceof Error ? error.message : 'Unable to load system settings. Check your connection and retry.');
+   } finally {
+     setLoading(false);
+   }
  }
  async function switchActiveFacility(){
    if(!canControlTestMode || !activeContextFacilityId)return;
