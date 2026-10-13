@@ -143,7 +143,7 @@ export default function DashboardLayout({ specialty }: { specialty: SpecialistKi
         <div className="flex items-center justify-between border-b border-border p-4"><div><h2 className="font-semibold">Active list</h2><p className="mt-1 text-xs text-muted-foreground">Recent specialty records within your authorized facility</p></div><Link to="/patients" className="text-sm font-medium text-primary">Patient directory</Link></div>
         {items.length ? <div className="divide-y divide-border">{items.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div><p className="text-sm font-medium">Patient record · {item.patient_id.slice(0, 8).toUpperCase()}</p><p className="mt-1 text-xs text-muted-foreground">Updated {new Date(item.updated_at ?? item.created_at).toLocaleString()}</p></div>
-          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">Awaiting clinical review</span>
+          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">Assessment recorded</span>
         </div>)}</div> : <div className="p-8 text-center"><ClipboardList className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">{loading ? 'Loading active list…' : 'No specialty records found'}</p><p className="mt-1 text-xs text-muted-foreground">New records will appear here after an assessment is saved.</p></div>}
       </div>
       <div className="rounded-2xl border border-border bg-card p-4">
