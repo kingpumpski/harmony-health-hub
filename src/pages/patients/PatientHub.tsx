@@ -1,6 +1,6 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, CalendarDays, RefreshCw, Activity, Stethoscope, FlaskConical, Pill, CreditCard, FileText, BedDouble, Save, UserRound } from 'lucide-react';
@@ -28,14 +28,15 @@ function SectionUnavailable({ label, onRetry }: { label: string; onRetry: () => 
 
 export default function PatientHub() {
   const { patientId } = useParams<{ patientId: string }>(); const navigate = useNavigate(); const [searchParams] = useSearchParams(); const currentAdmissionId = searchParams.get('admission'); const { user } = useAuth();
-  const [patient, setPatient] = useState<any>(null); const [patientLoadError, setPatientLoadError] = useState(''); const [activeTab, setActiveTab] = useState<TabKey>(() => searchParams.get('vitals') === '1' ? 'vitals' : 'profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [failedSections, setFailedSections] = useState<string[]>([]); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({});
+  const [patient, setPatient] = useState<any>(null); const [patientLoadError, setPatientLoadError] = useState(''); const [activeTab, setActiveTab] = useState<TabKey>(() => searchParams.get('vitals') === '1' ? 'vitals' : 'profile'); const [loading, setLoading] = useState(true); const [historyLoading, setHistoryLoading] = useState(false); const [historyError, setHistoryError] = useState(''); const [failedSections, setFailedSections] = useState<string[]>([]); const [refreshKey, setRefreshKey] = useState(0); const [rows, setRows] = useState<Record<string, any[]>>({}); const historyLoadGeneration = useRef(0);
   const roleSet = useMemo(() => new Set(user?.roles ?? (user ? [user.role] : [])), [user?.roles, user?.role]); const canEdit = [...roleSet].some((role) => editRoles.has(role)); const canClinicalWrite = [...roleSet].some((role) => clinicalRoles.has(role)); const canClinicalHistory = [...roleSet].some((role) => clinicalHistoryRoles.has(role)); const canBill = [...roleSet].some((role) => billingRoles.has(role)); const canManageInsurance = [...roleSet].some((role) => administrativeRoles.has(role));
   const loadPatient = useCallback(async () => { if (!patientId) return; setLoading(true); setPatientLoadError(''); try { const data = await getPatientById(patientId); if (!data) { setPatient(null); setPatientLoadError('This patient record was not found in your active facility, or your account does not have permission to view it. Verify the hospital ID and active facility. If TEST MODE is active, use a patient registered under TEST-0001; records assigned to another facility remain blocked. If the record has no verified facility attribution, an administrator must reconcile it before it can be opened.'); return; } setPatient(data); } catch (error: any) { const message = String(error?.message ?? 'Unable to load patient record.'); setPatient(null); setPatientLoadError(message.toLowerCase().includes('active facility') ? 'Your account has no active facility context. Patient records are facility-scoped. Ask an administrator to assign your facility or select an active facility, then reopen this record.' : message.toLowerCase().includes('facility context') ? 'This patient belongs to a different facility context. Switch to the patient’s facility, then reopen the record. Test-mode accounts are restricted to the test facility.' : message.toLowerCase().includes('facility attribution is unresolved') ? 'This patient has no verified facility attribution. An administrator or IT administrator must reconcile the record before it can be opened.' : message); } finally { setLoading(false); } }, [navigate, patientId]);
   const loadHistory = useCallback(async () => {
-    if (!patientId) return; const db = supabase as any; setHistoryLoading(true); setHistoryError(''); setFailedSections([]);
+    if (!patientId) return; const request = ++historyLoadGeneration.current; const db = supabase as any; setHistoryLoading(true); setHistoryError(''); setFailedSections([]);
     try {
     if (currentAdmissionId) {
       const { data, error } = await db.rpc('get_patient_current_treatment_snapshot', { _patient_id: patientId, _admission_id: currentAdmissionId });
+      if (request !== historyLoadGeneration.current) return;
       if (error) {
         setRows({}); setFailedSections(['clinical', 'admissions']); setHistoryError(error.message ?? 'Unable to load the current treatment context.'); toast.error(error.message ?? 'Unable to load the current treatment context.');
       } else {
@@ -60,20 +61,22 @@ export default function PatientHub() {
       ...([...roleSet].some((role) => billingRoles.has(role)) ? [['invoices', db.rpc('get_patient_invoices', { _patient_id: patientId, _limit: 100 })]] : []),
       ...([...roleSet].some((role) => clinicalRoles.has(role) || role === 'system_superuser') ? [['admissions', db.rpc('get_patient_admission_history', { _patient_id: patientId })]] : []),
     ];
-    const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); const nextRows: Record<string, any[]> = {};
+    const settled = await Promise.allSettled(specs.map(async ([key, request]) => [key, await request] as const)); if (request !== historyLoadGeneration.current) return; const nextRows: Record<string, any[]> = {};
     const failed: string[] = [];
     settled.forEach((item, index) => { const key = specs[index][0] as string; if (item.status === 'fulfilled') { const response = item.value[1]; if (response.error) failed.push(key); else if (key === 'clinical') { const snapshot = response.data ?? {}; nextRows.vitals = snapshot.vitals ?? []; nextRows.encounters = snapshot.encounters ?? []; nextRows.labs = snapshot.labs ?? []; nextRows.prescriptions = snapshot.prescriptions ?? []; nextRows.documents = snapshot.documents ?? []; } else nextRows[key] = response.data ?? []; } else failed.push(key); });
     setRows(nextRows); setFailedSections(failed); if (failed.length) { const message = `Some sections could not be loaded: ${failed.join(', ')}.`; setHistoryError(message); toast.warning(`${message} Other sections remain available.`); }
     } catch (error) {
+      if (request !== historyLoadGeneration.current) return;
       const message = error instanceof Error ? error.message : 'Unable to load patient history. Check your connection and retry.';
       setRows({});
       setFailedSections(['appointments', 'clinical', 'invoices', 'admissions']);
       setHistoryError(message);
       toast.error(message);
     } finally {
-      setHistoryLoading(false);
+      if (request === historyLoadGeneration.current) setHistoryLoading(false);
     }
   }, [patientId, roleSet, canClinicalHistory, currentAdmissionId]);
+  useEffect(() => () => { historyLoadGeneration.current += 1; }, []);
   useEffect(() => { void loadPatient(); }, [loadPatient]); useEffect(() => { if (patient) void loadHistory(); }, [loadHistory, patient, refreshKey]);
   const tabCounts = useMemo<Record<TabKey, number>>(() => ({ profile: 1, appointments: rows.appointments?.length ?? 0, vitals: rows.vitals?.length ?? 0, encounters: rows.encounters?.length ?? 0, labs: rows.labs?.length ?? 0, prescriptions: rows.prescriptions?.length ?? 0, billing: rows.invoices?.length ?? 0, documents: rows.documents?.length ?? 0, admission: rows.admissions?.length ?? 0 }), [rows]);
   const refresh = () => setRefreshKey((v) => v + 1);
