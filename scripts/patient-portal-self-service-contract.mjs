@@ -213,10 +213,6 @@ if ((telemedicineFacilityShiftMigration.match(/JOIN public\.facility_memberships
 }
 
 
-const appointmentRequestHandler = patientPortalSource.slice(
-  patientPortalSource.indexOf('const requestAppointment = async'),
-  patientPortalSource.indexOf('const requestAIReport = async')
-);
 for (const needle of [
   'const appointmentRequestLock = useRef(false)',
   'if (!patient || appointmentRequestLock.current) return;',
