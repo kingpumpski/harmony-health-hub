@@ -76,11 +76,14 @@ export default function Laboratory() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const previousQueueTotal = useRef(0);
   const hasLoadedQueue = useRef(false);
+  const workspaceLoadGeneration = useRef(0);
 
   const loadAll = async () => {
+    const request = ++workspaceLoadGeneration.current;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
+      if (request !== workspaceLoadGeneration.current) return;
       if (error) {
         toast({ title: 'Laboratory workspace unavailable', description: error.message, variant: 'destructive' });
         return;
@@ -100,6 +103,7 @@ export default function Laboratory() {
     setResultsByOrder(map);
     try {
       const { data: specimenData, error: specimenError } = await supabase.rpc('get_laboratory_specimens', { _limit: 300 } as never);
+      if (request !== workspaceLoadGeneration.current) return;
       if (specimenError) {
         toast({ title: 'Specimen tracking unavailable', description: specimenError.message, variant: 'destructive' });
         setSpecimensByOrder({});
@@ -122,9 +126,11 @@ export default function Laboratory() {
       if (matchingResult) setAttentionOrderId(matchingResult.lab_order_id);
     }
     } catch (error) {
-      toast({ title: 'Laboratory workspace unavailable', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+      if (request === workspaceLoadGeneration.current) {
+        toast({ title: 'Laboratory workspace unavailable', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+      }
     } finally {
-      setLoading(false);
+      if (request === workspaceLoadGeneration.current) setLoading(false);
     }
   };
 
@@ -132,7 +138,11 @@ export default function Laboratory() {
     void loadAll();
     const unsubscribe = subscribeMasterDataChanged(['lab_tests','patients'], () => void loadAll());
     const refreshTimer = window.setInterval(() => void loadAll(), 30000);
-    return () => { unsubscribe(); window.clearInterval(refreshTimer); };
+    return () => {
+      workspaceLoadGeneration.current += 1;
+      unsubscribe();
+      window.clearInterval(refreshTimer);
+    };
   }, [user?.id]);
 
   const counters = useMemo(() => {
