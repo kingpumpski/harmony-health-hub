@@ -1,13 +1,16 @@
 {
   "name": "Harmony Health Hub",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
   "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "forwardPorts": [8080],
+  "forwardPorts": [5173],
   "portsAttributes": {
-    "8080": {
-      "label": "Harmony Health Hub",
+    "5173": {
+      "label": "Harmony Health Hub (Vite)",
       "onAutoForward": "notify"
     }
   },
@@ -25,5 +28,5 @@
       }
     }
   },
-  "remoteUser": "node"
+  "remoteUser": "vscode"
 }
