@@ -24,9 +24,14 @@
       ],
       "settings": {
         "typescript.tsdk": "node_modules/typescript/lib",
+        // "js/ts.tsdk.path": "node_modules/typescript/lib",
         "eslint.workingDirectories": ["."]
       }
     }
   },
+<<<<<<< HEAD
+=======
+  // "remoteUser": "node"
+>>>>>>> 4610a049 (Update devcontainer configuration to set remote user to vscode)
   "remoteUser": "vscode"
 }
