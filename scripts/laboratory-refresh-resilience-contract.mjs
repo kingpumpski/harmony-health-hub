@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const source = fs.readFileSync('src/pages/Laboratory.tsx', 'utf8');
+const loadStart = source.indexOf('  const loadAll = async () => {');
+const loadEnd = source.indexOf('\n  useEffect(() => {', loadStart);
+assert.ok(loadStart >= 0 && loadEnd > loadStart, 'Laboratory workspace loader must exist');
+const loader = source.slice(loadStart, loadEnd);
+assert.ok(source.includes('const workspaceRequestInFlight = useRef(false);'), 'Workspace refresh must have a single-flight guard');
+assert.ok(loader.includes('if (workspaceRequestInFlight.current || document.visibilityState !== \'visible\') return;'), 'Do not start concurrent refreshes or refresh while hidden');
+assert.ok(loader.includes('workspaceRequestInFlight.current = true;'), 'Mark workspace request in flight before network calls');
+assert.ok(loader.includes('workspaceRequestInFlight.current = false;'), 'Always release single-flight guard in finally');
+assert.ok(loader.includes('supabase.rpc(\'get_laboratory_workspace\', { _limit: 300 })'), 'Keep using the governed laboratory workspace RPC');
+const effectStart = loadEnd;
+const effectEnd = source.indexOf('\n  const counters =', effectStart);
+const effects = source.slice(effectStart, effectEnd);
+assert.ok(effects.includes("document.addEventListener('visibilitychange', refreshWhenVisible)"), 'Refresh when the tab becomes visible');
+assert.ok(effects.includes("window.addEventListener('pageshow', refreshWhenVisible)"), 'Refresh after BFCache page restoration');
+assert.ok(effects.includes("document.removeEventListener('visibilitychange', refreshWhenVisible)"), 'Remove visibility listener on unmount');
+assert.ok(effects.includes("window.removeEventListener('pageshow', refreshWhenVisible)"), 'Remove pageshow listener on unmount');
+assert.ok(effects.includes('window.clearInterval(refreshTimer)'), 'Clear polling interval on unmount');
+console.log('Laboratory refresh resilience contract passed');

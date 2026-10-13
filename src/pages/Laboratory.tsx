@@ -77,8 +77,11 @@ export default function Laboratory() {
   const previousQueueTotal = useRef(0);
   const hasLoadedQueue = useRef(false);
   const workspaceLoadGeneration = useRef(0);
+  const workspaceRequestInFlight = useRef(false);
 
   const loadAll = async () => {
+    if (workspaceRequestInFlight.current || document.visibilityState !== 'visible') return;
+    workspaceRequestInFlight.current = true;
     const request = ++workspaceLoadGeneration.current;
     setLoading(true);
     try {
@@ -131,17 +134,25 @@ export default function Laboratory() {
       }
     } finally {
       if (request === workspaceLoadGeneration.current) setLoading(false);
+      workspaceRequestInFlight.current = false;
     }
   };
 
   useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadAll();
+    };
     void loadAll();
-    const unsubscribe = subscribeMasterDataChanged(['lab_tests','patients'], () => void loadAll());
-    const refreshTimer = window.setInterval(() => void loadAll(), 30000);
+    const unsubscribe = subscribeMasterDataChanged(['lab_tests','patients'], refreshWhenVisible);
+    const refreshTimer = window.setInterval(refreshWhenVisible, 30000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('pageshow', refreshWhenVisible);
     return () => {
       workspaceLoadGeneration.current += 1;
       unsubscribe();
       window.clearInterval(refreshTimer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('pageshow', refreshWhenVisible);
     };
   }, [user?.id]);
 

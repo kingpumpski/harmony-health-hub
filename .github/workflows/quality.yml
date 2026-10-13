@@ -176,5 +176,8 @@ jobs:
       - name: Operational workspace role resolution contract
         run: npm run test:operational-workspace-role-resolution
 
+      - name: Laboratory refresh resilience contract
+        run: npm run test:laboratory-refresh-resilience
+
       - name: Production build
         run: npm run build
