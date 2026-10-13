@@ -9,6 +9,7 @@ const availableRoles = [
   { value: 'admin', label: 'Admin' }, { value: 'it_admin', label: 'IT Admin' }, { value: 'practitioner', label: 'Doctor' }, { value: 'nurse', label: 'Nurse' },
   { value: 'specialist_nurse', label: 'Specialist Nurse' }, { value: 'midwife', label: 'Midwife' }, { value: 'lab_technician', label: 'Lab Technician' },
   { value: 'pharmacist', label: 'Pharmacist' }, { value: 'radiologist', label: 'Radiologist' }, { value: 'radiology_technician', label: 'Radiology Technician' }, { value: 'accountant', label: 'Accountant' }, { value: 'front_desk', label: 'Front Desk' },
+  { value: 'physiotherapist', label: 'Physiotherapist' }, { value: 'ophthalmologist', label: 'Ophthalmologist' }, { value: 'dentist', label: 'Dentist' }, { value: 'dietician', label: 'Dietician' },
   { value: 'canteen', label: 'Canteen' }, { value: 'patient', label: 'Patient' }, { value: 'system_superuser', label: 'Super Admin' },
 ] as const;
 type RoleValue = string;
