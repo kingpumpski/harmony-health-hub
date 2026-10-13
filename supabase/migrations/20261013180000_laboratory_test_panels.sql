@@ -558,7 +558,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory result not found'; END IF;
   SELECT * INTO o FROM public.lab_orders WHERE id=r.lab_order_id FOR UPDATE;
   IF NOT FOUND OR r.facility_id IS NULL OR o.facility_id IS NULL OR r.facility_id IS DISTINCT FROM o.facility_id THEN
-    RAISE EXCEPTION 'Laboratory result facility attribution is unresolved or mismatched';
+    RAISE EXCEPTION 'Laboratory result facility mismatch: attribution is unresolved or result/order facility IDs differ';
   END IF;
   IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
      AND (v_facility IS NULL OR r.facility_id IS DISTINCT FROM v_facility) THEN
