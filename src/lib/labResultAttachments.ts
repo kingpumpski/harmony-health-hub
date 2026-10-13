@@ -12,4 +12,4 @@ export function isMissingLabResultAttachmentsApi(error: AttachmentRequestError) 
 }
 
 export const labResultAttachmentsUnavailableMessage =
-  'Laboratory attachment API is not installed or exposed yet. Reconcile and apply migrations 20261013170000_lab_paid_queue_reports_and_catalogue.sql, 20261013180000_laboratory_test_panels.sql, 20261013190000_repair_lab_result_attachments_schema.sql, and 20261013200000_lab_result_attachment_read_rpc.sql in version order, then reload the PostgREST schema cache and retry.';
+  'Laboratory attachment API is not installed or exposed yet. Reconcile and apply migrations 20261013170000_lab_paid_queue_reports_and_catalogue.sql, 20261013180000_laboratory_test_panels.sql, 20261013190000_repair_lab_result_attachments_schema.sql, 20261013200000_lab_result_attachment_read_rpc.sql, and 20261013210000_harden_lab_result_approval_facility_boundary.sql in version order, then reload the PostgREST schema cache and retry.';
