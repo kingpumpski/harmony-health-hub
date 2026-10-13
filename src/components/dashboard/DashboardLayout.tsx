@@ -79,9 +79,13 @@ export default function DashboardLayout({ specialty }: { specialty: SpecialistKi
         db.from('specialist_review_sessions').select('id', { count: 'exact', head: true }).eq('specialty', config.reviewSpecialty).in('status', ['pending', 'scheduled', 'overdue']),
         config.extraTable === 'appointments'
           ? db.from('appointments').select('id', { count: 'exact', head: true }).ilike('department', '%' + config.departmentMatch + '%').gte('scheduled_at', now.toISOString())
-          : config.extraTable
-            ? db.from(config.extraTable).select('id', { count: 'exact', head: true }).eq(config.extraTable === 'physio_treatment_plans' ? 'status' : config.extraTable === 'dietary_meal_orders' ? 'status' : 'id', config.extraTable === 'physio_treatment_plans' ? 'active' : config.extraTable === 'dietary_meal_orders' ? 'active' : undefined)
-            : Promise.resolve({ count: null, error: null }),
+          : config.extraTable === 'physio_treatment_plans'
+            ? db.from('physio_treatment_plans').select('id', { count: 'exact', head: true }).eq('status', 'active')
+            : config.extraTable === 'dietary_meal_orders'
+              ? db.from('dietary_meal_orders').select('id', { count: 'exact', head: true }).eq('status', 'active')
+              : config.extraTable === 'dental_assessments'
+                ? db.from('dental_assessments').select('id', { count: 'exact', head: true })
+                : Promise.resolve({ count: null, error: null }),
         db.from('appointments').select('id', { count: 'exact', head: true }).ilike('department', '%' + config.departmentMatch + '%').gte('scheduled_at', start.toISOString()).lte('scheduled_at', end.toISOString()).not('status', 'in', '("cancelled","no_show")'),
         db.from(config.table).select('id,patient_id,created_at,updated_at').order('created_at', { ascending: false }).limit(8)
       ]);
