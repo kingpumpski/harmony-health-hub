@@ -228,13 +228,14 @@ function QuickActionModal(props: any) {
     action, selected, diagnoses, quickSearch, setQuickSearch, quickNotes, setQuickNotes, quickPriority,
     setQuickPriority, selectedLabCode, setSelectedLabCode, selectedImaging, setSelectedImaging,
     selectedServiceCode, setSelectedServiceCode, selectedMedication, setSelectedMedication,
-    labCatalogue, imagingCatalogue, serviceCatalogue, medicationCatalogue, catalogLoading,
+    labCatalogue, labPanels, selectedLabPanelId, setSelectedLabPanelId, imagingCatalogue, serviceCatalogue, medicationCatalogue, catalogLoading,
     onClose, addDiagnosis, setPrincipal, newDx, setNewDx, addPrescription,
     med, setMed, dose, setDose, freq, setFreq, duration, setDuration, selectedDiagnosisId,
     setSelectedDiagnosisId, createLabOrder, createImagingOrder, createServiceOrder
   } = props;
 
   const filteredLabs = labCatalogue.filter((x:any) => `${x.test_code} ${x.test_name}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
+  const filteredLabPanels = labPanels.filter((x:any) => `${x.group_code} ${x.group_name}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 20);
   const filteredImaging = imagingCatalogue.filter((x:any) => `${x.service_code} ${x.service_name}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
   const filteredServices = serviceCatalogue.filter((x:any) => `${x.service_code} ${x.service_name} ${x.department ?? ""}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
   const filteredMeds = medicationCatalogue.filter((x:any) => `${x.name} ${x.generic_name ?? ""} ${x.strength ?? ""} ${x.form ?? ""}`.toLowerCase().includes(quickSearch.toLowerCase())).slice(0, 30);
@@ -258,8 +259,13 @@ function QuickActionModal(props: any) {
           )}
           {action === "lab" && (
             <>
-              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input autoFocus value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search active laboratory tests" /></div>
-              <div className="grid gap-2">{catalogLoading ? <p className="text-sm text-muted-foreground">Loading laboratory catalogue…</p> : filteredLabs.map((x:any) => <button type="button" key={x.test_code} onClick={() => setSelectedLabCode(x.test_code)} className={`rounded-xl border p-3 text-left ${selectedLabCode === x.test_code ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.test_name}</p><p className="text-[11px] text-muted-foreground">{x.test_code} · {x.category ?? "General"}</p></button>)}</div>
+              <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><input autoFocus value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} className="input-medical w-full pl-9" placeholder="Search individual tests and panels" /></div>
+              <div className="space-y-3">
+                {catalogLoading ? <p className="text-sm text-muted-foreground">Loading laboratory catalogue…</p> : <>
+                  {filteredLabPanels.length > 0 && <section><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">Panels · single tariff</h3><div className="grid gap-2">{filteredLabPanels.map((panel:any) => <button type="button" key={panel.id} onClick={() => { setSelectedLabPanelId(panel.id); setSelectedLabCode(""); }} className={`rounded-xl border p-3 text-left ${selectedLabPanelId === panel.id ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{panel.group_name} <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Panel</span></p><p className="text-[11px] text-muted-foreground">{panel.group_code} · {panel.tests?.length ?? 0} tests · GHS {Number(panel.default_charge).toFixed(2)}</p></button>)}</div></section>}
+                  <section><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Individual tests</h3><div className="grid gap-2">{filteredLabs.map((x:any) => <button type="button" key={x.test_code} onClick={() => { setSelectedLabCode(x.test_code); setSelectedLabPanelId(""); }} className={`rounded-xl border p-3 text-left ${selectedLabCode === x.test_code ? "border-primary bg-primary/5" : "border-border"}`}><p className="text-sm font-medium">{x.test_name}</p><p className="text-[11px] text-muted-foreground">{x.test_code} · {x.category ?? "General"}</p></button>)}</div></section>
+                </>}
+              </div>
               <div className="grid gap-3 sm:grid-cols-2"><select value={quickPriority} onChange={(e) => setQuickPriority(e.target.value)} className="input-medical"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option></select><textarea value={quickNotes} onChange={(e) => setQuickNotes(e.target.value)} className="input-medical sm:col-span-2" rows={3} placeholder={diagnoses.find((d:any) => d.is_principal)?.diagnosis ? `Clinical indication / notes · context: ${diagnoses.find((d:any) => d.is_principal)?.diagnosis}` : "Clinical indication / notes"} /></div>
               <div className="flex justify-end"><button type="button" onClick={() => void createLabOrder()} className="btn-primary">Add laboratory order</button></div>
             </>
@@ -348,10 +354,12 @@ export default function Encounters() {
   const [quickNotes, setQuickNotes] = useState("");
   const [quickPriority, setQuickPriority] = useState("routine");
   const [selectedLabCode, setSelectedLabCode] = useState("");
+  const [selectedLabPanelId, setSelectedLabPanelId] = useState("");
   const [selectedImaging, setSelectedImaging] = useState({ modality: "X-Ray", study: "", bodySite: "" });
   const [selectedServiceCode, setSelectedServiceCode] = useState("");
   const [selectedMedication, setSelectedMedication] = useState("");
   const [labCatalogue, setLabCatalogue] = useState<Array<{ test_code: string; test_name: string; category?: string | null }>>([]);
+  const [labPanels, setLabPanels] = useState<Array<{ id: string; group_name: string; group_code: string; default_charge: number; tests: Array<{ id: string; test_name: string }> }>>([]);
   const [imagingCatalogue, setImagingCatalogue] = useState<Array<{ service_code: string; service_name: string; department?: string | null }>>([]);
   const [serviceCatalogue, setServiceCatalogue] = useState<Array<{ service_code: string; service_name: string; department?: string | null }>>([]);
   const [medicationCatalogue, setMedicationCatalogue] = useState<Array<{ id: string; name: string; generic_name?: string | null; strength?: string | null; form?: string | null }>>([]);
@@ -481,9 +489,16 @@ export default function Encounters() {
       setCatalogLoading(true);
       try {
         if (quickAction === "lab") {
-          const { data, error } = await db.from("lab_test_catalogue").select("test_code,test_name,category").eq("active", true).order("test_name").limit(100);
+          const [{ data, error }, panelResult] = await Promise.all([
+            db.from("lab_test_catalogue").select("test_code,test_name,category").eq("active", true).order("test_name").limit(100),
+            db.rpc("get_laboratory_test_groups", { _include_inactive: false }),
+          ]);
           if (error) throw error;
-          if (active) setLabCatalogue((data ?? []) as typeof labCatalogue);
+          if (panelResult.error) throw panelResult.error;
+          if (active) {
+            setLabCatalogue((data ?? []) as typeof labCatalogue);
+            setLabPanels((panelResult.data ?? []) as typeof labPanels);
+          }
         } else if (quickAction === "imaging") {
           const { data, error } = await db.from("service_tariffs").select("service_code,service_name,department").eq("active", true).ilike("department", "imaging").order("service_name").limit(100);
           if (error) throw error;
@@ -1067,6 +1082,9 @@ export default function Encounters() {
           selectedMedication={selectedMedication}
           setSelectedMedication={setSelectedMedication}
           labCatalogue={labCatalogue}
+          labPanels={labPanels}
+          selectedLabPanelId={selectedLabPanelId}
+          setSelectedLabPanelId={setSelectedLabPanelId}
           imagingCatalogue={imagingCatalogue}
           serviceCatalogue={serviceCatalogue}
           medicationCatalogue={medicationCatalogue}
@@ -1088,11 +1106,13 @@ export default function Encounters() {
           selectedDiagnosisId={selectedDiagnosisId}
           setSelectedDiagnosisId={setSelectedDiagnosisId}
           createLabOrder={async () => {
-            if (!selectedLabCode) return toast({ title: "Select a laboratory test", variant: "destructive" });
-            const { error } = await db.rpc("create_encounter_lab_order", { _encounter_id: selected.id, _test_code: selectedLabCode, _priority: quickPriority, _clinical_notes: quickNotes || null });
+            if (!selectedLabCode && !selectedLabPanelId) return toast({ title: "Select a laboratory test or panel", variant: "destructive" });
+            const { error } = selectedLabPanelId
+              ? await db.rpc("create_encounter_lab_panel_order", { _encounter_id: selected.id, _group_id: selectedLabPanelId, _priority: quickPriority, _clinical_notes: quickNotes || null } as never)
+              : await db.rpc("create_encounter_lab_order", { _encounter_id: selected.id, _test_code: selectedLabCode, _priority: quickPriority, _clinical_notes: quickNotes || null });
             if (error) return toast({ title: "Laboratory order failed", description: error.message, variant: "destructive" });
-            toast({ title: "Laboratory order added", description: "The order is now linked to this encounter." });
-            setQuickAction(null); setQuickNotes(""); setSelectedLabCode(""); void loadDetails(selected.id);
+            toast({ title: selectedLabPanelId ? "Laboratory panel ordered" : "Laboratory order added", description: "The order is linked to this encounter and follows the Accounts payment gate." });
+            setQuickAction(null); setQuickNotes(""); setSelectedLabCode(""); setSelectedLabPanelId(""); void loadDetails(selected.id);
           }}
           createImagingOrder={async () => {
             if (!selectedImaging.study.trim()) return toast({ title: "Select an imaging study", variant: "destructive" });

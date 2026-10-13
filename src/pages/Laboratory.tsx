@@ -9,6 +9,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
+import LabTestGroupsManager from '@/components/laboratory/LabTestGroupsManager';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import ClinicalDataTable, { ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
@@ -27,6 +28,7 @@ interface LabOrder {
   id: string; patient_id: string; test_name: string; test_category: string | null;
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
   facility_id?: string; service_order_id?: string; billing_status?: string;
+  group_id?: string | null; parent_order_id?: string | null; panel_name?: string | null;
 }
 interface LabResult {
   id: string; lab_order_id: string; result_data: { value?: string } | null; parameter_results?: Record<string, unknown> | null; interpretation: string | null;
@@ -49,6 +51,12 @@ function timeAgo(value: string) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} h`;
   return `${Math.floor(hours / 24)} d`;
+}
+
+function escapeReportText(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character] ?? character);
 }
 
 function hasOutOfRangeResult(
@@ -223,7 +231,9 @@ export default function Laboratory() {
     const labId = `LAB-${new Date(order.created_at).getFullYear()}-${order.id.replaceAll('-', '').toUpperCase()}`;
     const searchable = `${patient?.patient_code ?? ''} ${patient?.first_name ?? ''} ${patient?.last_name ?? ''} ${order.id} ${labId} ${order.test_name}`.toLowerCase();
     return statusMatches && priorityMatches && resultMatches && searchable.includes(searchTerm.trim().toLowerCase());
-  }).sort((a, b) => a.patient_id.localeCompare(b.patient_id) || a.created_at.localeCompare(b.created_at)), [
+  }).sort((a, b) => a.patient_id.localeCompare(b.patient_id)
+    || (a.parent_order_id ?? a.id).localeCompare(b.parent_order_id ?? b.id)
+    || a.created_at.localeCompare(b.created_at)), [
     orders, resultsByOrder, appliedFilters, patients, searchTerm,
   ]);
 
@@ -418,6 +428,98 @@ export default function Laboratory() {
     window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
+  const printPanelReport = (parentOrderId: string) => {
+    const panelOrders = orders.filter((order) => order.parent_order_id === parentOrderId);
+    if (!panelOrders.length) return;
+    const firstOrder = panelOrders[0];
+    const patient = patients.find((entry) => entry.id === firstOrder.patient_id);
+    const sections = panelOrders.map((order) => {
+      const test = catalogue.find((item) => item.id === order.lab_test_catalogue_id);
+      const result = resultsByOrder[order.id];
+      const parameters = test?.parameters ?? [];
+      const rows = parameters.map((parameter) => {
+        const value = result?.parameter_results?.[parameter.code] ?? '';
+        const number = Number(value);
+        const flag = value === '' ? '—'
+          : parameter.type === 'numeric' || parameter.type === 'number'
+            ? Number.isFinite(number) && parameter.reference_low != null && number < parameter.reference_low ? 'Low'
+              : Number.isFinite(number) && parameter.reference_high != null && number > parameter.reference_high ? 'High' : 'Normal'
+            : '—';
+        const range = parameter.reference_text ?? `${parameter.reference_low ?? '—'} – ${parameter.reference_high ?? '—'}`;
+        return `<tr><td>${escapeReportText(parameter.label ?? parameter.name ?? parameter.code)}</td><td>${escapeReportText(value || '—')}</td><td>${escapeReportText(parameter.unit ?? '—')}</td><td>${escapeReportText(range)}</td><td>${escapeReportText(flag)}</td></tr>`;
+      }).join('');
+      return `<section><h2>${escapeReportText(order.test_name)} <small>(${escapeReportText(order.status)})</small></h2>${parameters.length
+        ? `<table><thead><tr><th>Parameter</th><th>Result</th><th>Unit</th><th>Reference range</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table>`
+        : `<p>${escapeReportText(result?.result_data?.value ?? 'Result not recorded')}</p>`}<p class="graph-placeholder">Instrument graph / attachment: included with the test record when available.</p></section>`;
+    }).join('');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: 'Print window blocked', description: 'Allow pop-ups for this application and try again.', variant: 'destructive' });
+      return;
+    }
+    printWindow.opener = null;
+    printWindow.document.write(`<!doctype html><html><head><title>${escapeReportText(firstOrder.panel_name ?? 'Laboratory panel')}</title><style>
+      body{font:13px Arial,sans-serif;color:#111;margin:28px}header{border-bottom:2px solid #234;padding-bottom:12px;margin-bottom:20px}
+      h1{font-size:22px;margin:0 0 8px}h2{font-size:16px;margin:24px 0 8px}small{font-weight:normal;text-transform:capitalize}
+      dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}dt{font-size:11px;color:#555}dd{margin:3px 0 0;font-weight:bold}
+      table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:6px;text-align:left}th{background:#eee}
+      .graph-placeholder{border:1px dashed #999;color:#555;padding:12px;font-size:11px}
+      footer{border-top:1px solid #aaa;margin-top:30px;padding-top:10px;font-size:11px}
+      @media print{button{display:none}}
+    </style></head><body><header><h1>${escapeReportText(firstOrder.panel_name ?? 'Laboratory panel')}</h1>
+    <dl><div><dt>Patient ID</dt><dd>${escapeReportText(patient?.patient_code ?? firstOrder.patient_id)}</dd></div>
+    <div><dt>Patient name</dt><dd>${escapeReportText(patient ? `${patient.first_name} ${patient.last_name}` : 'Patient')}</dd></div>
+    <div><dt>Gender</dt><dd>${escapeReportText(patient?.gender ?? '—')}</dd></div>
+    <div><dt>Sample / Lab ID</dt><dd>${escapeReportText(firstOrder.id)}</dd></div>
+    <div><dt>Department</dt><dd>Laboratory</dd></div><div><dt>Run / print time</dt><dd>${escapeReportText(new Date().toLocaleString())}</dd></div></dl></header>
+    ${sections}<footer><p>Delivered by: ${escapeReportText(user?.email ?? 'Laboratory')} · Operator / Validator: recorded in each individual test approval audit.</p><p>Printed: ${escapeReportText(new Date().toLocaleString())}</p></footer></body></html>`);
+    printWindow.document.close();
+    window.setTimeout(() => { printWindow.focus(); printWindow.print(); }, 250);
+  };
+
+  const openResultEntry = (orderId: string) => {
+    const existing = resultsByOrder[orderId];
+    setResultFor(orderId);
+    setResultText(existing?.parameter_results && Object.keys(existing.parameter_results).length
+      ? '' : existing?.result_data?.value ?? '');
+    setNumericValue(existing?.numeric_value == null ? '' : String(existing.numeric_value));
+    setParameterValues(Object.fromEntries(Object.entries(existing?.parameter_results ?? {}).map(([key, value]) => [key, String(value ?? '')])));
+    setInterpretation(existing?.interpretation ?? '');
+    setIsAbnormal(existing?.is_abnormal ?? false);
+  };
+
+  const hasUnsavedResultValues = () => Boolean(resultText.trim() || numericValue.trim() || interpretation.trim()
+    || Object.values(parameterValues).some((value) => value.trim()));
+
+  const closeResultEntry = () => {
+    if (hasUnsavedResultValues() && !window.confirm('Discard unsaved result values? Save a draft first to keep them.')) return;
+    setResultFor(null);
+    setResultText('');
+    setNumericValue('');
+    setParameterValues({});
+    setInterpretation('');
+    setIsAbnormal(false);
+  };
+
+  const openPanelResultEntry = (parentOrderId: string) => {
+    const next = orders.find((order) => order.parent_order_id === parentOrderId && order.status === 'sample_collected');
+    if (!next) {
+      toast({ title: 'No panel test is ready for results', description: 'Collect a sample for a panel test before opening report entry.', variant: 'destructive' });
+      return;
+    }
+    openResultEntry(next.id);
+  };
+
+  const switchPanelResultTab = (orderId: string) => {
+    if (orderId === resultFor || savingResultFor) return;
+    if (hasUnsavedResultValues() && !window.confirm('Discard the unsaved values on this test and switch to another panel test? Save a draft first to keep them.')) return;
+    openResultEntry(orderId);
+  };
+
+  if (searchParams.get('view') === 'panels') {
+    return <LabTestGroupsManager catalogue={catalogue} />;
+  }
+
   const approveResult = async (resultId: string, orderId: string, patientId: string) => {
     if (orderAction) return;
     setOrderAction(orderId);
@@ -502,6 +604,9 @@ export default function Laboratory() {
         ]}
         beforeList={(
           <div className="space-y-3">
+            <Link to="/laboratory?view=panels" className="btn-secondary inline-flex items-center gap-2 text-xs">
+              <FlaskConical className="h-4 w-4" aria-hidden="true" /> Manage laboratory panels
+            </Link>
             <section className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status">
               <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
               <p className="text-sm text-foreground">Lab orders are automatically generated from Clinician Encounters and become active upon payment confirmation by the Accounts department.</p>
@@ -546,6 +651,22 @@ export default function Laboratory() {
                         Patient group · {p ? `${p.first_name} ${p.last_name}` : 'Patient'} · {visibleOrders.filter((entry) => entry.patient_id === o.patient_id).length} test(s)
                       </td></tr>
                     )}
+                    {o.parent_order_id && (orderIndex === 0 || visibleOrders[orderIndex - 1].parent_order_id !== o.parent_order_id) && (
+                      (() => {
+                        const panelTests = orders.filter((entry) => entry.parent_order_id === o.parent_order_id);
+                        const panelComplete = panelTests.length > 0 && panelTests.every((entry) => entry.status === 'approved');
+                        return <tr className="bg-primary/5"><td colSpan={7} className="py-2 text-xs font-semibold text-primary">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-primary/20 px-2 py-0.5">Panel</span>
+                            <span>{o.panel_name ?? 'Laboratory panel'}</span>
+                            <span className="font-normal text-muted-foreground">{panelTests.length} tests · billed as one panel</span>
+                            <span className={`rounded-full px-2 py-0.5 ${panelComplete ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>{panelComplete ? 'Completed' : 'In process'}</span>
+                            <button type="button" onClick={() => openPanelResultEntry(o.parent_order_id!)} className="btn-ghost text-xs">Open panel report</button>
+                            <button type="button" onClick={() => printPanelReport(o.parent_order_id!)} className="btn-ghost ml-auto text-xs">Print panel report</button>
+                          </div>
+                        </td></tr>;
+                      })()
+                    )}
                     <tr id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
                       <td className="font-mono text-xs">{p?.patient_code ?? o.patient_id.slice(0, 8).toUpperCase()}</td>
                       <td className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</td>
@@ -553,7 +674,7 @@ export default function Laboratory() {
                       <td>
                         <div className="min-w-[180px]">
                           <p className="font-medium">{o.test_name}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{o.test_category ?? 'Uncategorised'}{item?.specimen_type ? ` · ${item.specimen_type}` : ''}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{o.panel_name ? `${o.panel_name} panel · ` : ''}{o.test_category ?? 'Uncategorised'}{item?.specimen_type ? ` · ${item.specimen_type}` : ''}</p>
                         </div>
                       </td>
                       <td className="font-mono text-xs">LAB-{new Date(o.created_at).getFullYear()}-{o.id.replaceAll('-', '').toUpperCase()}</td>
@@ -562,7 +683,7 @@ export default function Laboratory() {
                         <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
                           <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
                           {o.status === 'ordered' && <ClinicalTableAction label={orderAction === o.id ? 'Collecting…' : 'Collect sample'} onClick={() => void collectSample(o.id)} />}
-                          {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); setResultFor(o.id); }} />}
+                          {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); openResultEntry(o.id); }} />}
                           {o.status === 'completed' && result && <ClinicalTableAction label={orderAction === o.id ? 'Approving…' : 'Approve'} icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
                         </div>
                       </td>
@@ -682,12 +803,12 @@ export default function Laboratory() {
                                   <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
                                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
                                   <label className="block text-xs font-medium">Upload attachment (PDF, JPG or PNG, max 15 MB)<input type="file" accept="application/pdf,image/jpeg,image/png" className="input-medical mt-1 w-full" onChange={(event) => { void uploadResultAttachment(o.id, event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /></label>
-                                  <div className="flex flex-wrap gap-2"><button type="button" disabled={savingResultFor === o.id} onClick={() => void saveResultDraft(o.id)} className="btn-secondary text-xs disabled:opacity-60">Save draft</button><button type="button" disabled={savingResultFor === o.id} onClick={() => void submitResult(o.id)} className="btn-primary text-xs disabled:opacity-60">{savingResultFor === o.id ? 'Saving…' : 'Submit result for approval'}</button><button type="button" disabled={savingResultFor === o.id} onClick={() => { setResultFor(null); setParameterValues({}); }} className="btn-ghost text-xs disabled:opacity-60">Cancel</button></div>
+                                  <div className="flex flex-wrap gap-2"><button type="button" disabled={savingResultFor === o.id} onClick={() => void saveResultDraft(o.id)} className="btn-secondary text-xs disabled:opacity-60">Save draft</button><button type="button" disabled={savingResultFor === o.id} onClick={() => void submitResult(o.id)} className="btn-primary text-xs disabled:opacity-60">{savingResultFor === o.id ? 'Saving…' : 'Submit result for approval'}</button><button type="button" disabled={savingResultFor === o.id} onClick={closeResultEntry} className="btn-ghost text-xs disabled:opacity-60">Cancel</button></div>
                                 </div>
                               ) : (
                                 <div className="mt-3 flex flex-wrap gap-2">
                                   {o.status === 'ordered' && <button type="button" onClick={() => void collectSample(o.id)} className="btn-secondary text-xs">Collect sample</button>}
-                                  {o.status === 'sample_collected' && <button type="button" onClick={() => setResultFor(o.id)} className="btn-primary text-xs">Enter result</button>}
+                                  {o.status === 'sample_collected' && <button type="button" onClick={() => openResultEntry(o.id)} className="btn-primary text-xs">Enter result</button>}
                                   {o.status === 'completed' && result && <button type="button" onClick={() => void approveResult(result.id, o.id, o.patient_id)} className="btn-primary text-xs inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" aria-hidden="true" /> Approve & notify</button>}
                                   {o.status === 'approved' && <span className="text-xs text-success inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Approved</span>}
                                 </div>
@@ -712,8 +833,17 @@ export default function Laboratory() {
             <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Diagnostics · Structured report</p><h1 id="lab-report-entry-title" className="mt-1 text-2xl font-semibold">{reportOrder.test_name}</h1><p className="mt-1 text-sm text-muted-foreground">Enter and verify measured values before submitting the report to the approval queue.</p></div>
-                <div className="flex gap-2"><button type="button" onClick={() => setResultFor(null)} className="btn-secondary">Back to worklist</button><ClinicalStatusBadge status={reportOrder.status} /></div>
+                <div className="flex gap-2"><button type="button" onClick={closeResultEntry} className="btn-secondary">Back to worklist</button><ClinicalStatusBadge status={reportOrder.status} /></div>
               </div>
+              {reportOrder.parent_order_id && <nav className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4" aria-label={`${reportOrder.panel_name ?? 'Panel'} test results`}>
+                {orders.filter((order) => order.parent_order_id === reportOrder.parent_order_id).map((order) => (
+                  <button key={order.id} type="button" disabled={order.status !== 'sample_collected' || Boolean(savingResultFor)}
+                    onClick={() => switchPanelResultTab(order.id)}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50 ${resultFor === order.id ? 'border-primary bg-primary/5 text-primary' : 'border-border'}`}>
+                    <span className="block font-medium">{order.test_name}</span><span className="mt-1 block capitalize">{order.status.replaceAll('_', ' ')}</span>
+                  </button>
+                ))}
+              </nav>}
               <dl className="mt-5 grid gap-3 rounded-xl bg-muted/30 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                 <div><dt className="text-xs text-muted-foreground">Patient ID</dt><dd className="mt-1 font-medium">{reportPatient?.patient_code ?? reportOrder.patient_id}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Patient name</dt><dd className="mt-1 font-medium">{reportPatient ? `${reportPatient.first_name} ${reportPatient.last_name}` : 'Patient record'}</dd></div>

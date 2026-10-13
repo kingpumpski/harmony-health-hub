@@ -34,6 +34,8 @@ interface LabReportRow {
   reference_high: number | null;
   abnormal_flag: string | null;
   patients?: { id: string; first_name: string; last_name: string; patient_code: string } | null;
+  panel_name?: string | null;
+  panel_tests?: Array<{ id: string; test_name: string; status: string }>;
 }
 interface LabReportAttachment {
   id: string;
@@ -192,7 +194,7 @@ export default function LaboratoryResults() {
               return (
                 <Fragment key={result.id}>
                   <tr className={result.is_abnormal ? 'bg-critical/5' : undefined}>
-                    <td>{visibleResults.indexOf(result) + 1}</td><td className="font-mono text-xs">{result.patients?.patient_code ?? result.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p></td><td><p className="font-medium">{result.test_name}</p><p className="text-xs text-muted-foreground">{result.test_category ?? 'Laboratory'}</p></td><td className="text-xs">{result.diagnoses.length ? result.diagnoses.map((d) => <div key={d.id}>{d.is_principal ? 'Principal: ' : ''}{d.diagnosis}{d.icd_code ? ` (${d.icd_code})` : ''}</div>) : <span className="text-muted-foreground">No current encounter diagnosis</span>}</td><td className="text-sm">{result.prescriber_name ?? '—'}</td>
+                    <td>{visibleResults.indexOf(result) + 1}</td><td className="font-mono text-xs">{result.patients?.patient_code ?? result.patient_id.slice(0, 8)}</td><td><p className="font-semibold">{result.patients?.first_name} {result.patients?.last_name}</p></td><td><p className="font-medium">{result.test_name}</p><p className="text-xs text-muted-foreground">{result.panel_name ? `${result.panel_name} panel · ` : ''}{result.test_category ?? 'Laboratory'}</p></td><td className="text-xs">{result.diagnoses.length ? result.diagnoses.map((d) => <div key={d.id}>{d.is_principal ? 'Principal: ' : ''}{d.diagnosis}{d.icd_code ? ` (${d.icd_code})` : ''}</div>) : <span className="text-muted-foreground">No current encounter diagnosis</span>}</td><td className="text-sm">{result.prescriber_name ?? '—'}</td>
                     <td>{['urgent', 'stat'].includes(priority) ? <ClinicalStatusBadge status={priority} label={priority.toUpperCase()} /> : <ClinicalStatusBadge status="started" label="Routine" />}</td>
                     <td>
                       <div className="min-w-[140px]">
@@ -217,6 +219,11 @@ export default function LaboratoryResults() {
                               <ClinicalStatusBadge status="approved" />
                             </div>
                             <p className="mt-2 text-sm font-semibold">{result.test_name}</p>
+                            {result.panel_name && <p className="mt-1 text-xs text-primary">Part of {result.panel_name} panel</p>}
+                            {result.panel_tests && result.panel_tests.length > 0 && <section className="mt-3 rounded-lg border border-border p-3">
+                              <h3 className="text-xs font-semibold">Panel test progress</h3>
+                              <ul className="mt-2 space-y-1">{result.panel_tests.map((test) => <li key={test.id} className="flex items-center justify-between gap-3 text-xs"><span>{test.test_name}</span><ClinicalStatusBadge status={test.status} /></li>)}</ul>
+                            </section>}
                             <p className="mt-2 text-sm">{resultValue}</p>
                             {(result.reference_low !== null || result.reference_high !== null) && (
                               <p className="mt-1 text-xs text-muted-foreground">

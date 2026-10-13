@@ -500,4 +500,3 @@ if (failures.length) {
 } else {
   console.log('Operational contract checks passed: ' + checks.length);
 }
-

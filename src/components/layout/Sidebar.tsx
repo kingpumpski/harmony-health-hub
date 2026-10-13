@@ -40,7 +40,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
-    { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
+    { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(FlaskConical, 'Laboratory Panels', '/laboratory?view=panels', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
     { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance')] },
     { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
@@ -76,7 +76,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
   ],
   lab_technician: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(FlaskConical, 'Outside Lab', '/outside-lab', 'outside_lab')] },
+    { label: 'Diagnostics', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(FlaskConical, 'Laboratory Panels', '/laboratory?view=panels', 'laboratory'), item(FlaskConical, 'Outside Lab', '/outside-lab', 'outside_lab')] },
   ],
   accountant: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
