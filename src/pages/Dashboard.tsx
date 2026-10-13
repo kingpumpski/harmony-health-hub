@@ -22,8 +22,11 @@ import type { UserRole } from '@/types';
 export default function Dashboard(){
   const {user,switchRole}=useAuth();
   if(!user)return null;
+  // Platform superusers must land in the platform workspace even when they also hold facility roles.
+  const isPlatformSuperuser = user.roles.includes('system_superuser');
+  const activeRole = isPlatformSuperuser ? 'system_superuser' : user.role;
   let dashboard;
-  switch(String(user.role)){
+  switch(String(activeRole)){
     case'admin':dashboard=<AdminDashboard/>;break;
     case'practitioner':dashboard=<PractitionerDashboard/>;break;
     case'nurse':case'midwife':case'specialist_nurse':dashboard=<NurseDashboard/>;break;
@@ -39,11 +42,11 @@ export default function Dashboard(){
     case'front_desk':dashboard=<FrontDeskDashboard/>;break;
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
   }
-  const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(user.role);
-  const showSettlement=['admin','accountant'].includes(user.role);
+  const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(activeRole);
+  const showSettlement=['admin','accountant'].includes(activeRole);
   return (
     <div className="dashboard-workspace space-y-5">
-      {user.roles.length > 1 && (
+      {user.roles.length > 1 && !isPlatformSuperuser && (
         <div className="flex justify-end">
           <label className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium shadow-sm">
             <span className="text-muted-foreground">Operational role</span>
