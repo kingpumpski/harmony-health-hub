@@ -112,7 +112,8 @@
     "test:settings-load-resilience": "node scripts/settings-load-resilience-contract.mjs",
     "test:maternity-workflow-network-resilience": "node scripts/maternity-workflow-network-resilience-contract.mjs",
     "test:canteen-network-resilience": "node scripts/canteen-network-resilience-contract.mjs",
-    "test:laboratory-specimen-accession": "node scripts/laboratory-specimen-accession-contract.mjs"
+    "test:laboratory-specimen-accession": "node scripts/laboratory-specimen-accession-contract.mjs",
+    "test:devcontainer-config": "node scripts/devcontainer-config-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
