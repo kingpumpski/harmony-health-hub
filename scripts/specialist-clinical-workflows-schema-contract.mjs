@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const roleMigration = readFileSync("supabase/migrations/20261013160000_add_specialist_app_roles.sql", "utf8");
 const schemaMigration = readFileSync("supabase/migrations/20261013161000_specialist_clinical_workflows_schema.sql", "utf8");
+const clinicalStaffMigration = readFileSync("supabase/migrations/20261013162000_reconcile_specialist_clinical_staff_helper.sql", "utf8");
 
 for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
   assert.match(roleMigration, new RegExp("ADD VALUE IF NOT EXISTS '" + role + "'"));
@@ -19,4 +20,9 @@ for (const required of ["patient_id uuid NOT NULL REFERENCES public.patients(id)
 assert.match(schemaMigration, /ENABLE ROW LEVEL SECURITY/);
 assert.match(schemaMigration, /facility_id = \(SELECT public\.current_user_facility_id\(\)\)/);
 assert.match(schemaMigration, /WITH CHECK/);
+for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
+  assert.ok(clinicalStaffMigration.includes(role), "Clinical staff helper missing " + role);
+}
+assert.match(clinicalStaffMigration, /pg_get_functiondef/);
+assert.match(clinicalStaffMigration, /RAISE EXCEPTION/);
 console.log("Specialist schema contract passed.");
