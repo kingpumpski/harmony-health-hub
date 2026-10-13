@@ -1,11 +1,12 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, FlaskConical, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
+import { isMissingLabResultAttachmentsTable, labResultAttachmentsUnavailableMessage } from '@/lib/labResultAttachments';
 
 interface LabReportRow {
   id: string;
@@ -54,6 +55,7 @@ export default function LaboratoryResults() {
   const [appliedFilters, setAppliedFilters] = useState({ priority: 'all', interpretation: 'all' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<Date | null>(null);
+  const attachmentSchemaNoticeShown = useRef(false);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -82,7 +84,16 @@ export default function LaboratoryResults() {
           .in('lab_order_id' as never, labOrderIds as never);
         if (attachmentError) {
           setAttachmentsByResult({});
-          toast({ title: 'Report attachments unavailable', description: attachmentError.message, variant: 'destructive' });
+          if (!isMissingLabResultAttachmentsTable(attachmentError) || !attachmentSchemaNoticeShown.current) {
+            toast({
+              title: 'Report attachments unavailable',
+              description: isMissingLabResultAttachmentsTable(attachmentError)
+                ? labResultAttachmentsUnavailableMessage
+                : attachmentError.message,
+              variant: 'destructive',
+            });
+          }
+          if (isMissingLabResultAttachmentsTable(attachmentError)) attachmentSchemaNoticeShown.current = true;
         } else {
           setAttachmentsByResult(((attachments ?? []) as unknown as LabReportAttachment[]).reduce<Record<string, LabReportAttachment[]>>((grouped, attachment) => {
             (grouped[attachment.lab_order_id] ??= []).push(attachment);
