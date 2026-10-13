@@ -12,12 +12,20 @@ export default function SystemSuperuserDashboard() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase.rpc('get_role_dashboard_summary_for_role', {
-        _requested_role: 'system_superuser',
-      });
-      if (!cancelled) {
-        setSummary(error || !data || !Array.isArray(data.cards) ? [] : data.cards);
-        setLoading(false);
+      try {
+        const { data, error } = await supabase.rpc('get_role_dashboard_summary_for_role', {
+          _requested_role: 'system_superuser',
+        });
+        if (!cancelled) {
+          setSummary(error || !data || !Array.isArray(data.cards) ? [] : data.cards);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('[dashboard] platform summary unavailable:', error);
+          setSummary([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
     void load();
