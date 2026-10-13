@@ -179,5 +179,8 @@ jobs:
       - name: Laboratory refresh resilience contract
         run: npm run test:laboratory-refresh-resilience
 
+      - name: Billing window special-form migration contract
+        run: npm run test:billing-window-special-forms
+
       - name: Production build
         run: npm run build
