@@ -14,7 +14,7 @@ if (!activeRoleMigration.includes('get_role_dashboard_summary_for_role(_requeste
 if (!activeRoleMigration.includes('Requested dashboard role is not assigned to the authenticated user')) throw new Error('Active dashboard role must be server-validated');
 if (!activeRoleMigration.includes('REVOKE ALL ON FUNCTION public.get_role_dashboard_summary_for_role(text) FROM PUBLIC, anon')) throw new Error('Active dashboard function must not be executable anonymously');
 if (!activeRoleMigration.includes('GRANT EXECUTE ON FUNCTION public.get_role_dashboard_summary_for_role(text) TO authenticated')) throw new Error('Active dashboard function must be authenticated-only');
-const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin','system_superuser'];
+const roles=['admin','practitioner','nurse','midwife','specialist_nurse','lab_technician','radiologist','radiology_technician','pharmacist','accountant','front_desk','canteen','patient','it_admin','system_superuser','physiotherapist','ophthalmologist','dentist','dietician'];
 const expected=[
   ['admin','AdminDashboard'],
   ['practitioner','PractitionerDashboard'],
@@ -31,6 +31,10 @@ const expected=[
   ['patient','PatientDashboard'],
   ['it_admin','ITAdminDashboard'],
   ['system_superuser','SystemSuperuserDashboard'],
+  ['physiotherapist','PhysioDashboard'],
+  ['ophthalmologist','OphthalmologyDashboard'],
+  ['dentist','DentistDashboard'],
+  ['dietician','DieticianDashboard'],
 ];
 
 for (const [role,component] of expected) {
