@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const migrationPath = 'supabase/migrations/20261013100000_harden_atomic_inpatient_bed_transfer_facility_boundary.sql';
+const migrationPath = 'supabase/migrations/20261013161739_harden_atomic_inpatient_bed_transfer_facility_boundary.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const wardBoard = fs.readFileSync('src/pages/WardBedBoard.tsx', 'utf8');
 
