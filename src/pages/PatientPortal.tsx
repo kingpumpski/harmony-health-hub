@@ -21,6 +21,8 @@ export default function PatientPortal() {
   const [unavailableSections, setUnavailableSections] = useState<string[]>([]);
   const [requesting, setRequesting] = useState(false);
   const [appointmentRequesting, setAppointmentRequesting] = useState(false);
+  // A ref closes the rapid double-submit window before React can re-render the disabled button.
+  const appointmentRequestLock = useRef(false);
   const [appointmentDepartment, setAppointmentDepartment] = useState('General Outpatient');
   const [appointmentTime, setAppointmentTime] = useState(() => toLocalDateTimeInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [appointmentReason, setAppointmentReason] = useState('');
@@ -102,12 +104,18 @@ export default function PatientPortal() {
 
   const requestAppointment = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!patient) return;
+    if (!patient || appointmentRequestLock.current) return;
+    const scheduledAt = new Date(appointmentTime);
+    if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+      toast({ title: 'Choose a future appointment time', description: 'The appointment time must be valid and in the future.', variant: 'destructive' });
+      return;
+    }
+    appointmentRequestLock.current = true;
     setAppointmentRequesting(true);
     try {
       const { error } = await supabase.rpc('create_patient_appointment', {
         _patient_id: patient.id,
-        _scheduled_at: new Date(appointmentTime).toISOString(),
+        _scheduled_at: scheduledAt.toISOString(),
         _department: appointmentDepartment,
         _reason: appointmentReason.trim() || null,
       });
@@ -128,6 +136,7 @@ export default function PatientPortal() {
     } catch (e: any) {
       toast({ title: 'Unable to submit appointment request', description: e.message ?? 'Please try again.', variant: 'destructive' });
     } finally {
+      appointmentRequestLock.current = false;
       setAppointmentRequesting(false);
     }
   };
