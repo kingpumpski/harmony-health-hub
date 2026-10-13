@@ -40,6 +40,10 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
   pharmacist: ['dashboard','department_queue','pharmacy','medication_administration','inventory','stock_alerts','create_items','create_services'],
   canteen: ['dashboard','meal_orders','orders','dietary_plans'],
   patient: ['dashboard','patient_portal','appointments','telemedicine','billing','meal_orders'],
+  physiotherapist: ['dashboard','patients','appointments','encounters','clinical_operations','department_queue','procedures','notifications','billing'],
+  ophthalmologist: ['dashboard','patients','appointments','encounters','clinical_operations','department_queue','ophthalmology','radiology','radiology_results','medication_administration','notifications','billing'],
+  dentist: ['dashboard','patients','appointments','encounters','clinical_operations','department_queue','dental','procedures','radiology','radiology_results','medication_administration','notifications','billing'],
+  dietician: ['dashboard','patients','appointments','encounters','clinical_operations','department_queue','dietary_plans','meal_orders','notifications','billing'],
   system_superuser: [...Object.values(permissionByHref), 'encounters_amend','create_services','create_items'],
   it_admin: ['dashboard','it_support','hr','payroll','notifications','offline_sync','encounters_amend','ward','insurance_companies'],
 };
