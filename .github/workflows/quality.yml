@@ -137,6 +137,9 @@ jobs:
       - name: Encounter admission and order facility contract
         run: npm run test:encounter-admission-order-facility
 
+      - name: Inpatient bed-transfer facility boundary contract
+        run: npm run test:inpatient-bed-transfer-facility
+
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
 
