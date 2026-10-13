@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Codespaces devcontainer configuration contract
+        run: npm run test:devcontainer-config
+
       - name: Typecheck
         run: npm run typecheck
 
