@@ -19,6 +19,7 @@ type Config = {
   extraTable?: string;
   extraLabel?: string;
   extraHref?: string;
+  listSelect: string;
 };
 
 const configs: Record<SpecialistKind, Config> = {
@@ -27,32 +28,52 @@ const configs: Record<SpecialistKind, Config> = {
     description: 'Initial assessments, treatment plans and review sessions in one facility-scoped worklist.',
     table: 'physio_assessments', reviewSpecialty: 'physiotherapy', departmentMatch: 'physio',
     primaryHref: '/encounters?specialty=physiotherapy', primaryLabel: 'New assessment',
-    extraTable: 'physio_treatment_plans', extraLabel: 'Active treatment plans', extraHref: '/appointments'
+    extraTable: 'physio_treatment_plans', extraLabel: 'Active treatment plans', extraHref: '/appointments',
+    listSelect: 'id,patient_id,created_at,updated_at,assessment_type,pain_scale,next_session_date,patients(first_name,last_name,patient_code)'
   },
   ophthalmology: {
     title: 'Ophthalmology workspace', eyebrow: 'Specialist command · Ophthalmology',
     description: 'Eye assessments, follow-up reviews and diagnostic workflow visibility.',
     table: 'ophthalmology_assessments', reviewSpecialty: 'ophthalmology', departmentMatch: 'ophthalm',
     primaryHref: '/encounters?specialty=ophthalmology', primaryLabel: 'New eye assessment',
-    extraTable: 'appointments', extraLabel: 'Upcoming clinics', extraHref: '/appointments'
+    extraTable: 'appointments', extraLabel: 'Upcoming clinics', extraHref: '/appointments',
+    listSelect: 'id,patient_id,created_at,updated_at,visual_acuity_left,visual_acuity_right,post_op_review_due,patients(first_name,last_name,patient_code)'
   },
   dental: {
     title: 'Dental workspace', eyebrow: 'Specialist command · Dentistry',
     description: 'Dental assessments, tooth-chart records and pending procedure follow-up.',
     table: 'dental_assessments', reviewSpecialty: 'dental', departmentMatch: 'dent',
     primaryHref: '/encounters?specialty=dental', primaryLabel: 'New dental assessment',
-    extraTable: 'dental_assessments', extraLabel: 'Procedure records', extraHref: '/dental'
+    extraTable: 'dental_assessments', extraLabel: 'Procedure records', extraHref: '/dental',
+    listSelect: 'id,patient_id,created_at,updated_at,procedures_performed,pending_procedures,patients(first_name,last_name,patient_code)'
   },
   dietetics: {
     title: 'Dietetics workspace', eyebrow: 'Specialist command · Dietetics',
     description: 'Nutritional assessments, active meal plans and review-session visibility.',
     table: 'dietary_assessments', reviewSpecialty: 'dietetics', departmentMatch: 'diet',
     primaryHref: '/encounters?specialty=dietetics', primaryLabel: 'New dietary assessment',
-    extraTable: 'dietary_meal_orders', extraLabel: 'Patients on specialized diets', extraHref: '/dietary-plans'
+    extraTable: 'dietary_meal_orders', extraLabel: 'Patients on specialized diets', extraHref: '/dietary-plans',
+    listSelect: 'id,patient_id,created_at,updated_at,bmi,meal_plan,meal_plan_review_due,patients(first_name,last_name,patient_code)'
   }
 };
 
-type WorkItem = { id: string; patient_id: string; created_at: string; updated_at?: string };
+type WorkItem = {
+  id: string;
+  patient_id: string;
+  created_at: string;
+  updated_at?: string;
+  assessment_type?: string | null;
+  pain_scale?: number | null;
+  next_session_date?: string | null;
+  visual_acuity_left?: string | null;
+  visual_acuity_right?: string | null;
+  post_op_review_due?: string | null;
+  procedures_performed?: unknown;
+  pending_procedures?: unknown;
+  bmi?: number | null;
+  meal_plan_review_due?: string | null;
+  patients?: { first_name?: string | null; last_name?: string | null; patient_code?: string | null } | null;
+};
 
 export default function DashboardLayout({ specialty }: { specialty: SpecialistKind }) {
   const { user } = useAuth();
@@ -87,7 +108,7 @@ export default function DashboardLayout({ specialty }: { specialty: SpecialistKi
                 ? db.from('dental_assessments').select('id', { count: 'exact', head: true })
                 : Promise.resolve({ count: null, error: null }),
         db.from('appointments').select('id', { count: 'exact', head: true }).ilike('department', '%' + config.departmentMatch + '%').gte('scheduled_at', start.toISOString()).lte('scheduled_at', end.toISOString()).not('status', 'in', '("cancelled","no_show")'),
-        db.from(config.table).select('id,patient_id,created_at,updated_at').order('created_at', { ascending: false }).limit(8)
+        db.from(config.table).select(config.listSelect).order('created_at', { ascending: false }).limit(8)
       ]);
       const errors = [todayResult, reviewResult, extraResult, appointmentResult, listResult].filter(r => r?.error);
       if (errors.length) setError('Some dashboard data could not be loaded. Check role access and confirm the specialist migrations have been deployed.');
@@ -109,11 +130,30 @@ export default function DashboardLayout({ specialty }: { specialty: SpecialistKi
   }, [load]);
 
   const metricCards = [
-    { label: 'Today’s assessments', value: assessmentsToday, description: 'Specialty records created today', icon: ClipboardList, href: config.primaryHref },
-    { label: 'Pending reviews', value: pendingReviews, description: 'Review sessions awaiting action', icon: Activity, href: '/appointments' },
-    { label: 'Today’s clinics', value: appointmentsToday, description: 'Specialty appointments scheduled today', icon: CalendarDays, href: '/appointments' },
+    { label: specialty === 'dental' ? 'Dental Assessments Today' : specialty === 'ophthalmology' ? 'Eye Assessments Today' : specialty === 'physiotherapy' ? 'Assessments Today' : 'Dietary Assessments Today', value: assessmentsToday, description: 'Specialty records created today', icon: ClipboardList, href: config.primaryHref },
+    { label: 'Review Sessions Pending', value: pendingReviews, description: 'Specialist review sessions awaiting action', icon: Activity, href: '/appointments' },
+    { label: 'Specialty Appointments Today', value: appointmentsToday, description: 'Appointments matching this specialty', icon: CalendarDays, href: '/appointments' },
     { label: config.extraLabel ?? 'Active patients', value: extraCount, description: 'Current specialty workflow records', icon: Users, href: config.extraHref ?? '/patients' }
   ];
+  const listColumnLabel = specialty === 'dental'
+    ? 'Last procedure'
+    : specialty === 'ophthalmology'
+      ? 'Visual acuity (L / R)'
+      : specialty === 'physiotherapy'
+        ? 'Sessions / next review'
+        : 'BMI / diet review';
+  const patientName = (item: WorkItem) => [item.patients?.first_name, item.patients?.last_name].filter(Boolean).join(' ') || `Patient · ${item.patient_id.slice(0, 8).toUpperCase()}`;
+  const recordSummary = (item: WorkItem) => {
+    if (specialty === 'ophthalmology') return `${item.visual_acuity_left ?? '—'} / ${item.visual_acuity_right ?? '—'}`;
+    if (specialty === 'physiotherapy') return `${item.assessment_type ?? 'Assessment'} · ${item.next_session_date ?? 'No next session'}`;
+    if (specialty === 'dietetics') return `BMI ${item.bmi ?? '—'} · Review ${item.meal_plan_review_due ?? 'not set'}`;
+    const procedures = Array.isArray(item.procedures_performed) ? item.procedures_performed : [];
+    const firstProcedure = procedures[0];
+    if (typeof firstProcedure === 'string') return firstProcedure;
+    if (firstProcedure && typeof firstProcedure === 'object' && 'name' in firstProcedure && typeof firstProcedure.name === 'string') return firstProcedure.name;
+    const pending = Array.isArray(item.pending_procedures) ? item.pending_procedures : [];
+    return pending.length ? `${pending.length} pending procedure(s)` : 'No procedure recorded';
+  };
 
   return <div className="space-y-6 animate-fade-in">
     <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
@@ -140,11 +180,8 @@ export default function DashboardLayout({ specialty }: { specialty: SpecialistKi
     </section>
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border p-4"><div><h2 className="font-semibold">Active list</h2><p className="mt-1 text-xs text-muted-foreground">Recent specialty records within your authorized facility</p></div><Link to="/patients" className="text-sm font-medium text-primary">Patient directory</Link></div>
-        {items.length ? <div className="divide-y divide-border">{items.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <div><p className="text-sm font-medium">Patient record · {item.patient_id.slice(0, 8).toUpperCase()}</p><p className="mt-1 text-xs text-muted-foreground">Updated {new Date(item.updated_at ?? item.created_at).toLocaleString()}</p></div>
-          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">Assessment recorded</span>
-        </div>)}</div> : <div className="p-8 text-center"><ClipboardList className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">{loading ? 'Loading active list…' : 'No specialty records found'}</p><p className="mt-1 text-xs text-muted-foreground">New records will appear here after an assessment is saved.</p></div>}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4"><div><h2 className="font-semibold">Active list</h2><p className="mt-1 text-xs text-muted-foreground">Recent specialty records within your authorized facility</p></div><div className="flex items-center gap-3"><Link to="/patients" className="text-sm font-medium text-primary">Patient directory</Link><Link to={config.primaryHref} className="btn-primary text-xs">{config.primaryLabel}</Link></div></div>
+        {items.length ? <div className="overflow-x-auto"><table className="w-full min-w-[36rem] text-left text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Patient Name</th><th className="px-4 py-3 font-medium">{listColumnLabel}</th><th className="px-4 py-3 font-medium">{specialty === 'ophthalmology' ? 'Next appointment / review' : specialty === 'physiotherapy' ? 'Status' : 'Last updated'}</th></tr></thead><tbody className="divide-y divide-border">{items.map(item => <tr key={item.id} className="hover:bg-muted/20"><td className="px-4 py-3"><Link to={`/patients/${item.patient_id}`} className="font-medium hover:text-primary">{patientName(item)}</Link><p className="text-xs text-muted-foreground">{item.patients?.patient_code ?? item.patient_id}</p></td><td className="px-4 py-3">{recordSummary(item)}</td><td className="px-4 py-3 text-xs text-muted-foreground">{specialty === 'ophthalmology' ? item.post_op_review_due ?? '—' : new Date(item.updated_at ?? item.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <div className="p-8 text-center"><ClipboardList className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">{loading ? 'Loading active list…' : 'No specialty records found'}</p><p className="mt-1 text-xs text-muted-foreground">New records will appear here after an assessment is saved.</p></div>}
       </div>
       <div className="rounded-2xl border border-border bg-card p-4">
         <h2 className="font-semibold">Quick actions</h2><p className="mt-1 text-xs text-muted-foreground">Continue work in connected clinical modules</p>

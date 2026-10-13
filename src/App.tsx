@@ -92,13 +92,13 @@ const PageFallback = RouteLoadingScreen;
 interface ErrorBoundaryProps { children: ReactNode }
 interface ErrorBoundaryState { error: Error | null }
 class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> { state: ErrorBoundaryState = { error: null }; static getDerivedStateFromError(error: Error): ErrorBoundaryState { return { error }; } componentDidCatch(error: Error, info: ErrorInfo) { console.error('Harmony Health Hub render error', error, info.componentStack); } handleReload = () => window.location.reload(); render() { if (!this.state.error) return this.props.children; return <div className="min-h-screen bg-background px-6 py-16 text-foreground"><div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 shadow-sm"><h1 className="text-xl font-semibold">Harmony Health Hub could not display this page</h1><p className="mt-2 text-sm text-muted-foreground">The application encountered a runtime error. Your session and data have not been cleared.</p><p className="mt-4 break-words rounded-lg bg-muted p-3 text-xs text-muted-foreground">{this.state.error.message || 'Unknown application error'}</p><button type="button" onClick={this.handleReload} className="btn-primary mt-4">Reload application</button></div></div>; } }
-const clinicalRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician'] as const;
-const encounterRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'] as const;
+const clinicalRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'radiologist', 'radiology_technician', 'physiotherapist', 'ophthalmologist', 'dentist', 'dietician'] as const;
+const encounterRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'physiotherapist', 'ophthalmologist', 'dentist', 'dietician'] as const;
 const laboratoryWorkspaceRoles = ['admin', 'it_admin', 'lab_technician'] as const;
 const radiologyWorkspaceRoles = ['admin', 'radiologist', 'radiology_technician'] as const;
 const departmentQueueRoles = ['admin', 'it_admin', 'accountant', 'lab_technician', 'radiologist', 'radiology_technician', 'pharmacist', 'canteen', 'front_desk', 'nurse', 'specialist_nurse', 'midwife'] as const;
 const wardManagementRoles = ['admin', 'it_admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'] as const;
-const clinicalOperationsRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse'] as const;
+const clinicalOperationsRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'physiotherapist', 'ophthalmologist', 'dentist', 'dietician'] as const;
 const nursingRoles = ['admin', 'nurse', 'midwife', 'specialist_nurse'] as const;
 const emergencyRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'front_desk'] as const;
 const theatreRoles = ['admin', 'practitioner', 'nurse'] as const;
@@ -115,7 +115,7 @@ const telemedicineRoles = ['admin', 'practitioner', 'patient'] as const;
 const fertilityRoles = ['admin', 'practitioner', 'midwife'] as const;
 const outsideLabRoles = ['admin', 'lab_technician', 'patient'] as const;
 const pharmacyInventoryRoles = ['admin', 'pharmacist'] as const;
-const canteenRoles = ['admin', 'canteen'] as const;
+const canteenRoles = ['admin', 'canteen', 'dietician'] as const;
 const financialReportRoles = ['admin', 'accountant'] as const;
 const patientRecordsRoles = ['admin', 'practitioner', 'nurse', 'specialist_nurse', 'radiologist', 'radiology_technician', 'front_desk', 'patient'] as const;
 const patientContinuityRoles = ['admin', 'practitioner', 'nurse', 'midwife', 'specialist_nurse', 'pharmacist', 'lab_technician'] as const;

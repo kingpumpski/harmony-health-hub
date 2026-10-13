@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
+import { isSpecialtyModuleAllowed, moduleForPath, normalizeSpecialty, resolveUserSpecialty } from '@/config/specialtyModules';
 
 interface RoleGuardProps {
   allowedRoles: readonly UserRole[];
@@ -11,6 +14,20 @@ interface RoleGuardProps {
 export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
+  const specialty = user ? resolveUserSpecialty(user.role, user.specialization) : null;
+  const module = moduleForPath(location.pathname);
+  const hasFullAdministrativeAccess = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser';
+  const requestedSpecialtyValue = new URLSearchParams(location.search).get('specialty');
+  const requestedSpecialty = normalizeSpecialty(requestedSpecialtyValue);
+  const specialtyDenied = Boolean(
+    !hasFullAdministrativeAccess &&
+    ((module && !isSpecialtyModuleAllowed(specialty, module)) ||
+      (requestedSpecialtyValue && (!requestedSpecialty || specialty !== requestedSpecialty))),
+  );
+
+  useEffect(() => {
+    if (specialtyDenied) toast.error('Access Denied: You do not have permission to view this module.');
+  }, [location.pathname, specialtyDenied]);
 
   if (loading) {
     return <div className="flex min-h-[40vh] items-center justify-center p-12 text-sm text-muted-foreground">Checking access…</div>;
@@ -20,8 +37,6 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     if (import.meta.env.DEV) console.debug('[auth] guard:redirect', location.pathname);
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
-
-  const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
 
   if (!allowedRoles.includes(user.role) && !hasFullAdministrativeAccess) {
     return (
@@ -41,6 +56,8 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
       </div>
     );
   }
+
+  if (specialtyDenied) return <Navigate to="/dashboard" replace />;
 
   if (import.meta.env.DEV) console.debug('[auth] guard:allow', location.pathname, user.role);
   return <>{children}</>;

@@ -20,8 +20,10 @@ import PhysioDashboard from './dashboard/PhysioDashboard';
 import OphthalmologyDashboard from './dashboard/OphthalmologyDashboard';
 import DentistDashboard from './dashboard/DentistDashboard';
 import DieticianDashboard from './dashboard/DieticianDashboard';
+import OrthopaedicDashboard from './dashboard/OrthopaedicDashboard';
 import { AlertTriangle } from 'lucide-react';
 import type { UserRole } from '@/types';
+import { resolveUserSpecialty } from '@/config/specialtyModules';
 
 export default function Dashboard(){
   const {user,switchRole}=useAuth();
@@ -29,6 +31,7 @@ export default function Dashboard(){
   // Platform superusers must land in the platform workspace even when they also hold facility roles.
   const isPlatformSuperuser = user.roles.includes('system_superuser');
   const activeRole = isPlatformSuperuser ? 'system_superuser' : user.role;
+  const specialty = resolveUserSpecialty(user.role, user.specialization);
   let dashboard;
   switch(String(activeRole)){
     case'admin':dashboard=<AdminDashboard/>;break;
@@ -49,6 +52,16 @@ export default function Dashboard(){
     case'dietician':dashboard=<DieticianDashboard/>;break;
     case'front_desk':dashboard=<FrontDeskDashboard/>;break;
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
+  }
+  if (activeRole === 'practitioner') {
+    switch (specialty) {
+      case 'dentist': dashboard = <DentistDashboard />; break;
+      case 'ophthalmologist': dashboard = <OphthalmologyDashboard />; break;
+      case 'physiotherapist': dashboard = <PhysioDashboard />; break;
+      case 'orthopaedic': dashboard = <OrthopaedicDashboard />; break;
+      case 'dietician': dashboard = <DieticianDashboard />; break;
+      default: break;
+    }
   }
   const showReferral=['practitioner','nurse','midwife','specialist_nurse'].includes(activeRole);
   const showSettlement=['admin','accountant'].includes(activeRole);

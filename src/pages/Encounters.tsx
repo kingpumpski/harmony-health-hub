@@ -421,6 +421,10 @@ export default function Encounters() {
   };
 
   useEffect(() => {
+    if (searchParams.has('specialty')) setIsNewEncounterOpen(true);
+  }, [searchParams]);
+
+  useEffect(() => {
     void loadAll();
     const channel = supabase.channel(`encounter-history-${user?.id ?? "anonymous"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "encounters" }, () => { void loadAll(); })

@@ -3,14 +3,38 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Activity, BarChart3, Bell, BriefcaseBusiness, CalendarClock, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
+import { Activity, BarChart3, Bell, BriefcaseBusiness, CalendarClock, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, Eye, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
+import { isSpecialtyModuleAllowed, moduleForPath, resolveUserSpecialty, type SpecialtyId } from '@/config/specialtyModules';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
 interface NavGroup { label: string; icon: React.ElementType; items: NavItem[] }
 interface SidebarProps { collapsed: boolean; onToggle: () => void; mobileOpen: boolean; onMobileClose: () => void }
 
 const item = (icon: React.ElementType, label: string, href: string, permission: Permission): NavItem => ({ icon, label, href, permission });
+
+const specialtyNavGroups: Record<Exclude<SpecialtyId, 'general_practitioner'>, NavGroup[]> = {
+  dentist: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Dental Care', icon: Stethoscope, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Dental Clinic', '/dental', 'dental'), item(FileText, 'Procedures', '/procedures', 'procedures'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results')] },
+  ],
+  ophthalmologist: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Eye Care', icon: Eye, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Eye, 'Ophthalmology', '/ophthalmology', 'ophthalmology'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results')] },
+  ],
+  physiotherapist: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Physiotherapy', icon: Activity, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Assessments', '/encounters?specialty=physiotherapy', 'encounters'), item(FileText, 'Procedures', '/procedures', 'procedures')] },
+  ],
+  orthopaedic: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Orthopaedic Care', icon: Activity, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Assessments', '/encounters?specialty=orthopaedic', 'encounters'), item(ScanLine, 'Radiology Results', '/clinical-results', 'radiology_results'), item(BedDouble, 'Surgical Planning', '/theatre-board', 'theatre')] },
+  ],
+  dietician: [
+    { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
+    { label: 'Nutrition Care', icon: HeartPulse, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Dietary Assessment', '/encounters?specialty=dietetics', 'encounters'), item(FileText, 'Dietary Plans', '/dietary-plans', 'dietary_plans'), item(FileText, 'Meal Orders', '/orders', 'meal_orders')] },
+  ],
+};
 
 const roleNavGroups: Record<string, NavGroup[]> = {
   admin: [
@@ -88,13 +112,23 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   if (!user) return null;
 
   const navigationRole = user.role;
-  const roleGroups = roleNavGroups[navigationRole];
+  const specialty = resolveUserSpecialty(user.role, user.specialization);
+  const specialtyGroups = specialty && specialty !== 'general_practitioner'
+    ? specialtyNavGroups[specialty]
+    : undefined;
+  const roleGroups = specialtyGroups ?? roleNavGroups[navigationRole];
   const unsupportedRole = !roleGroups;
   const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
   const secondaryPermissions = new Set<Permission>(['clinical_references','insurance_companies','facility_attribution','it_support','system_settings','facility_sharing','financial_reports','accounts_approvals','claims']);
   const primaryGroups = (roleGroups ?? [])
-    .map(group => ({ ...group, items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => permissions.has(nav.permission)) }))
+    .map(group => ({
+      ...group,
+      items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => {
+        const module = moduleForPath(nav.href);
+        return permissions.has(nav.permission) && (!specialtyGroups || !module || isSpecialtyModuleAllowed(specialty, module));
+      }),
+    }))
     .filter(group => group.items.length > 0);
   const secondaryGroups = (roleGroups ?? []).map(group => ({ ...group, items: group.items.filter(nav => secondaryPermissions.has(nav.permission)) })).filter(group => group.items.length > 0);
   const groups = primaryGroups.map(group => ({ ...group, items: group.items.filter(nav => !secondaryPermissions.has(nav.permission)) })).filter(group => group.items.length > 0);
