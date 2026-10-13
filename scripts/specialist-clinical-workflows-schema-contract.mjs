@@ -20,6 +20,8 @@ for (const required of ["patient_id uuid NOT NULL REFERENCES public.patients(id)
 assert.match(schemaMigration, /ENABLE ROW LEVEL SECURITY/);
 assert.match(schemaMigration, /facility_id = \(SELECT public\.current_user_facility_id\(\)\)/);
 assert.match(schemaMigration, /WITH CHECK/);
+assert.match(schemaMigration, /_clinical_read/);
+assert.match(schemaMigration, /current_user_is_clinical_staff/);
 for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
   assert.ok(clinicalStaffMigration.includes(role), "Clinical staff helper missing " + role);
 }
