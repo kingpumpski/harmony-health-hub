@@ -66,11 +66,13 @@ async function fetchClinician(userId?: string): Promise<RoleDashboardData> {
   const now = new Date();
   const nextWeek = new Date(now.getTime() + 7 * 86400000);
   const monthStart = new Date(dayStart.getFullYear(), dayStart.getMonth(), 1).toISOString();
-  const [appointmentsResult, upcomingResult, labResult, imagingResult, admissionsResult, encounterResult, abnormalResult, monthlyEncounterResult, totalEncounterResult] = await Promise.all([
+  const [appointmentsResult, upcomingResult, labResult, imagingResult, serviceOrdersResult, workflowNotificationsResult, admissionsResult, encounterResult, abnormalResult, monthlyEncounterResult, totalEncounterResult] = await Promise.all([
     supabase.from('appointments').select('id,scheduled_at,status,reason,patients(first_name,last_name)', { count: 'exact' }).eq('practitioner_id', userId ?? '').in('status', ['scheduled', 'checked_in']).gte('scheduled_at', dayStart.toISOString()).lte('scheduled_at', dayEnd.toISOString()).order('scheduled_at').limit(100),
     supabase.from('appointments').select('id,scheduled_at,status,reason,patients(first_name,last_name)').eq('practitioner_id', userId ?? '').in('status', ['scheduled', 'checked_in']).gte('scheduled_at', now.toISOString()).lte('scheduled_at', nextWeek.toISOString()).order('scheduled_at').limit(3),
     supabase.from('lab_orders').select('id,test_name,status,created_at,patients(first_name,last_name)').eq('status', 'completed').order('created_at', { ascending: false }).limit(30),
     supabase.from('imaging_orders').select('id,study_name,status,report,created_at,patients(first_name,last_name)').eq('status', 'completed').is('report', null).order('created_at', { ascending: false }).limit(30),
+    supabase.from('service_orders').select('id,status,created_at').order('created_at', { ascending: false }).limit(500),
+    supabase.rpc('get_workflow_notifications', { _limit: 100 }),
     supabase.from('admissions').select('id', { count: 'exact', head: true }).eq('status', 'admitted'),
     supabase.from('encounters').select('id,status,created_at,completed_at,patients(first_name,last_name),patient_id').eq('practitioner_id', userId ?? '').gte('created_at', monthStart).order('created_at', { ascending: false }).limit(500),
     supabase.from('lab_results').select('id,is_abnormal,created_at,lab_orders(test_name,patients(first_name,last_name))').eq('is_abnormal', true).order('created_at', { ascending: false }).limit(10),
@@ -80,12 +82,18 @@ async function fetchClinician(userId?: string): Promise<RoleDashboardData> {
   const appointments = ensure(appointmentsResult, 'Appointments unavailable') as unknown as Row[];
   const labs = ensure(labResult, 'Lab results unavailable') as unknown as Row[];
   const imaging = ensure(imagingResult, 'Radiology results unavailable') as unknown as Row[];
+  const serviceOrders = ensure(serviceOrdersResult, 'Service orders unavailable') as unknown as Row[];
+  const workflowNotifications = ensure(workflowNotificationsResult, 'Workflow notifications unavailable') as unknown as Array<{ id: string; title?: string; message?: string; severity?: string; is_read?: boolean; link?: string | null; created_at?: string }>;
+  const pendingServiceOrders = serviceOrders.filter((row) => ['ordered', 'pending', 'in_progress', 'requested', 'scheduled'].includes(String(row.status ?? '').toLowerCase()));
+  const urgentWorkflowNotifications = workflowNotifications.filter((row) => !row.is_read && ['critical', 'high', 'warning'].includes(String(row.severity ?? '').toLowerCase()));
   const encounters = ensure(encounterResult, 'Encounter metrics unavailable') as unknown as Row[];
   const abnormal = ensure(abnormalResult, 'Critical results unavailable') as unknown as Row[];
   const upcoming = ensure(upcomingResult, 'Upcoming appointments unavailable') as unknown as Row[];
   if (monthlyEncounterResult.error) throw new Error(`Monthly encounter count unavailable: ${monthlyEncounterResult.error.message}`);
   if (totalEncounterResult.error) throw new Error(`Monthly encounter total unavailable: ${totalEncounterResult.error.message}`);
   if (appointmentsResult.error) throw new Error(`Appointment count unavailable: ${appointmentsResult.error.message}`);
+  if (serviceOrdersResult.error) throw new Error(`Service order queue unavailable: ${serviceOrdersResult.error.message}`);
+  if (workflowNotificationsResult.error) throw new Error(`Workflow attention feed unavailable: ${workflowNotificationsResult.error.message}`);
   if (admissionsResult.error) throw new Error(`Inpatient count unavailable: ${admissionsResult.error.message}`);
   const patientsSeen = new Set(encounters.filter((row) => row.status === 'completed').map((row) => row.patient_id)).size;
   const completionRate = totalEncounterResult.count ? Math.round(((monthlyEncounterResult.count ?? 0) / totalEncounterResult.count) * 100) : null;
@@ -94,6 +102,7 @@ async function fetchClinician(userId?: string): Promise<RoleDashboardData> {
       { label: "Today's Appointments", value: appointmentsResult.count ?? appointments.length, href: '/appointments' },
       { label: 'Pending Lab Results', value: labs.length, href: '/lab-results?status=pending' },
       { label: 'Pending Radiology', value: imaging.length, href: '/clinical-results' },
+      { label: 'Pending Service Orders', value: pendingServiceOrders.length, href: '/encounters' },
       { label: 'Active Inpatients', value: admissionsResult.count ?? 0, href: '/inpatient' },
     ],
     secondaryMetrics: [
@@ -107,7 +116,10 @@ async function fetchClinician(userId?: string): Promise<RoleDashboardData> {
       ...appointments.slice(0, 3).map((row) => makeActivity(row, `Appointment booked: ${patientName(row)}`, row.scheduled_at ? new Date(row.scheduled_at).toLocaleString() : '', '/appointments')),
     ].slice(0, 8),
     upcoming: upcoming.map((row) => makeActivity(row, patientName(row), row.scheduled_at ? new Date(row.scheduled_at).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '', '/appointments')),
-    alerts: abnormal.slice(0, 5).map((row) => makeActivity(row, 'Abnormal lab result', patientName(row), '/lab-results?status=pending')).map((item) => ({ ...item, severity: 'critical' as const })),
+    alerts: [
+      ...urgentWorkflowNotifications.slice(0, 5).map((row) => ({ id: row.id, title: row.title || 'Clinical attention required', detail: row.message || 'An unread workflow notification requires review.', createdAt: row.created_at, href: row.link || '/notifications', severity: String(row.severity).toLowerCase() === 'critical' ? 'critical' as const : 'warning' as const })),
+      ...abnormal.slice(0, 5).map((row) => ({ ...makeActivity(row, 'Abnormal lab result', patientName(row), '/lab-results?status=pending'), severity: 'critical' as const })),
+    ].slice(0, 8),
   };
 }
 
