@@ -24,7 +24,7 @@ for (const dependency of [
   /v_source public\.ward_beds%ROWTYPE/,
   /v_target_ward public\.ward_units%ROWTYPE/,
   /v_source_ward public\.ward_units%ROWTYPE/,
-  /FROM public\.patients p[\s\S]*?p\.facility_id/,
+  /SELECT p\.facility_id INTO v_patient_facility[\s\S]*?FROM public\.patients p/,
   /v_admission\.facility_id/,
   /v_admission\.patient_id/,
   /v_target\.ward_id/,
