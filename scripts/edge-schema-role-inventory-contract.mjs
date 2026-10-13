@@ -6,6 +6,8 @@ const functionsDir = path.join(root, 'supabase', 'functions');
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const app = fs.readFileSync(path.join(root, 'src', 'App.tsx'), 'utf8');
 const sidebar = fs.readFileSync(path.join(root, 'src', 'components', 'layout', 'Sidebar.tsx'), 'utf8');
+const dashboard = fs.readFileSync(path.join(root, 'src', 'pages', 'Dashboard.tsx'), 'utf8');
+const permissions = fs.readFileSync(path.join(root, 'src', 'lib', 'permissions.ts'), 'utf8');
 
 const expectedEdgeFunctions = [
   'admin-bulk-import','admin-create-user','ai-clinical-assist','analyze-lab-document',
@@ -16,7 +18,7 @@ const expectedEdgeFunctions = [
 const expectedRoles = [
   'admin','it_admin','system_superuser','practitioner','nurse','specialist_nurse','midwife',
   'front_desk','pharmacist','lab_technician','accountant','radiologist','radiology_technician',
-  'canteen','patient',
+  'canteen','patient','physiotherapist','ophthalmologist','dentist','dietician',
 ];
 
 const requiredSchemaEntrypoints = [
@@ -114,7 +116,7 @@ for (const slug of expectedEdgeFunctions) {
 }
 
 for (const role of expectedRoles) {
-  assert(app.includes(`'${role}'`) || sidebar.includes(`  ${role}:`), `Role ${role} is missing from application role wiring`);
+  assert(app.includes(`'${role}'`) || sidebar.includes(`  ${role}:`) || dashboard.includes(`case'${role}':`) || permissions.includes(`  ${role}:`), `Role ${role} is missing from application role wiring`);
 }
 
 const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith('.sql'));
