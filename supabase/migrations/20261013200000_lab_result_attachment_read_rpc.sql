@@ -51,6 +51,17 @@ BEGIN
         AND so.patient_id = lo.patient_id
         AND so.facility_id = lo.facility_id
         AND so.status IN ('released', 'in_progress', 'completed')
+    )
+    AND (
+      a.lab_result_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.lab_results lr
+        WHERE lr.id = a.lab_result_id
+          AND lr.lab_order_id = lo.id
+          AND lr.patient_id = lo.patient_id
+          AND lr.facility_id = lo.facility_id
+      )
     );
 
   RETURN result;
