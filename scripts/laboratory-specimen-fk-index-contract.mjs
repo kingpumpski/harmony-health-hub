@@ -34,7 +34,7 @@ for (const [indexName, columnName] of expected) {
 
 assert.doesNotMatch(
   migration,
-  /\\b(?:DROP\\s+(?:TABLE|INDEX|POLICY)|ALTER\\s+TABLE|CREATE\\s+POLICY|GRANT\\s|REVOKE\\s)\\b/i,
+  /\b(?:DROP\s+(?:TABLE|INDEX|POLICY)|ALTER\s+TABLE|CREATE\s+POLICY|GRANT\s|REVOKE\s)\b/i,
   "Index-only migration must not alter tables, policies, or grants",
 );
 
