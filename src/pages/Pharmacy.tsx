@@ -65,41 +65,51 @@ export default function Pharmacy() {
   const [prescriptionColumns, setPrescriptionColumns] = useState({ medication: false, dosage: false, status: false });
   const [columnsOpen, setColumnsOpen] = useState(false);
   const inventoryFormRef = useRef<HTMLFormElement | null>(null);
+  const workspaceLoadGeneration = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++workspaceLoadGeneration.current;
     setLoading(true);
-    const { data, error } = await db.rpc('get_pharmacy_workspace', { _limit: 300 });
-    if (error) {
-      setLoading(false);
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error } = await db.rpc('get_pharmacy_workspace', { _limit: 300 });
+      if (request !== workspaceLoadGeneration.current) return;
+      if (error) {
+        toast.error(error.message || 'Pharmacy workspace is unavailable. Check your connection and retry.');
+        return;
+      }
+      const workspace = (data ?? {}) as {
+        patients?: Patient[];
+        inventory?: InventoryItem[];
+        prescriptions?: Prescription[];
+        plans?: Plan[];
+        pos_sales?: PosSale[];
+        catalogue?: Array<{ id: string; name: string; category: string; generic_name: string | null; strength: string | null; form: string | null }>;
+        unassigned_inventory?: InventoryItem[];
+      };
+      setPatients(workspace.patients ?? []);
+      setInventory(workspace.inventory ?? []);
+      setCatalogue(workspace.catalogue ?? []);
+      setUnassignedInventory(workspace.unassigned_inventory ?? []);
+      setPrescriptions(workspace.prescriptions ?? []);
+      setPlans(workspace.plans ?? []);
+      setPosSales((workspace.pos_sales ?? []).map((sale) => ({ ...sale, status: sale.status })));
+    } catch (error) {
+      if (request === workspaceLoadGeneration.current) {
+        console.error('[pharmacy] workspace load failed:', error);
+        toast.error(error instanceof Error ? error.message : 'Pharmacy workspace is unavailable. Check your connection and retry.');
+      }
+    } finally {
+      if (request === workspaceLoadGeneration.current) setLoading(false);
     }
-    const workspace = (data ?? {}) as {
-      patients?: Patient[];
-      inventory?: InventoryItem[];
-      prescriptions?: Prescription[];
-      plans?: Plan[];
-      pos_sales?: PosSale[];
-      catalogue?: Array<{ id: string; name: string; category: string; generic_name: string | null; strength: string | null; form: string | null }>;
-      unassigned_inventory?: InventoryItem[];
-    };
-    setPatients(workspace.patients ?? []);
-    setInventory(workspace.inventory ?? []);
-    setCatalogue(workspace.catalogue ?? []);
-    setUnassignedInventory(workspace.unassigned_inventory ?? []);
-    setPrescriptions(workspace.prescriptions ?? []);
-    setPlans(workspace.plans ?? []);
-    setPosSales((workspace.pos_sales ?? []).map((sale) => ({
-      ...sale,
-      status: sale.status,
-    })));
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
     const refreshTimer = window.setInterval(() => void load(), 30000);
-    return () => window.clearInterval(refreshTimer);
+    return () => {
+      workspaceLoadGeneration.current += 1;
+      window.clearInterval(refreshTimer);
+    };
   }, [load]);
 
   const visiblePrescriptions = useMemo(() => prescriptions.filter((item) => !patientId || item.patient_id === patientId), [patientId, prescriptions]);
