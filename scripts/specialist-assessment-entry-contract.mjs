@@ -32,5 +32,5 @@ assert.match(page, /!schemaReady/, 'Save action must remain disabled until schem
 assert.match(page, /isAdministrativeRole \? Object\.keys\(specialties\)/, 'Specialty selector must not let non-admin staff switch into another specialty');
 assert.match(page, /patient_id: selectedEncounter\.patient_id, encounter_id: selectedEncounter\.id/, 'Assessment must be linked to the selected encounter and patient');
 assert.match(page, /No billing, test order, medication or meal-service transaction was created/, 'UI must not misrepresent downstream integrations as completed');
-assert.match(page, /ENABLE ROW LEVEL SECURITY/, 'Specialist tables must retain RLS');
+assert.match(schema, /ENABLE ROW LEVEL SECURITY/i, 'Specialist table migration must enable RLS');
 console.log('Specialist assessment-entry contract passed.');
