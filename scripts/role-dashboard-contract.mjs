@@ -95,3 +95,6 @@ if (!dashboardRolePriority.includes("const isPlatformSuperuser = user.roles.incl
 if (!dashboardRolePriority.includes("const activeRole = isPlatformSuperuser ? 'system_superuser' : user.role")) throw new Error('Platform superuser dashboard must take precedence over facility role selection');
 if (!dashboardRolePriority.includes("switch(String(activeRole))")) throw new Error('Dashboard routing must use the resolved platform-priority role');
 if (!dashboardRolePriority.includes("user.roles.length > 1 && !isPlatformSuperuser")) throw new Error('Platform superusers must not be switched away from the platform dashboard by the facility-role selector');
+
+if (!systemSuperuserDashboard.includes('try {') || !systemSuperuserDashboard.includes('catch (error)') || !systemSuperuserDashboard.includes('finally {') || !systemSuperuserDashboard.includes('if (!cancelled) setLoading(false)')) throw new Error('System Superuser dashboard must handle thrown RPC failures and always settle loading state');
+if (!systemSuperuserDashboard.includes("console.error('[dashboard] platform summary unavailable:', error)")) throw new Error('System Superuser dashboard network failures must be diagnosable');
