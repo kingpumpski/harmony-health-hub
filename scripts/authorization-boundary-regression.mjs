@@ -15,6 +15,8 @@ function walk(dir) {
 }
 
 for (const root of roots) walk(path.join(process.cwd(), root));
+// Resolve latest function definitions deterministically by migration filename, not filesystem enumeration order.
+files.sort((a, b) => a.localeCompare(b));
 
 const sqlSource = files.filter((file) => file.endsWith(".sql")).map((file) => fs.readFileSync(file, "utf8")).join("\n");
 const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
