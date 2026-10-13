@@ -37,7 +37,7 @@ for (const file of files) {
   const hasReactNamespace = reactImports.some(specifier => /(?:^|,|\s)React(?:,|$|\s)/.test(specifier) || /\*\s+as\s+React/.test(specifier));
 
   for (const hook of hooks) {
-    const bareCall = new RegExp('(?<![\w$.])' + hook + '\\s*\\(').test(source);
+    const bareCall = new RegExp('(?<![\\w$.])' + hook + '\\s*\\(').test(source);
     if (!bareCall) continue;
     if (namedImports.includes(hook)) continue;
     const namespaceCall = new RegExp('\\bReact\\s*\\.\\s*' + hook + '\\s*\\(').test(source);
