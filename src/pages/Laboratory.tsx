@@ -10,7 +10,7 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import LabTestGroupsManager from '@/components/laboratory/LabTestGroupsManager';
-import { isMissingLabResultAttachmentsTable, labResultAttachmentsUnavailableMessage } from '@/lib/labResultAttachments';
+import { isMissingLabResultAttachmentsApi, labResultAttachmentsUnavailableMessage } from '@/lib/labResultAttachments';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import ClinicalDataTable, { ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
@@ -147,16 +147,16 @@ export default function Laboratory() {
       if (request !== workspaceLoadGeneration.current) return;
       if (attachmentError) {
         setAttachmentsByOrder({});
-        if (!isMissingLabResultAttachmentsTable(attachmentError) || !attachmentSchemaNoticeShown.current) {
+        if (!isMissingLabResultAttachmentsApi(attachmentError) || !attachmentSchemaNoticeShown.current) {
           toast({
             title: 'Lab report attachments unavailable',
-            description: isMissingLabResultAttachmentsTable(attachmentError)
+            description: isMissingLabResultAttachmentsApi(attachmentError)
               ? labResultAttachmentsUnavailableMessage
               : attachmentError.message,
             variant: 'destructive',
           });
         }
-        if (isMissingLabResultAttachmentsTable(attachmentError)) attachmentSchemaNoticeShown.current = true;
+        if (isMissingLabResultAttachmentsApi(attachmentError)) attachmentSchemaNoticeShown.current = true;
       } else {
         setAttachmentsByOrder(((attachmentRows ?? []) as unknown as LabResultAttachment[]).reduce<Record<string, LabResultAttachment[]>>((grouped, attachment) => {
           (grouped[attachment.lab_order_id] ??= []).push(attachment);
@@ -424,7 +424,7 @@ export default function Laboratory() {
       await supabase.storage.from('lab-result-attachments').remove([path]);
       toast({
         title: 'Attachment record failed',
-        description: isMissingLabResultAttachmentsTable(metadataError)
+        description: isMissingLabResultAttachmentsApi(metadataError)
           ? labResultAttachmentsUnavailableMessage
           : metadataError.message,
         variant: 'destructive',
