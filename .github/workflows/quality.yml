@@ -140,6 +140,9 @@ jobs:
       - name: Inpatient bed-transfer facility boundary contract
         run: npm run test:inpatient-bed-transfer-facility
 
+      - name: Ward and bed workspace resilience contract
+        run: npm run test:ward-bed-board-resilience
+
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
 
