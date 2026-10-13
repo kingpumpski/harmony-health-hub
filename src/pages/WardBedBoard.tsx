@@ -35,6 +35,20 @@ type Facility = { id: string; name: string; facility_code: string | null; facili
 
 const managementRoles = ['admin', 'it_admin', 'system_superuser'];
 
+function isMissingRpc(error: unknown): boolean {
+  const candidate = error as { code?: string; message?: string } | null;
+  return Boolean(candidate && (candidate.code === 'PGRST202' || /could not find the function|function .* not found|schema cache/i.test(candidate.message ?? '')));
+}
+
+function showMutationError(title: string, error: unknown) {
+  const candidate = error as { message?: string } | null;
+  if (isMissingRpc(error)) {
+    toast({ title: 'Database workflow unavailable', description: 'The required database function is not available through the API yet. No change was completed. Confirm the approved database migration is applied and the API schema cache is refreshed before retrying.', variant: 'destructive' });
+    return;
+  }
+  toast({ title, description: candidate?.message ?? (error instanceof Error ? error.message : 'The request could not be completed.'), variant: 'destructive' });
+}
+
 export default function WardBedBoard() {
   const { user } = useAuth();
   const canManage = managementRoles.includes(String(user?.role));
@@ -103,12 +117,13 @@ export default function WardBedBoard() {
     try {
       const { error } = await action();
       if (error) {
-        toast({ title, description: error.message ?? 'The request could not be completed.', variant: 'destructive' });
+        showMutationError(title, error);
         return false;
       }
       return true;
     } catch (error) {
-      toast({ title, description: error instanceof Error ? error.message : 'A network error prevented the request from completing.', variant: 'destructive' });
+      if (isMissingRpc(error)) showMutationError(title, error);
+      else toast({ title, description: error instanceof Error ? error.message : 'A network error prevented the request from completing.', variant: 'destructive' });
       return false;
     } finally {
       setBusy(false);
