@@ -59,7 +59,11 @@ export default function SpecialistAssessments() {
   const { user } = useAuth();
   const [params] = useSearchParams();
   const initial = params.get('specialty');
-  const [specialty, setSpecialty] = useState<Specialty>(initial === 'ophthalmology' || initial === 'dental' || initial === 'dietetics' ? initial : 'physiotherapy');
+  const isAdministrativeRole = user?.role === 'admin' || user?.role === 'it_admin' || user?.role === 'system_superuser';
+  const roleSpecialty: Partial<Record<string, Specialty>> = { physiotherapist: 'physiotherapy', ophthalmologist: 'ophthalmology', dentist: 'dental', dietician: 'dietetics' };
+  const defaultSpecialty = roleSpecialty[user?.role ?? ''] ?? 'physiotherapy';
+  const requestedSpecialty = initial === 'ophthalmology' || initial === 'dental' || initial === 'dietetics' || initial === 'physiotherapy' ? initial : defaultSpecialty;
+  const [specialty, setSpecialty] = useState<Specialty>(isAdministrativeRole || requestedSpecialty === defaultSpecialty ? requestedSpecialty : defaultSpecialty);
   const config = specialties[specialty];
   const [encounters, setEncounters] = useState<EncounterOption[]>([]);
   const [encounterId, setEncounterId] = useState('');
@@ -69,9 +73,10 @@ export default function SpecialistAssessments() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [schemaReady, setSchemaReady] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setSchemaReady(false);
     try {
       const [facilityResult, encounterResult] = await Promise.all([
         db.rpc('current_user_facility_id'),
@@ -79,13 +84,23 @@ export default function SpecialistAssessments() {
       ]);
       if (facilityResult.error || !facilityResult.data) throw new Error(facilityResult.error?.message || 'No active facility is selected for this account.');
       if (encounterResult.error) throw new Error(encounterResult.error.message);
+      const schemaProbe = await db.from(config.table).select('id').limit(1);
+      if (schemaProbe.error) {
+        const code = String(schemaProbe.error.code ?? '');
+        const message = String(schemaProbe.error.message ?? '');
+        if (code === '42P01' || code === 'PGRST205' || /could not find the table|relation .* does not exist|schema cache/i.test(message)) {
+          throw new Error(`The ${config.title.toLowerCase()} database schema is not deployed in this environment yet. Saving is disabled until the reviewed specialist clinical workflow migrations are applied and verified.`);
+        }
+        throw new Error(`Cannot verify access to the ${config.title.toLowerCase()} database table. Saving is disabled until table access and facility permissions are verified. ${message}`);
+      }
+      setSchemaReady(true);
       setFacilityId(String(facilityResult.data));
       setEncounters(Array.isArray(encounterResult.data) ? encounterResult.data : []);
       setEncounterId(current => current && encounterResult.data?.some((e: EncounterOption) => e.id === current) ? current : '');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load authorized encounters.');
     } finally { setLoading(false); }
-  }, []);
+  }, [config.table, config.title]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setValues({}); setNotice(null); }, [specialty]);
@@ -154,7 +169,7 @@ export default function SpecialistAssessments() {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium" htmlFor="specialty">Specialty</label>
         <select id="specialty" value={specialty} onChange={e => setSpecialty(e.target.value as Specialty)} className="rounded-lg border border-input bg-background px-3 py-2 text-sm">
-          <option value="physiotherapy">Physiotherapy</option><option value="ophthalmology">Ophthalmology</option><option value="dental">Dentistry</option><option value="dietetics">Dietetics</option>
+          {(isAdministrativeRole ? Object.keys(specialties) as Specialty[] : [defaultSpecialty]).map(value => <option key={value} value={value}>{specialties[value].title.replace(' assessment', '')}</option>)}
         </select>
         <RefreshButton onClick={() => void load()} loading={loading} label="Refresh encounter list" />
       </div>
@@ -173,7 +188,7 @@ export default function SpecialistAssessments() {
         </div>)}
       </div>
       {specialty === 'dental' && <div className="rounded-xl border border-border p-3 text-sm text-muted-foreground"><ClipboardCheck className="mr-2 inline h-4 w-4" />Tooth chart entry is currently text-to-structured-data; a visual interactive odontogram is a separate follow-up.</div>}
-      <div className="flex justify-end"><button type="submit" disabled={saving || loading || !encounterId} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Saving…' : 'Save assessment'}</button></div>
+      <div className="flex justify-end"><button type="submit" disabled={saving || loading || !schemaReady || !encounterId} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{saving ? 'Saving…' : 'Save assessment'}</button></div>
     </form>
   </div>;
 }

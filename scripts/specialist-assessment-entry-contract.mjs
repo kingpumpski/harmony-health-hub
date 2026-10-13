@@ -25,6 +25,11 @@ assert.match(page, /rpc\('current_user_facility_id'\)/, 'Form must obtain the ac
 assert.match(page, /created_by: user\.id/, 'Form must attribute saved assessments to the signed-in user');
 assert.match(page, /from\(config\.table\)\.insert\(payload\)/, 'Form must persist assessments through the Supabase client');
 assert.match(page, /if \(insertError\) throw new Error/, 'Form must surface database write failures');
+assert.match(page, /schemaProbe = await db\.from\(config\.table\)\.select\('id'\)\.limit\(1\)/, 'Form must verify the selected specialty schema before enabling save');
+assert.match(page, /schema is not deployed in this environment yet/, 'Missing specialty schema must show a safe deployment-pending message');
+assert.match(page, /setSchemaReady\(false\)/, 'Schema verification must fail closed when the workspace is reloaded');
+assert.match(page, /!schemaReady/, 'Save action must remain disabled until schema verification succeeds');
+assert.match(page, /isAdministrativeRole \? Object\.keys\(specialties\)/, 'Specialty selector must not let non-admin staff switch into another specialty');
 assert.match(page, /patient_id: selectedEncounter\.patient_id, encounter_id: selectedEncounter\.id/, 'Assessment must be linked to the selected encounter and patient');
 assert.match(page, /No billing, test order, medication or meal-service transaction was created/, 'UI must not misrepresent downstream integrations as completed');
 assert.match(page, /ENABLE ROW LEVEL SECURITY/, 'Specialist tables must retain RLS');
