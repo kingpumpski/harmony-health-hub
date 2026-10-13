@@ -2473,6 +2473,11 @@ export type Database = {
         | "radiologist"
         | "radiology_technician"
         | "it_admin"
+        | "system_superuser"
+        | "physiotherapist"
+        | "ophthalmologist"
+        | "dentist"
+        | "dietician"
     }
     CompositeTypes: {
       [_ in never]: never
