@@ -21,13 +21,15 @@ BEGIN
     WHEN public.has_role(auth.uid(), 'system_superuser'::public.app_role) THEN 'system_superuser'
     WHEN public.has_role(auth.uid(), 'admin'::public.app_role) THEN 'admin'
     WHEN public.has_role(auth.uid(), 'it_admin'::public.app_role) THEN 'it_admin'
+    WHEN _module = 'appointments' AND public.has_role(auth.uid(), 'front_desk'::public.app_role) THEN 'front_desk'
+    WHEN _module = 'insurance' AND public.has_role(auth.uid(), 'accountant'::public.app_role) THEN 'accountant'
+    WHEN _module = 'facilities' AND public.has_role(auth.uid(), 'front_desk'::public.app_role) THEN 'front_desk'
+    WHEN _module = 'facilities' AND public.has_role(auth.uid(), 'accountant'::public.app_role) THEN 'accountant'
+    WHEN _module = 'ai_clinical' AND public.has_role(auth.uid(), 'radiologist'::public.app_role) THEN 'radiologist'
     WHEN public.has_role(auth.uid(), 'practitioner'::public.app_role) THEN 'practitioner'
     WHEN public.has_role(auth.uid(), 'nurse'::public.app_role) THEN 'nurse'
     WHEN public.has_role(auth.uid(), 'midwife'::public.app_role) THEN 'midwife'
     WHEN public.has_role(auth.uid(), 'specialist_nurse'::public.app_role) THEN 'specialist_nurse'
-    WHEN public.has_role(auth.uid(), 'front_desk'::public.app_role) THEN 'front_desk'
-    WHEN public.has_role(auth.uid(), 'accountant'::public.app_role) THEN 'accountant'
-    WHEN public.has_role(auth.uid(), 'radiologist'::public.app_role) THEN 'radiologist'
     ELSE NULL
   END INTO v_role;
 
