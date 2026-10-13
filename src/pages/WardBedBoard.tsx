@@ -54,22 +54,42 @@ export default function WardBedBoard() {
     const request = ++loadGeneration.current;
     setLoadError('');
     try {
-      const [workspace, patientsResult] = await Promise.all([
+      const [workspaceResult, patientsResult] = await Promise.allSettled([
         supabase.rpc('get_ward_management_workspace', { _limit: 1000 } as never),
         searchPatientDirectory('', 500),
       ]);
       if (request !== loadGeneration.current) return;
-      if (workspace.error || patientsResult.error) {
-        const message = (workspace.error || patientsResult.error)?.message ?? 'The ward workspace could not be loaded.';
+      if (workspaceResult.status === 'rejected') {
+        const message = workspaceResult.reason instanceof Error
+          ? workspaceResult.reason.message
+          : 'The ward workspace could not be loaded.';
+        setLoadError(message);
+        toast({ title: 'Unable to load ward management', description: message, variant: 'destructive' });
+        return;
+      }
+      const workspace = workspaceResult.value;
+      if (workspace.error) {
+        const message = workspace.error.message ?? 'The ward workspace could not be loaded.';
         setLoadError(message);
         toast({ title: 'Unable to load ward management', description: message, variant: 'destructive' });
         return;
       }
       const payload = (workspace.data ?? {}) as { wards?: Ward[]; beds?: Bed[]; facilities?: Facility[] };
-      setPatients((patientsResult.data ?? []) as Patient[]);
       setWards(payload.wards ?? []);
       setBeds(payload.beds ?? []);
       setFacilities(payload.facilities ?? []);
+
+      // Patient lookup is an optional assignment aid. Its outage must not hide
+      // the ward/bed capacity board when the secured workspace RPC succeeded.
+      if (patientsResult.status === 'fulfilled' && !patientsResult.value.error) {
+        setPatients((patientsResult.value.data ?? []) as Patient[]);
+      } else {
+        setPatients([]);
+        const message = patientsResult.status === 'rejected'
+          ? patientsResult.reason instanceof Error ? patientsResult.reason.message : 'The patient directory could not be loaded.'
+          : patientsResult.value.error?.message ?? 'The patient directory could not be loaded.';
+        toast({ title: 'Patient directory unavailable', description: message, variant: 'destructive' });
+      }
     } catch (error) {
       if (request !== loadGeneration.current) return;
       const message = error instanceof Error ? error.message : 'A network error prevented ward management from loading.';
