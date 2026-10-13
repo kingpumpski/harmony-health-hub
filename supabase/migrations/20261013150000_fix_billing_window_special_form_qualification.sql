@@ -14,9 +14,9 @@ BEGIN
     RAISE EXCEPTION 'Required billing materialization function is missing';
   END IF;
 
-  IF pg_catalog.position('pg_catalog.coalesce(' IN v_definition) = 0
-     OR pg_catalog.position('pg_catalog.greatest(' IN v_definition) = 0
-     OR pg_catalog.position('pg_catalog.least(' IN v_definition) = 0 THEN
+  IF pg_catalog.strpos(v_definition, 'pg_catalog.coalesce(') = 0
+     OR pg_catalog.strpos(v_definition, 'pg_catalog.greatest(') = 0
+     OR pg_catalog.strpos(v_definition, 'pg_catalog.least(') = 0 THEN
     RAISE EXCEPTION 'Billing materialization function differs from the expected broken definition; review before applying';
   END IF;
 
