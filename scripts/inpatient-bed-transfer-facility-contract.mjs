@@ -29,7 +29,7 @@ for (const dependency of [
   /v_admission\.patient_id/,
   /v_target\.ward_id/,
   /v_target\.bed_number/,
-  /v_source\.occupied_at/,
+  /ORDER BY occupied_at DESC NULLS LAST/,
   /SET patient_id = NULL,[\s\S]*?admission_id = NULL,[\s\S]*?status = 'cleaning'/,
   /INSERT INTO public\.care_transitions\s*\([\s\S]*?facility_id/s,
   /public\.record_system_audit\s*\([\s\S]*?'inpatient_bed_transferred'/s,
