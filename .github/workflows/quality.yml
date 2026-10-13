@@ -167,5 +167,8 @@ jobs:
       - name: Role dashboard KPI semantic contract
         run: node scripts/role-dashboard-kpi-semantic-contract.mjs
 
+      - name: Laboratory specimen foreign-key index migration contract
+        run: npm run test:laboratory-specimen-fk-indexes
+
       - name: Production build
         run: npm run build
