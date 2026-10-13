@@ -89,3 +89,9 @@ if (nurse.includes("'attention'] as const")) throw new Error('Nursing dashboard 
 const radiologyTechnician = read('src/pages/dashboard/RadiologyTechnicianDashboard.tsx');
 if (!radiologyTechnician.includes("get_role_dashboard_summary_for_role")) throw new Error('Radiology technician dashboard must use the validated role-scoped summary RPC');
 if (!radiologyTechnician.includes("[user?.role]")) throw new Error('Radiology technician dashboard must refresh when active role changes');
+
+const dashboardRolePriority = read('src/pages/Dashboard.tsx');
+if (!dashboardRolePriority.includes("const isPlatformSuperuser = user.roles.includes('system_superuser')")) throw new Error('Assigned platform superusers must be detected independently of the currently selected facility role');
+if (!dashboardRolePriority.includes("const activeRole = isPlatformSuperuser ? 'system_superuser' : user.role")) throw new Error('Platform superuser dashboard must take precedence over facility role selection');
+if (!dashboardRolePriority.includes("switch(String(activeRole))")) throw new Error('Dashboard routing must use the resolved platform-priority role');
+if (!dashboardRolePriority.includes("user.roles.length > 1 && !isPlatformSuperuser")) throw new Error('Platform superusers must not be switched away from the platform dashboard by the facility-role selector');
