@@ -82,6 +82,15 @@ CREATE POLICY lab_result_attachments_storage_read
     AND EXISTS (
       SELECT 1
       FROM public.lab_orders lo
+      JOIN public.service_orders so
+        ON so.related_entity_id = coalesce(lo.parent_order_id, lo.id)
+        AND so.department = 'laboratory'
+        AND so.patient_id = lo.patient_id
+        AND so.facility_id = lo.facility_id
+        AND so.status IN ('released', 'in_progress', 'completed')
+      JOIN public.patients p
+        ON p.id = lo.patient_id
+        AND p.facility_id = lo.facility_id
       WHERE lo.id::text = split_part(name, '/', 1)
         AND lo.facility_id = (SELECT public.current_user_facility_id())
         AND (SELECT public.current_user_is_clinical_staff())
