@@ -115,6 +115,21 @@ BEGIN
   SET status = 'approved', updated_at = pg_catalog.now()
   WHERE id = o.id AND status = 'completed';
 
+  PERFORM public.record_system_audit(
+    CASE WHEN o.parent_order_id IS NULL THEN 'lab_result_approved' ELSE 'lab_panel_test_approved' END,
+    'laboratory',
+    CASE WHEN o.parent_order_id IS NULL THEN 'lab_orders' ELSE 'lab_test_groups' END,
+    coalesce(o.parent_order_id, o.id),
+    'info',
+    pg_catalog.jsonb_build_object(
+      'lab_order_id', o.id,
+      'lab_result_id', r.id,
+      'group_id', o.group_id,
+      'test_id', o.lab_test_catalogue_id,
+      'actor_id', uid
+    )
+  );
+
   IF o.ordered_by IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM public.notifications n
     WHERE n.recipient_user_id = o.ordered_by
