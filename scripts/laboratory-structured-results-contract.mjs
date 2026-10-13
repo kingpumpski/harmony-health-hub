@@ -15,13 +15,16 @@ assert.match(source, /item\?\.parameters && item\.parameters\.length > 0/, 'stru
 assert.match(source, /enter_lab_result_structured/, 'structured tests must use the structured result RPC');
 assert.match(source, /Object\.entries\(result\.parameter_results\)/, 'structured values must be visible in order details');
 assert.match(source, /if \(!map\[r\.lab_order_id\]\)/, 'workspace must retain the newest result for each order');
-assert.match(catalogueModal, /create_lab_test_catalogue_item_with_parameters/, 'catalogue creation must persist structured parameter definitions');
+assert.match(catalogueModal, /create_lab_test_catalogue_item_with_sample_quantity/, 'catalogue creation must persist specimen quantity and structured parameter definitions');
 assert.match(catalogueModal, /JSON\.parse\(parametersJson\)/, 'catalogue parameter JSON must be parsed before submission');
 assert.match(catalogueParametersMigration, /Laboratory parameter codes must be unique/, 'server must reject duplicate parameter codes');
 assert.match(catalogueParametersMigration, /Laboratory parameters must be a JSON array/, 'server must validate parameter JSON shape');
-assert.match(source, /create_lab_order_with_catalogue_atomic/, 'lab order creation must atomically attach the selected catalogue item');
-assert.match(source, /_catalogue_id: catalogueId \|\| null/, 'selected catalogue identity must be passed to the atomic order RPC');
+assert.doesNotMatch(source, /create_lab_order_with_catalogue_atomic|New laboratory order/, 'laboratory technicians must not create orders from the workspace');
 assert.doesNotMatch(source, /attach_lab_catalogue_to_order/, 'catalogue attachment must not be a separate post-creation request');
+assert.match(source, /payment confirmation by the Accounts department/, 'technician worklist must explain the billing gate');
+assert.match(source, /save_lab_result_draft/, 'technicians must be able to persist result drafts');
+assert.match(source, /lab-result-attachments/, 'report attachments must use the private lab attachment bucket');
+assert.match(source, /LAB-\$\{new Date\(order\.created_at\)\.getFullYear\(\)\}-\$\{order\.id\.replaceAll\(/, 'worklist must display a unique Lab ID');
 assert.match(atomicCatalogueOrderMigration, /public\.create_lab_order_with_payment_gate\(/, 'atomic wrapper must reuse the canonical payment-gated order workflow');
 assert.match(atomicCatalogueOrderMigration, /Selected laboratory catalogue item is missing or inactive/, 'atomic wrapper must reject stale or inactive catalogue entries');
 assert.match(atomicCatalogueOrderMigration, /Laboratory test name must match the selected catalogue item/, 'catalogue-linked orders must not drift from the selected test identity');
@@ -36,7 +39,7 @@ assert.match(source, /enter_lab_result'/, 'legacy narrative/single-value tests m
 assert.match(source, /parameter\.required && !structuredResults\[parameter\.code\]/, 'required parameters must be validated before submission');
 assert.match(source, /savingResultFor/, 'result submission must prevent duplicate submissions and show progress');
 assert.match(source, /orderAction/, 'sample collection and approval actions must guard duplicate clicks');
-assert.match(source, /catch \(error\)[\s\S]*finally \{\s*setLoading\(false\)/, 'workspace load failures must not leave loading active');
+assert.match(source, /catch \(error\)[\s\S]*finally \{\s*if \(request === workspaceLoadGeneration\.current\) setLoading\(false\)/, 'workspace load failures must release loading state without allowing stale requests to overwrite current state');
 assert.match(source, /catch \(requestError\)/, 'mutation transport rejections must be handled without unhandled promises');
 assert.match(source, /setParameterValues\(\{\}\)/, 'structured values must be cleared after a successful submission');
 assert.match(structuredMigration, /Required laboratory parameter is missing/, 'server must independently enforce required parameters');

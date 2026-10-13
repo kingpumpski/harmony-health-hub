@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const source = fs.readFileSync('src/pages/Laboratory.tsx', 'utf8');
-const loadStart = source.indexOf('  const loadAll = async () => {');
+const loadStart = source.indexOf('  const loadAll = useCallback(async () => {');
 const loadEnd = source.indexOf('\n  useEffect(() => {', loadStart);
 assert.ok(loadStart >= 0 && loadEnd > loadStart, 'Laboratory workspace loader must exist');
 const loader = source.slice(loadStart, loadEnd);

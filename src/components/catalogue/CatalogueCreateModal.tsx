@@ -19,7 +19,7 @@ export default function CatalogueCreateModal({ kind, initialName, userRoles, use
   const privileged = userRoles.includes('admin') || userRoles.includes('it_admin');
   const canServices = privileged || userPermissions.includes('create_services');
   const canItems = privileged || userPermissions.includes('create_items');
-  const allowed = kind === 'service' ? canServices : kind === 'pharmacy' ? canItems : canItems || canServices;
+  const allowed = kind === 'service' ? canServices : kind === 'pharmacy' ? canItems : canItems || canServices || userRoles.includes('lab_technician');
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState('');
   const [department, setDepartment] = useState(userDepartment ?? '');
@@ -27,6 +27,7 @@ export default function CatalogueCreateModal({ kind, initialName, userRoles, use
   const [amount, setAmount] = useState('0');
   const [category, setCategory] = useState('');
   const [specimen, setSpecimen] = useState('');
+  const [sampleQuantity, setSampleQuantity] = useState('');
   const [strength, setStrength] = useState('');
   const [form, setForm] = useState('');
   const [generic, setGeneric] = useState('');
@@ -68,8 +69,8 @@ export default function CatalogueCreateModal({ kind, initialName, userRoles, use
         _supplier: '', _batch_number: '', _expiry_date: null, _stock_quantity: 0, _reorder_level: 0, _unit_price: 0, _category: category || 'Uncategorized',
       } as never));
     } else {
-      ({ data, error } = await supabase.rpc('create_lab_test_catalogue_item_with_parameters' as never, {
-        _test_code: code, _test_name: name, _category: category, _specimen_type: specimen, _unit: unit,
+      ({ data, error } = await supabase.rpc('create_lab_test_catalogue_item_with_sample_quantity' as never, {
+        _test_code: code, _test_name: name, _category: category, _specimen_type: specimen, _sample_quantity: sampleQuantity, _unit: unit,
         _reference_low: referenceLow === '' ? null : Number(referenceLow),
         _reference_high: referenceHigh === '' ? null : Number(referenceHigh),
         _reference_text: referenceText, _default_charge: Number(amount), _turnaround_minutes: Number(turnaround),
@@ -87,13 +88,14 @@ export default function CatalogueCreateModal({ kind, initialName, userRoles, use
     onClose();
   };
 
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
+  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
     <form onSubmit={save} className="card-medical w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-3 bg-background">
       <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">{title}</h2><p className="text-xs text-muted-foreground">This will update the shared master catalogue.</p></div><button type="button" onClick={onClose} className="btn-ghost" aria-label="Close"><X className="w-4 h-4" /></button></div>
       <input autoFocus value={name} onChange={e => setName(e.target.value)} className="input-medical w-full" placeholder={kind === 'service' ? 'Service name' : kind === 'pharmacy' ? 'Medication / item name' : 'Laboratory test name'} />
       {(kind === 'service' || kind === 'lab') && <input value={code} onChange={e => setCode(e.target.value)} className="input-medical w-full" placeholder={kind === 'service' ? 'Service code' : 'Test code'} />}
       {kind === 'service' && <><input value={department} onChange={e => setDepartment(e.target.value)} disabled={!privileged} className="input-medical w-full disabled:opacity-60" placeholder="Department" /><input value={unit} onChange={e => setUnit(e.target.value)} className="input-medical w-full" placeholder="Unit" /><input value={amount} onChange={e => setAmount(e.target.value)} type="number" min="0" step="0.01" className="input-medical w-full" placeholder="Charge (GHS)" /></>}
       {kind === 'pharmacy' && <><input value={category} onChange={e => setCategory(e.target.value)} className="input-medical w-full" placeholder="Drug category (e.g., Antibiotic)" /><input value={generic} onChange={e => setGeneric(e.target.value)} className="input-medical w-full" placeholder="Generic name" /><div className="grid grid-cols-2 gap-2"><input value={strength} onChange={e => setStrength(e.target.value)} className="input-medical w-full" placeholder="Strength" /><input value={form} onChange={e => setForm(e.target.value)} className="input-medical w-full" placeholder="Dosage form" /></div><p className="text-xs text-muted-foreground">Initial stock is zero. Add supplier, batch, expiry, price and stock from the pharmacy store workflow.</p></>}
+      {kind === 'lab' && <input value={sampleQuantity} onChange={e => setSampleQuantity(e.target.value)} className="input-medical w-full" placeholder="Sample quantity (e.g. 5 ml)" />}
       {kind === 'lab' && <><input value={category} onChange={e => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" /><input value={specimen} onChange={e => setSpecimen(e.target.value)} className="input-medical w-full" placeholder="Specimen type" /><div className="grid grid-cols-2 gap-2"><input value={unit} onChange={e => setUnit(e.target.value)} className="input-medical w-full" placeholder="Unit" /><input value={amount} onChange={e => setAmount(e.target.value)} type="number" min="0" step="0.01" className="input-medical w-full" placeholder="Default charge (GHS)" /></div><div className="grid grid-cols-2 gap-2"><input value={referenceLow} onChange={e => setReferenceLow(e.target.value)} type="number" className="input-medical w-full" placeholder="Reference low" /><input value={referenceHigh} onChange={e => setReferenceHigh(e.target.value)} type="number" className="input-medical w-full" placeholder="Reference high" /></div><input value={referenceText} onChange={e => setReferenceText(e.target.value)} className="input-medical w-full" placeholder="Reference text" /><input value={turnaround} onChange={e => setTurnaround(e.target.value)} type="number" min="0" className="input-medical w-full" placeholder="Turnaround minutes" /><label className="block text-xs font-semibold" htmlFor="lab-parameter-definitions">Structured parameter definitions (JSON)</label><textarea id="lab-parameter-definitions" value={parametersJson} onChange={e => setParametersJson(e.target.value)} className="input-medical w-full font-mono text-xs" rows={5} placeholder='[ { "code": "hb", "label": "Haemoglobin", "type": "numeric", "unit": "g/dL", "required": true, "reference_low": 12, "reference_high": 17 } ]' /><p className="text-xs text-muted-foreground">Optional. Define unique codes, labels, types (text, numeric, number, boolean, select), required flags and numeric reference bounds. Validate local reference ranges with your laboratory lead before clinical use.</p></>}
       <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={onClose} className="btn-secondary">Cancel</button><button disabled={saving} className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" />{saving ? 'Saving…' : 'Create and use'}</button></div>
     </form>

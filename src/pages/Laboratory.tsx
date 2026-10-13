@@ -1,25 +1,23 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
-import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, Plus, CheckCircle2, ShieldCheck, AlertTriangle, LockKeyhole, BellRing} from 'lucide-react';
+import { FlaskConical, CheckCircle2, ShieldCheck, LockKeyhole, BellRing, Search, Plus, X } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
-import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
+import ClinicalDataTable, { ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
-interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null }
+interface Patient { id: string; first_name: string; last_name: string; patient_code: string; email: string | null; gender?: string | null; date_of_birth?: string | null }
 interface LabCatalogueItem {
-  id: string; test_code: string; test_name: string; category: string | null; specimen_type: string | null;
+  id: string; test_code: string; test_name: string; category: string | null; specimen_type: string | null; sample_quantity?: string | null;
   unit: string | null; reference_low: number | null; reference_high: number | null; reference_text: string | null;
-  default_charge: number; active: boolean; parameters?: Array<{code:string;name?:string;label?:string;unit?:string;reference_low?:number|null;reference_high?:number|null;reference_text?:string|null;required?:boolean;type?:string}>;
+  default_charge: number; active: boolean; parameters?: Array<{code:string;name?:string;label?:string;category?:string;unit?:string;reference_low?:number|null;reference_high?:number|null;reference_text?:string|null;required?:boolean;type?:string}>;
 }
-interface EncounterOption { id: string; patient_id: string; created_at: string; status: string; principal_diagnosis: string | null; }
 interface LabSpecimen {
   id: string; lab_order_id: string; accession_number: string; barcode_value: string;
   specimen_type: string | null; status: 'collected' | 'received' | 'processing' | 'rejected';
@@ -28,11 +26,44 @@ interface LabSpecimen {
 interface LabOrder {
   id: string; patient_id: string; test_name: string; test_category: string | null;
   priority: string; status: string; created_at: string; clinical_notes: string | null; lab_test_catalogue_id: string | null;
+  facility_id?: string; service_order_id?: string; billing_status?: string;
 }
 interface LabResult {
   id: string; lab_order_id: string; result_data: { value?: string } | null; parameter_results?: Record<string, unknown> | null; interpretation: string | null;
   is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
   numeric_value: number | null; unit: string | null; reference_low: number | null; reference_high: number | null; abnormal_flag: string | null;
+}
+interface LabResultAttachment {
+  id: string;
+  lab_order_id: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  created_at: string;
+}
+
+function timeAgo(value: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h`;
+  return `${Math.floor(hours / 24)} d`;
+}
+
+function hasOutOfRangeResult(
+  parameters: NonNullable<LabCatalogueItem['parameters']>,
+  values: Record<string, string>,
+) {
+  return parameters.some((parameter) => {
+    if (parameter.type !== 'numeric' && parameter.type !== 'number') return false;
+    const raw = values[parameter.code]?.trim();
+    if (!raw) return false;
+    const value = Number(raw);
+    return Number.isFinite(value)
+      && ((parameter.reference_low != null && value < parameter.reference_low)
+        || (parameter.reference_high != null && value > parameter.reference_high));
+  });
 }
 
 export default function Laboratory() {
@@ -42,21 +73,16 @@ export default function Laboratory() {
   const [catalogue, setCatalogue] = useState<LabCatalogueItem[]>([]);
   const [orders, setOrders] = useState<LabOrder[]>([]);
   const [resultsByOrder, setResultsByOrder] = useState<Record<string, LabResult>>({});
+  const [attachmentsByOrder, setAttachmentsByOrder] = useState<Record<string, LabResultAttachment[]>>({});
   const [specimensByOrder, setSpecimensByOrder] = useState<Record<string, LabSpecimen[]>>({});
   const [rejectingSpecimenId, setRejectingSpecimenId] = useState<string | null>(null);
   const [specimenRejectionReason, setSpecimenRejectionReason] = useState('');
   const [rejectingSpecimen, setRejectingSpecimen] = useState(false);
-  const [pid, setPid] = useState(searchParams.get('patient') || '');
-  const [encounterId, setEncounterId] = useState(searchParams.get('encounter') || '');
-  const [encounters, setEncounters] = useState<EncounterOption[]>([]);
-  const [catalogueId, setCatalogueId] = useState('');
-  const [catalogueSearch, setCatalogueSearch] = useState('');
-  const [createLabTestName, setCreateLabTestName] = useState('');
-  const [testName, setTestName] = useState('');
-  const [category, setCategory] = useState('');
-  const [priority, setPriority] = useState('routine');
-  const [notes, setNotes] = useState('');
-  const [amount, setAmount] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [createCatalogueOpen, setCreateCatalogueOpen] = useState(false);
+  const [catalogueCharges, setCatalogueCharges] = useState<Record<string, string>>({});
+  const [savingCatalogueId, setSavingCatalogueId] = useState<string | null>(null);
   const [attentionOrderId, setAttentionOrderId] = useState(searchParams.get('order') || '');
   const [attentionResultId, setAttentionResultId] = useState(searchParams.get('result') || '');
   const [loading, setLoading] = useState(false);
@@ -66,7 +92,6 @@ export default function Laboratory() {
   const [parameterValues, setParameterValues] = useState<Record<string, string>>({});
   const [savingResultFor, setSavingResultFor] = useState<string | null>(null);
   const [orderAction, setOrderAction] = useState<string | null>(null);
-  const [creatingOrder, setCreatingOrder] = useState(false);
   const [interpretation, setInterpretation] = useState('');
   const [isAbnormal, setIsAbnormal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -79,7 +104,7 @@ export default function Laboratory() {
   const workspaceLoadGeneration = useRef(0);
   const workspaceRequestInFlight = useRef(false);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     if (workspaceRequestInFlight.current || document.visibilityState !== 'visible') return;
     workspaceRequestInFlight.current = true;
     const request = ++workspaceLoadGeneration.current;
@@ -104,6 +129,24 @@ export default function Laboratory() {
     const map: Record<string, LabResult> = {};
     (workspace.results ?? []).forEach((r) => { if (!map[r.lab_order_id]) map[r.lab_order_id] = r; });
     setResultsByOrder(map);
+    if (nextOrders.length) {
+      const { data: attachmentRows, error: attachmentError } = await supabase
+        .from('lab_result_attachments' as never)
+        .select('id,lab_order_id,storage_path,file_name,mime_type,created_at' as never)
+        .in('lab_order_id' as never, nextOrders.map((order) => order.id) as never);
+      if (request !== workspaceLoadGeneration.current) return;
+      if (attachmentError) {
+        toast({ title: 'Lab report attachments unavailable', description: attachmentError.message, variant: 'destructive' });
+        setAttachmentsByOrder({});
+      } else {
+        setAttachmentsByOrder(((attachmentRows ?? []) as unknown as LabResultAttachment[]).reduce<Record<string, LabResultAttachment[]>>((grouped, attachment) => {
+          (grouped[attachment.lab_order_id] ??= []).push(attachment);
+          return grouped;
+        }, {}));
+      }
+    } else {
+      setAttachmentsByOrder({});
+    }
     try {
       const { data: specimenData, error: specimenError } = await supabase.rpc('get_laboratory_specimens', { _limit: 300 } as never);
       if (request !== workspaceLoadGeneration.current) return;
@@ -136,7 +179,7 @@ export default function Laboratory() {
       if (request === workspaceLoadGeneration.current) setLoading(false);
       workspaceRequestInFlight.current = false;
     }
-  };
+  }, [searchParams]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {
@@ -154,7 +197,7 @@ export default function Laboratory() {
       document.removeEventListener('visibilitychange', refreshWhenVisible);
       window.removeEventListener('pageshow', refreshWhenVisible);
     };
-  }, [user?.id]);
+  }, [loadAll, user?.id]);
 
   const counters = useMemo(() => {
     const awaitingSample = orders.filter((o) => o.status === 'ordered').length;
@@ -168,13 +211,25 @@ export default function Laboratory() {
     return { active, awaitingSample, processing, awaitingApproval, approved };
   }, [orders]);
 
+  const visibleOrders = useMemo(() => orders.filter((order) => {
+    const result = resultsByOrder[order.id];
+    const statusMatches = appliedFilters.status === 'all' || order.status === appliedFilters.status;
+    const priorityMatches = appliedFilters.priority === 'all' || order.priority === appliedFilters.priority;
+    const resultMatches = appliedFilters.result === 'all'
+      || (appliedFilters.result === 'with_result' && !!result)
+      || (appliedFilters.result === 'awaiting_result' && !result)
+      || (appliedFilters.result === 'abnormal' && !!result?.is_abnormal);
+    const patient = patients.find((entry) => entry.id === order.patient_id);
+    const labId = `LAB-${new Date(order.created_at).getFullYear()}-${order.id.replaceAll('-', '').toUpperCase()}`;
+    const searchable = `${patient?.patient_code ?? ''} ${patient?.first_name ?? ''} ${patient?.last_name ?? ''} ${order.id} ${labId} ${order.test_name}`.toLowerCase();
+    return statusMatches && priorityMatches && resultMatches && searchable.includes(searchTerm.trim().toLowerCase());
+  }).sort((a, b) => a.patient_id.localeCompare(b.patient_id) || a.created_at.localeCompare(b.created_at)), [
+    orders, resultsByOrder, appliedFilters, patients, searchTerm,
+  ]);
+
   useEffect(() => {
-    const patientFromUrl = searchParams.get('patient');
-    const encounterFromUrl = searchParams.get('encounter');
     const orderFromUrl = searchParams.get('order');
     const resultFromUrl = searchParams.get('result');
-    if (patientFromUrl) setPid(patientFromUrl);
-    if (encounterFromUrl) setEncounterId(encounterFromUrl);
     if (orderFromUrl) setAttentionOrderId(orderFromUrl);
     if (resultFromUrl) setAttentionResultId(resultFromUrl);
   }, [searchParams]);
@@ -186,79 +241,6 @@ export default function Laboratory() {
     }, 100);
     return () => window.clearTimeout(timer);
   }, [attentionOrderId, orders.length]);
-
-  useEffect(() => {
-    let active = true;
-    const loadEncounters = async () => {
-      if (!pid) {
-        setEncounters([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from('encounters')
-        .select('id,patient_id,created_at,status,principal_diagnosis')
-        .eq('patient_id', pid)
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(20);
-      if (!active) return;
-      if (error) {
-        setEncounters([]);
-        toast({ title: 'Encounter context unavailable', description: error.message, variant: 'destructive' });
-        return;
-      }
-      setEncounters((data ?? []) as EncounterOption[]);
-      if (encounterId && !(data ?? []).some((item) => item.id === encounterId)) setEncounterId('');
-    };
-    void loadEncounters();
-    return () => { active = false; };
-  }, [pid]);
-
-  const canCreateCatalogue = user?.roles.some((role) => role === 'admin' || role === 'it_admin') || user?.permissions.includes('create_items') || user?.permissions.includes('create_services');
-  const filteredCatalogue = useMemo(() => catalogue.filter((item) => `${item.test_code} ${item.test_name} ${item.category ?? ''}`.toLowerCase().includes(catalogueSearch.toLowerCase())), [catalogue, catalogueSearch]);
-
-  const selectTest = (id: string) => {
-    setCatalogueId(id);
-    const item = catalogue.find((entry) => entry.id === id);
-    if (!item) return;
-    setTestName(item.test_name);
-    setCategory(item.category ?? '');
-    setAmount(String(item.default_charge));
-  };
-
-  const createOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (creatingOrder) return;
-    const numericAmount = Number(amount);
-    if (!pid || !testName || !Number.isFinite(numericAmount) || numericAmount < 0) {
-      toast({ title: 'Complete the order details', description: 'Patient, test and a valid amount are required.', variant: 'destructive' });
-      return;
-    }
-    setCreatingOrder(true);
-    let data: any = null;
-    let error: any = null;
-    try {
-      ({ data, error } = await supabase.rpc('create_lab_order_with_catalogue_atomic', {
-        _patient_id: pid, _test_name: testName, _test_category: category || null,
-        _priority: priority, _clinical_notes: notes || null, _amount: numericAmount, _encounter_id: encounterId || null,
-        _catalogue_id: catalogueId || null,
-      } as never));
-    } catch (requestError) {
-      toast({ title: 'Failed to create lab order', description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.', variant: 'destructive' });
-      return;
-    } finally {
-      setCreatingOrder(false);
-    }
-    if (error) {
-      playWorkflowSound('error');
-      toast({ title: 'Failed to create lab order', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setPid(''); setEncounterId(''); setEncounters([]); setCatalogueId(''); setCatalogueSearch(''); setTestName(''); setCategory(''); setNotes(''); setPriority('routine'); setAmount('');
-    playWorkflowSound('success');
-    toast({ title: numericAmount > 0 ? 'Lab order sent to Accounts' : 'Lab order created', description: numericAmount > 0 ? 'Laboratory work remains blocked until Accounts releases it.' : 'The order is available to the laboratory workflow.' });
-    void loadAll();
-  };
 
   const collectSample = async (id: string) => {
     if (orderAction) return;
@@ -319,6 +301,7 @@ export default function Laboratory() {
     const catalogueItem = catalogue.find((entry) => entry.id === order?.lab_test_catalogue_id);
     const parameters = catalogueItem?.parameters ?? [];
     const structuredResults = Object.fromEntries(parameters.filter((parameter) => parameter.code).map((parameter) => [parameter.code, parameterValues[parameter.code]?.trim() ?? '']));
+    const hasAbnormalResult = isAbnormal || hasOutOfRangeResult(parameters, parameterValues);
     const missingRequired = parameters.find((parameter) => parameter.required && !structuredResults[parameter.code]);
     if (missingRequired) {
       setSavingResultFor(null);
@@ -336,7 +319,7 @@ export default function Laboratory() {
           _parameter_results: structuredResults,
           _result_text: resultText.trim() || null,
           _interpretation: interpretation.trim() || null,
-          _is_abnormal: isAbnormal,
+          _is_abnormal: hasAbnormalResult,
         } as never));
       } else {
         ({ error } = await supabase.rpc('enter_lab_result', {
@@ -344,7 +327,7 @@ export default function Laboratory() {
           _result_text: resultText,
           _numeric_value: parsedNumeric,
           _interpretation: interpretation || null,
-          _is_abnormal: isAbnormal,
+          _is_abnormal: hasAbnormalResult,
         } as never));
       }
     } catch (requestError) {
@@ -355,9 +338,84 @@ export default function Laboratory() {
     }
     if (error) return toast({ title: 'Failed to save result', description: error.message, variant: 'destructive' });
     setResultFor(null); setResultText(''); setNumericValue(''); setParameterValues({}); setInterpretation(''); setIsAbnormal(false);
-    playWorkflowSound(isAbnormal ? 'critical' : 'success');
-    toast({ title: 'Result submitted', description: isAbnormal ? 'Abnormal result flagged for clinical attention.' : 'The result is ready for clinical approval.' });
+    playWorkflowSound(hasAbnormalResult ? 'critical' : 'success');
+    toast({ title: 'Result submitted', description: hasAbnormalResult ? 'Abnormal result flagged for clinical attention.' : 'The result is ready for clinical approval.' });
     void loadAll();
+  };
+
+  const saveResultDraft = async (orderId: string) => {
+    if (savingResultFor) return;
+    const order = orders.find((entry) => entry.id === orderId);
+    const parameters = catalogue.find((entry) => entry.id === order?.lab_test_catalogue_id)?.parameters ?? [];
+    const structuredResults = Object.fromEntries(parameters.filter((parameter) => parameter.code).map((parameter) => [parameter.code, parameterValues[parameter.code]?.trim() ?? '']));
+    const hasAbnormalResult = isAbnormal || hasOutOfRangeResult(parameters, parameterValues);
+    setSavingResultFor(orderId);
+    try {
+      const { error } = await supabase.rpc('save_lab_result_draft' as never, {
+        _lab_order_id: orderId,
+        _parameter_results: structuredResults,
+        _result_text: resultText.trim() || null,
+        _interpretation: interpretation.trim() || null,
+        _is_abnormal: hasAbnormalResult,
+      } as never);
+      if (error) {
+        toast({ title: 'Could not save result draft', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Result draft saved', description: 'It remains hidden from clinicians until laboratory approval.' });
+      void loadAll();
+    } catch (error) {
+      toast({ title: 'Could not save result draft', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+    } finally {
+      setSavingResultFor(null);
+    }
+  };
+
+  const uploadResultAttachment = async (orderId: string, file?: File) => {
+    if (!file) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type) || file.size > 15 * 1024 * 1024) {
+      toast({ title: 'Unsupported attachment', description: 'Upload a PDF, JPG or PNG file up to 15 MB.', variant: 'destructive' });
+      return;
+    }
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${orderId}/${crypto.randomUUID()}-${safeName}`;
+    const order = orders.find((entry) => entry.id === orderId);
+    if (!order?.facility_id || !user?.id) {
+      toast({ title: 'Attachment upload unavailable', description: 'The released order facility context is missing. Refresh the worklist and retry.', variant: 'destructive' });
+      return;
+    }
+    const { error: uploadError } = await supabase.storage.from('lab-result-attachments').upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) {
+      toast({ title: 'Attachment upload failed', description: uploadError.message, variant: 'destructive' });
+      return;
+    }
+    const { error: metadataError } = await supabase.from('lab_result_attachments' as never).insert({
+      lab_order_id: orderId,
+      lab_result_id: resultsByOrder[orderId]?.id ?? null,
+      facility_id: order.facility_id,
+      storage_path: path,
+      file_name: file.name,
+      mime_type: file.type,
+      file_size_bytes: file.size,
+      uploaded_by: user.id,
+    } as never);
+    if (metadataError) {
+      await supabase.storage.from('lab-result-attachments').remove([path]);
+      toast({ title: 'Attachment record failed', description: metadataError.message, variant: 'destructive' });
+      return;
+    }
+    if (!order) return;
+    toast({ title: 'Report attachment uploaded' });
+    void loadAll();
+  };
+
+  const openResultAttachment = async (path: string) => {
+    const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
+    if (error) {
+      toast({ title: 'Could not open attachment', description: error.message, variant: 'destructive' });
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const approveResult = async (resultId: string, orderId: string, patientId: string) => {
@@ -386,15 +444,49 @@ export default function Laboratory() {
     void loadAll();
   };
 
+  const saveCatalogueCharge = async (catalogueId: string) => {
+    const charge = Number(catalogueCharges[catalogueId]);
+    if (!Number.isFinite(charge) || charge < 0) {
+      toast({ title: 'Invalid tariff', description: 'Enter a non-negative price.', variant: 'destructive' });
+      return;
+    }
+    setSavingCatalogueId(catalogueId);
+    try {
+      const { error } = await supabase.rpc('update_lab_test_catalogue_charge' as never, {
+        _catalogue_id: catalogueId,
+        _default_charge: charge,
+      } as never);
+      if (error) {
+        toast({ title: 'Could not update tariff', description: error.message, variant: 'destructive' });
+        return;
+      }
+      setCatalogue((items) => items.map((item) => item.id === catalogueId ? { ...item, default_charge: charge } : item));
+      toast({ title: 'Catalogue tariff updated' });
+    } catch (error) {
+      toast({ title: 'Could not update tariff', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+    } finally {
+      setSavingCatalogueId(null);
+    }
+  };
+
+  const reportOrder = orders.find((order) => order.id === resultFor);
+  const reportPatient = reportOrder && patients.find((patient) => patient.id === reportOrder.patient_id);
+  const reportCatalogueItem = reportOrder && catalogue.find((item) => item.id === reportOrder.lab_test_catalogue_id);
+
   return (
     <>
-      <OperationalWorklistShell
+      {!resultFor && <OperationalWorklistShell
         icon={FlaskConical}
         eyebrow="Diagnostics · Laboratory"
         title="Laboratory Workspace"
         description="Manage laboratory orders from catalogue selection through payment release, specimen collection, structured results, approval and clinical notification."
         actions={(
           <>
+            {user?.roles.some((role) => ['admin', 'it_admin', 'lab_technician'].includes(role)) && (
+              <button type="button" onClick={() => setCatalogueOpen(true)} className="btn-secondary inline-flex items-center gap-2">
+                <FlaskConical className="h-4 w-4" aria-hidden="true" /> Test catalogue
+              </button>
+            )}
             <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit">
               <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
             </Link>
@@ -409,69 +501,16 @@ export default function Laboratory() {
           { label: 'Approved / recent', value: counters.approved, tone: 'text-success', surface: 'bg-success/5' },
         ]}
         beforeList={(
-          <section className="card-medical p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> New laboratory order</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Attach the originating encounter when applicable. Server-side validation remains authoritative for patient, encounter and payment boundaries.</p>
-              </div>
-              <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">Diagnostic workflow</span>
-            </div>
-            <form onSubmit={createOrder} className="mt-4 grid gap-3 lg:grid-cols-3">
-              <div>
-                <label htmlFor="lab-patient" className="mb-1 block text-xs font-semibold">Patient <span className="text-critical">*</span></label>
-                <select id="lab-patient" value={pid} onChange={(e) => { setPid(e.target.value); setEncounterId(''); }} className="input-medical w-full" required>
-                  <option value="">Select patient…</option>
-                  {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} · {p.patient_code}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="lab-encounter" className="mb-1 block text-xs font-semibold">Originating encounter</label>
-                <select id="lab-encounter" value={encounterId} onChange={(e) => setEncounterId(e.target.value)} className="input-medical w-full" disabled={!pid}>
-                  <option value="">Attach to encounter (optional)</option>
-                  {encounters.map((item) => <option key={item.id} value={item.id}>{new Date(item.created_at).toLocaleDateString()} · {item.principal_diagnosis || item.status}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="lab-catalogue-search" className="mb-1 block text-xs font-semibold">Test catalogue search</label>
-                <input id="lab-catalogue-search" value={catalogueSearch} onChange={(e) => setCatalogueSearch(e.target.value)} className="input-medical w-full" placeholder="Search laboratory test catalogue" />
-              </div>
-              <div>
-                <label htmlFor="lab-catalogue" className="mb-1 block text-xs font-semibold">Catalogue test</label>
-                <select id="lab-catalogue" value={catalogueId} onChange={(e) => selectTest(e.target.value)} className="input-medical w-full">
-                  <option value="">Select catalogue test…</option>
-                  {filteredCatalogue.map((item) => <option key={item.id} value={item.id}>{item.test_code} — {item.test_name}{item.default_charge > 0 ? ` · GHS ${item.default_charge.toFixed(2)}` : ""}</option>)}
-                </select>
-                {canCreateCatalogue && catalogueSearch.trim() && filteredCatalogue.length === 0 && <button type="button" onClick={() => setCreateLabTestName(catalogueSearch.trim())} className="btn-secondary mt-2 w-full">Add {catalogueSearch.trim()}</button>}
-              </div>
-              <div>
-                <label htmlFor="lab-test-name" className="mb-1 block text-xs font-semibold">Test name <span className="text-critical">*</span></label>
-                <input id="lab-test-name" value={testName} onChange={(e) => setTestName(e.target.value)} className="input-medical w-full" placeholder="Test name" required />
-              </div>
-              <div>
-                <label htmlFor="lab-category" className="mb-1 block text-xs font-semibold">Category</label>
-                <input id="lab-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input-medical w-full" placeholder="Category" />
-              </div>
-              <div>
-                <label htmlFor="lab-priority" className="mb-1 block text-xs font-semibold">Priority</label>
-                <select id="lab-priority" value={priority} onChange={(e) => setPriority(e.target.value)} className="input-medical w-full">
-                  <option value="routine">Routine</option><option value="urgent">Urgent</option><option value="stat">STAT</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="lab-amount" className="mb-1 block text-xs font-semibold">Charge (GHS) <span className="text-critical">*</span></label>
-                <input id="lab-amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="input-medical w-full" inputMode="decimal" min="0" step="0.01" type="number" placeholder="Charge (GHS)" required />
-              </div>
-              <div>
-                <label htmlFor="lab-notes" className="mb-1 block text-xs font-semibold">Clinical notes</label>
-                <textarea id="lab-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="input-medical w-full" rows={2} placeholder="Clinical notes" />
-              </div>
-              <div className="lg:col-span-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground flex items-start gap-2"><LockKeyhole className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" /> Chargeable tests remain blocked until Accounts releases them.</p>
-                <button type="submit" disabled={creatingOrder} className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-60"><Plus className="w-4 h-4" aria-hidden="true" /> Order test</button>
-              </div>
-            </form>
-          </section>
+          <div className="space-y-3">
+            <section className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status">
+              <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <p className="text-sm text-foreground">Lab orders are automatically generated from Clinician Encounters and become active upon payment confirmation by the Accounts department.</p>
+            </section>
+            <label className="relative block max-w-xl">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="input-medical w-full pl-9" placeholder="Search patient name, patient ID, test or Lab ID" aria-label="Search laboratory worklist" />
+            </label>
+          </div>
         )}
         listTitle="Laboratory results & worklist"
         listDescription="Orders, specimen progress, result state and approval actions are presented in one clinical table."
@@ -482,7 +521,7 @@ export default function Laboratory() {
           <ClinicalDataTable
             title="Laboratory results"
             description="Filter by clinical workflow state, priority and result availability. Use the action column for the next authorised laboratory step."
-            meta={`${orders.length} order${orders.length === 1 ? '' : 's'}`}
+            meta={`${visibleOrders.length} shown · ${orders.length} paid/released order${orders.length === 1 ? '' : 's'}`}
             filters={[
               { label: 'Order status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'all', label: 'All statuses' }, { value: 'ordered', label: 'Ordered' }, { value: 'sample_collected', label: 'Sample collected' }, { value: 'completed', label: 'Completed' }, { value: 'approved', label: 'Approved' }] },
               { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
@@ -493,59 +532,32 @@ export default function Laboratory() {
             empty={false}
           >
             <thead>
-              <tr>
-                <th scope="col">Patient</th>
-                <th scope="col">Laboratory test</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Status</th>
-                <th scope="col">Workflow progress</th>
-                <th scope="col">Result</th>
-                <th scope="col">Ordered</th>
-                <th scope="col" className="text-right">Action</th>
-              </tr>
+              <tr><th scope="col">Patient ID</th><th scope="col">Patient name</th><th scope="col">Status</th><th scope="col">Test name</th><th scope="col">Lab ID</th><th scope="col">Ordered</th><th scope="col" className="text-right">Actions</th></tr>
             </thead>
             <tbody>
-              {orders.filter((o) => {
-                const result = resultsByOrder[o.id];
-                const statusOk = appliedFilters.status === 'all' || o.status === appliedFilters.status;
-                const priorityOk = appliedFilters.priority === 'all' || o.priority === appliedFilters.priority;
-                const resultOk = appliedFilters.result === 'all'
-                  || (appliedFilters.result === 'with_result' && !!result)
-                  || (appliedFilters.result === 'awaiting_result' && !result)
-                  || (appliedFilters.result === 'abnormal' && !!result?.is_abnormal);
-                return statusOk && priorityOk && resultOk;
-              }).map((o) => {
+              {visibleOrders.map((o, orderIndex) => {
                 const p = patients.find((x) => x.id === o.patient_id);
                 const result = resultsByOrder[o.id];
                 const item = catalogue.find((x) => x.id === o.lab_test_catalogue_id);
-                const progress = o.status === 'approved' ? 100 : o.status === 'completed' ? 80 : o.status === 'sample_collected' ? 55 : 25;
                 return (
                   <Fragment key={o.id}>
+                    {(orderIndex === 0 || visibleOrders[orderIndex - 1].patient_id !== o.patient_id) && (
+                      <tr className="bg-muted/30"><td colSpan={7} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Patient group · {p ? `${p.first_name} ${p.last_name}` : 'Patient'} · {visibleOrders.filter((entry) => entry.patient_id === o.patient_id).length} test(s)
+                      </td></tr>
+                    )}
                     <tr id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
-                      <td>
-                        <div className="min-w-[170px]">
-                          <p className="font-semibold">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{p?.patient_code ?? o.patient_id.slice(0, 8)}</p>
-                        </div>
-                      </td>
+                      <td className="font-mono text-xs">{p?.patient_code ?? o.patient_id.slice(0, 8).toUpperCase()}</td>
+                      <td className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</td>
+                      <td><ClinicalStatusBadge status={o.status} /></td>
                       <td>
                         <div className="min-w-[180px]">
                           <p className="font-medium">{o.test_name}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">{o.test_category ?? 'Uncategorised'}{item?.specimen_type ? ` · ${item.specimen_type}` : ''}</p>
                         </div>
                       </td>
-                      <td>{o.priority === 'routine' ? <ClinicalStatusBadge status="started" label="Routine" /> : <ClinicalStatusBadge status={o.priority} label={o.priority.toUpperCase()} />}</td>
-                      <td><ClinicalStatusBadge status={o.status} /></td>
-                      <td><ClinicalProgressBar value={progress} label={progress === 100 ? 'Complete' : 'In workflow'} /></td>
-                      <td>
-                        {result ? (
-                          <div className="max-w-[170px]">
-                            <p className={`font-medium ${result.is_abnormal ? 'text-critical' : ''}`}>{result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? 'Result entered')}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{result.is_abnormal ? 'Abnormal' : result.status.replace('_', ' ')}</p>
-                          </div>
-                        ) : <span className="text-xs text-muted-foreground">Awaiting result</span>}
-                      </td>
-                      <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</td>
+                      <td className="font-mono text-xs">LAB-{new Date(o.created_at).getFullYear()}-{o.id.replaceAll('-', '').toUpperCase()}</td>
+                      <td className="whitespace-nowrap text-xs text-muted-foreground" title={new Date(o.created_at).toLocaleString()}>{timeAgo(o.created_at)}</td>
                       <td>
                         <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
                           <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
@@ -557,8 +569,17 @@ export default function Laboratory() {
                     </tr>
                     {expandedOrderId === o.id && (
                       <tr key={`${o.id}-details`} className="bg-muted/20">
-                        <td colSpan={8}>
+                        <td colSpan={7}>
                           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                            <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 lg:col-span-2">
+                              <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Laboratory report workspace</p><h3 className="mt-1 text-lg font-semibold">{o.test_name}</h3></div><ClinicalStatusBadge status={result?.status ?? o.status} /></div>
+                              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                                <p><span className="text-muted-foreground">Patient ID</span><br /><strong>{p?.patient_code ?? o.patient_id}</strong></p>
+                                <p><span className="text-muted-foreground">Patient name</span><br /><strong>{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</strong></p>
+                                <p><span className="text-muted-foreground">Gender / age</span><br /><strong>{p?.gender ?? '—'}{p?.date_of_birth ? ` · ${Math.max(0, Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / 31557600000))} years` : ''}</strong></p>
+                                <p><span className="text-muted-foreground">Sample / run</span><br /><strong>{specimensByOrder[o.id]?.[0]?.accession_number ?? 'Accession pending'} · {new Date().toLocaleString()}</strong></p>
+                              </div>
+                            </section>
                             <section className="rounded-xl border border-border bg-background p-4">
                               <div className="flex items-center justify-between gap-3">
                                 <div>
@@ -599,6 +620,14 @@ export default function Laboratory() {
                                   </div>
                                 )}
                               </div>
+                              <div className="mt-3 rounded-lg border border-border p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attached report documents</p>
+                                {(attachmentsByOrder[o.id] ?? []).length ? (
+                                  <ul className="mt-2 space-y-1">{(attachmentsByOrder[o.id] ?? []).map((attachment) => (
+                                    <li key={attachment.id}><button type="button" onClick={() => void openResultAttachment(attachment.storage_path)} className="text-sm font-medium text-primary hover:underline">{attachment.file_name}</button><span className="ml-2 text-xs text-muted-foreground">{new Date(attachment.created_at).toLocaleString()}</span></li>
+                                  ))}</ul>
+                                ) : <p className="mt-2 text-sm text-muted-foreground">No report documents attached.</p>}
+                              </div>
                               {result ? (
                                 <div className="mt-3 space-y-1 text-sm">
                                   <p><strong>Value:</strong> {result.numeric_value !== null ? `${result.numeric_value}${result.unit ? ` ${result.unit}` : ''}` : (result.result_data?.value ?? '—')}</p>
@@ -614,22 +643,36 @@ export default function Laboratory() {
                               {resultFor === o.id && o.status === 'sample_collected' ? (
                                 <div className="mt-3 space-y-2">
                                   {item?.parameters && item.parameters.length > 0 && (
-                                    <fieldset className="rounded-lg border border-border p-3 space-y-3">
-                                      <legend className="px-1 text-xs font-semibold">Structured test parameters</legend>
-                                      {item.parameters.filter((parameter) => parameter.code).map((parameter) => (
-                                        <div key={parameter.code} className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
-                                          <label htmlFor={`lab-param-${o.id}-${parameter.code}`} className="text-sm">
-                                            {parameter.label ?? parameter.name ?? parameter.code}{parameter.required ? ' *' : ''}
-                                            {(parameter.unit || parameter.reference_text || parameter.reference_low != null || parameter.reference_high != null) && (
-                                              <span className="mt-0.5 block text-xs text-muted-foreground">
-                                                {[parameter.unit, parameter.reference_text, parameter.reference_low != null || parameter.reference_high != null ? `Reference ${parameter.reference_low ?? '—'}–${parameter.reference_high ?? '—'}` : ''].filter(Boolean).join(' · ')}
-                                              </span>
-                                            )}
-                                          </label>
-                                          <input id={`lab-param-${o.id}-${parameter.code}`} value={parameterValues[parameter.code] ?? ''} onChange={(e) => setParameterValues((current) => ({ ...current, [parameter.code]: e.target.value }))} className="input-medical w-full" inputMode={parameter.type === 'numeric' || parameter.type === 'number' ? 'decimal' : 'text'} aria-required={Boolean(parameter.required)} placeholder={`Enter ${parameter.label ?? parameter.name ?? parameter.code}`} />
-                                        </div>
-                                      ))}
-                                    </fieldset>
+                                    <div className="overflow-x-auto rounded-lg border border-border">
+                                      <table className="w-full min-w-[42rem] text-left text-xs">
+                                        <thead className="bg-muted/40 text-muted-foreground"><tr><th className="p-2">Parameter</th><th className="p-2">Unit</th><th className="p-2">Result value</th><th className="p-2">Reference range</th><th className="p-2">Flag</th></tr></thead>
+                                        <tbody className="divide-y divide-border">
+                                          {item.parameters.filter((parameter) => parameter.code).map((parameter, parameterIndex, parameters) => {
+                                            const entered = parameterValues[parameter.code] ?? '';
+                                            const numeric = Number(entered);
+                                            const numericType = parameter.type === 'numeric' || parameter.type === 'number';
+                                            const flag = !entered.trim() ? '—'
+                                              : numericType && Number.isFinite(numeric) && parameter.reference_low != null && numeric < parameter.reference_low ? 'Low'
+                                                : numericType && Number.isFinite(numeric) && parameter.reference_high != null && numeric > parameter.reference_high ? 'High'
+                                                  : 'Normal';
+                                            const category = parameter.category?.trim() || 'Test parameters';
+                                            const priorCategory = parameters[parameterIndex - 1]?.category?.trim() || 'Test parameters';
+                                            return (
+                                              <Fragment key={parameter.code}>
+                                                {parameterIndex === 0 || category !== priorCategory ? <tr className="bg-primary/5"><th colSpan={5} className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-primary">{category}</th></tr> : null}
+                                                <tr>
+                                                  <td className="p-2 font-medium">{parameter.label ?? parameter.name ?? parameter.code}{parameter.required ? ' *' : ''}</td>
+                                                  <td className="p-2 text-muted-foreground">{parameter.unit ?? '—'}</td>
+                                                  <td className="p-2"><input id={`lab-param-${o.id}-${parameter.code}`} value={entered} onChange={(event) => setParameterValues((current) => ({ ...current, [parameter.code]: event.target.value }))} className="input-medical w-full" inputMode={numericType ? 'decimal' : 'text'} aria-required={Boolean(parameter.required)} aria-label={`${parameter.label ?? parameter.name ?? parameter.code} result`} /></td>
+                                                  <td className="p-2 text-muted-foreground">{parameter.reference_text ?? `${parameter.reference_low ?? '—'} – ${parameter.reference_high ?? '—'}`}</td>
+                                                  <td className={`p-2 font-semibold ${flag === 'High' || flag === 'Low' ? 'text-critical' : 'text-success'}`}>{flag}</td>
+                                                </tr>
+                                              </Fragment>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   )}
                                   <div className="grid gap-2 sm:grid-cols-2">
                                     <input value={numericValue} onChange={(e) => setNumericValue(e.target.value)} className="input-medical w-full" inputMode="decimal" placeholder={item?.unit ? `Single numeric result (${item.unit})` : 'Single numeric result (optional for structured tests)'} aria-label="Numeric result" />
@@ -638,7 +681,8 @@ export default function Laboratory() {
                                   <textarea value={resultText} onChange={(e) => setResultText(e.target.value)} className="input-medical w-full" rows={2} placeholder="Result values / narrative" aria-label="Result values or narrative" />
                                   <input value={interpretation} onChange={(e) => setInterpretation(e.target.value)} className="input-medical w-full" placeholder="Interpretation" aria-label="Result interpretation" />
                                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(e) => setIsAbnormal(e.target.checked)} /> Abnormal result</label>
-                                  <div className="flex gap-2"><button type="button" disabled={savingResultFor === o.id} onClick={() => void submitResult(o.id)} className="btn-primary text-xs disabled:opacity-60">{savingResultFor === o.id ? 'Saving…' : 'Submit result'}</button><button type="button" disabled={savingResultFor === o.id} onClick={() => { setResultFor(null); setParameterValues({}); }} className="btn-ghost text-xs disabled:opacity-60">Cancel</button></div>
+                                  <label className="block text-xs font-medium">Upload attachment (PDF, JPG or PNG, max 15 MB)<input type="file" accept="application/pdf,image/jpeg,image/png" className="input-medical mt-1 w-full" onChange={(event) => { void uploadResultAttachment(o.id, event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /></label>
+                                  <div className="flex flex-wrap gap-2"><button type="button" disabled={savingResultFor === o.id} onClick={() => void saveResultDraft(o.id)} className="btn-secondary text-xs disabled:opacity-60">Save draft</button><button type="button" disabled={savingResultFor === o.id} onClick={() => void submitResult(o.id)} className="btn-primary text-xs disabled:opacity-60">{savingResultFor === o.id ? 'Saving…' : 'Submit result for approval'}</button><button type="button" disabled={savingResultFor === o.id} onClick={() => { setResultFor(null); setParameterValues({}); }} className="btn-ghost text-xs disabled:opacity-60">Cancel</button></div>
                                 </div>
                               ) : (
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -661,8 +705,106 @@ export default function Laboratory() {
           </ClinicalDataTable>
         )}
       >
-      </OperationalWorklistShell>
-      {createLabTestName && <CatalogueCreateModal kind="lab" initialName={createLabTestName} userRoles={user?.roles ?? []} userPermissions={user?.permissions ?? []} userDepartment={user?.department} onCreated={(created) => { setCatalogueSearch(created?.test_name ?? createLabTestName); void loadAll(); }} onClose={() => setCreateLabTestName('')} />}
+      </OperationalWorklistShell>}
+      {resultFor && reportOrder && (
+        <main className="fixed inset-0 z-[75] overflow-y-auto bg-background p-4 sm:p-7" aria-labelledby="lab-report-entry-title">
+          <div className="mx-auto max-w-6xl space-y-5">
+            <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Diagnostics · Structured report</p><h1 id="lab-report-entry-title" className="mt-1 text-2xl font-semibold">{reportOrder.test_name}</h1><p className="mt-1 text-sm text-muted-foreground">Enter and verify measured values before submitting the report to the approval queue.</p></div>
+                <div className="flex gap-2"><button type="button" onClick={() => setResultFor(null)} className="btn-secondary">Back to worklist</button><ClinicalStatusBadge status={reportOrder.status} /></div>
+              </div>
+              <dl className="mt-5 grid gap-3 rounded-xl bg-muted/30 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div><dt className="text-xs text-muted-foreground">Patient ID</dt><dd className="mt-1 font-medium">{reportPatient?.patient_code ?? reportOrder.patient_id}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Patient name</dt><dd className="mt-1 font-medium">{reportPatient ? `${reportPatient.first_name} ${reportPatient.last_name}` : 'Patient record'}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Gender / age</dt><dd className="mt-1 font-medium">{reportPatient?.gender ?? '—'}{reportPatient?.date_of_birth ? ` · ${Math.max(0, Math.floor((Date.now() - new Date(reportPatient.date_of_birth).getTime()) / 31557600000))} years` : ''}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Sample ID</dt><dd className="mt-1 font-medium">{specimensByOrder[reportOrder.id]?.[0]?.accession_number ?? 'Accession pending'}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Department</dt><dd className="mt-1 font-medium">Laboratory</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Ordered</dt><dd className="mt-1 font-medium">{new Date(reportOrder.created_at).toLocaleString()}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Run time</dt><dd className="mt-1 font-medium">{new Date().toLocaleString()}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Lab ID</dt><dd className="mt-1 break-all font-mono text-xs">LAB-{new Date(reportOrder.created_at).getFullYear()}-{reportOrder.id.replaceAll('-', '').toUpperCase()}</dd></div>
+              </dl>
+            </header>
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              {reportCatalogueItem?.parameters?.length ? (
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full min-w-[48rem] text-left text-sm">
+                    <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="p-3">Parameter</th><th className="p-3">Unit</th><th className="p-3">Result value</th><th className="p-3">Reference range</th><th className="p-3">Flag</th></tr></thead>
+                    <tbody className="divide-y divide-border">{reportCatalogueItem.parameters.filter((parameter) => parameter.code).map((parameter) => {
+                      const entered = parameterValues[parameter.code] ?? '';
+                      const numericType = parameter.type === 'numeric' || parameter.type === 'number';
+                      const numeric = Number(entered);
+                      const flag = !entered.trim() ? '—'
+                        : numericType && Number.isFinite(numeric) && parameter.reference_low != null && numeric < parameter.reference_low ? 'Low'
+                          : numericType && Number.isFinite(numeric) && parameter.reference_high != null && numeric > parameter.reference_high ? 'High'
+                            : 'Normal';
+                      return <tr key={parameter.code}><td className="p-3 font-medium">{parameter.label ?? parameter.name ?? parameter.code}{parameter.required ? ' *' : ''}{parameter.category && <span className="block text-xs font-normal text-muted-foreground">{parameter.category}</span>}</td><td className="p-3 text-muted-foreground">{parameter.unit ?? '—'}</td><td className="p-3"><input value={entered} onChange={(event) => setParameterValues((current) => ({ ...current, [parameter.code]: event.target.value }))} inputMode={numericType ? 'decimal' : 'text'} aria-label={`${parameter.label ?? parameter.name ?? parameter.code} result`} className="input-medical w-full" /></td><td className="p-3 text-muted-foreground">{parameter.reference_text ?? `${parameter.reference_low ?? '—'} – ${parameter.reference_high ?? '—'}`}</td><td className={`p-3 font-semibold ${flag === 'High' || flag === 'Low' ? 'text-critical' : 'text-success'}`}>{flag}</td></tr>;
+                    })}</tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-medium">Numeric result<input value={numericValue} onChange={(event) => setNumericValue(event.target.value)} inputMode="decimal" className="input-medical mt-1 w-full" /></label>
+                  <label className="text-sm font-medium">Unit<input value={reportCatalogueItem?.unit ?? ''} readOnly className="input-medical mt-1 w-full bg-muted/30" /></label>
+                </div>
+              )}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-medium sm:col-span-2">Narrative result / comments<textarea value={resultText} onChange={(event) => setResultText(event.target.value)} className="input-medical mt-1 w-full" rows={3} /></label>
+                <label className="text-sm font-medium sm:col-span-2">Interpretation<input value={interpretation} onChange={(event) => setInterpretation(event.target.value)} className="input-medical mt-1 w-full" /></label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isAbnormal} onChange={(event) => setIsAbnormal(event.target.checked)} /> Clinically abnormal finding</label>
+                <label className="text-sm font-medium">Upload document (PDF, JPG, PNG)<input type="file" accept="application/pdf,image/jpeg,image/png" className="input-medical mt-1 w-full" onChange={(event) => { void uploadResultAttachment(reportOrder.id, event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /></label>
+              </div>
+              <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+                <button type="button" disabled={savingResultFor === reportOrder.id} onClick={() => void saveResultDraft(reportOrder.id)} className="btn-secondary disabled:opacity-60">Save draft</button>
+                <button type="button" disabled={savingResultFor === reportOrder.id} onClick={() => void submitResult(reportOrder.id)} className="btn-primary disabled:opacity-60">{savingResultFor === reportOrder.id ? 'Saving…' : 'Submit for approval'}</button>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">Submitting marks this individual test as completed and places it in the laboratory approval queue. Other tests for the same patient remain independently in progress.</p>
+            </section>
+          </div>
+        </main>
+      )}
+      {catalogueOpen && (
+        <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="lab-catalogue-title">
+          <section className="mx-auto my-4 max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6">
+            <header className="flex items-start justify-between gap-3">
+              <div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Diagnostics · Master data</p><h2 id="lab-catalogue-title" className="mt-1 text-xl font-semibold">Laboratory test catalogue</h2><p className="mt-1 text-sm text-muted-foreground">Maintain test definitions and tariffs. Tariff changes are written to the system audit log.</p></div>
+              <button type="button" onClick={() => setCatalogueOpen(false)} className="btn-ghost" aria-label="Close catalogue"><X className="h-4 w-4" /></button>
+            </header>
+            <div className="mt-4 flex justify-end">
+              <button type="button" onClick={() => setCreateCatalogueOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Add laboratory test</button>
+            </div>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[38rem] text-left text-sm">
+                <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="px-3 py-2">Test</th><th className="px-3 py-2">Sample</th><th className="px-3 py-2">Parameters</th><th className="px-3 py-2">Tariff (GHS)</th><th className="px-3 py-2">Save</th></tr></thead>
+                <tbody className="divide-y divide-border">{catalogue.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-3 py-3"><p className="font-medium">{item.test_name}</p><p className="text-xs text-muted-foreground">{item.test_code} · {item.category ?? 'Uncategorised'}</p></td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">{item.specimen_type ?? 'Not set'}{item.sample_quantity ? ` · ${item.sample_quantity}` : ''}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">{item.parameters?.length ?? 0} parameter(s)</td>
+                    <td className="px-3 py-3"><input aria-label={`Tariff for ${item.test_name}`} type="number" min="0" step="0.01" value={catalogueCharges[item.id] ?? String(item.default_charge)} onChange={(event) => setCatalogueCharges((current) => ({ ...current, [item.id]: event.target.value }))} className="input-medical w-32" /></td>
+                    <td className="px-3 py-3"><button type="button" disabled={savingCatalogueId === item.id} onClick={() => void saveCatalogueCharge(item.id)} className="btn-secondary text-xs disabled:opacity-60">{savingCatalogueId === item.id ? 'Saving…' : 'Update tariff'}</button></td>
+                  </tr>
+                ))}{catalogue.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">No active tests are configured.</td></tr>}</tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
+      {catalogueOpen && createCatalogueOpen && (
+        <CatalogueCreateModal
+          kind="lab"
+          initialName=""
+          userRoles={user?.roles ?? []}
+          userPermissions={user?.permissions ?? []}
+          userDepartment={user?.department}
+          onCreated={(created) => {
+            setCreateCatalogueOpen(false);
+            setCatalogue((items) => [...items, created as LabCatalogueItem].sort((a, b) => a.test_name.localeCompare(b.test_name)));
+            toast({ title: 'Laboratory test added to catalogue' });
+          }}
+          onClose={() => setCreateCatalogueOpen(false)}
+        />
+      )}
     </>
   );
 }

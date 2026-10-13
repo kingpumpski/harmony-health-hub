@@ -35,10 +35,17 @@ interface LabReportRow {
   abnormal_flag: string | null;
   patients?: { id: string; first_name: string; last_name: string; patient_code: string } | null;
 }
+interface LabReportAttachment {
+  id: string;
+  lab_order_id: string;
+  storage_path: string;
+  file_name: string;
+}
 
 export default function LaboratoryResults() {
   const { user } = useAuth();
   const [results, setResults] = useState<LabReportRow[]>([]);
+  const [attachmentsByResult, setAttachmentsByResult] = useState<Record<string, LabReportAttachment[]>>({});
   const [loading, setLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [interpretationFilter, setInterpretationFilter] = useState('all');
@@ -63,7 +70,26 @@ export default function LaboratoryResults() {
         variant: 'destructive',
       });
     } else {
-      setResults((data ?? []) as LabReportRow[]);
+      const rows = (data ?? []) as LabReportRow[];
+      setResults(rows);
+      const labOrderIds = [...new Set(rows.map((result) => result.lab_order_id))];
+      if (labOrderIds.length) {
+        const { data: attachments, error: attachmentError } = await supabase
+          .from('lab_result_attachments' as never)
+          .select('id,lab_order_id,storage_path,file_name' as never)
+          .in('lab_order_id' as never, labOrderIds as never);
+        if (attachmentError) {
+          setAttachmentsByResult({});
+          toast({ title: 'Report attachments unavailable', description: attachmentError.message, variant: 'destructive' });
+        } else {
+          setAttachmentsByResult(((attachments ?? []) as unknown as LabReportAttachment[]).reduce<Record<string, LabReportAttachment[]>>((grouped, attachment) => {
+            (grouped[attachment.lab_order_id] ??= []).push(attachment);
+            return grouped;
+          }, {}));
+        }
+      } else {
+        setAttachmentsByResult({});
+      }
     }
     setLoading(false);
   }, [user?.id]);
@@ -91,6 +117,15 @@ export default function LaboratoryResults() {
     if (error) { toast({ title: 'Could not acknowledge result', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Laboratory result acknowledged' });
     void load();
+  };
+
+  const openAttachment = async (path: string) => {
+    const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
+    if (error) {
+      toast({ title: 'Could not open report attachment', description: error.message, variant: 'destructive' });
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const abnormalCount = results.filter((result) => result.is_abnormal).length;
@@ -198,6 +233,12 @@ export default function LaboratoryResults() {
                                 ))}
                               </dl>
                             )}
+                            <div className="mt-4 border-t border-border pt-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Report attachments</p>
+                              {(attachmentsByResult[result.lab_order_id] ?? []).length ? (
+                                <ul className="mt-2 space-y-1">{attachmentsByResult[result.lab_order_id].map((attachment) => <li key={attachment.id}><button type="button" onClick={() => void openAttachment(attachment.storage_path)} className="text-sm font-medium text-primary hover:underline">{attachment.file_name}</button></li>)}</ul>
+                              ) : <p className="mt-1 text-xs text-muted-foreground">No attachments were supplied.</p>}
+                            </div>
                           </section>
                           <section className="rounded-xl border border-border bg-background p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clinical interpretation</p>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const source = fs.readFileSync('src/pages/Laboratory.tsx', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const loader = source.slice(source.indexOf('const loadAll = async'), source.indexOf('const counters = useMemo'));
+const loader = source.slice(source.indexOf('const loadAll = useCallback(async'), source.indexOf('const counters = useMemo'));
 
 assert.match(source, /const workspaceLoadGeneration = useRef\(0\)/, 'laboratory workspace must track request generations');
 assert.match(loader, /const request = \+\+workspaceLoadGeneration\.current/, 'each refresh must invalidate older requests');
