@@ -43,6 +43,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: React hook import runtime guard
+        run: npm run test:react-hook-imports
+
       - name: Lint
         run: npm run lint
 
