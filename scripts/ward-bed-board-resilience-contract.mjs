@@ -6,6 +6,10 @@ assert.ok(source.includes('const [loadError, setLoadError] = useState(\'\')'), '
 assert.ok(source.includes('A network error prevented ward management from loading.'), 'WardBedBoard must handle rejected workspace requests');
 assert.ok(source.includes('Ward workspace could not be refreshed.'), 'WardBedBoard must show a retryable workspace error');
 assert.ok(source.includes('const loadGeneration = useRef(0)'), 'Ward workspace refreshes must track the latest request');
+assert.ok(source.includes('Promise.allSettled(['), 'Ward workspace and patient directory requests must fail independently');
+assert.ok(source.includes('Patient lookup is an optional assignment aid.'), 'Patient directory failures must not hide ward capacity');
+assert.ok(source.includes("title: 'Patient directory unavailable'"), 'Patient directory failures must provide a specific, recoverable message');
+assert.ok(source.includes('setWards(payload.wards ?? [])') && source.includes('setBeds(payload.beds ?? [])'), 'Successful ward workspace data must render independently of patient lookup');
 assert.ok(source.includes('if (request !== loadGeneration.current) return;'), 'Stale ward workspace responses must not overwrite newer state');
 assert.ok(source.includes('loadGeneration.current += 1;'), 'Ward workspace must invalidate in-flight requests on unmount');
 assert.ok(source.includes('const withBusy = async'), 'WardBedBoard mutations must share resilient busy-state handling');
