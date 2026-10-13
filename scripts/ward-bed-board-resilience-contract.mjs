@@ -15,6 +15,9 @@ assert.ok(source.includes('loadGeneration.current += 1;'), 'Ward workspace must 
 assert.ok(source.includes('const withBusy = async'), 'WardBedBoard mutations must share resilient busy-state handling');
 assert.ok(source.includes('finally {\n      setBusy(false);\n    }'), 'Mutation busy state must always reset after thrown requests');
 assert.ok(source.includes("withBusy('Transfer failed'"), 'Bed transfer must recover from thrown RPC requests');
+assert.ok(source.includes("candidate.code === 'PGRST202'"), 'Missing database RPCs must be detected explicitly');
+assert.ok(source.includes("title: 'Database workflow unavailable'"), 'Missing database RPCs must show a safe migration/schema-cache recovery message');
+assert.ok(source.includes('No change was completed.'), 'Missing RPC failures must not imply a mutation succeeded');
 assert.ok(source.includes("withBusy('Release failed'"), 'Bed release must recover from thrown RPC requests');
 assert.ok(source.includes('loading={busy}') && !source.includes('loading={loading}'), 'Refresh action must use the declared busy state');
 console.log('Ward and bed workspace network resilience contract passed');
