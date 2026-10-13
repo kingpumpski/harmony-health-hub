@@ -13,7 +13,11 @@ export type UserRole =
   | 'canteen'
   | 'patient'
   | 'it_admin'
-  | 'system_superuser';
+  | 'system_superuser'
+  | 'physiotherapist'
+  | 'ophthalmologist'
+  | 'dentist'
+  | 'dietician';
 
 export interface User {
   id: string;

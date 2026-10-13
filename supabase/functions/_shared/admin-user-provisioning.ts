@@ -3,6 +3,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0
 export const ADMIN_USER_ROLES = [
   'admin','it_admin','practitioner','nurse','specialist_nurse','midwife','lab_technician',
   'pharmacist','accountant','front_desk','canteen','radiologist','radiology_technician','patient','system_superuser',
+  'physiotherapist','ophthalmologist','dentist','dietician',
 ] as const;
 
 export const ADMIN_USER_ROLE_SET = new Set<string>(ADMIN_USER_ROLES);
