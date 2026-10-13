@@ -161,6 +161,9 @@ jobs:
       - name: Pharmacy workspace UI contract
         run: npm run test:pharmacy-workspace-ui
 
+      - name: Pharmacy workspace resilience contract
+        run: npm run test:pharmacy-workspace-resilience
+
       - name: Role dashboard KPI semantic contract
         run: node scripts/role-dashboard-kpi-semantic-contract.mjs
 
