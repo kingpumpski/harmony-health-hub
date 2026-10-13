@@ -47,6 +47,17 @@ CREATE POLICY lab_result_attachments_technician_insert
         AND so.status IN ('released', 'in_progress', 'completed')
       WHERE lo.id = lab_result_attachments.lab_order_id
         AND lo.facility_id = lab_result_attachments.facility_id
+        AND (
+          lab_result_attachments.lab_result_id IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM public.lab_results lr
+            WHERE lr.id = lab_result_attachments.lab_result_id
+              AND lr.lab_order_id = lo.id
+              AND lr.patient_id = lo.patient_id
+              AND lr.facility_id = lo.facility_id
+          )
+        )
     )
   );
 
