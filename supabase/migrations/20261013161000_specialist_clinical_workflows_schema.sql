@@ -311,4 +311,30 @@ CREATE POLICY specialist_review_sessions_facility_access ON public.specialist_re
     OR (SELECT public.has_role((SELECT auth.uid()), 'system_superuser'::public.app_role))
   ));
 
+
+-- Allow authenticated clinical staff in the same active facility to read specialty records
+-- as part of the unified medical record; write access remains specialty-role restricted.
+DO $read_policy$
+DECLARE
+  v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    'physio_assessments',
+    'physio_treatment_plans',
+    'ophthalmology_assessments',
+    'dental_assessments',
+    'dietary_assessments',
+    'dietary_meal_orders',
+    'specialist_review_sessions'
+  ]
+  LOOP
+    EXECUTE pg_catalog.format(
+      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (facility_id = (SELECT public.current_user_facility_id()) AND (SELECT public.current_user_is_clinical_staff()))',
+      v_table || '_clinical_read',
+      v_table
+    );
+  END LOOP;
+END;
+$read_policy$;
+
 COMMIT;
