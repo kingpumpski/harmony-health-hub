@@ -117,7 +117,8 @@
     "test:laboratory-workspace-resilience": "node scripts/laboratory-workspace-resilience-contract.mjs",
     "test:devcontainer-config": "node scripts/devcontainer-config-contract.mjs",
     "test:inpatient-bed-transfer-facility": "node scripts/inpatient-bed-transfer-facility-contract.mjs",
-    "test:pharmacy-workspace-resilience": "node scripts/pharmacy-workspace-resilience-contract.mjs"
+    "test:pharmacy-workspace-resilience": "node scripts/pharmacy-workspace-resilience-contract.mjs",
+    "test:operational-workspace-role-resolution": "node scripts/operational-workspace-role-resolution-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

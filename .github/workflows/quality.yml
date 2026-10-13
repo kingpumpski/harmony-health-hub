@@ -173,5 +173,8 @@ jobs:
       - name: Laboratory specimen foreign-key index migration contract
         run: npm run test:laboratory-specimen-fk-indexes
 
+      - name: Operational workspace role resolution contract
+        run: npm run test:operational-workspace-role-resolution
+
       - name: Production build
         run: npm run build
