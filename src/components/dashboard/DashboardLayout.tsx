@@ -26,28 +26,28 @@ const configs: Record<SpecialistKind, Config> = {
     title: 'Physiotherapy workspace', eyebrow: 'Specialist command · Physiotherapy',
     description: 'Initial assessments, treatment plans and review sessions in one facility-scoped worklist.',
     table: 'physio_assessments', reviewSpecialty: 'physiotherapy', departmentMatch: 'physio',
-    primaryHref: '/encounters?specialty=physiotherapy', primaryLabel: 'New assessment',
+    primaryHref: '/specialist-assessments?specialty=physiotherapy', primaryLabel: 'New assessment',
     extraTable: 'physio_treatment_plans', extraLabel: 'Active treatment plans', extraHref: '/appointments'
   },
   ophthalmology: {
     title: 'Ophthalmology workspace', eyebrow: 'Specialist command · Ophthalmology',
     description: 'Eye assessments, follow-up reviews and diagnostic workflow visibility.',
     table: 'ophthalmology_assessments', reviewSpecialty: 'ophthalmology', departmentMatch: 'ophthalm',
-    primaryHref: '/encounters?specialty=ophthalmology', primaryLabel: 'New eye assessment',
+    primaryHref: '/specialist-assessments?specialty=ophthalmology', primaryLabel: 'New eye assessment',
     extraTable: 'appointments', extraLabel: 'Upcoming clinics', extraHref: '/appointments'
   },
   dental: {
     title: 'Dental workspace', eyebrow: 'Specialist command · Dentistry',
     description: 'Dental assessments, tooth-chart records and pending procedure follow-up.',
     table: 'dental_assessments', reviewSpecialty: 'dental', departmentMatch: 'dent',
-    primaryHref: '/encounters?specialty=dental', primaryLabel: 'New dental assessment',
+    primaryHref: '/specialist-assessments?specialty=dental', primaryLabel: 'New dental assessment',
     extraTable: 'dental_assessments', extraLabel: 'Procedure records', extraHref: '/dental'
   },
   dietetics: {
     title: 'Dietetics workspace', eyebrow: 'Specialist command · Dietetics',
     description: 'Nutritional assessments, active meal plans and review-session visibility.',
     table: 'dietary_assessments', reviewSpecialty: 'dietetics', departmentMatch: 'diet',
-    primaryHref: '/encounters?specialty=dietetics', primaryLabel: 'New dietary assessment',
+    primaryHref: '/specialist-assessments?specialty=dietetics', primaryLabel: 'New dietary assessment',
     extraTable: 'dietary_meal_orders', extraLabel: 'Patients on specialized diets', extraHref: '/dietary-plans'
   }
 };
