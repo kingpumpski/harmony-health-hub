@@ -4,6 +4,12 @@ import { ArrowDown, ArrowLeft, ArrowUp, Plus, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import {
+  isMissingLaboratoryPanelFunction,
+  isNetworkFetchError,
+  laboratoryNetworkUnavailableMessage,
+  laboratoryPanelsUnavailableMessage,
+} from '@/lib/labResultAttachments';
 
 interface TestCatalogueItem {
   id: string;
@@ -37,16 +43,28 @@ export default function LabTestGroupsManager({ catalogue }: Props) {
   const [charge, setCharge] = useState('0');
   const [selectedTests, setSelectedTests] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc('get_laboratory_test_groups', { _include_inactive: true } as never);
-    if (error) {
-      toast({ title: 'Laboratory panels unavailable', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const { data, error } = await supabase.rpc('get_laboratory_test_groups', { _include_inactive: true } as never);
+      if (error) throw error;
       setPanels((data ?? []) as unknown as LabPanel[]);
+      setLoadError('');
+    } catch (error) {
+      setPanels([]);
+      const missingFunction = isMissingLaboratoryPanelFunction(error as { code?: string; message?: string });
+      const message = missingFunction
+        ? laboratoryPanelsUnavailableMessage
+        : isNetworkFetchError(error)
+          ? laboratoryNetworkUnavailableMessage
+          : error instanceof Error ? error.message : 'Retry to load laboratory panels.';
+      setLoadError(message);
+      toast({ title: 'Laboratory panels unavailable', description: message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { void load(); }, []);
@@ -176,6 +194,9 @@ export default function LabTestGroupsManager({ catalogue }: Props) {
 
         <section className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="font-semibold">Facility panels</h2><span className="text-xs text-muted-foreground">{panels.length} total</span></div>
+          {loadError && <div role="alert" className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm">
+            <p>{loadError}</p><button type="button" onClick={() => void load()} className="btn-secondary mt-3 text-xs">Retry</button>
+          </div>}
           {loading ? <p className="rounded-xl border border-border p-5 text-sm text-muted-foreground">Loading panels…</p> : panels.map((panel) => <article key={panel.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><div className="flex items-center gap-2"><h3 className="font-semibold">{panel.group_name}</h3><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${panel.is_active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{panel.is_active ? 'Active' : 'Inactive'}</span></div><p className="mt-1 text-xs text-muted-foreground">{panel.group_code} · {panel.tests.length} tests · GHS {Number(panel.default_charge).toFixed(2)}</p>{panel.description && <p className="mt-2 text-sm">{panel.description}</p>}</div>

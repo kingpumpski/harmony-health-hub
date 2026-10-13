@@ -28,6 +28,7 @@ import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
 import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
 import { searchPatientDirectory, type StaffPatient } from "@/lib/patientDirectory";
+import { isMissingLaboratoryPanelFunction, isNetworkFetchError, laboratoryNetworkUnavailableMessage, laboratoryPanelsUnavailableMessage } from "@/lib/labResultAttachments";
 
 interface Patient {
   id: string;
@@ -494,10 +495,13 @@ export default function Encounters() {
             db.rpc("get_laboratory_test_groups", { _include_inactive: false }),
           ]);
           if (error) throw error;
-          if (panelResult.error) throw panelResult.error;
           if (active) {
             setLabCatalogue((data ?? []) as typeof labCatalogue);
             setLabPanels((panelResult.data ?? []) as typeof labPanels);
+            if (panelResult.error && !isMissingLaboratoryPanelFunction(panelResult.error)) throw panelResult.error;
+            if (panelResult.error) {
+              toast({ title: "Laboratory panels unavailable", description: laboratoryPanelsUnavailableMessage, variant: "destructive" });
+            }
           }
         } else if (quickAction === "imaging") {
           const { data, error } = await db.from("service_tariffs").select("service_code,service_name,department").eq("active", true).ilike("department", "imaging").order("service_name").limit(100);
@@ -513,7 +517,13 @@ export default function Encounters() {
           if (active) setMedicationCatalogue((data ?? []) as typeof medicationCatalogue);
         }
       } catch (error) {
-        if (active) toast({ title: "Catalogue unavailable", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+        if (active) toast({
+          title: "Catalogue unavailable",
+          description: isNetworkFetchError(error)
+            ? laboratoryNetworkUnavailableMessage
+            : error instanceof Error ? error.message : String(error),
+          variant: "destructive",
+        });
       } finally {
         if (active) setCatalogLoading(false);
       }

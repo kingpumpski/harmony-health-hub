@@ -6,7 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
-import { isMissingLabResultAttachmentsTable, labResultAttachmentsUnavailableMessage } from '@/lib/labResultAttachments';
+import {
+  isMissingLabResultAttachmentsTable,
+  isNetworkFetchError,
+  labResultAttachmentsUnavailableMessage,
+  laboratoryNetworkUnavailableMessage,
+} from '@/lib/labResultAttachments';
 
 interface LabReportRow {
   id: string;
@@ -56,6 +61,7 @@ export default function LaboratoryResults() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [realtimeUpdatedAt, setRealtimeUpdatedAt] = useState<Date | null>(null);
   const attachmentSchemaNoticeShown = useRef(false);
+  const networkNoticeShown = useRef(false);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -65,23 +71,27 @@ export default function LaboratoryResults() {
     }
 
     setLoading(true);
+    try {
     const { data, error } = await (supabase as any).rpc('get_clinician_lab_results', { _limit: 200 });
     if (error) {
       setResults([]);
-      toast({
-        title: 'Approved laboratory reports unavailable',
-        description: error.message,
-        variant: 'destructive',
-      });
+      if (!isNetworkFetchError(error) || !networkNoticeShown.current) {
+        toast({
+          title: 'Approved laboratory reports unavailable',
+          description: isNetworkFetchError(error) ? laboratoryNetworkUnavailableMessage : error.message,
+          variant: 'destructive',
+        });
+      }
+      if (isNetworkFetchError(error)) networkNoticeShown.current = true;
     } else {
+      networkNoticeShown.current = false;
       const rows = (data ?? []) as LabReportRow[];
       setResults(rows);
       const labOrderIds = [...new Set(rows.map((result) => result.lab_order_id))];
       if (labOrderIds.length) {
-        const { data: attachments, error: attachmentError } = await supabase
-          .from('lab_result_attachments' as never)
-          .select('id,lab_order_id,storage_path,file_name' as never)
-          .in('lab_order_id' as never, labOrderIds as never);
+        const { data: attachments, error: attachmentError } = await supabase.rpc('get_lab_result_attachments' as never, {
+          _lab_order_ids: labOrderIds,
+        } as never);
         if (attachmentError) {
           setAttachmentsByResult({});
           if (!isMissingLabResultAttachmentsTable(attachmentError) || !attachmentSchemaNoticeShown.current) {
@@ -103,6 +113,19 @@ export default function LaboratoryResults() {
       } else {
         setAttachmentsByResult({});
       }
+    }
+    } catch (error) {
+      setResults([]);
+      if (!isNetworkFetchError(error) || !networkNoticeShown.current) {
+        toast({
+          title: 'Approved laboratory reports unavailable',
+          description: isNetworkFetchError(error)
+            ? laboratoryNetworkUnavailableMessage
+            : error instanceof Error ? error.message : 'Check your connection and retry.',
+          variant: 'destructive',
+        });
+      }
+      if (isNetworkFetchError(error)) networkNoticeShown.current = true;
     }
     setLoading(false);
   }, [user?.id]);

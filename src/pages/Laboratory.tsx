@@ -10,7 +10,12 @@ import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
 import CatalogueCreateModal from '@/components/catalogue/CatalogueCreateModal';
 import LabTestGroupsManager from '@/components/laboratory/LabTestGroupsManager';
-import { isMissingLabResultAttachmentsTable, labResultAttachmentsUnavailableMessage } from '@/lib/labResultAttachments';
+import {
+  isMissingLabResultAttachmentsTable,
+  isNetworkFetchError,
+  labResultAttachmentsUnavailableMessage,
+  laboratoryNetworkUnavailableMessage,
+} from '@/lib/labResultAttachments';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
 import ClinicalDataTable, { ClinicalStatusBadge, ClinicalTableAction } from '@/components/workflow/ClinicalDataTable';
 
@@ -111,6 +116,7 @@ export default function Laboratory() {
   const previousQueueTotal = useRef(0);
   const hasLoadedQueue = useRef(false);
   const attachmentSchemaNoticeShown = useRef(false);
+  const workspaceNetworkNoticeShown = useRef(false);
   const workspaceLoadGeneration = useRef(0);
   const workspaceRequestInFlight = useRef(false);
 
@@ -123,9 +129,17 @@ export default function Laboratory() {
       const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
       if (request !== workspaceLoadGeneration.current) return;
       if (error) {
-        toast({ title: 'Laboratory workspace unavailable', description: error.message, variant: 'destructive' });
+        if (!isNetworkFetchError(error) || !workspaceNetworkNoticeShown.current) {
+          toast({
+            title: 'Laboratory workspace unavailable',
+            description: isNetworkFetchError(error) ? laboratoryNetworkUnavailableMessage : error.message,
+            variant: 'destructive',
+          });
+        }
+        if (isNetworkFetchError(error)) workspaceNetworkNoticeShown.current = true;
         return;
       }
+      workspaceNetworkNoticeShown.current = false;
     const workspace = (data ?? {}) as {
       patients?: Patient[];
       catalogue?: LabCatalogueItem[];
@@ -140,10 +154,9 @@ export default function Laboratory() {
     (workspace.results ?? []).forEach((r) => { if (!map[r.lab_order_id]) map[r.lab_order_id] = r; });
     setResultsByOrder(map);
     if (nextOrders.length) {
-      const { data: attachmentRows, error: attachmentError } = await supabase
-        .from('lab_result_attachments' as never)
-        .select('id,lab_order_id,storage_path,file_name,mime_type,created_at' as never)
-        .in('lab_order_id' as never, nextOrders.map((order) => order.id) as never);
+      const { data: attachmentRows, error: attachmentError } = await supabase.rpc('get_lab_result_attachments' as never, {
+        _lab_order_ids: nextOrders.map((order) => order.id),
+      } as never);
       if (request !== workspaceLoadGeneration.current) return;
       if (attachmentError) {
         setAttachmentsByOrder({});
@@ -192,7 +205,16 @@ export default function Laboratory() {
     }
     } catch (error) {
       if (request === workspaceLoadGeneration.current) {
-        toast({ title: 'Laboratory workspace unavailable', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
+        if (!isNetworkFetchError(error) || !workspaceNetworkNoticeShown.current) {
+          toast({
+            title: 'Laboratory workspace unavailable',
+            description: isNetworkFetchError(error)
+              ? laboratoryNetworkUnavailableMessage
+              : error instanceof Error ? error.message : 'Check your connection and retry.',
+            variant: 'destructive',
+          });
+        }
+        if (isNetworkFetchError(error)) workspaceNetworkNoticeShown.current = true;
       }
     } finally {
       if (request === workspaceLoadGeneration.current) setLoading(false);
