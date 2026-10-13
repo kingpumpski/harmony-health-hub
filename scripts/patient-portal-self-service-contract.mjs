@@ -211,3 +211,22 @@ for (const needle of [
 if ((telemedicineFacilityShiftMigration.match(/JOIN public\.facility_memberships shift_fm/g) || []).length !== 2) {
   throw new Error('Both clinician duty status and clinician filtering must enforce facility-scoped shifts');
 }
+
+
+const appointmentRequestHandler = patientPortalSource.slice(
+  patientPortalSource.indexOf('const requestAppointment = async'),
+  patientPortalSource.indexOf('const requestAIReport = async')
+);
+for (const needle of [
+  'const appointmentRequestLock = useRef(false)',
+  'if (!patient || appointmentRequestLock.current) return;',
+  'const scheduledAt = new Date(appointmentTime)',
+  '!Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()',
+  'appointmentRequestLock.current = true',
+  '_scheduled_at: scheduledAt.toISOString()',
+  'appointmentRequestLock.current = false',
+]) {
+  if (!patientPortalSource.includes(needle) && !appointmentRequestHandler.includes(needle)) {
+    throw new Error('Patient appointment submission must prevent duplicate requests and reject invalid/past times: ' + needle);
+  }
+}
