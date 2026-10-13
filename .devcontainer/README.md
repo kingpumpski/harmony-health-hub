@@ -1,6 +1,6 @@
 # Harmony Health Hub development container
 
-This repository is configured for GitHub Codespaces with Node.js 20 and npm.
+This repository is configured for GitHub Codespaces with Node.js 24 and npm.
 
 ## Normal workflow
 
@@ -24,6 +24,6 @@ For local development:
 npm run dev -- --host 0.0.0.0
 ```
 
-The Vite development server uses port 8080 when the project's Vite configuration specifies that port.
+The Vite development server uses port 8080.
 
 This setup is intended to avoid requiring a manual `git clone` or a locally installed Node.js toolchain. The repository itself remains the source of truth.

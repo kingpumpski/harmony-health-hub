@@ -25,12 +25,12 @@ assert.equal(
 );
 
 assert.ok(
-  Array.isArray(config.forwardPorts) && config.forwardPorts.includes(5173),
-  'Codespaces must forward Vite default port 5173',
+  Array.isArray(config.forwardPorts) && config.forwardPorts.includes(8080),
+  'Codespaces must forward the Vite development server port 8080',
 );
 
 assert.ok(
-  config.portsAttributes?.['5173'],
+  config.portsAttributes?.['8080'],
   'Forwarded Vite port must have a visible port attribute',
 );
 

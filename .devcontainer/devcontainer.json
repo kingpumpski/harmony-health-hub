@@ -7,9 +7,9 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "forwardPorts": [5173],
+  "forwardPorts": [8080],
   "portsAttributes": {
-    "5173": {
+    "8080": {
       "label": "Harmony Health Hub (Vite)",
       "onAutoForward": "notify"
     }
@@ -24,14 +24,9 @@
       ],
       "settings": {
         "typescript.tsdk": "node_modules/typescript/lib",
-        // "js/ts.tsdk.path": "node_modules/typescript/lib",
         "eslint.workingDirectories": ["."]
       }
     }
   },
-<<<<<<< HEAD
-=======
-  // "remoteUser": "node"
->>>>>>> 4610a049 (Update devcontainer configuration to set remote user to vscode)
   "remoteUser": "vscode"
 }
