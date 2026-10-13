@@ -16,6 +16,10 @@ import RadiologyTechnicianDashboard from './dashboard/RadiologyTechnicianDashboa
 import PatientDashboard from './dashboard/PatientDashboard';
 import ITAdminDashboard from './dashboard/ITAdminDashboard';
 import SystemSuperuserDashboard from './dashboard/SystemSuperuserDashboard';
+import PhysioDashboard from './dashboard/PhysioDashboard';
+import OphthalmologyDashboard from './dashboard/OphthalmologyDashboard';
+import DentistDashboard from './dashboard/DentistDashboard';
+import DieticianDashboard from './dashboard/DieticianDashboard';
 import { AlertTriangle } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -39,6 +43,10 @@ export default function Dashboard(){
     case'patient':dashboard=<PatientDashboard/>;break;
     case'it_admin':dashboard=<ITAdminDashboard/>;break;
     case'system_superuser':dashboard=<SystemSuperuserDashboard/>;break;
+    case'physiotherapist':dashboard=<PhysioDashboard/>;break;
+    case'ophthalmologist':dashboard=<OphthalmologyDashboard/>;break;
+    case'dentist':dashboard=<DentistDashboard/>;break;
+    case'dietician':dashboard=<DieticianDashboard/>;break;
     case'front_desk':dashboard=<FrontDeskDashboard/>;break;
     default:dashboard=<div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><div className="flex items-start gap-3"><AlertTriangle className="h-5 w-5 text-warning"/><div><p className="font-semibold">Dashboard unavailable</p><p className="mt-1 text-sm text-muted-foreground">Your account has an unsupported role configuration. No role-specific workspace has been granted.</p></div></div></div>;
   }
