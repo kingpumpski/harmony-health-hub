@@ -33,6 +33,7 @@ export default function Imaging() {
   const [activeStatus, setActiveStatus] = useState('all');
 
   const [allowRadiologyOrdering, setAllowRadiologyOrdering] = useState(false);
+  const [allowLabOrdering, setAllowLabOrdering] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [clinicalContext, setClinicalContext] = useState<Record<string, unknown> | null>(null);
   const [clinicalContextLoading, setClinicalContextLoading] = useState(false);
@@ -62,7 +63,9 @@ export default function Imaging() {
     void supabase.rpc('get_facility_workflow_settings').then(({ data, error }) => {
       if (!active) return;
       if (error) { setAllowRadiologyOrdering(false); return; }
-      setAllowRadiologyOrdering(Boolean((data as { allow_radiology_ordering?: boolean } | null)?.allow_radiology_ordering));
+      const settings = (data ?? {}) as { allow_radiology_ordering?: boolean; allow_lab_ordering?: boolean };
+      setAllowRadiologyOrdering(Boolean(settings.allow_radiology_ordering));
+      setAllowLabOrdering(Boolean(settings.allow_lab_ordering));
     });
     return () => { active = false; };
   }, [user?.id]);
@@ -121,6 +124,17 @@ export default function Imaging() {
     const { error } = await supabase.rpc('start_imaging_order' as never, { _imaging_order_id: order.id } as never);
     if (error) { playWorkflowSound('critical'); toast({ title: 'Cannot start imaging', description: error.message, variant: 'destructive' }); return; }
     playWorkflowSound('success'); toast({ title: 'Imaging started' }); void load();
+  };
+
+  const updateRadiologyOrdering = async (enabled: boolean) => {
+    const { error } = await supabase.rpc('set_facility_workflow_settings', {
+      _allow_lab_ordering: allowLabOrdering,
+      _allow_radiology_ordering: enabled,
+      _notification_settings: null,
+    });
+    if (error) { toast({ title: 'Workflow setting was not saved', description: error.message, variant: 'destructive' }); return; }
+    setAllowRadiologyOrdering(enabled);
+    toast({ title: enabled ? 'Radiology ordering enabled' : 'Radiology ordering disabled', description: 'The facility workflow setting has been saved.' });
   };
 
   const viewClinicalContext = async (order: ImagingOrder) => {
@@ -207,6 +221,7 @@ export default function Imaging() {
       { label: 'Completed', value: counters.completed, surface: 'bg-success/5', tone: 'text-success' },
     ]} beforeList={<>
       {counters.urgent > 0 && <div className='rounded-xl border border-critical/30 bg-critical/5 p-3 flex items-center gap-2 text-sm' role='alert'><BellRing className='w-4 h-4 text-critical shrink-0' aria-hidden='true' /><span className='font-medium'>{counters.urgent} urgent/STAT case{counters.urgent === 1 ? '' : 's'} require attention.</span></div>}
+      {user?.roles?.includes('admin') && <section className='rounded-xl border border-border bg-card p-3 text-sm'><label className='flex items-center gap-2'><input type='checkbox' checked={allowRadiologyOrdering} onChange={(event) => void updateRadiologyOrdering(event.target.checked)} /><span className='font-medium'>Allow radiology ordering at this facility</span></label><p className='mt-1 text-xs text-muted-foreground'>Disabled by default. Saving requires facility administrator access.</p></section>}
       {allowRadiologyOrdering && <div className='flex justify-end'><button type='button' onClick={() => setCreateModalOpen(true)} className='btn-primary inline-flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> Create imaging request</button></div>}
       {createModalOpen && allowRadiologyOrdering && <div className='fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6' role='dialog' aria-modal='true' aria-labelledby='imaging-request-title'><section className='mx-auto my-4 max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6'><header className='mb-4 flex items-start justify-between gap-3'><div><h2 id='imaging-request-title' className='font-semibold flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> New imaging request</h2><p className='mt-1 text-xs text-muted-foreground'>Chargeable imaging remains held until Accounts releases payment or an authorised override is recorded.</p></div><button type='button' onClick={() => setCreateModalOpen(false)} className='btn-ghost' aria-label='Close imaging request'>×</button></header>
         <form onSubmit={createOrder} className='mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3'>
