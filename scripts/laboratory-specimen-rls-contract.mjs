@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const migration = readFileSync(new URL('../supabase/migrations/20261014111000_lab_specimens_explicit_deny_policy.sql', import.meta.url), 'utf8').toLowerCase();
+const migration = readFileSync(new URL('../supabase/migrations/20261014103413_lab_specimens_explicit_deny_policy.sql', import.meta.url), 'utf8').toLowerCase();
 const accession = readFileSync(new URL('../supabase/migrations/20261012170000_laboratory_specimen_accession_and_rejection.sql', import.meta.url), 'utf8');
 
 for (const token of [
