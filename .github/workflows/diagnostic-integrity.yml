@@ -42,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Validate diagnostic CI references and migration versions
-        run: node scripts/diagnostic-ci-contract.mjs
+        run: npm run test:diagnostic-ci-contract
 
       - name: Typecheck
         run: npm run typecheck
