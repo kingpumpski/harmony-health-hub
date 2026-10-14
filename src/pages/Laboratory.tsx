@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { FlaskConical, CheckCircle2, ShieldCheck, LockKeyhole, BellRing, Search, Plus, X } from 'lucide-react';
+import { FlaskConical, CheckCircle2, ShieldCheck, LockKeyhole, Search, Plus, X } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { playWorkflowSound } from '@/lib/workflowFeedback';
 import { subscribeMasterDataChanged } from '@/lib/masterDataEvents';
@@ -89,6 +89,9 @@ export default function Laboratory() {
   const [rejectingSpecimen, setRejectingSpecimen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [allowLabOrdering, setAllowLabOrdering] = useState(false);
+  const [clinicalContext, setClinicalContext] = useState<Record<string, unknown> | null>(null);
+  const [clinicalContextLoading, setClinicalContextLoading] = useState(false);
   const [createCatalogueOpen, setCreateCatalogueOpen] = useState(false);
   const [catalogueCharges, setCatalogueCharges] = useState<Record<string, string>>({});
   const [savingCatalogueId, setSavingCatalogueId] = useState<string | null>(null);
@@ -113,6 +116,28 @@ export default function Laboratory() {
   const attachmentSchemaNoticeShown = useRef(false);
   const workspaceLoadGeneration = useRef(0);
   const workspaceRequestInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    void supabase.rpc('get_facility_workflow_settings').then(({ data, error }) => {
+      if (!active) return;
+      if (error) { setAllowLabOrdering(false); return; }
+      setAllowLabOrdering(Boolean((data as { allow_lab_ordering?: boolean } | null)?.allow_lab_ordering));
+    });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const isLabOrderPaid = (order: LabOrder) => ['released', 'in_progress', 'completed'].includes(order.billing_status ?? '');
+
+  const viewClinicalContext = async (order: LabOrder) => {
+    setClinicalContextLoading(true);
+    setClinicalContext(null);
+    const { data, error } = await supabase.rpc('get_diagnostic_order_clinical_context', { _order_id: order.id, _order_type: 'laboratory' });
+    setClinicalContextLoading(false);
+    if (error) { toast({ title: 'Clinical context unavailable', description: 'The encounter context could not be loaded for this facility-scoped order.', variant: 'destructive' }); return; }
+    setClinicalContext((data ?? {}) as Record<string, unknown>);
+  };
 
   const loadAll = useCallback(async () => {
     if (workspaceRequestInFlight.current || document.visibilityState !== 'visible') return;
@@ -232,7 +257,8 @@ export default function Laboratory() {
 
   const visibleOrders = useMemo(() => orders.filter((order) => {
     const result = resultsByOrder[order.id];
-    const statusMatches = appliedFilters.status === 'all' || order.status === appliedFilters.status;
+    const statusMatches = appliedFilters.status === 'all'
+      || (appliedFilters.status === 'awaiting_payment' ? !isLabOrderPaid(order) : order.status === appliedFilters.status);
     const priorityMatches = appliedFilters.priority === 'all' || order.priority === appliedFilters.priority;
     const resultMatches = appliedFilters.result === 'all'
       || (appliedFilters.result === 'with_result' && !!result)
@@ -606,9 +632,6 @@ export default function Laboratory() {
                 <FlaskConical className="h-4 w-4" aria-hidden="true" /> Test catalogue
               </button>
             )}
-            <Link to="/notifications" className="btn-ghost inline-flex items-center gap-2 w-fit">
-              <BellRing className="w-4 h-4" aria-hidden="true" /> Notifications
-            </Link>
             <RefreshButton onClick={() => void loadAll()} loading={loading} label="Refresh laboratory workspace" />
           </>
         )}
@@ -626,7 +649,7 @@ export default function Laboratory() {
             </Link>
             <section className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status">
               <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-              <p className="text-sm text-foreground">Lab orders are automatically generated from Clinician Encounters and become active upon payment confirmation by the Accounts department.</p>
+              <p className="text-sm text-foreground">Lab orders are generated from Clinician Encounters. Only orders released by Accounts can be collected or processed. Facility-configured laboratory ordering is currently <strong>{allowLabOrdering ? 'enabled' : 'disabled'}</strong>.</p>
             </section>
             <label className="relative block max-w-xl">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -643,9 +666,9 @@ export default function Laboratory() {
           <ClinicalDataTable
             title="Laboratory results"
             description="Filter by clinical workflow state, priority and result availability. Use the action column for the next authorised laboratory step."
-            meta={`${visibleOrders.length} shown · ${orders.length} paid/released order${orders.length === 1 ? '' : 's'}`}
+            meta={`${visibleOrders.length} shown · ${orders.length} total order${orders.length === 1 ? '' : 's'}, including payment-gated orders`}
             filters={[
-              { label: 'Order status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'all', label: 'All statuses' }, { value: 'ordered', label: 'Ordered' }, { value: 'sample_collected', label: 'Sample collected' }, { value: 'completed', label: 'Completed' }, { value: 'approved', label: 'Approved' }] },
+              { label: 'Order status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'all', label: 'All statuses' }, { value: 'awaiting_payment', label: 'Pending payment' }, { value: 'ordered', label: 'Active / ordered' }, { value: 'sample_collected', label: 'In progress' }, { value: 'completed', label: 'Completed' }, { value: 'approved', label: 'Approved' }, { value: 'cancelled', label: 'Cancelled' }] },
               { label: 'Priority', value: priorityFilter, onChange: setPriorityFilter, options: [{ value: 'all', label: 'All priorities' }, { value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }] },
               { label: 'Result state', value: resultFilter, onChange: setResultFilter, options: [{ value: 'all', label: 'All results' }, { value: 'with_result', label: 'Result entered' }, { value: 'awaiting_result', label: 'Awaiting result' }, { value: 'abnormal', label: 'Abnormal results' }] },
             ]}
@@ -684,10 +707,10 @@ export default function Laboratory() {
                         </td></tr>;
                       })()
                     )}
-                    <tr id={`lab-order-${o.id}`} className={attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
+                    <tr id={`lab-order-${o.id}`} className={!isLabOrderPaid(o) ? 'bg-muted/50 opacity-80' : attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
                       <td className="font-mono text-xs">{p?.patient_code ?? o.patient_id.slice(0, 8).toUpperCase()}</td>
                       <td className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</td>
-                      <td><ClinicalStatusBadge status={o.status} /></td>
+                      <td><ClinicalStatusBadge status={!isLabOrderPaid(o) ? 'awaiting_payment' : o.status} /></td>
                       <td>
                         <div className="min-w-[180px]">
                           <p className="font-medium">{o.test_name}</p>
@@ -698,10 +721,13 @@ export default function Laboratory() {
                       <td className="whitespace-nowrap text-xs text-muted-foreground" title={new Date(o.created_at).toLocaleString()}>{timeAgo(o.created_at)}</td>
                       <td>
                         <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
+                          <button type="button" className="btn-secondary text-xs" onClick={() => void viewClinicalContext(o)}>View Context</button>
                           <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
-                          {o.status === 'ordered' && <ClinicalTableAction label={orderAction === o.id ? 'Collecting…' : 'Collect sample'} onClick={() => void collectSample(o.id)} />}
-                          {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); openResultEntry(o.id); }} />}
-                          {o.status === 'completed' && result && <ClinicalTableAction label={orderAction === o.id ? 'Approving…' : 'Approve'} icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
+                          {isLabOrderPaid(o) ? <>
+                            {o.status === 'ordered' && <ClinicalTableAction label={orderAction === o.id ? 'Collecting…' : 'Collect sample'} onClick={() => void collectSample(o.id)} />}
+                            {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); openResultEntry(o.id); }} />}
+                            {o.status === 'completed' && result && <ClinicalTableAction label={orderAction === o.id ? 'Approving…' : 'Approve'} icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
+                          </> : <span className="text-xs font-medium text-muted-foreground">Awaiting payment — actions locked</span>}
                         </div>
                       </td>
                     </tr>
@@ -844,6 +870,8 @@ export default function Laboratory() {
         )}
       >
       </OperationalWorklistShell>}
+      {clinicalContextLoading && <div className="fixed inset-0 z-[85] grid place-items-center bg-background/70 p-4" role="status">Loading clinical context…</div>}
+      {clinicalContext && <div className="fixed inset-0 z-[85] overflow-y-auto bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="lab-context-title"><section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-background p-5 shadow-2xl"><header className="flex items-start justify-between gap-3"><div><h2 id="lab-context-title" className="text-lg font-semibold">Clinical context</h2><p className="text-sm text-muted-foreground">Read-only context from the originating encounter.</p></div><button type="button" className="btn-ghost" onClick={() => setClinicalContext(null)} aria-label="Close clinical context">×</button></header><dl className="mt-4 grid gap-3 text-sm"><div><dt className="text-xs text-muted-foreground">Patient</dt><dd className="font-medium">{String(clinicalContext.patient_name ?? '—')}</dd></div><div><dt className="text-xs text-muted-foreground">Chief complaint</dt><dd className="whitespace-pre-wrap">{String(clinicalContext.chief_complaint ?? 'Not recorded')}</dd></div><div><dt className="text-xs text-muted-foreground">Diagnosis</dt><dd className="whitespace-pre-wrap">{String(clinicalContext.diagnosis ?? 'Not recorded')}</dd></div><div><dt className="text-xs text-muted-foreground">Clinical notes</dt><dd className="whitespace-pre-wrap">{String(clinicalContext.clinical_notes ?? 'No linked clinical notes')}</dd></div></dl><div className="mt-5 flex justify-end"><button type="button" className="btn-primary" onClick={() => setClinicalContext(null)}>Close</button></div></section></div>}
       {resultFor && reportOrder && (
         <main className="fixed inset-0 z-[75] overflow-y-auto bg-background p-4 sm:p-7" aria-labelledby="lab-report-entry-title">
           <div className="mx-auto max-w-6xl space-y-5">
