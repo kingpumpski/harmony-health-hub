@@ -352,7 +352,7 @@
   }
 
   .notification-bell-attention {
-    animation: notification-bell-vibrate 0.85s ease-in-out infinite;
+    animation: notification-bell-vibrate 0.45s ease-in-out 7;
     transform-origin: 50% 15%;
   }
 
@@ -369,7 +369,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .notification-bell-attention {
-      animation: notification-bell-pulse-reduced 1.5s ease-in-out infinite;
+      animation: notification-bell-pulse-reduced 1.5s ease-in-out 2;
     }
   }
 
