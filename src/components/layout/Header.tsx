@@ -32,7 +32,8 @@ export default function Header({ onMenu }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
-  const [notificationAttention, setNotificationAttention] = useState(false);
+  const [bellShaking, setBellShaking] = useState(false);
+  const [criticalToast, setCriticalToast] = useState<NotifRow | null>(null);
   const notificationIdsRef = useRef<Set<string>>(new Set());
   const notificationInitializedRef = useRef(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -54,13 +55,14 @@ export default function Header({ onMenu }: HeaderProps) {
     if (notificationInitializedRef.current && newUnread.length > 0) {
       const newest = newUnread[0];
       if (soundEnabled) playWorkflowSound(notificationSoundKind(newest));
-      setNotificationAttention(true);
+      setBellShaking(true);
+      window.setTimeout(() => setBellShaking(false), 3000);
+      const critical = newUnread.find((n) => String(n.severity).toLowerCase() === 'critical');
+      if (critical) setCriticalToast(critical);
     }
     notificationIdsRef.current = new Set(rows.map((n) => n.id));
     notificationInitializedRef.current = true;
     setNotifications(rows);
-    // Keep the bell attention state until every unread notification is explicitly marked read.
-    setNotificationAttention(unreadRows.length > 0);
   }, [user?.id, user?.role]);
 
   const unread = notifications.filter((n) => !n.is_read).length;
@@ -117,7 +119,7 @@ export default function Header({ onMenu }: HeaderProps) {
   if (!user) return null;
   const closeSearch = () => { setSearchResults([]); };
 
-  return <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-5 lg:px-7">
+  return <><header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-5 lg:px-7">
     <div className="flex min-h-11 items-center gap-3">
       <button type="button" onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
       <div className="hidden min-w-0 flex-1 sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">{greeting}</p><h2 className="truncate text-sm font-semibold">{pageLabel}</h2></div>
@@ -145,7 +147,7 @@ export default function Header({ onMenu }: HeaderProps) {
           </div>}
         </div>
         <div ref={notificationContainerRef} className="relative">
-          <button type="button" onClick={() => { setShowNotifications(v => !v); setShowAccount(false); setSearchResults([]); }} className={cn("relative rounded-xl p-2 hover:bg-muted", notificationAttention && "notification-bell-attention")} aria-label="Notifications"><Bell className={cn("h-5 w-5", notificationAttention || hasCritical ? "text-critical" : "text-muted-foreground")} />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold text-critical-foreground">{unread > 9 ? "9+" : unread}</span>}</button>
+          <button type="button" onClick={() => { setShowNotifications(v => !v); setShowAccount(false); setSearchResults([]); }} className={cn("relative rounded-xl p-2 hover:bg-muted", bellShaking && "notification-bell-attention")} aria-label="Notifications" style={bellShaking ? { animation: "notification-shake 0.45s ease-in-out 7" } : undefined}><Bell className={cn("h-5 w-5", hasCritical ? "text-critical" : "text-muted-foreground")} />{unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold text-critical-foreground">{unread > 9 ? "9+" : unread}</span>}</button>
           {showNotifications && <div className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-elevated"><div className="flex items-center justify-between border-b p-4"><h3 className="font-semibold">Notifications</h3><Link to="/notifications" onClick={() => setShowNotifications(false)} className="text-xs text-primary">View all</Link></div><div className="max-h-96 overflow-y-auto">{notifications.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No notifications yet.</p> : notifications.map(n => <div key={n.id} className={cn("flex cursor-pointer gap-3 border-b p-3 last:border-0 hover:bg-muted/50", !n.is_read && "bg-primary/5")} onClick={() => { void db.rpc("mark_notification_read", { _notification_id: n.id }).then(() => loadNotifications()).catch(() => loadNotifications()); if (n.link) { setShowNotifications(false); navigate(n.link); } }}>{sevIcon(n.severity)}<div className="min-w-0 flex-1"><p className="text-sm font-medium">{n.title}</p><p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p></div></div>)}</div></div>}
         </div>
         <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="rounded-xl p-2 hover:bg-muted" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-5 w-5 text-muted-foreground" /> : <Moon className="h-5 w-5 text-muted-foreground" />}</button>
@@ -155,5 +157,7 @@ export default function Header({ onMenu }: HeaderProps) {
         </div>
       </div>
     </div>
-  </header>;
+  </header>
+  {criticalToast && <div className="fixed inset-x-0 top-0 z-[100] flex items-start gap-3 border-b-2 border-critical bg-critical px-4 py-3 text-critical-foreground shadow-elevated" role="alert"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div className="min-w-0 flex-1"><p className="font-bold">{criticalToast.title}</p><p className="text-sm">{criticalToast.message}</p>{criticalToast.link && <button type="button" className="mt-1 text-sm font-semibold underline" onClick={() => { navigate(criticalToast.link!); setCriticalToast(null); }}>Open alert</button>}</div><button type="button" className="rounded p-1 hover:bg-black/10" aria-label="Dismiss critical notification" onClick={() => setCriticalToast(null)}><X className="h-4 w-4" /></button></div>}
+  <style>{`@keyframes notification-shake { 0%,100% { transform: translateX(0) rotate(0); } 15%,45%,75% { transform: translateX(-3px) rotate(-8deg); } 30%,60%,90% { transform: translateX(3px) rotate(8deg); } }`}</style></>;
 }
