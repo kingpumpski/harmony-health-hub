@@ -62,17 +62,16 @@ BEGIN
                lo.encounter_id, lo.facility_id, so.id AS service_order_id, so.status AS billing_status
         FROM public.lab_orders lo
         JOIN public.patients p ON p.id = lo.patient_id AND p.facility_id = v_facility
-        JOIN LATERAL (
-          SELECT s.id, s.status
-          FROM public.service_orders s
-          WHERE s.related_entity_id = lo.id
-            AND s.department = 'laboratory'
-            AND s.patient_id = lo.patient_id
-            AND s.facility_id = lo.facility_id
-            AND s.status IN ('released', 'in_progress', 'completed')
-          ORDER BY s.created_at DESC
-          LIMIT 1
-        ) so ON true
+        LEFT JOIN LATERAL (
+           SELECT s.id, s.status
+           FROM public.service_orders s
+           WHERE s.related_entity_id = lo.id
+             AND s.department = 'laboratory'
+             AND s.patient_id = lo.patient_id
+             AND s.facility_id = lo.facility_id
+           ORDER BY s.created_at DESC
+           LIMIT 1
+         ) so ON true
         WHERE lo.facility_id = v_facility
         ORDER BY lo.created_at DESC LIMIT _limit
       ) o
