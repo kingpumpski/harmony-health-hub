@@ -44,7 +44,8 @@ export default function Imaging() {
     const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
     if (error) {
       setLoading(false);
-      toast({ title: 'Imaging workspace unavailable', description: error.message, variant: 'destructive' });
+      const offline = error.status === 503 || /failed to fetch|network|connection|\b503\b|gateway/i.test(error.message ?? '');
+      toast({ title: offline ? 'Imaging workspace offline' : 'Imaging workspace unavailable', description: offline ? 'The database service is temporarily unavailable. Your existing data has not been changed. Retry when the connection recovers.' : error.message, variant: 'destructive' });
       return;
     }
     const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
@@ -109,6 +110,7 @@ export default function Imaging() {
 
   const createOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!allowRadiologyOrdering) { toast({ title: 'Radiology ordering is disabled', description: 'Ask a facility administrator to enable this workflow before creating a request.', variant: 'destructive' }); return; }
     if (!patientId || !studyName.trim() || !user?.id) return;
     const { data, error } = await supabase.rpc('create_imaging_order_with_payment_gate' as never, { _patient_id: patientId, _encounter_id: null, _modality: modality, _study_name: studyName, _body_site: bodySite || null, _priority: priority, _clinical_indication: indication || null, _amount: amount } as never);
     if (error) { playWorkflowSound('critical'); return toast({ title: 'Failed', description: error.message, variant: 'destructive' }); }
@@ -191,8 +193,8 @@ export default function Imaging() {
   const priorityOptions = [{ value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }];
 
   const orderColumns: WorklistColumn<ImagingOrder>[] = [
-    { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{patientName(row)}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => patientName(row) },
-    { key: 'study', label: 'Study', render: (row) => <div><p className='font-medium'>{row.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.modality} · {row.body_site || 'No body site'}</p></div>, sortValue: (row) => row.study_name },
+    { key: 'patient', label: 'Patient', required: true, render: (row) => <div className={!['released', 'in_progress', 'completed'].includes(row.billing_status ?? '') ? 'opacity-60 grayscale' : ''}><p className='font-medium'>{patientName(row)}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => patientName(row) },
+    { key: 'study', label: 'Study', render: (row) => <div className={!['released', 'in_progress', 'completed'].includes(row.billing_status ?? '') ? 'opacity-60 grayscale' : ''}><p className='font-medium'>{row.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.modality} · {row.body_site || 'No body site'}</p></div>, sortValue: (row) => row.study_name },
     { key: 'status', label: 'Status', render: (row) => { const awaiting = !['released', 'in_progress', 'completed'].includes(row.billing_status ?? ''); return <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (awaiting ? 'bg-muted text-muted-foreground' : row.status === 'completed' ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary')}>{awaiting ? 'Awaiting Payment' : row.status.replaceAll('_', ' ')}</span>; }, sortValue: (row) => row.status },
     { key: 'priority', label: 'Priority', render: (row) => <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (['urgent','stat'].includes(row.priority) ? 'bg-critical/10 text-critical' : 'bg-muted text-muted-foreground')}>{row.priority.toUpperCase()}</span>, sortValue: (row) => row.priority },
     { key: 'requested', label: 'Requested', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.created_at).toLocaleString()}</span>, sortValue: (row) => row.created_at },
