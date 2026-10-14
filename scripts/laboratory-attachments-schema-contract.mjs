@@ -25,6 +25,10 @@ assert.match(metadataReadPolicy, /JOIN public\.patients p[\s\S]*p\.facility_id =
 assert.ok(metadataReadPolicy.includes("storage_path LIKE lab_order_id::text || '/%'"), 'metadata paths must be bound to the referenced order');
 assert.ok(metadataInsertPolicy.includes("storage_path LIKE lab_order_id::text || '/%'"), 'metadata inserts must not attach a different order’s storage object');
 
+assert.match(labPage, /A thrown metadata request has an unknown commit outcome/, 'upload recovery must not delete an object when metadata commit outcome is unknown');
+assert.match(labPage, /Could not open attachment/, 'laboratory attachment access must report thrown network failures');
+assert.match(resultsPage, /Approved laboratory reports could not be refreshed/, 'approved-results loading must handle thrown RPC/network failures');
+assert.match(resultsPage, /finally \{\s*setLoading\(false\);\s*\}/, 'approved-results loading state must always be released');
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
 assert.match(labPage, /isMissingLabResultAttachmentsApi/, 'laboratory workspace must handle missing attachment tables and RPCs');
