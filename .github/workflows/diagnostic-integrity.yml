@@ -11,6 +11,7 @@ on:
       - "src/lib/labResultAttachments.ts"
       - "supabase/migrations/**"
       - "scripts/diagnostic-workflow-integrity-contract.mjs"
+      - "scripts/diagnostic-ci-contract.mjs"
       - "scripts/laboratory-attachments-schema-contract.mjs"
       - "scripts/radiology-worklist-filter-contract.mjs"
       - "package.json"
