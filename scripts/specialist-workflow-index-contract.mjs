@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const migration = readFileSync(new URL('../supabase/migrations/20261014120000_index_specialist_workflow_foreign_keys.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20261014104232_index_specialist_workflow_foreign_keys.sql', import.meta.url), 'utf8');
 
 const indexes = [
   ['idx_dental_assessments_created_by', 'dental_assessments', 'created_by'],
