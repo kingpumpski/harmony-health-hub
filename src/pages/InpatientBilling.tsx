@@ -4,6 +4,7 @@ import { ArrowLeft, BedDouble, ChevronRight, Loader2, RefreshCw, Search, WalletC
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isMissingInpatientDischargeBillFunction, inpatientDischargeBillUnavailableMessage } from '@/lib/labResultAttachments';
 
 const db=supabase as any;
 const money=(v:number)=>`₵${Number(v||0).toFixed(2)}`;
@@ -40,7 +41,7 @@ export default function InpatientBilling(){
    if(selectedAdmission){
     const to=new Date().toISOString();
     const {data:items,error:be}=await db.rpc('get_inpatient_discharge_bill',{_patient_id:selected,_admission_id:selectedAdmission.id,_to:to});
-    if(be) toast.error(be.message); else setRows(items??[]);
+    if(be) toast.error(isMissingInpatientDischargeBillFunction(be) ? inpatientDischargeBillUnavailableMessage : be.message); else setRows(items??[]);
    }
   } else { setRows([]); setAdmission(null); }
   setLoading(false);
