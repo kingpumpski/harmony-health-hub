@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
-const migrationPath = 'supabase/migrations/20261014110000_restore_platform_facility_directory_rpc.sql';
+const migrationPath = 'supabase/migrations/20261014102730_restore_platform_facility_directory_rpc.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8').toLowerCase();
 const page = fs.readFileSync('src/pages/admin/PlatformFacilityOnboarding.tsx', 'utf8');
 
