@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE public.lab_test_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  facility_id uuid NOT NULL REFERENCES public.facilities(id) ON DELETE CASCADE,
+  facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
   group_name text NOT NULL CHECK (length(btrim(group_name)) BETWEEN 2 AND 120),
   group_code text NOT NULL CHECK (length(btrim(group_code)) BETWEEN 2 AND 40),
   description text,
