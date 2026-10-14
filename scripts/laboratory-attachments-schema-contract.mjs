@@ -31,12 +31,12 @@ assert.match(compatibilityMigration, /CREATE OR REPLACE FUNCTION public\.get_lab
 assert.match(compatibilityMigration, /JOIN public\.patients p ON p\.id=lo\.patient_id AND p\.facility_id=v_facility/, 'attachment reads must verify patient facility scope');
 assert.match(compatibilityMigration, /so\.status IN \('released','in_progress','completed'\)/, 'attachment reads must require a released laboratory service order');
 assert.match(helper, /laboratoryNetworkUnavailableMessage/, 'client must distinguish network failures from schema-cache failures');
-assert.match(helper, /20261013180000_laboratory_test_panels\\.sql/, 'panel recovery guidance must identify the exact panel migration');
-assert.match(inpatientCompatibility, /get_inpatient_discharge_bill\\(\\s*_patient_id uuid,\\s*_to timestamptz DEFAULT now\\(\\)/, 'legacy inpatient clients must have a compatible two-argument RPC signature');
-assert.match(inpatientCompatibility, /get_inpatient_discharge_bill\\(_patient_id, v_admission_id, _to\\)/, 'legacy inpatient wrapper must delegate to the canonical facility-checked billing projection');
-assert.match(inpatientCompatibility, /REVOKE ALL ON FUNCTION public\\.get_inpatient_discharge_bill\\(uuid,timestamptz\\) FROM PUBLIC, anon/, 'legacy inpatient wrapper must not be publicly executable');
+assert.ok(helper.includes('20261013180000_laboratory_test_panels.sql'), 'panel recovery guidance must identify the exact panel migration');
+assert.ok(inpatientCompatibility.includes('_patient_id uuid,\n  _to timestamptz DEFAULT now()'), 'legacy inpatient clients must have a compatible two-argument RPC signature');
+assert.ok(inpatientCompatibility.includes('public.get_inpatient_discharge_bill(_patient_id, v_admission_id, _to)'), 'legacy inpatient wrapper must delegate to the canonical facility-checked billing projection');
+assert.ok(inpatientCompatibility.includes('REVOKE ALL ON FUNCTION public.get_inpatient_discharge_bill(uuid,timestamptz) FROM PUBLIC, anon'), 'legacy inpatient wrapper must not be publicly executable');
 assert.match(inpatientPage, /isMissingInpatientDischargeBillFunction/, 'inpatient billing must provide actionable guidance for missing RPC errors');
-assert.match(helper, /20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility\\.sql/, 'inpatient recovery guidance must name the compatibility migration');
+assert.ok(helper.includes('20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility.sql'), 'inpatient recovery guidance must name the compatibility migration');
 assert.match(helper, /code === 'PGRST202' && \/get_laboratory_test_groups\?/i, 'panel RPC errors must be classified by function name rather than any generic missing-RPC error');
 assert.match(helper, /20261014120000_harden_lab_result_attachment_read_rpc\.sql/, 'attachment recovery guidance must include the latest RPC hardening migration');
 assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
