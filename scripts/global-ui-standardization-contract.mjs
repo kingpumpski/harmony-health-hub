@@ -37,6 +37,8 @@ if (worklistTable.includes('overflow-hidden rounded-2xl')) throw new Error('Work
 if (!worklistTable.includes('z-[10001]')) throw new Error('Worklist column menu must render above table rows.');
 if (worklistTable.includes('Last updated:') || worklistTable.includes('Not synced yet')) throw new Error('Worklist header must not show noisy sync timestamps.');
 if (!worklistTable.includes('activeFilterCount') || !worklistTable.includes('active filters')) throw new Error('Worklist filter control must show an accessible active-filter count.');
+if (!/try\s*\{[\s\S]*?localStorage\.setItem\(preferenceKey[\s\S]*?\}\s*catch/.test(worklistTable)) throw new Error('Worklist column preference writes must tolerate blocked browser storage.');
+if (!/try\s*\{[\s\S]*?localStorage\.removeItem\(preferenceKey[\s\S]*?\}\s*catch/.test(worklistTable)) throw new Error('Worklist column preference resets must tolerate blocked browser storage.');
 
 if (!fs.existsSync(path.join(root, 'src/components/ui/RefreshButton.tsx'))) throw new Error('Shared RefreshButton is missing');
 if (!fs.existsSync(path.join(root, 'src/components/layout/PageHeader.tsx'))) throw new Error('Shared PageHeader is missing');
