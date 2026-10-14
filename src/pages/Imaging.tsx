@@ -31,10 +31,7 @@ export default function Imaging() {
   const [activeModality, setActiveModality] = useState('all');
   const [activePriority, setActivePriority] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
-  const [completedSearch, setCompletedSearch] = useState('');
-  const [completedModality, setCompletedModality] = useState('all');
-  const [completedPriority, setCompletedPriority] = useState('all');
-  const [completedDate, setCompletedDate] = useState('');
+
   const [allowRadiologyOrdering, setAllowRadiologyOrdering] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [clinicalContext, setClinicalContext] = useState<Record<string, unknown> | null>(null);
@@ -178,15 +175,6 @@ export default function Imaging() {
 
   const modalityOptions = ['X-Ray', 'Ultrasound', 'CT', 'MRI', 'Mammography', 'Fluoroscopy'].map((value) => ({ value, label: value }));
   const priorityOptions = [{ value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }];
-
-  const activeColumns: WorklistColumn<typeof activePatientRows[number]>[] = [
-    { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{row.patient_name}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => row.patient_name },
-    { key: 'study', label: 'Latest study', render: (row) => <div><p className='font-medium'>{row.latest_order.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.latest_order.modality} · {row.latest_order.body_site || 'No body site'}</p></div>, sortValue: (row) => row.latest_order.created_at },
-    { key: 'status', label: 'Status', render: (row) => <span className='rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold capitalize'>{row.latest_order.status.replaceAll('_', ' ')}</span>, sortValue: (row) => row.latest_order.status },
-    { key: 'priority', label: 'Priority', render: (row) => <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (['urgent','stat'].includes(row.latest_order.priority) ? 'bg-critical/10 text-critical' : 'bg-muted text-muted-foreground')}>{row.latest_order.priority.toUpperCase()}</span>, sortValue: (row) => row.latest_order.priority },
-    { key: 'orders', label: 'Active orders', render: (row) => <span className='font-semibold'>{row.active_count}</span>, sortValue: (row) => row.active_count },
-    { key: 'created', label: 'Latest requested', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.latest_order.created_at).toLocaleString()}</span>, sortValue: (row) => row.latest_order.created_at },
-  ];
 
   const orderColumns: WorklistColumn<ImagingOrder>[] = [
     { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{patientName(row)}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => patientName(row) },
