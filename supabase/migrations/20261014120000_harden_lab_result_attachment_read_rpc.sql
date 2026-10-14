@@ -20,8 +20,12 @@ BEGIN
   IF v_facility IS NULL THEN
     RAISE EXCEPTION 'Select an active facility to access laboratory report attachments';
   END IF;
-  IF NOT public.current_user_is_clinical_staff() THEN
-    RAISE EXCEPTION 'Clinical staff access is required for laboratory report attachments';
+  IF NOT (
+    public.has_role(uid, 'admin')
+    OR public.has_role(uid, 'it_admin')
+    OR public.current_user_is_clinical_staff()
+  ) THEN
+    RAISE EXCEPTION 'Clinical staff or facility administrator access is required for laboratory report attachments';
   END IF;
   IF coalesce(cardinality(_lab_order_ids), 0) > 300 THEN
     RAISE EXCEPTION 'A maximum of 300 laboratory orders may be requested at once';
