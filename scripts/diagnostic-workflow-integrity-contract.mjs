@@ -27,12 +27,15 @@ assert('workflow setting writes are admin-only and preserve existing notificatio
   migration.includes('CREATE OR REPLACE FUNCTION public.set_facility_workflow_settings') &&
   migration.includes("public.has_role(uid, 'admin')") &&
   migration.includes('coalesce(_notification_settings, facility_settings.notification_settings)'));
+const imagingWorkspace = migration.slice(
+  migration.indexOf('CREATE OR REPLACE FUNCTION public.get_imaging_workspace'),
+  migration.indexOf('REVOKE ALL ON FUNCTION public.get_imaging_workspace')
+);
 assert('imaging worklist is facility-scoped and includes unpaid and cancelled rows',
-  migration.includes('CREATE OR REPLACE FUNCTION public.get_imaging_workspace') &&
-  migration.includes('WHERE io.facility_id = facility') &&
-  migration.includes('p.facility_id = facility') &&
-  migration.includes('AS billing_status') &&
-  !migration.includes("io.status IN ('released', 'in_progress', 'completed')"));
+  imagingWorkspace.includes('WHERE io.facility_id = facility') &&
+  imagingWorkspace.includes('p.facility_id = facility') &&
+  imagingWorkspace.includes('AS billing_status') &&
+  !imagingWorkspace.includes("WHERE io.status IN ('released', 'in_progress', 'completed')"));
 assert('clinical context RPC validates order, patient and encounter facility lineage',
   migration.includes('CREATE OR REPLACE FUNCTION public.get_diagnostic_order_clinical_context') &&
   migration.includes('order_facility IS DISTINCT FROM facility') &&
