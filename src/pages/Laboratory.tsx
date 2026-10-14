@@ -715,13 +715,14 @@ export default function Laboratory() {
                       (() => {
                         const panelTests = orders.filter((entry) => entry.parent_order_id === o.parent_order_id);
                         const panelComplete = panelTests.length > 0 && panelTests.every((entry) => entry.status === 'approved');
+                        const panelPaid = panelTests.length > 0 && panelTests.every(isLabOrderPaid);
                         return <tr className="bg-primary/5"><td colSpan={7} className="py-2 text-xs font-semibold text-primary">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-primary/20 px-2 py-0.5">Panel</span>
                             <span>{o.panel_name ?? 'Laboratory panel'}</span>
                             <span className="font-normal text-muted-foreground">{panelTests.length} tests · billed as one panel</span>
                             <span className={`rounded-full px-2 py-0.5 ${panelComplete ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>{panelComplete ? 'Completed' : 'In process'}</span>
-                            <button type="button" onClick={() => openPanelResultEntry(o.parent_order_id!)} className="btn-ghost text-xs">Open panel report</button>
+                            <button type="button" disabled={!panelPaid} onClick={() => openPanelResultEntry(o.parent_order_id!)} className="btn-ghost text-xs disabled:cursor-not-allowed disabled:opacity-50" title={!panelPaid ? 'Accounts must release payment before result entry' : undefined}>Open panel report</button>
                             <button type="button" onClick={() => printPanelReport(o.parent_order_id!)} className="btn-ghost ml-auto text-xs">Print panel report</button>
                           </div>
                         </td></tr>;
