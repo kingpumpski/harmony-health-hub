@@ -55,6 +55,9 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: Laboratory attachment schema and RPC contract
+        run: npm run test:laboratory-attachments-schema
+
       - name: Clinical report-only access contract
         run: npm run test:clinical-report-access
 
