@@ -13,7 +13,7 @@ assert.match(migration, /so\.related_entity_id = coalesce\(lo\.parent_order_id, 
 assert.match(migration, /NOTIFY pgrst, 'reload schema'/, 'migration must refresh the PostgREST schema cache');
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
-assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
-assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must handle an unapplied attachment schema');
+assert.match(labPage, /isMissingLabResultAttachmentsApi/, 'laboratory workspace must handle missing attachment tables and RPCs');
+assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must retain the backwards-compatible attachment error helper');
 
 console.log('Laboratory attachment schema repair contract passed.');
