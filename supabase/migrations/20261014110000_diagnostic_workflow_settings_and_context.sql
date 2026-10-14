@@ -328,14 +328,20 @@ DECLARE
   was_critical boolean := false;
   staff record;
 BEGIN
-  is_critical := coalesce(NEW.is_abnormal, false)
+  is_critical := (
+    coalesce(NEW.is_abnormal, false)
     AND lower(coalesce(NEW.abnormal_flag, '')) IN
-      ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical');
+      ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical')
+  ) OR lower(coalesce(NEW.result_data ->> 'severity', '')) = 'critical'
+    OR lower(coalesce(NEW.parameter_results ->> 'severity', '')) = 'critical';
 
   IF TG_OP = 'UPDATE' THEN
-    was_critical := coalesce(OLD.is_abnormal, false)
+    was_critical := (
+      coalesce(OLD.is_abnormal, false)
       AND lower(coalesce(OLD.abnormal_flag, '')) IN
-        ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical');
+        ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical')
+    ) OR lower(coalesce(OLD.result_data ->> 'severity', '')) = 'critical'
+      OR lower(coalesce(OLD.parameter_results ->> 'severity', '')) = 'critical';
   END IF;
 
   IF is_critical AND NOT was_critical AND NEW.facility_id IS NOT NULL THEN
