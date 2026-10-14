@@ -60,24 +60,32 @@ export default function LaboratoryResults() {
   const load = useCallback(async () => {
     if (!user?.id) {
       setResults([]);
+      setAttachmentsByResult({});
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const { data, error } = await (supabase as any).rpc('get_clinician_lab_results', { _limit: 200 });
-    if (error) {
-      setResults([]);
-      toast({
-        title: 'Approved laboratory reports unavailable',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
+    try {
+      const { data, error } = await (supabase as any).rpc('get_clinician_lab_results', { _limit: 200 });
+      if (error) {
+        toast({
+          title: 'Approved laboratory reports unavailable',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const rows = (data ?? []) as LabReportRow[];
       setResults(rows);
       const labOrderIds = [...new Set(rows.map((result) => result.lab_order_id))];
-      if (labOrderIds.length) {
+      if (!labOrderIds.length) {
+        setAttachmentsByResult({});
+        return;
+      }
+
+      try {
         const { data: attachments, error: attachmentError } = await supabase
           .from('lab_result_attachments' as never)
           .select('id,lab_order_id,storage_path,file_name' as never)
@@ -100,11 +108,23 @@ export default function LaboratoryResults() {
             return grouped;
           }, {}));
         }
-      } else {
+      } catch (attachmentRequestError) {
         setAttachmentsByResult({});
+        toast({
+          title: 'Report attachments unavailable',
+          description: attachmentRequestError instanceof Error ? attachmentRequestError.message : 'Check your connection and retry.',
+          variant: 'destructive',
+        });
       }
+    } catch (requestError) {
+      toast({
+        title: 'Approved laboratory reports could not be refreshed',
+        description: requestError instanceof Error ? requestError.message : 'Check your connection and retry.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user?.id]);
 
   useEffect(() => {
