@@ -25,13 +25,13 @@ CREATE TABLE public.lab_test_group_items (
 );
 
 ALTER TABLE public.lab_orders
-  ADD COLUMN group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
-  ADD COLUMN parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
+  ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX lab_orders_panel_child_test_uidx
+CREATE UNIQUE INDEX IF NOT EXISTS lab_orders_panel_child_test_uidx
   ON public.lab_orders(parent_order_id, lab_test_catalogue_id)
   WHERE parent_order_id IS NOT NULL;
-CREATE INDEX lab_test_group_items_test_id_idx ON public.lab_test_group_items(test_id);
+CREATE INDEX IF NOT EXISTS lab_test_group_items_test_id_idx ON public.lab_test_group_items(test_id);
 
 ALTER TABLE public.lab_test_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_test_group_items ENABLE ROW LEVEL SECURITY;
