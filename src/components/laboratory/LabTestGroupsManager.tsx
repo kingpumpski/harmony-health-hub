@@ -7,8 +7,8 @@ import { toast } from '@/hooks/use-toast';
 import {
   isMissingLaboratoryPanelFunction,
   isNetworkFetchError,
+  databaseFeatureUpdatingMessage,
   laboratoryNetworkUnavailableMessage,
-  laboratoryPanelsUnavailableMessage,
 } from '@/lib/labResultAttachments';
 
 interface TestCatalogueItem {
@@ -55,13 +55,18 @@ export default function LabTestGroupsManager({ catalogue }: Props) {
     } catch (error) {
       setPanels([]);
       const missingFunction = isMissingLaboratoryPanelFunction(error as { code?: string; message?: string });
+      if (missingFunction) console.error('[laboratory] get_laboratory_test_groups RPC is unavailable:', error);
       const message = missingFunction
-        ? laboratoryPanelsUnavailableMessage
+        ? databaseFeatureUpdatingMessage
         : isNetworkFetchError(error)
           ? laboratoryNetworkUnavailableMessage
           : error instanceof Error ? error.message : 'Retry to load laboratory panels.';
       setLoadError(message);
-      toast({ title: 'Laboratory panels unavailable', description: message, variant: 'destructive' });
+      toast({
+        title: 'Laboratory panels unavailable',
+        description: message,
+        variant: missingFunction ? 'default' : 'destructive',
+      });
     } finally {
       setLoading(false);
     }

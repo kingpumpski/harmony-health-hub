@@ -28,7 +28,7 @@ import { toast } from "@/hooks/use-toast";
 import OperationalWorklistShell from "@/components/workflow/OperationalWorklistShell";
 import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from "@/components/workflow/WorklistDataTable";
 import { searchPatientDirectory, type StaffPatient } from "@/lib/patientDirectory";
-import { isMissingLaboratoryPanelFunction, isNetworkFetchError, laboratoryNetworkUnavailableMessage, laboratoryPanelsUnavailableMessage } from "@/lib/labResultAttachments";
+import { databaseFeatureUpdatingMessage, isMissingLaboratoryPanelFunction, isNetworkFetchError, laboratoryNetworkUnavailableMessage } from "@/lib/labResultAttachments";
 
 interface Patient {
   id: string;
@@ -500,7 +500,8 @@ export default function Encounters() {
             setLabPanels((panelResult.data ?? []) as typeof labPanels);
             if (panelResult.error && !isMissingLaboratoryPanelFunction(panelResult.error)) throw panelResult.error;
             if (panelResult.error) {
-              toast({ title: "Laboratory panels unavailable", description: laboratoryPanelsUnavailableMessage, variant: "destructive" });
+              console.error("[encounters] get_laboratory_test_groups RPC is unavailable:", panelResult.error);
+              toast({ title: "Laboratory panels unavailable", description: databaseFeatureUpdatingMessage });
             }
           }
         } else if (quickAction === "imaging") {

@@ -9,7 +9,7 @@ import ClinicalDataTable, { ClinicalProgressBar, ClinicalStatusBadge, ClinicalTa
 import {
   isMissingLabResultAttachmentsTable,
   isNetworkFetchError,
-  labResultAttachmentsUnavailableMessage,
+  databaseFeatureUpdatingMessage,
   laboratoryNetworkUnavailableMessage,
 } from '@/lib/labResultAttachments';
 
@@ -94,16 +94,16 @@ export default function LaboratoryResults() {
         } as never);
         if (attachmentError) {
           setAttachmentsByResult({});
-          if (!isMissingLabResultAttachmentsTable(attachmentError) || !attachmentSchemaNoticeShown.current) {
+          const missingSchema = isMissingLabResultAttachmentsTable(attachmentError);
+          if (missingSchema) console.error('[laboratory-results] get_lab_result_attachments RPC is unavailable:', attachmentError);
+          if (!missingSchema || !attachmentSchemaNoticeShown.current) {
             toast({
               title: 'Report attachments unavailable',
-              description: isMissingLabResultAttachmentsTable(attachmentError)
-                ? labResultAttachmentsUnavailableMessage
-                : attachmentError.message,
-              variant: 'destructive',
+              description: missingSchema ? databaseFeatureUpdatingMessage : attachmentError.message,
+              variant: missingSchema ? 'default' : 'destructive',
             });
           }
-          if (isMissingLabResultAttachmentsTable(attachmentError)) attachmentSchemaNoticeShown.current = true;
+          if (missingSchema) attachmentSchemaNoticeShown.current = true;
         } else {
           setAttachmentsByResult(((attachments ?? []) as unknown as LabReportAttachment[]).reduce<Record<string, LabReportAttachment[]>>((grouped, attachment) => {
             (grouped[attachment.lab_order_id] ??= []).push(attachment);

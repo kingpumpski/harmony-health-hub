@@ -10,6 +10,7 @@ assert.match(source,/confirm_production_apply:/,"production migration confirmati
 assert.match(source,/test "\$\{\{ inputs\.confirm_production_apply \}\}" = "APPLY_PRODUCTION"/,"apply mode must verify explicit production confirmation");
 assert.match(source,/inputs\.mode == 'apply' && inputs\.confirm_production_apply == 'APPLY_PRODUCTION'/,"migration apply step must be gated by explicit confirmation");
 assert.match(source,/supabase db push --linked/,"migration push command must remain explicit");
+assert.match(source,/name: Reload PostgREST schema cache[\s\S]*supabase db query --linked "NOTIFY pgrst, 'reload schema';"/,"successful production migration apply must reload the PostgREST schema cache");
 assert.match(source,/if: \$\{\{ inputs\.mode == 'validate' \}\}/,"validate mode must remain available without production confirmation");
 assert.match(source,/if: \$\{\{ inputs\.mode == 'apply' \|\| inputs\.mode == 'verify' \}\}/,"post-apply verification must remain available");
 

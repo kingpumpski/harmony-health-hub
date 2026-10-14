@@ -67,6 +67,10 @@ jobs:
         if: ${{ inputs.mode == 'apply' && inputs.confirm_production_apply == 'APPLY_PRODUCTION' }}
         run: supabase db push --linked
 
+      - name: Reload PostgREST schema cache
+        if: ${{ inputs.mode == 'apply' && inputs.confirm_production_apply == 'APPLY_PRODUCTION' }}
+        run: supabase db query --linked "NOTIFY pgrst, 'reload schema';"
+
       - name: Verify database lint
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase db lint --linked --fail-on error

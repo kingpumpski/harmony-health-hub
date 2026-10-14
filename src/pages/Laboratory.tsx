@@ -13,7 +13,7 @@ import LabTestGroupsManager from '@/components/laboratory/LabTestGroupsManager';
 import {
   isMissingLabResultAttachmentsTable,
   isNetworkFetchError,
-  labResultAttachmentsUnavailableMessage,
+  databaseFeatureUpdatingMessage,
   laboratoryNetworkUnavailableMessage,
 } from '@/lib/labResultAttachments';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -160,16 +160,16 @@ export default function Laboratory() {
       if (request !== workspaceLoadGeneration.current) return;
       if (attachmentError) {
         setAttachmentsByOrder({});
-        if (!isMissingLabResultAttachmentsTable(attachmentError) || !attachmentSchemaNoticeShown.current) {
+        const missingSchema = isMissingLabResultAttachmentsTable(attachmentError);
+        if (missingSchema) console.error('[laboratory] get_lab_result_attachments RPC is unavailable:', attachmentError);
+        if (!missingSchema || !attachmentSchemaNoticeShown.current) {
           toast({
             title: 'Lab report attachments unavailable',
-            description: isMissingLabResultAttachmentsTable(attachmentError)
-              ? labResultAttachmentsUnavailableMessage
-              : attachmentError.message,
-            variant: 'destructive',
+            description: missingSchema ? databaseFeatureUpdatingMessage : attachmentError.message,
+            variant: missingSchema ? 'default' : 'destructive',
           });
         }
-        if (isMissingLabResultAttachmentsTable(attachmentError)) attachmentSchemaNoticeShown.current = true;
+        if (missingSchema) attachmentSchemaNoticeShown.current = true;
       } else {
         setAttachmentsByOrder(((attachmentRows ?? []) as unknown as LabResultAttachment[]).reduce<Record<string, LabResultAttachment[]>>((grouped, attachment) => {
           (grouped[attachment.lab_order_id] ??= []).push(attachment);
@@ -444,12 +444,12 @@ export default function Laboratory() {
     } as never);
     if (metadataError) {
       await supabase.storage.from('lab-result-attachments').remove([path]);
+      const missingSchema = isMissingLabResultAttachmentsTable(metadataError);
+      if (missingSchema) console.error('[laboratory] attachment metadata schema is unavailable:', metadataError);
       toast({
         title: 'Attachment record failed',
-        description: isMissingLabResultAttachmentsTable(metadataError)
-          ? labResultAttachmentsUnavailableMessage
-          : metadataError.message,
-        variant: 'destructive',
+        description: missingSchema ? databaseFeatureUpdatingMessage : metadataError.message,
+        variant: missingSchema ? 'default' : 'destructive',
       });
       return;
     }

@@ -1,38 +1,45 @@
 interface AttachmentRequestError {
   code?: string;
   message?: string;
+  status?: number;
 }
 
 function errorDetails(error: unknown): AttachmentRequestError {
-  if (error instanceof Error) return { message: error.message };
   if (typeof error === 'object' && error !== null) {
-    const candidate = error as { code?: unknown; message?: unknown };
+    const candidate = error as { code?: unknown; message?: unknown; status?: unknown };
     return {
       code: typeof candidate.code === 'string' ? candidate.code : undefined,
-      message: typeof candidate.message === 'string' ? candidate.message : undefined,
+      message: typeof candidate.message === 'string'
+        ? candidate.message
+        : error instanceof Error ? error.message : undefined,
+      status: typeof candidate.status === 'number' ? candidate.status : undefined,
     };
   }
+  if (error instanceof Error) return { message: error.message };
   return {};
 }
 
 export function isMissingLabResultAttachmentsTable(error: unknown) {
-  const { code, message } = errorDetails(error);
+  const { code, message, status } = errorDetails(error);
   return ((code === 'PGRST205' || code === '42P01') && /lab_result_attachments/i.test(message ?? ''))
-    || (code === 'PGRST202' && /get_lab_result_attachments/i.test(message ?? ''))
+    || ((code === 'PGRST202' || code === '404' || status === 404) && /get_lab_result_attachments/i.test(message ?? ''))
     || /could not find the (?:table|function) .*lab_result_(?:attachments|attachements)|relation .*lab_result_attachments.* does not exist|schema cache.*lab_result_(?:attachments|attachements)/i.test(message ?? '');
 }
 
 export function isMissingLaboratoryPanelFunction(error: unknown) {
-  const { code, message } = errorDetails(error);
-  return (code === 'PGRST202' && /get_laboratory_test_groups?/i.test(message ?? ''))
+  const { code, message, status } = errorDetails(error);
+  return ((code === 'PGRST202' || code === '404' || status === 404) && /get_laboratory_test_groups?/i.test(message ?? ''))
     || /could not find the function .*get_laboratory_test_groups?|function .*get_laboratory_test_groups? .* does not exist|schema cache.*get_laboratory_test_groups?/i.test(message ?? '');
 }
 
 export function isMissingInpatientDischargeBillFunction(error: unknown) {
-  const { code, message } = errorDetails(error);
-  return (code === 'PGRST202' && /get_inpatient_discharge_bill/i.test(message ?? ''))
+  const { code, message, status } = errorDetails(error);
+  return ((code === 'PGRST202' || code === '404' || status === 404) && /get_inpatient_discharge_bill/i.test(message ?? ''))
     || /could not find the function .*get_inpatient_discharge_bill|schema cache.*get_inpatient_discharge_bill/i.test(message ?? '');
 }
+
+export const databaseFeatureUpdatingMessage =
+  'This feature is currently being updated. Please try again later.';
 
 export function isNetworkFetchError(error: unknown) {
   return error instanceof TypeError

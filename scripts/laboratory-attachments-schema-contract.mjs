@@ -49,7 +49,11 @@ assert.ok(inpatientCompatibility.includes('public.get_inpatient_discharge_bill(_
 assert.ok(inpatientCompatibility.includes('REVOKE ALL ON FUNCTION public.get_inpatient_discharge_bill(uuid,timestamptz) FROM PUBLIC, anon'), 'legacy inpatient wrapper must not be publicly executable');
 assert.match(inpatientPage, /isMissingInpatientDischargeBillFunction/, 'inpatient billing must provide actionable guidance for missing RPC errors');
 assert.ok(helper.includes('20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility.sql'), 'inpatient recovery guidance must name the compatibility migration');
-assert.match(helper, /code === 'PGRST202' && \/get_laboratory_test_groups\?/i, 'panel RPC errors must be classified by function name rather than any generic missing-RPC error');
+assert.match(helper, /code === 'PGRST202' \|\| code === '404' \|\| status === 404\) && \/get_laboratory_test_groups\?/i, 'panel RPC errors must be classified by function name rather than any generic missing-RPC error');
+assert.match(helper, /databaseFeatureUpdatingMessage[\s\S]*This feature is currently being updated\. Please try again later\./, 'missing RPCs must use a user-friendly temporary-unavailability message');
+assert.match(encountersPage, /get_laboratory_test_groups RPC is unavailable/, 'encounter ordering must log the underlying missing panel RPC');
+assert.match(labPage, /get_lab_result_attachments RPC is unavailable/, 'laboratory workspace must log the underlying missing attachment RPC');
+assert.match(resultsPage, /get_lab_result_attachments RPC is unavailable/, 'clinician results must log the underlying missing attachment RPC');
 assert.match(helper, /20261014120000_harden_lab_result_attachment_read_rpc\.sql/, 'attachment recovery guidance must include the latest RPC hardening migration');
 assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
 assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must handle an unapplied attachment schema');
