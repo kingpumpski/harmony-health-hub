@@ -481,15 +481,8 @@ export default function Laboratory() {
       toast({ title: 'Report attachment uploaded' });
       void loadAll();
     } catch (error) {
-      // If upload itself succeeded but a later request threw, attempt cleanup without masking the original failure.
-      if (uploaded) {
-        try {
-          const { error: cleanupError } = await supabase.storage.from('lab-result-attachments').remove([path]);
-          if (cleanupError) console.error('Lab attachment cleanup failed after request error', cleanupError);
-        } catch (cleanupError) {
-          console.error('Lab attachment cleanup threw after request error', cleanupError);
-        }
-      }
+      // A thrown metadata request has an unknown commit outcome. Keep the uploaded object
+      // rather than risk deleting a file whose metadata row may already have committed.
       const message = error instanceof Error ? error.message : 'Check your connection and retry.';
       const missingApi = isMissingLabResultAttachmentsApi(error as { code?: string; message?: string });
       toast({
