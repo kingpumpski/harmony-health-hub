@@ -1,0 +1,66 @@
+name: Diagnostic Integrity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/pages/Imaging.tsx"
+      - "src/pages/Laboratory.tsx"
+      - "src/components/layout/Header.tsx"
+      - "src/lib/labResultAttachments.ts"
+      - "supabase/migrations/**"
+      - "scripts/diagnostic-workflow-integrity-contract.mjs"
+      - "scripts/laboratory-attachments-schema-contract.mjs"
+      - "scripts/radiology-worklist-filter-contract.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/diagnostic-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnostic-integrity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnostic-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Diagnostic workflow integrity
+        run: npm run test:diagnostic-workflow-integrity
+
+      - name: Laboratory attachment schema contract
+        run: npm run test:laboratory-attachments-schema
+
+      - name: Radiology worklist filter contract
+        run: npm run test:radiology-worklist-filters
+
+      - name: Migration filename uniqueness
+        run: npm run test:migration-filename-uniqueness
+
+      - name: Migration workflow safety
+        run: npm run test:migration-workflow-safety
+
+      - name: Production build
+        run: npm run build
