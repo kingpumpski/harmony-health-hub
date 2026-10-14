@@ -11,6 +11,20 @@ assert.match(migration, /ALTER TABLE public\.lab_result_attachments ENABLE ROW L
 assert.match(migration, /facility_id = \(SELECT public\.current_user_facility_id\(\)\)/, 'metadata reads and writes must stay facility scoped');
 assert.match(migration, /so\.related_entity_id = coalesce\(lo\.parent_order_id, lo\.id\)/, 'panel attachments must verify the parent order billing release');
 assert.match(migration, /NOTIFY pgrst, 'reload schema'/, 'migration must refresh the PostgREST schema cache');
+
+const metadataReadPolicy = migration.slice(
+  migration.indexOf('CREATE POLICY lab_result_attachments_facility_read'),
+  migration.indexOf('DROP POLICY IF EXISTS lab_result_attachments_technician_insert')
+);
+const metadataInsertPolicy = migration.slice(
+  migration.indexOf('CREATE POLICY lab_result_attachments_technician_insert'),
+  migration.indexOf('INSERT INTO storage.buckets')
+);
+assert.match(metadataReadPolicy, /so\.status IN \('released', 'in_progress', 'completed'\)/, 'direct metadata reads must enforce diagnostic payment release');
+assert.match(metadataReadPolicy, /JOIN public\.patients p[\s\S]*p\.facility_id = lo\.facility_id/, 'direct metadata reads must validate patient facility lineage');
+assert.match(metadataReadPolicy, /storage_path LIKE lab_order_id::text \|\| '\\/%'/, 'metadata paths must be bound to the referenced order');
+assert.match(metadataInsertPolicy, /storage_path LIKE lab_order_id::text \|\| '\\/%'/, 'metadata inserts must not attach a different order’s storage object');
+
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
 assert.match(labPage, /isMissingLabResultAttachmentsApi/, 'laboratory workspace must handle missing attachment tables and RPCs');
