@@ -182,28 +182,38 @@ export default function Laboratory() {
     (workspace.results ?? []).forEach((r) => { if (!map[r.lab_order_id]) map[r.lab_order_id] = r; });
     setResultsByOrder(map);
     if (nextOrders.length) {
-      const { data: attachmentRows, error: attachmentError } = await supabase
-        .from('lab_result_attachments' as never)
-        .select('id,lab_order_id,storage_path,file_name,mime_type,created_at' as never)
-        .in('lab_order_id' as never, nextOrders.map((order) => order.id) as never);
-      if (request !== workspaceLoadGeneration.current) return;
-      if (attachmentError) {
-        setAttachmentsByOrder({});
-        if (!isMissingLabResultAttachmentsApi(attachmentError) || !attachmentSchemaNoticeShown.current) {
-          toast({
-            title: 'Lab report attachments unavailable',
-            description: isMissingLabResultAttachmentsApi(attachmentError)
-              ? labResultAttachmentsUnavailableMessage
-              : attachmentError.message,
-            variant: 'destructive',
-          });
+      try {
+        const { data: attachmentRows, error: attachmentError } = await supabase
+          .from('lab_result_attachments' as never)
+          .select('id,lab_order_id,storage_path,file_name,mime_type,created_at' as never)
+          .in('lab_order_id' as never, nextOrders.map((order) => order.id) as never);
+        if (request !== workspaceLoadGeneration.current) return;
+        if (attachmentError) {
+          setAttachmentsByOrder({});
+          if (!isMissingLabResultAttachmentsApi(attachmentError) || !attachmentSchemaNoticeShown.current) {
+            toast({
+              title: 'Lab report attachments unavailable',
+              description: isMissingLabResultAttachmentsApi(attachmentError)
+                ? labResultAttachmentsUnavailableMessage
+                : attachmentError.message,
+              variant: 'destructive',
+            });
+          }
+          if (isMissingLabResultAttachmentsApi(attachmentError)) attachmentSchemaNoticeShown.current = true;
+        } else {
+          setAttachmentsByOrder(((attachmentRows ?? []) as unknown as LabResultAttachment[]).reduce<Record<string, LabResultAttachment[]>>((grouped, attachment) => {
+            (grouped[attachment.lab_order_id] ??= []).push(attachment);
+            return grouped;
+          }, {}));
         }
-        if (isMissingLabResultAttachmentsApi(attachmentError)) attachmentSchemaNoticeShown.current = true;
-      } else {
-        setAttachmentsByOrder(((attachmentRows ?? []) as unknown as LabResultAttachment[]).reduce<Record<string, LabResultAttachment[]>>((grouped, attachment) => {
-          (grouped[attachment.lab_order_id] ??= []).push(attachment);
-          return grouped;
-        }, {}));
+      } catch (attachmentRequestError) {
+        if (request !== workspaceLoadGeneration.current) return;
+        setAttachmentsByOrder({});
+        toast({
+          title: 'Lab report attachments unavailable',
+          description: attachmentRequestError instanceof Error ? attachmentRequestError.message : 'Check your connection and retry.',
+          variant: 'destructive',
+        });
       }
     } else {
       setAttachmentsByOrder({});
