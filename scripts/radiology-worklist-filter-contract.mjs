@@ -5,13 +5,18 @@ const worklist = fs.readFileSync('src/components/workflow/WorklistDataTable.tsx'
 const requiredImaging = [
   "import RefreshButton from '@/components/ui/RefreshButton';",
   "import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from '@/components/workflow/WorklistDataTable';",
-  "title='Active patient list'",
-  "title='Completed order list'",
+  "title='Radiology worklist'",
   'filters={activeFilters}',
-  'filters={completedFilters}',
   'onRefresh={() => void load()}',
   'lastUpdated={lastUpdated}',
+  'View Context',
+  'allowRadiologyOrdering && <div',
+  "title='Radiology worklist' description='Active, in-progress, completed and payment-gated orders in one facility-scoped list.'",
 ];
+for (const marker of requiredImaging) if (!imaging.includes(marker)) throw new Error('Radiology worklist contract missing: ' + marker);
+if (imaging.includes("title='Completed order list'") || imaging.includes('filters={completedFilters}')) throw new Error('Radiology must use one unified worklist rather than separate active/completed lists.');
+if (!imaging.includes("Awaiting payment") || !imaging.includes("order.status === 'released' && ['released', 'in_progress', 'completed'].includes(order.billing_status ?? '')")) throw new Error('Radiology payment gate is missing.');
+
 for (const marker of requiredImaging) if (!imaging.includes(marker)) throw new Error('Radiology worklist contract missing: ' + marker);
 const refreshImports = (imaging.split("import RefreshButton from '@/components/ui/RefreshButton';").length - 1);
 if (refreshImports !== 1) throw new Error('Radiology page must contain exactly one shared RefreshButton import.');
