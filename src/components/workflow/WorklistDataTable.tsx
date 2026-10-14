@@ -99,13 +99,25 @@ export default function WorklistDataTable<T>({
     if (columns.find((column) => column.key === key)?.required) return current;
     const next = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
     if (next.length === 0) return current;
-    if (typeof window !== 'undefined') window.localStorage.setItem(preferenceKey, JSON.stringify(next));
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(preferenceKey, JSON.stringify(next));
+      } catch {
+        // Preferences are best-effort; restricted storage must not block table interactions.
+      }
+    }
     return next;
   });
   const resetColumns = () => {
     const next = defaultColumnKeys();
     setVisibleColumnKeys(next);
-    if (typeof window !== 'undefined') window.localStorage.removeItem(preferenceKey);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(preferenceKey);
+      } catch {
+        // Reset the in-memory view even when browser storage is unavailable.
+      }
+    }
   };
 
   const sortedRows = useMemo(() => {
