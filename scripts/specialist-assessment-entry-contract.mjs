@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const page = readFileSync('src/pages/SpecialistAssessments.tsx', 'utf8');
 const app = readFileSync('src/App.tsx', 'utf8');
 const dashboard = readFileSync('src/components/dashboard/DashboardLayout.tsx', 'utf8');
-const schema = readFileSync('supabase/migrations/20261013161000_specialist_clinical_workflows_schema.sql', 'utf8');
+const schema = readFileSync('supabase/migrations/20261013161853_specialist_clinical_workflows_schema.sql', 'utf8');
 
 const expected = [
   ['physiotherapy', 'physio_assessments', ['assessment_type', 'chief_complaint', 'pain_scale', 'treatment_plan', 'functional_goals', 'next_session_date']],
