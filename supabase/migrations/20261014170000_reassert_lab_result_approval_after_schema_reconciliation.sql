@@ -26,15 +26,18 @@ BEGIN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  v_global_admin :=
+  v_global_admin := COALESCE(
     public.has_role(uid, 'admin'::public.app_role)
     OR public.has_role(uid, 'it_admin'::public.app_role)
-    OR public.has_role(uid, 'system_superuser'::public.app_role);
+    OR public.has_role(uid, 'system_superuser'::public.app_role),
+    false
+  );
 
-  IF NOT (
+  IF NOT COALESCE(
     v_global_admin
     OR public.has_role(uid, 'lab_technician'::public.app_role)
-    OR public.has_role(uid, 'practitioner'::public.app_role)
+    OR public.has_role(uid, 'practitioner'::public.app_role),
+    false
   ) THEN
     RAISE EXCEPTION 'Laboratory approval role required';
   END IF;
