@@ -28,6 +28,8 @@ assert.match(compatibilityMigration, /CREATE OR REPLACE FUNCTION public\.get_lab
 assert.match(compatibilityMigration, /JOIN public\.patients p ON p\.id=lo\.patient_id AND p\.facility_id=v_facility/, 'attachment reads must verify patient facility scope');
 assert.match(compatibilityMigration, /so\.status IN \('released','in_progress','completed'\)/, 'attachment reads must require a released laboratory service order');
 assert.match(helper, /laboratoryNetworkUnavailableMessage/, 'client must distinguish network failures from schema-cache failures');
+assert.match(helper, /code === 'PGRST202' && \/get_laboratory_test_groups\?/i, 'panel RPC errors must be classified by function name rather than any generic missing-RPC error');
+assert.match(helper, /20261014120000_harden_lab_result_attachment_read_rpc\.sql/, 'attachment recovery guidance must include the latest RPC hardening migration');
 assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
 assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must handle an unapplied attachment schema');
 assert.match(encountersPage, /isMissingLaboratoryPanelFunction/, 'encounter ordering must tolerate a missing panel RPC without disabling individual tests');
