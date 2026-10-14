@@ -145,7 +145,7 @@ export default function ClinicalDataTable({
     if (typeof window !== 'undefined') window.localStorage.removeItem(preferenceKey);
   };
   return (
-    <section className="clinical-data-table card-medical overflow-hidden" data-clinical-table-key={preferenceKey} aria-labelledby="clinical-data-table-title">
+    <section className={`clinical-data-table card-medical relative ${columnMenuOpen ? 'z-[9999]' : ''}`} data-clinical-table-key={preferenceKey} aria-labelledby="clinical-data-table-title">
       <div className="clinical-table-heading">
         <div>
           <h2 id="clinical-data-table-title" className="font-semibold">{title}</h2>
@@ -155,11 +155,11 @@ export default function ClinicalDataTable({
       </div>
       {tableColumns.length > 0 && (
         <div className="flex justify-end border-b border-border px-4 py-2">
-          <div className="relative">
+          <div className={`relative ${columnMenuOpen ? 'z-[10000]' : 'z-10'}`}>
             <button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" aria-expanded={columnMenuOpen} onClick={() => setColumnMenuOpen((open) => !open)}>
               <Settings2 className="h-3.5 w-3.5" /> Columns
             </button>
-            {columnMenuOpen && <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-xl">
+            {columnMenuOpen && <div className="absolute right-0 z-[10001] mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-xl">
               <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold">Workspace columns</span><button type="button" className="text-xs text-primary hover:underline" onClick={resetColumns}>Reset</button></div>
               <p className="mb-2 text-[11px] text-muted-foreground">Show only information needed for this role and workflow. Preferences are saved for this workspace.</p>
               <div className="max-h-64 space-y-1 overflow-y-auto">
