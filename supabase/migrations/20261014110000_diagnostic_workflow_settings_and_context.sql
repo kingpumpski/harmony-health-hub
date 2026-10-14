@@ -566,6 +566,27 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_diagnostic_order_clinical_context(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_diagnostic_order_clinical_context(uuid, text) TO authenticated;
 
+-- Extend the existing operational audit pipeline to the new laboratory metadata tables.
+DO $block$
+DECLARE
+  target_table text;
+BEGIN
+  FOREACH target_table IN ARRAY ARRAY[
+    'lab_result_attachments',
+    'lab_test_groups',
+    'lab_test_group_items'
+  ] LOOP
+    IF pg_catalog.to_regclass('public.' || target_table) IS NOT NULL THEN
+      EXECUTE pg_catalog.format('DROP TRIGGER IF EXISTS audit_operational_row_change ON public.%I', target_table);
+      EXECUTE pg_catalog.format(
+        'CREATE TRIGGER audit_operational_row_change AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.audit_operational_row_change()',
+        target_table
+      );
+    END IF;
+  END LOOP;
+END;
+$block$;
+
 -- Existing operational audit triggers and notification queue remain authoritative.
 -- Realtime publication is added idempotently; existing row-level policies are preserved.
 DO $block$
