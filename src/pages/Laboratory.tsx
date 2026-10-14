@@ -277,7 +277,7 @@ export default function Laboratory() {
   const visibleOrders = useMemo(() => orders.filter((order) => {
     const result = resultsByOrder[order.id];
     const statusMatches = appliedFilters.status === 'all'
-      || (appliedFilters.status === 'awaiting_payment' ? !isLabOrderPaid(order) : order.status === appliedFilters.status);
+      || (appliedFilters.status === 'awaiting_payment' ? order.status !== 'cancelled' && !isLabOrderPaid(order) : order.status === appliedFilters.status);
     const priorityMatches = appliedFilters.priority === 'all' || order.priority === appliedFilters.priority;
     const resultMatches = appliedFilters.result === 'all'
       || (appliedFilters.result === 'with_result' && !!result)
@@ -731,7 +731,7 @@ export default function Laboratory() {
                     <tr id={`lab-order-${o.id}`} className={!isLabOrderPaid(o) ? 'bg-muted/50 opacity-80' : attentionOrderId === o.id ? 'bg-primary/5' : undefined}>
                       <td className="font-mono text-xs">{p?.patient_code ?? o.patient_id.slice(0, 8).toUpperCase()}</td>
                       <td className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</td>
-                      <td><ClinicalStatusBadge status={!isLabOrderPaid(o) ? 'awaiting_payment' : o.status} /></td>
+                      <td><ClinicalStatusBadge status={!isLabOrderPaid(o) && o.status !== 'cancelled' ? 'awaiting_payment' : o.status} /></td>
                       <td>
                         <div className="min-w-[180px]">
                           <p className="font-medium">{o.test_name}</p>
@@ -744,7 +744,7 @@ export default function Laboratory() {
                         <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
                           <button type="button" className="btn-secondary text-xs" onClick={() => void viewClinicalContext(o)}>View Context</button>
                           <ClinicalTableAction label={expandedOrderId === o.id ? 'Hide details' : 'View result'} onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)} />
-                          {isLabOrderPaid(o) ? <>
+                          {o.status === 'cancelled' ? <span className="text-xs text-muted-foreground">Cancelled</span> : isLabOrderPaid(o) ? <>
                             {o.status === 'ordered' && <ClinicalTableAction label={orderAction === o.id ? 'Collecting…' : 'Collect sample'} onClick={() => void collectSample(o.id)} />}
                             {o.status === 'sample_collected' && <ClinicalTableAction label="Enter result" icon="acknowledge" onClick={() => { setExpandedOrderId(o.id); openResultEntry(o.id); }} />}
                             {o.status === 'completed' && result && <ClinicalTableAction label={orderAction === o.id ? 'Approving…' : 'Approve'} icon="acknowledge" onClick={() => void approveResult(result.id, o.id, o.patient_id)} />}
