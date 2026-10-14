@@ -128,7 +128,7 @@ BEGIN
       FROM (
         SELECT io.id, io.patient_id, io.encounter_id, io.modality, io.study_name,
           io.body_site, io.priority, io.clinical_indication, io.amount, io.status,
-          io.service_order_id, so.status AS billing_status, io.requested_by,
+          coalesce(io.service_order_id, so.id) AS service_order_id, so.status AS billing_status, io.requested_by,
           io.performed_by, io.report, io.impression, io.created_at, io.updated_at,
           pg_catalog.jsonb_build_object(
             'id', p.id, 'first_name', p.first_name, 'last_name', p.last_name,
