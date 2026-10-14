@@ -164,7 +164,7 @@ export default function Laboratory() {
       const { data, error } = await supabase.rpc('get_laboratory_workspace', { _limit: 300 });
       if (request !== workspaceLoadGeneration.current) return;
       if (error) {
-        const offline = error.status === 503 || /failed to fetch|network|connection|\\b503\\b|gateway/i.test(error.message ?? '');
+        const offline = error.status === 503 || /failed to fetch|network|connection|\b503\b|gateway/i.test(error.message ?? '');
         toast({ title: offline ? 'Laboratory workspace offline' : 'Laboratory workspace unavailable', description: offline ? 'The database service is temporarily unavailable. Your existing data has not been changed. Retry when the connection recovers.' : error.message, variant: 'destructive' });
         return;
       }
@@ -235,7 +235,7 @@ export default function Laboratory() {
     } catch (error) {
       if (request === workspaceLoadGeneration.current) {
         const message = error instanceof Error ? error.message : 'Check your connection and retry.';
-        const offline = /failed to fetch|network|connection|\\b503\\b|gateway/i.test(message);
+        const offline = /failed to fetch|network|connection|\b503\b|gateway/i.test(message);
         toast({ title: offline ? 'Laboratory workspace offline' : 'Laboratory workspace unavailable', description: offline ? 'The database service is temporarily unavailable. Your existing data has not been changed. Retry when the connection recovers.' : message, variant: 'destructive' });
       }
     } finally {
