@@ -6,6 +6,7 @@ const migration = readFileSync(new URL('../supabase/migrations/20261013190000_re
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
 const attachmentReadHardening = readFileSync(new URL('../supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql', import.meta.url), 'utf8');
 const inpatientCompatibility = readFileSync(new URL('../supabase/migrations/20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility.sql', import.meta.url), 'utf8');
+const approvalReconciliation = readFileSync(new URL('../supabase/migrations/20261014170000_reassert_lab_result_approval_after_schema_reconciliation.sql', import.meta.url), 'utf8');
 const inpatientPage = readFileSync(new URL('../src/pages/InpatientBilling.tsx', import.meta.url), 'utf8');
 const helper = readFileSync(new URL('../src/lib/labResultAttachments.ts', import.meta.url), 'utf8');
 const labPage = readFileSync(new URL('../src/pages/Laboratory.tsx', import.meta.url), 'utf8');
@@ -53,5 +54,20 @@ assert.match(helper, /20261014120000_harden_lab_result_attachment_read_rpc\.sql/
 assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
 assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must handle an unapplied attachment schema');
 assert.match(encountersPage, /isMissingLaboratoryPanelFunction/, 'encounter ordering must tolerate a missing panel RPC without disabling individual tests');
+
+// The 2026-10-13 pending panel migration replaces the newer approval function
+// already recorded remotely. The final reconciliation migration must restore
+// all authorization, patient/order/result/encounter lineage, billing release,
+// and panel-aware notification safeguards after the older chain is applied.
+assert.match(approvalReconciliation, /CREATE OR REPLACE FUNCTION public\.approve_lab_result\(_lab_result_id uuid\)/, 'reconciliation migration must restore the lab approval RPC');
+assert.match(approvalReconciliation, /public\.has_role\(uid, 'system_superuser'::public\.app_role\)/, 'system superuser troubleshooting role must be preserved');
+assert.match(approvalReconciliation, /r\.patient_id IS DISTINCT FROM o\.patient_id/, 'approval must enforce result/order patient lineage');
+assert.match(approvalReconciliation, /v_patient_facility IS DISTINCT FROM o\.facility_id/, 'approval must enforce patient/order facility lineage');
+assert.match(approvalReconciliation, /v_encounter_patient_id IS DISTINCT FROM o\.patient_id/, 'approval must enforce encounter patient lineage');
+assert.match(approvalReconciliation, /v_encounter_facility_id IS DISTINCT FROM o\.facility_id/, 'approval must enforce encounter facility lineage');
+assert.match(approvalReconciliation, /so\.related_entity_id = coalesce\(o\.parent_order_id, o\.id\)/, 'panel child result approval must verify billing against the parent order');
+assert.match(approvalReconciliation, /so\.status IN \('released', 'in_progress', 'completed'\)/, 'approval must require a released billing service order');
+assert.match(approvalReconciliation, /REVOKE ALL ON FUNCTION public\.approve_lab_result\(uuid\) FROM PUBLIC, anon/, 'approval RPC must not be publicly or anonymously executable');
+assert.match(approvalReconciliation, /NOTIFY pgrst, 'reload schema'/, 'approval reconciliation must refresh the PostgREST schema cache');
 
 console.log('Laboratory attachment schema repair contract passed.');
