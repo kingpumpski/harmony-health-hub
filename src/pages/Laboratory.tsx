@@ -443,51 +443,72 @@ export default function Laboratory() {
       toast({ title: 'Unsupported attachment', description: 'Upload a PDF, JPG or PNG file up to 15 MB.', variant: 'destructive' });
       return;
     }
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `${orderId}/${crypto.randomUUID()}-${safeName}`;
     const order = orders.find((entry) => entry.id === orderId);
     if (!order?.facility_id || !user?.id) {
       toast({ title: 'Attachment upload unavailable', description: 'The released order facility context is missing. Refresh the worklist and retry.', variant: 'destructive' });
       return;
     }
-    const { error: uploadError } = await supabase.storage.from('lab-result-attachments').upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) {
-      toast({ title: 'Attachment upload failed', description: uploadError.message, variant: 'destructive' });
-      return;
-    }
-    const { error: metadataError } = await supabase.from('lab_result_attachments' as never).insert({
-      lab_order_id: orderId,
-      lab_result_id: resultsByOrder[orderId]?.id ?? null,
-      facility_id: order.facility_id,
-      storage_path: path,
-      file_name: file.name,
-      mime_type: file.type,
-      file_size_bytes: file.size,
-      uploaded_by: user.id,
-    } as never);
-    if (metadataError) {
-      await supabase.storage.from('lab-result-attachments').remove([path]);
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${orderId}/${crypto.randomUUID()}-${safeName}`;
+    let uploaded = false;
+    try {
+      const { error: uploadError } = await supabase.storage.from('lab-result-attachments').upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      uploaded = true;
+
+      const { error: metadataError } = await supabase.from('lab_result_attachments' as never).insert({
+        lab_order_id: orderId,
+        lab_result_id: resultsByOrder[orderId]?.id ?? null,
+        facility_id: order.facility_id,
+        storage_path: path,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size_bytes: file.size,
+        uploaded_by: user.id,
+      } as never);
+      if (metadataError) {
+        // Best-effort compensation prevents orphaned clinical files if metadata insertion fails.
+        try {
+          const { error: cleanupError } = await supabase.storage.from('lab-result-attachments').remove([path]);
+          if (cleanupError) console.error('Lab attachment cleanup failed after metadata insert error', cleanupError);
+        } catch (cleanupError) {
+          console.error('Lab attachment cleanup threw after metadata insert error', cleanupError);
+        }
+        throw metadataError;
+      }
+
+      toast({ title: 'Report attachment uploaded' });
+      void loadAll();
+    } catch (error) {
+      // If upload itself succeeded but a later request threw, attempt cleanup without masking the original failure.
+      if (uploaded) {
+        try {
+          const { error: cleanupError } = await supabase.storage.from('lab-result-attachments').remove([path]);
+          if (cleanupError) console.error('Lab attachment cleanup failed after request error', cleanupError);
+        } catch (cleanupError) {
+          console.error('Lab attachment cleanup threw after request error', cleanupError);
+        }
+      }
+      const message = error instanceof Error ? error.message : 'Check your connection and retry.';
+      const missingApi = isMissingLabResultAttachmentsApi(error as { code?: string; message?: string });
       toast({
-        title: 'Attachment record failed',
-        description: isMissingLabResultAttachmentsApi(metadataError)
-          ? labResultAttachmentsUnavailableMessage
-          : metadataError.message,
+        title: uploaded ? 'Attachment record failed' : 'Attachment upload failed',
+        description: missingApi ? labResultAttachmentsUnavailableMessage : message,
         variant: 'destructive',
       });
-      return;
     }
-    if (!order) return;
-    toast({ title: 'Report attachment uploaded' });
-    void loadAll();
   };
 
   const openResultAttachment = async (path: string) => {
-    const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
-    if (error) {
-      toast({ title: 'Could not open attachment', description: error.message, variant: 'destructive' });
-      return;
+    try {
+      const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('The attachment service did not return a secure link. Refresh and retry.');
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast({ title: 'Could not open attachment', description: error instanceof Error ? error.message : 'Check your connection and retry.', variant: 'destructive' });
     }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const printPanelReport = (parentOrderId: string) => {
