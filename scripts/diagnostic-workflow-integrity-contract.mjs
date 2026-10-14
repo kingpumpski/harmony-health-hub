@@ -66,10 +66,16 @@ assert('notifications Realtime publication is added idempotently',
 assert('lab panel migration references the canonical facility table',
   labSchema.includes('REFERENCES public.healthcare_facilities(id)') &&
   !labSchema.includes('REFERENCES public.facilities(id)'));
-assert('laboratory queue retains unpaid orders for display and exposes billing status',
-  labQueue.includes('LEFT JOIN LATERAL') &&
-  labQueue.includes('so.status AS billing_status') &&
-  !labQueue.includes("AND s.status IN ('released', 'in_progress', 'completed')"));
+const laboratoryWorkspace = labSchema.slice(
+  labSchema.indexOf('CREATE OR REPLACE FUNCTION public.get_laboratory_workspace'),
+  labSchema.indexOf('REVOKE ALL ON FUNCTION public.get_laboratory_workspace')
+);
+assert('laboratory queue retains unpaid panel and individual orders for display',
+  laboratoryWorkspace.includes('LEFT JOIN LATERAL') &&
+  laboratoryWorkspace.includes('so.status AS billing_status') &&
+  laboratoryWorkspace.includes('coalesce(lo.parent_order_id,lo.id)') &&
+  !laboratoryWorkspace.includes("AND s.status IN ('released','in_progress','completed')") &&
+  labQueue.includes('so.status AS billing_status'));
 assert('imaging ordering form is disabled by default and only appears in a modal when enabled',
   imaging.includes("useState(false)") &&
   imaging.includes("allowRadiologyOrdering && <div") &&
