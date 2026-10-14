@@ -86,7 +86,7 @@ GRANT EXECUTE ON FUNCTION public.get_facility_workflow_settings() TO authenticat
 CREATE OR REPLACE FUNCTION public.set_facility_workflow_settings(
   _allow_lab_ordering boolean,
   _allow_radiology_ordering boolean,
-  _notification_settings jsonb DEFAULT '{}'::jsonb
+  _notification_settings jsonb DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -103,7 +103,7 @@ BEGIN
     RAISE EXCEPTION 'Facility administrator role required to change workflow settings';
   END IF;
   IF facility IS NULL THEN RAISE EXCEPTION 'Select an active facility first'; END IF;
-  IF _notification_settings IS NULL OR pg_catalog.jsonb_typeof(_notification_settings) <> 'object' THEN
+  IF _notification_settings IS NOT NULL AND pg_catalog.jsonb_typeof(_notification_settings) <> 'object' THEN
     RAISE EXCEPTION 'Notification settings must be a JSON object';
   END IF;
 
@@ -112,13 +112,13 @@ BEGIN
   ) VALUES (
     'facility:' || facility::text, facility,
     coalesce(_allow_lab_ordering, false), coalesce(_allow_radiology_ordering, false),
-    _notification_settings, pg_catalog.now()
+    coalesce(_notification_settings, '{}'::jsonb), pg_catalog.now()
   )
   ON CONFLICT (facility_id) WHERE facility_id IS NOT NULL
   DO UPDATE SET
     allow_lab_ordering = EXCLUDED.allow_lab_ordering,
     allow_radiology_ordering = EXCLUDED.allow_radiology_ordering,
-    notification_settings = EXCLUDED.notification_settings,
+    notification_settings = coalesce(_notification_settings, public.facility_settings.notification_settings),
     updated_at = pg_catalog.now()
   RETURNING * INTO saved;
 
