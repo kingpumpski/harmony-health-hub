@@ -104,6 +104,7 @@ DECLARE
   v_chief_complaint text;
   v_diagnosis text;
   v_clinical_notes text;
+  encounter_row record;
   patient_row record;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
