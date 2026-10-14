@@ -149,7 +149,6 @@ BEGIN
           LIMIT 1
         ) so ON true
         WHERE io.facility_id = facility
-          AND io.status <> 'cancelled'
         ORDER BY io.created_at DESC
         LIMIT _limit
       ) x
