@@ -28,7 +28,10 @@ const missingSharedConsumers = requiredSharedConsumers.filter(file => {
   return !fs.existsSync(full) || !fs.readFileSync(full, 'utf8').includes('RefreshButton') && !fs.readFileSync(full, 'utf8').includes('PageHeader');
 });
 const telemedicine = fs.readFileSync(path.join(root, 'src/pages/Telemedicine.tsx'), 'utf8');
+const clinicalTable = fs.readFileSync(path.join(root, 'src/components/workflow/ClinicalDataTable.tsx'), 'utf8');
 
+if (clinicalTable.includes('card-medical overflow-hidden')) throw new Error('Clinical table column menu may be clipped by its parent container.');
+if (!clinicalTable.includes('z-[10001]')) throw new Error('Clinical table column menu must render above table rows.');
 if (!fs.existsSync(path.join(root, 'src/components/ui/RefreshButton.tsx'))) throw new Error('Shared RefreshButton is missing');
 if (!fs.existsSync(path.join(root, 'src/components/layout/PageHeader.tsx'))) throw new Error('Shared PageHeader is missing');
 if (legacyRefresh.length) throw new Error('Legacy text refresh controls remain: ' + legacyRefresh.map(f => path.relative(root, f)).join(', '));
