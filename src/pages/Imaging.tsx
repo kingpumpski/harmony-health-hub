@@ -35,6 +35,10 @@ export default function Imaging() {
   const [completedModality, setCompletedModality] = useState('all');
   const [completedPriority, setCompletedPriority] = useState('all');
   const [completedDate, setCompletedDate] = useState('');
+  const [allowRadiologyOrdering, setAllowRadiologyOrdering] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [clinicalContext, setClinicalContext] = useState<Record<string, unknown> | null>(null);
+  const [clinicalContextLoading, setClinicalContextLoading] = useState(false);
 
   const load = useCallback(async (announce = false) => {
     if (!user?.id) return;
@@ -53,6 +57,17 @@ export default function Imaging() {
     setOrders(nextOrders);
     setLastUpdated(new Date());
     setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    void supabase.rpc('get_facility_workflow_settings').then(({ data, error }) => {
+      if (!active) return;
+      if (error) { setAllowRadiologyOrdering(false); return; }
+      setAllowRadiologyOrdering(Boolean((data as { allow_radiology_ordering?: boolean } | null)?.allow_radiology_ordering));
+    });
+    return () => { active = false; };
   }, [user?.id]);
 
   useEffect(() => {
@@ -101,6 +116,7 @@ export default function Imaging() {
     playWorkflowSound(result?.status === 'released' ? 'success' : 'info');
     toast({ title: result?.status === 'released' ? 'Imaging request released' : 'Payment approval required', description: result?.status === 'released' ? 'The imaging department can proceed.' : 'Accounts must release the imaging order before it can be performed.' });
     setPatientId(''); setPatientSearch(''); setStudyName(''); setBodySite(''); setIndication(''); setAmount(0); setPriority('routine');
+    setCreateModalOpen(false);
     void load();
   };
 
@@ -108,6 +124,15 @@ export default function Imaging() {
     const { error } = await supabase.rpc('start_imaging_order' as never, { _imaging_order_id: order.id } as never);
     if (error) { playWorkflowSound('critical'); toast({ title: 'Cannot start imaging', description: error.message, variant: 'destructive' }); return; }
     playWorkflowSound('success'); toast({ title: 'Imaging started' }); void load();
+  };
+
+  const viewClinicalContext = async (order: ImagingOrder) => {
+    setClinicalContextLoading(true);
+    setClinicalContext(null);
+    const { data, error } = await supabase.rpc('get_diagnostic_order_clinical_context', { _order_id: order.id, _order_type: 'imaging' });
+    setClinicalContextLoading(false);
+    if (error) { toast({ title: 'Clinical context unavailable', description: 'The encounter context could not be loaded for this facility-scoped order.', variant: 'destructive' }); return; }
+    setClinicalContext((data ?? {}) as Record<string, unknown>);
   };
 
   const saveReport = async (order: ImagingOrder) => {
@@ -142,14 +167,14 @@ export default function Imaging() {
       (activeStatus === 'all' || row.latest_order.status === activeStatus);
   }), [activePatientRows, activeModality, activePriority, activeSearch, activeStatus]);
 
-  const filteredCompletedOrders = useMemo(() => orders.filter((order) => {
-    if (order.status !== 'completed') return false;
-    const q = completedSearch.trim().toLowerCase();
+  const filteredOrders = useMemo(() => orders.filter((order) => {
+    const q = activeSearch.trim().toLowerCase();
+    const normalizedStatus = ['pending_payment', 'pending_payment_approval'].includes(order.status) ? 'pending_payment' : order.status;
     return (!q || patientName(order).toLowerCase().includes(q) || order.study_name.toLowerCase().includes(q) || order.patient_id.toLowerCase().includes(q)) &&
-      (completedModality === 'all' || order.modality === completedModality) &&
-      (completedPriority === 'all' || order.priority === completedPriority) &&
-      (!completedDate || order.created_at.slice(0, 10) === completedDate);
-  }), [orders, completedModality, completedPriority, completedSearch, completedDate, patients]);
+      (activeModality === 'all' || order.modality === activeModality) &&
+      (activePriority === 'all' || order.priority === activePriority) &&
+      (activeStatus === 'all' || normalizedStatus === activeStatus);
+  }), [orders, activeModality, activePriority, activeSearch, activeStatus, patients]);
 
   const modalityOptions = ['X-Ray', 'Ultrasound', 'CT', 'MRI', 'Mammography', 'Fluoroscopy'].map((value) => ({ value, label: value }));
   const priorityOptions = [{ value: 'routine', label: 'Routine' }, { value: 'urgent', label: 'Urgent' }, { value: 'stat', label: 'STAT' }];
@@ -163,19 +188,20 @@ export default function Imaging() {
     { key: 'created', label: 'Latest requested', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.latest_order.created_at).toLocaleString()}</span>, sortValue: (row) => row.latest_order.created_at },
   ];
 
-  const completedColumns: WorklistColumn<ImagingOrder>[] = [
+  const orderColumns: WorklistColumn<ImagingOrder>[] = [
     { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{patientName(row)}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => patientName(row) },
     { key: 'study', label: 'Study', render: (row) => <div><p className='font-medium'>{row.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.modality} · {row.body_site || 'No body site'}</p></div>, sortValue: (row) => row.study_name },
-    { key: 'priority', label: 'Priority', render: (row) => <span className='rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold'>{row.priority.toUpperCase()}</span>, sortValue: (row) => row.priority },
-    { key: 'completed', label: 'Completed', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.created_at).toLocaleString()}</span>, sortValue: (row) => row.created_at },
-    { key: 'impression', label: 'Impression', defaultVisible: false, render: (row) => <span className='line-clamp-2 text-xs text-muted-foreground'>{row.impression || 'Not recorded'}</span> },
+    { key: 'status', label: 'Status', render: (row) => { const awaiting = ['pending_payment', 'pending_payment_approval'].includes(row.status); return <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (awaiting ? 'bg-muted text-muted-foreground' : row.status === 'completed' ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary')}>{awaiting ? 'Awaiting Payment' : row.status.replaceAll('_', ' ')}</span>; }, sortValue: (row) => row.status },
+    { key: 'priority', label: 'Priority', render: (row) => <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (['urgent','stat'].includes(row.priority) ? 'bg-critical/10 text-critical' : 'bg-muted text-muted-foreground')}>{row.priority.toUpperCase()}</span>, sortValue: (row) => row.priority },
+    { key: 'requested', label: 'Requested', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.created_at).toLocaleString()}</span>, sortValue: (row) => row.created_at },
+    { key: 'report', label: 'Report', defaultVisible: false, render: (row) => <span className='line-clamp-2 text-xs text-muted-foreground'>{row.impression || row.report || 'Not recorded'}</span> },
   ];
 
   const activeFilters: WorklistFilter[] = [
     { key: 'search', label: 'Patient / study', value: activeSearch, onChange: setActiveSearch, placeholder: 'Search patient or study' },
     { key: 'modality', label: 'Modality', value: activeModality, onChange: setActiveModality, options: [{ value: 'all', label: 'All modalities' }, ...modalityOptions] },
     { key: 'priority', label: 'Priority', value: activePriority, onChange: setActivePriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
-    { key: 'status', label: 'Status', value: activeStatus, onChange: setActiveStatus, options: [{ value: 'all', label: 'All active statuses' }, { value: 'pending_payment', label: 'Pending payment' }, { value: 'pending_payment_approval', label: 'Awaiting approval' }, { value: 'queued', label: 'Queued' }, { value: 'released', label: 'Released' }, { value: 'in_progress', label: 'In progress' }] },
+    { key: 'status', label: 'Status', value: activeStatus, onChange: setActiveStatus, options: [{ value: 'all', label: 'All statuses' }, { value: 'pending_payment', label: 'Pending payment' }, { value: 'released', label: 'Active / released' }, { value: 'in_progress', label: 'In progress' }, { value: 'completed', label: 'Completed' }, { value: 'cancelled', label: 'Cancelled' }] },
   ];
   const completedFilters: WorklistFilter[] = [
     { key: 'search', label: 'Patient / study', value: completedSearch, onChange: setCompletedSearch, placeholder: 'Search patient or study' },
@@ -193,7 +219,8 @@ export default function Imaging() {
       { label: 'Completed', value: counters.completed, surface: 'bg-success/5', tone: 'text-success' },
     ]} beforeList={<>
       {counters.urgent > 0 && <div className='rounded-xl border border-critical/30 bg-critical/5 p-3 flex items-center gap-2 text-sm' role='alert'><BellRing className='w-4 h-4 text-critical shrink-0' aria-hidden='true' /><span className='font-medium'>{counters.urgent} urgent/STAT case{counters.urgent === 1 ? '' : 's'} require attention.</span></div>}
-      <section className='card-medical p-5'><div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'><div><h2 className='font-semibold flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> New imaging request</h2><p className='mt-1 text-xs text-muted-foreground'>Chargeable imaging remains held until Accounts releases payment or an authorised override is recorded.</p></div><span className='rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary'>Diagnostic workflow</span></div>
+      {allowRadiologyOrdering && <div className='flex justify-end'><button type='button' onClick={() => setCreateModalOpen(true)} className='btn-primary inline-flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> Create imaging request</button></div>}
+      {createModalOpen && allowRadiologyOrdering && <div className='fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6' role='dialog' aria-modal='true' aria-labelledby='imaging-request-title'><section className='mx-auto my-4 max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6'><header className='mb-4 flex items-start justify-between gap-3'><div><h2 id='imaging-request-title' className='font-semibold flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> New imaging request</h2><p className='mt-1 text-xs text-muted-foreground'>Chargeable imaging remains held until Accounts releases payment or an authorised override is recorded.</p></div><button type='button' onClick={() => setCreateModalOpen(false)} className='btn-ghost' aria-label='Close imaging request'>×</button></header>
         <form onSubmit={createOrder} className='mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3'>
           <div><label htmlFor='imaging-patient-search' className='mb-1 block text-xs font-semibold'>Search patient by name or code</label><input id='imaging-patient-search' value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder='Type a name or patient code…' className='input-medical w-full mb-2' autoComplete='off' /><label htmlFor='imaging-patient' className='mb-1 block text-xs font-semibold'>Patient <span className='text-critical'>*</span></label><select id='imaging-patient' value={patientId} onChange={e => setPatientId(e.target.value)} className='input-medical w-full' required><option value=''>Select patient…</option>{patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}</select></div>
           <div><label htmlFor='imaging-modality' className='mb-1 block text-xs font-semibold'>Modality</label><select id='imaging-modality' value={modality} onChange={e => setModality(e.target.value)} className='input-medical w-full'>{modalityOptions.map(option => <option key={option.value}>{option.value}</option>)}</select></div>
@@ -203,13 +230,14 @@ export default function Imaging() {
           <div><label htmlFor='imaging-amount' className='mb-1 block text-xs font-semibold'>Charge (GHS)</label><input id='imaging-amount' type='number' min={0} step='0.01' value={amount || ''} onChange={e => setAmount(Number(e.target.value))} placeholder='0 means billing tariff required' className='input-medical w-full' /></div>
           <div className='md:col-span-2 lg:col-span-3'><label htmlFor='imaging-indication' className='mb-1 block text-xs font-semibold'>Clinical indication</label><textarea id='imaging-indication' value={indication} onChange={e => setIndication(e.target.value)} placeholder='Clinical indication' className='input-medical w-full' rows={3} /></div>
           <div className='md:col-span-2 lg:col-span-3 flex justify-end'><button type='submit' className='btn-primary inline-flex items-center gap-2'><Plus className='w-4 h-4' aria-hidden='true' /> {amount > 0 ? 'Request payment approval' : 'Create imaging request'}</button></div>
-        </form></section>
+        </form></section></div>}
     </>} listTitle='Radiology worklists' listDescription='Standardized filter panels, role-safe columns and the shared refresh control are used across the operational tables.' listMeta={lastUpdated ? 'Last updated ' + lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not synced yet'} bareList loading={false} empty={false}>
       <div className='space-y-6'>
-        <WorklistDataTable title='Active patient list' description='Patients with one or more imaging orders that are not yet completed.' rows={filteredActivePatients} columns={activeColumns} getRowId={(row) => row.patient_id} filters={activeFilters} onResetFilters={() => { setActiveSearch(''); setActiveModality('all'); setActivePriority('all'); setActiveStatus('all'); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No active radiology patients match the current filters.' rowActions={(row) => row.latest_order.status === 'released' ? <button type='button' className='btn-primary text-xs' onClick={() => void start(row.latest_order)}>Start</button> : <span className='text-xs text-muted-foreground'>No action</span>} columnPreferenceKey='radiology-active-patients' />
-        <WorklistDataTable title='Completed order list' description='Completed imaging studies and final reporting context.' rows={filteredCompletedOrders} columns={completedColumns} getRowId={(row) => row.id} filters={completedFilters} onResetFilters={() => { setCompletedSearch(''); setCompletedModality('all'); setCompletedPriority('all'); setCompletedDate(''); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No completed radiology orders match the current filters.' columnPreferenceKey='radiology-completed-orders' />
+        <WorklistDataTable title='Radiology worklist' description='Active, in-progress, completed and payment-gated orders in one facility-scoped list.' rows={filteredOrders} columns={orderColumns} getRowId={(row) => row.id} filters={activeFilters} onResetFilters={() => { setActiveSearch(''); setActiveModality('all'); setActivePriority('all'); setActiveStatus('all'); }} onRefresh={() => void load()} refreshing={loading} lastUpdated={lastUpdated} pageSize={20} emptyMessage='No imaging orders match the current filters.' rowActions={(order) => <div className='flex flex-wrap items-center gap-2'><button type='button' className='btn-secondary text-xs' onClick={() => void viewClinicalContext(order)}>View Context</button>{order.status === 'released' ? <button type='button' className='btn-primary text-xs' onClick={() => void start(order)}>Start</button> : ['pending_payment','pending_payment_approval'].includes(order.status) ? <span className='text-xs text-muted-foreground' aria-disabled='true'>Awaiting payment</span> : <span className='text-xs text-muted-foreground'>{order.status.replaceAll('_',' ')}</span>}</div>} columnPreferenceKey='radiology-unified-worklist' />
         {filteredActivePatients.some((row) => row.latest_order.status === 'in_progress') && <section className='card-medical p-4'><h2 className='font-semibold flex items-center gap-2'><CheckCircle2 className='w-4 h-4' aria-hidden='true' /> Reporting workspace</h2><p className='mt-1 text-xs text-muted-foreground'>Complete in-progress studies here without losing the active patient worklist context.</p><div className='mt-4 space-y-3'>{filteredActivePatients.filter((row) => row.latest_order.status === 'in_progress').map((row) => { const order = row.latest_order; const value = reports[order.id] ?? { report: order.report ?? '', impression: order.impression ?? '' }; return <div key={order.id} className='rounded-xl border border-border p-4'><div className='flex flex-wrap items-center justify-between gap-2'><div><p className='font-medium'>{row.patient_name} · {order.study_name}</p><p className='text-xs text-muted-foreground'>{order.modality} · {order.priority.toUpperCase()}</p></div><span className='rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary'>In progress</span></div><div className='mt-3 grid gap-3 lg:grid-cols-2'><div><label htmlFor={'imaging-report-' + order.id} className='mb-1 block text-xs font-semibold'>Radiology report</label><textarea id={'imaging-report-' + order.id} value={value.report} onChange={e => setReports({ ...reports, [order.id]: { ...value, report: e.target.value } })} rows={4} className='input-medical w-full' /></div><div><label htmlFor={'imaging-impression-' + order.id} className='mb-1 block text-xs font-semibold'>Impression</label><textarea id={'imaging-impression-' + order.id} value={value.impression} onChange={e => setReports({ ...reports, [order.id]: { ...value, impression: e.target.value } })} rows={4} className='input-medical w-full' /></div></div><div className='mt-3 flex justify-end'><button type='button' onClick={() => void saveReport(order)} className='btn-primary inline-flex items-center gap-2 text-xs'><CheckCircle2 className='w-4 h-4' aria-hidden='true' /> Save report & complete</button></div></div>; })}</div></section>}
       </div>
+      {clinicalContextLoading && <div className='fixed inset-0 z-[85] grid place-items-center bg-background/70 p-4' role='status'>Loading clinical context…</div>}
+      {clinicalContext && <div className='fixed inset-0 z-[85] overflow-y-auto bg-slate-950/55 p-4' role='dialog' aria-modal='true' aria-labelledby='imaging-context-title'><section className='mx-auto mt-8 max-w-2xl rounded-2xl border border-border bg-background p-5 shadow-2xl'><header className='flex items-start justify-between gap-3'><div><h2 id='imaging-context-title' className='text-lg font-semibold'>Clinical context</h2><p className='text-sm text-muted-foreground'>Read-only context from the originating encounter.</p></div><button type='button' className='btn-ghost' onClick={() => setClinicalContext(null)} aria-label='Close clinical context'>×</button></header><dl className='mt-4 grid gap-3 text-sm'><div><dt className='text-xs text-muted-foreground'>Patient</dt><dd className='font-medium'>{String(clinicalContext.patient_name ?? '—')}</dd></div><div><dt className='text-xs text-muted-foreground'>Chief complaint</dt><dd className='whitespace-pre-wrap'>{String(clinicalContext.chief_complaint ?? 'Not recorded')}</dd></div><div><dt className='text-xs text-muted-foreground'>Diagnosis</dt><dd className='whitespace-pre-wrap'>{String(clinicalContext.diagnosis ?? 'Not recorded')}</dd></div><div><dt className='text-xs text-muted-foreground'>Clinical notes</dt><dd className='whitespace-pre-wrap'>{String(clinicalContext.clinical_notes ?? 'No linked clinical notes')}</dd></div></dl><div className='mt-5 flex justify-end'><button type='button' className='btn-primary' onClick={() => setClinicalContext(null)}>Close</button></div></section></div>}
     </OperationalWorklistShell>
   );
 }
