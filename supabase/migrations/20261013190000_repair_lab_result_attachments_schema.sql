@@ -23,6 +23,22 @@ CREATE POLICY lab_result_attachments_facility_read
   USING (
     facility_id = (SELECT public.current_user_facility_id())
     AND (SELECT public.current_user_is_clinical_staff())
+    AND storage_path LIKE lab_order_id::text || '/%'
+    AND EXISTS (
+      SELECT 1
+      FROM public.lab_orders lo
+      JOIN public.patients p
+        ON p.id = lo.patient_id
+       AND p.facility_id = lo.facility_id
+      JOIN public.service_orders so
+        ON so.related_entity_id = coalesce(lo.parent_order_id, lo.id)
+       AND so.department = 'laboratory'
+       AND so.patient_id = lo.patient_id
+       AND so.facility_id = lo.facility_id
+       AND so.status IN ('released', 'in_progress', 'completed')
+      WHERE lo.id = lab_result_attachments.lab_order_id
+        AND lo.facility_id = lab_result_attachments.facility_id
+    )
   );
 
 DROP POLICY IF EXISTS lab_result_attachments_technician_insert ON public.lab_result_attachments;
@@ -30,6 +46,7 @@ CREATE POLICY lab_result_attachments_technician_insert
   ON public.lab_result_attachments FOR INSERT TO authenticated
   WITH CHECK (
     facility_id = (SELECT public.current_user_facility_id())
+    AND storage_path LIKE lab_order_id::text || '/%'
     AND uploaded_by = auth.uid()
     AND (
       (SELECT public.current_user_has_role('admin'::public.app_role))
