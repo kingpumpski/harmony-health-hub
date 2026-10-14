@@ -53,7 +53,7 @@ export default function Header({ onMenu }: HeaderProps) {
     const previousIds = notificationIdsRef.current;
     const newUnread = unreadRows.filter((n) => !previousIds.has(n.id));
     if (notificationInitializedRef.current && newUnread.length > 0) {
-      const newest = newUnread[0];
+      const newest = newUnread.find((n) => String(n.severity).toLowerCase() === 'critical') ?? newUnread[0];
       if (soundEnabled) playWorkflowSound(notificationSoundKind(newest));
       setBellShaking(true);
       window.setTimeout(() => setBellShaking(false), 3000);
