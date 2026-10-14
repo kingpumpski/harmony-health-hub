@@ -45,11 +45,6 @@ interface WorklistDataTableProps<T> {
   columnPreferenceKey?: string;
 }
 
-function formatUpdatedAt(value?: Date | null) {
-  if (!value) return 'Not synced yet';
-  return `Last updated: ${value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
-
 export default function WorklistDataTable<T>({
   title,
   description,
@@ -62,7 +57,6 @@ export default function WorklistDataTable<T>({
   onRefresh,
   refreshing = false,
   loading = false,
-  lastUpdated,
   pageSize = 20,
   emptyMessage = 'No records match the current filters.',
   rowActions,
@@ -100,6 +94,7 @@ export default function WorklistDataTable<T>({
   }, [columnSignature, preferenceKey]);
 
   const visibleColumns = useMemo(() => columns.filter((column) => visibleColumnKeys.includes(column.key)), [columns, visibleColumnKeys]);
+  const activeFilterCount = filters.filter((filter) => filter.value.trim() !== '' && filter.value !== 'all').length;
   const toggleColumn = (key: string) => setVisibleColumnKeys((current) => {
     if (columns.find((column) => column.key === key)?.required) return current;
     const next = current.includes(key) ? current.filter((item) => item !== key) : [...current, key];
@@ -152,7 +147,6 @@ export default function WorklistDataTable<T>({
         <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
           {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
-          <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">{formatUpdatedAt(lastUpdated)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
@@ -165,7 +159,7 @@ export default function WorklistDataTable<T>({
             </div>}
           </div>
           {filters.length > 0 && <button type="button" className={`btn-secondary inline-flex items-center gap-2 ${filterOpen ? 'border-primary text-primary' : ''}`} onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen}>
-            <Filter className="h-4 w-4" /> Filter {filters.some((filter) => filter.value && filter.value !== 'all') && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+            <Filter className="h-4 w-4" /> Filter {activeFilterCount > 0 && <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground" aria-label={`${activeFilterCount} active filters`}>{activeFilterCount}</span>}
           </button>}
           {onRefresh && <RefreshButton onClick={onRefresh} loading={refreshing} label="Refresh worklist" />}
           <div className={`relative ${columnMenuOpen ? 'z-[10000]' : 'z-10'}`}>
