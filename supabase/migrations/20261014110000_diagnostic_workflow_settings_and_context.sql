@@ -284,7 +284,11 @@ SET search_path = ''
 AS $function$
 BEGIN
   IF NEW.status = 'completed'
-     AND OLD.status IS DISTINCT FROM NEW.status
+     AND (
+       OLD.status IS DISTINCT FROM NEW.status
+       OR OLD.report IS DISTINCT FROM NEW.report
+       OR OLD.impression IS DISTINCT FROM NEW.impression
+     )
      AND NEW.requested_by IS NOT NULL
      AND NOT EXISTS (
        SELECT 1 FROM public.notifications n
