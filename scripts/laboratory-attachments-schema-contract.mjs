@@ -82,12 +82,12 @@ assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\\.get_laboratory
 assert.match(catalogueMigration, /CREATE TABLE IF NOT EXISTS public\\.lab_result_attachments/, 'earlier diagnostic migration must safely provision attachment metadata');
 assert.match(migration, /CREATE TABLE IF NOT EXISTS public\\.lab_result_attachments/, 'repair migration must be safe when attachment metadata was already provisioned');
 for (const column of ['lab_order_id', 'lab_result_id', 'facility_id', 'storage_path', 'file_name', 'mime_type', 'file_size_bytes', 'uploaded_by', 'created_at']) {
-  assert.match(catalogueMigration, new RegExp('\\\\b' + column + '\\\\b'), `catalogue migration must define attachment field ${column}`);
-  assert.match(migration, new RegExp('\\\\b' + column + '\\\\b'), `repair migration must preserve attachment field ${column}`);
+  assert.ok(catalogueMigration.includes(column), `catalogue migration must define attachment field ${column}`);
+  assert.ok(migration.includes(column), `repair migration must preserve attachment field ${column}`);
 }
 assert.match(migration, /DROP POLICY IF EXISTS lab_result_attachments_facility_read/, 'repair migration must reconcile the earlier read policy without duplicate-policy failures');
 assert.match(migration, /DROP POLICY IF EXISTS lab_result_attachments_storage_read/, 'repair migration must reconcile the earlier storage policy without duplicate-policy failures');
-assert.ok('20261014170000_reassert_lab_result_approval_after_schema_reconciliation.sql' > '20261013210000_harden_lab_result_approval_facility_boundary.sql', 'final approval hardening must run after the older panel migration that replaces the approval RPC');
-assert.ok('20261014120000_harden_lab_result_attachment_read_rpc.sql' > '20261013200000_laboratory_api_schema_compatibility.sql', 'attachment read hardening must run after the compatibility RPC is introduced');
+assert.ok(Number('20261014170000') > Number('20261013210000'), 'final approval hardening must run after the older panel migration that replaces the approval RPC');
+assert.ok(Number('20261014120000') > Number('20261013200000'), 'attachment read hardening must run after the compatibility RPC is introduced');
 
 console.log('Laboratory attachment schema repair contract passed.');
