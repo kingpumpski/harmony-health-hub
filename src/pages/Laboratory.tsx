@@ -45,6 +45,10 @@ interface LabResultAttachment {
   created_at: string;
 }
 
+function isLabOrderPaid(order: LabOrder) {
+  return ['released', 'in_progress', 'completed'].includes(order.billing_status ?? '');
+}
+
 function timeAgo(value: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
   if (minutes < 1) return 'Just now';
@@ -90,6 +94,7 @@ export default function Laboratory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [allowLabOrdering, setAllowLabOrdering] = useState(false);
+  const [allowRadiologyOrdering, setAllowRadiologyOrdering] = useState(false);
   const [clinicalContext, setClinicalContext] = useState<Record<string, unknown> | null>(null);
   const [clinicalContextLoading, setClinicalContextLoading] = useState(false);
   const [createCatalogueOpen, setCreateCatalogueOpen] = useState(false);
@@ -123,12 +128,23 @@ export default function Laboratory() {
     void supabase.rpc('get_facility_workflow_settings').then(({ data, error }) => {
       if (!active) return;
       if (error) { setAllowLabOrdering(false); return; }
-      setAllowLabOrdering(Boolean((data as { allow_lab_ordering?: boolean } | null)?.allow_lab_ordering));
+      const settings = (data ?? {}) as { allow_lab_ordering?: boolean; allow_radiology_ordering?: boolean };
+      setAllowLabOrdering(Boolean(settings.allow_lab_ordering));
+      setAllowRadiologyOrdering(Boolean(settings.allow_radiology_ordering));
     });
     return () => { active = false; };
   }, [user?.id]);
 
-  const isLabOrderPaid = (order: LabOrder) => ['released', 'in_progress', 'completed'].includes(order.billing_status ?? '');
+  const updateLabOrdering = async (enabled: boolean) => {
+    const { error } = await supabase.rpc('set_facility_workflow_settings', {
+      _allow_lab_ordering: enabled,
+      _allow_radiology_ordering: allowRadiologyOrdering,
+      _notification_settings: null,
+    });
+    if (error) { toast({ title: 'Workflow setting was not saved', description: error.message, variant: 'destructive' }); return; }
+    setAllowLabOrdering(enabled);
+    toast({ title: enabled ? 'Laboratory ordering enabled' : 'Laboratory ordering disabled', description: 'The facility workflow setting has been saved.' });
+  };
 
   const viewClinicalContext = async (order: LabOrder) => {
     setClinicalContextLoading(true);
@@ -647,6 +663,7 @@ export default function Laboratory() {
             <Link to="/laboratory?view=panels" className="btn-secondary inline-flex items-center gap-2 text-xs">
               <FlaskConical className="h-4 w-4" aria-hidden="true" /> Manage laboratory panels
             </Link>
+            {user?.roles?.includes('admin') && <section className="rounded-xl border border-border bg-card p-3 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={allowLabOrdering} onChange={(event) => void updateLabOrdering(event.target.checked)} /><span className="font-medium">Allow laboratory ordering at this facility</span></label><p className="mt-1 text-xs text-muted-foreground">Disabled by default. Saving requires facility administrator access.</p></section>}
             <section className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status">
               <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
               <p className="text-sm text-foreground">Lab orders are generated from Clinician Encounters. Only orders released by Accounts can be collected or processed. Facility-configured laboratory ordering is currently <strong>{allowLabOrdering ? 'enabled' : 'disabled'}</strong>.</p>
