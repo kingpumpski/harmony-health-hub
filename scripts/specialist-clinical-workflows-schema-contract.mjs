@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const roleMigration = readFileSync("supabase/migrations/20261013160000_add_specialist_app_roles.sql", "utf8");
-const schemaMigration = readFileSync("supabase/migrations/20261013161000_specialist_clinical_workflows_schema.sql", "utf8");
-const clinicalStaffMigration = readFileSync("supabase/migrations/20261013162000_reconcile_specialist_clinical_staff_helper.sql", "utf8");
+const roleMigration = readFileSync("supabase/migrations/20261013161848_add_specialist_app_roles.sql", "utf8");
+const schemaMigration = readFileSync("supabase/migrations/20261013161853_specialist_clinical_workflows_schema.sql", "utf8");
+const clinicalStaffMigration = readFileSync("supabase/migrations/20261013161858_reconcile_specialist_clinical_staff_helper.sql", "utf8");
 
 for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
   assert.match(roleMigration, new RegExp("ADD VALUE IF NOT EXISTS '" + role + "'"));
