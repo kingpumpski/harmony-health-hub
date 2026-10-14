@@ -82,6 +82,238 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_facility_workflow_settings() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_facility_workflow_settings() TO authenticated;
 
+-- Only facility administrators may change ordering switches; defaults remain deny-by-default.
+CREATE OR REPLACE FUNCTION public.set_facility_workflow_settings(
+  _allow_lab_ordering boolean,
+  _allow_radiology_ordering boolean,
+  _notification_settings jsonb DEFAULT '{}'::jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  facility uuid := public.current_user_facility_id();
+  saved public.facility_settings%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF NOT public.has_role(uid, 'admin') THEN
+    RAISE EXCEPTION 'Facility administrator role required to change workflow settings';
+  END IF;
+  IF facility IS NULL THEN RAISE EXCEPTION 'Select an active facility first'; END IF;
+  IF _notification_settings IS NULL OR pg_catalog.jsonb_typeof(_notification_settings) <> 'object' THEN
+    RAISE EXCEPTION 'Notification settings must be a JSON object';
+  END IF;
+
+  INSERT INTO public.facility_settings(
+    id, facility_id, allow_lab_ordering, allow_radiology_ordering, notification_settings, updated_at
+  ) VALUES (
+    'facility:' || facility::text, facility,
+    coalesce(_allow_lab_ordering, false), coalesce(_allow_radiology_ordering, false),
+    _notification_settings, pg_catalog.now()
+  )
+  ON CONFLICT (facility_id) WHERE facility_id IS NOT NULL
+  DO UPDATE SET
+    allow_lab_ordering = EXCLUDED.allow_lab_ordering,
+    allow_radiology_ordering = EXCLUDED.allow_radiology_ordering,
+    notification_settings = EXCLUDED.notification_settings,
+    updated_at = pg_catalog.now()
+  RETURNING * INTO saved;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'facility_id', saved.facility_id,
+    'allow_lab_ordering', saved.allow_lab_ordering,
+    'allow_radiology_ordering', saved.allow_radiology_ordering,
+    'notification_settings', saved.notification_settings
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.set_facility_workflow_settings(boolean, boolean, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_facility_workflow_settings(boolean, boolean, jsonb) TO authenticated;
+
+-- Notify the ordering clinician when a radiology report becomes complete.
+CREATE OR REPLACE FUNCTION public.notify_imaging_result_ready()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  IF NEW.status = 'completed'
+     AND OLD.status IS DISTINCT FROM NEW.status
+     AND NEW.requested_by IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM public.notifications n
+       WHERE n.recipient_user_id = NEW.requested_by
+         AND n.related_entity_id = NEW.id
+         AND n.category = 'diagnostic_result'
+         AND n.title = 'Radiology result ready'
+     ) THEN
+    INSERT INTO public.notifications(
+      recipient_user_id, title, message, severity, category, link,
+      related_patient_id, related_entity_id, metadata
+    ) VALUES (
+      NEW.requested_by, 'Radiology result ready',
+      'The imaging report is complete and ready for clinical review.',
+      'info', 'diagnostic_result',
+      '/imaging?order=' || NEW.id::text,
+      NEW.patient_id, NEW.id,
+      pg_catalog.jsonb_build_object('workflow', 'imaging_result_review', 'facility_id', NEW.facility_id)
+    );
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_notify_imaging_result_ready ON public.imaging_orders;
+CREATE TRIGGER trg_notify_imaging_result_ready
+AFTER UPDATE OF status, report, impression ON public.imaging_orders
+FOR EACH ROW EXECUTE FUNCTION public.notify_imaging_result_ready();
+
+REVOKE ALL ON FUNCTION public.notify_imaging_result_ready() FROM PUBLIC, anon, authenticated;
+
+-- Critical notifications are broadcast only to active clinical staff with facility
+-- membership. Never broadcast patient-identifiable details to unrelated users.
+CREATE OR REPLACE FUNCTION public.notify_critical_lab_result()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  is_critical boolean;
+  was_critical boolean := false;
+  staff record;
+BEGIN
+  is_critical := coalesce(NEW.is_abnormal, false)
+    AND lower(coalesce(NEW.abnormal_flag, '')) IN
+      ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical');
+
+  IF TG_OP = 'UPDATE' THEN
+    was_critical := coalesce(OLD.is_abnormal, false)
+      AND lower(coalesce(OLD.abnormal_flag, '')) IN
+        ('critical', 'critical_high', 'critical_low', 'high_critical', 'low_critical');
+  END IF;
+
+  IF is_critical AND NOT was_critical AND NEW.facility_id IS NOT NULL THEN
+    FOR staff IN
+      SELECT DISTINCT fm.user_id
+      FROM public.facility_memberships fm
+      JOIN public.user_roles ur ON ur.user_id = fm.user_id
+      WHERE fm.facility_id = NEW.facility_id
+        AND fm.is_active = true
+        AND ur.role IN (
+          'admin'::public.app_role, 'practitioner'::public.app_role,
+          'nurse'::public.app_role, 'midwife'::public.app_role,
+          'specialist_nurse'::public.app_role, 'lab_technician'::public.app_role,
+          'radiologist'::public.app_role, 'radiology_technician'::public.app_role
+        )
+    LOOP
+      IF NOT EXISTS (
+        SELECT 1 FROM public.notifications n
+        WHERE n.recipient_user_id = staff.user_id
+          AND n.related_entity_id = NEW.id
+          AND n.category = 'critical_lab_result'
+      ) THEN
+        INSERT INTO public.notifications(
+          recipient_user_id, title, message, severity, category, link,
+          related_patient_id, related_entity_id, metadata
+        ) VALUES (
+          staff.user_id, 'Critical laboratory result',
+          'A critical laboratory result requires prompt clinical review.',
+          'critical', 'critical_lab_result',
+          '/laboratory?order=' || NEW.lab_order_id::text || '&result=' || NEW.id::text,
+          NEW.patient_id, NEW.id,
+          pg_catalog.jsonb_build_object(
+            'workflow', 'critical_lab_result',
+            'lab_order_id', NEW.lab_order_id,
+            'facility_id', NEW.facility_id,
+            'requires_acknowledgement', true
+          )
+        );
+      END IF;
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_notify_critical_lab_result ON public.lab_results;
+CREATE TRIGGER trg_notify_critical_lab_result
+AFTER INSERT OR UPDATE OF is_abnormal, abnormal_flag ON public.lab_results
+FOR EACH ROW EXECUTE FUNCTION public.notify_critical_lab_result();
+
+REVOKE ALL ON FUNCTION public.notify_critical_lab_result() FROM PUBLIC, anon, authenticated;
+
+-- When an invoice is paid, notify the relevant diagnostic teams in that facility.
+CREATE OR REPLACE FUNCTION public.notify_paid_diagnostic_invoice()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  department_name text;
+  staff record;
+BEGIN
+  IF NEW.status = 'paid' AND OLD.status IS DISTINCT FROM NEW.status AND NEW.facility_id IS NOT NULL THEN
+    FOR department_name IN
+      SELECT DISTINCT lower(so.department)
+      FROM public.service_orders so
+      WHERE so.invoice_id = NEW.id
+        AND so.facility_id = NEW.facility_id
+        AND lower(so.department) IN ('laboratory', 'radiology', 'imaging')
+    LOOP
+      FOR staff IN
+        SELECT DISTINCT fm.user_id
+        FROM public.facility_memberships fm
+        JOIN public.user_roles ur ON ur.user_id = fm.user_id
+        WHERE fm.facility_id = NEW.facility_id
+          AND fm.is_active = true
+          AND (
+            (department_name = 'laboratory' AND ur.role IN ('admin'::public.app_role, 'accountant'::public.app_role, 'lab_technician'::public.app_role))
+            OR (department_name IN ('radiology', 'imaging') AND ur.role IN ('admin'::public.app_role, 'accountant'::public.app_role, 'radiologist'::public.app_role, 'radiology_technician'::public.app_role))
+          )
+      LOOP
+        IF NOT EXISTS (
+          SELECT 1 FROM public.notifications n
+          WHERE n.recipient_user_id = staff.user_id
+            AND n.related_entity_id = NEW.id
+            AND n.category = 'diagnostic_invoice_paid'
+            AND n.metadata ->> 'department' = department_name
+        ) THEN
+          INSERT INTO public.notifications(
+            recipient_user_id, title, message, severity, category, link,
+            related_patient_id, related_entity_id, metadata
+          ) VALUES (
+            staff.user_id, 'Diagnostic invoice paid',
+            'A diagnostic invoice has been paid. The related worklist can be refreshed.',
+            'info', 'diagnostic_invoice_paid', '/billing',
+            NEW.patient_id, NEW.id,
+            pg_catalog.jsonb_build_object(
+              'workflow', 'diagnostic_invoice_paid',
+              'department', department_name,
+              'facility_id', NEW.facility_id
+            )
+          );
+        END IF;
+      END LOOP;
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_notify_paid_diagnostic_invoice ON public.invoices;
+CREATE TRIGGER trg_notify_paid_diagnostic_invoice
+AFTER UPDATE OF status ON public.invoices
+FOR EACH ROW EXECUTE FUNCTION public.notify_paid_diagnostic_invoice();
+
+REVOKE ALL ON FUNCTION public.notify_paid_diagnostic_invoice() FROM PUBLIC, anon, authenticated;
+
 -- Give laboratory/radiology staff a governed, read-only view of the encounter
 -- that originated an order. Do not expose the encounter table directly.
 CREATE OR REPLACE FUNCTION public.get_diagnostic_order_clinical_context(
