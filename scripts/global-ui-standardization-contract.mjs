@@ -35,6 +35,8 @@ if (clinicalTable.includes('card-medical overflow-hidden')) throw new Error('Cli
 if (!clinicalTable.includes('z-[10001]')) throw new Error('Clinical table column menu must render above table rows.');
 if (worklistTable.includes('overflow-hidden rounded-2xl')) throw new Error('Worklist column menu may be clipped by its parent container.');
 if (!worklistTable.includes('z-[10001]')) throw new Error('Worklist column menu must render above table rows.');
+if (worklistTable.includes('Last updated:') || worklistTable.includes('Not synced yet')) throw new Error('Worklist header must not show noisy sync timestamps.');
+if (!worklistTable.includes('activeFilterCount') || !worklistTable.includes('active filters')) throw new Error('Worklist filter control must show an accessible active-filter count.');
 
 if (!fs.existsSync(path.join(root, 'src/components/ui/RefreshButton.tsx'))) throw new Error('Shared RefreshButton is missing');
 if (!fs.existsSync(path.join(root, 'src/components/layout/PageHeader.tsx'))) throw new Error('Shared PageHeader is missing');
