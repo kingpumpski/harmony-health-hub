@@ -114,7 +114,7 @@
     "test:settings-load-resilience": "node scripts/settings-load-resilience-contract.mjs",
     "test:maternity-workflow-network-resilience": "node scripts/maternity-workflow-network-resilience-contract.mjs",
     "test:canteen-network-resilience": "node scripts/canteen-network-resilience-contract.mjs",
-    "test:laboratory-specimen-accession": "node scripts/laboratory-specimen-accession-contract.mjs",
+    "test:laboratory-specimen-accession": "node scripts/laboratory-specimen-accession-contract.mjs && npm run test:laboratory-specimen-rls",
     "test:laboratory-specimen-fk-indexes": "node scripts/laboratory-specimen-fk-index-contract.mjs",
     "test:laboratory-workspace-resilience": "node scripts/laboratory-workspace-resilience-contract.mjs",
     "test:devcontainer-config": "node scripts/devcontainer-config-contract.mjs",
@@ -124,7 +124,8 @@
     "test:laboratory-refresh-resilience": "node scripts/laboratory-refresh-resilience-contract.mjs",
     "test:billing-window-special-forms": "node scripts/billing-window-special-forms-contract.mjs",
     "test:specialist-clinical-workflows-schema": "node scripts/specialist-clinical-workflows-schema-contract.mjs",
-    "test:specialist-assessment-entry": "node scripts/specialist-assessment-entry-contract.mjs"
+    "test:specialist-assessment-entry": "node scripts/specialist-assessment-entry-contract.mjs",
+    "test:laboratory-specimen-rls": "node scripts/laboratory-specimen-rls-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
