@@ -147,7 +147,7 @@ export default function WorklistDataTable<T>({
   });
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label={title}>
+    <section className={`relative rounded-2xl border border-border bg-card shadow-sm ${columnMenuOpen ? 'z-[9999]' : ''}`} aria-label={title}>
       <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
@@ -168,11 +168,11 @@ export default function WorklistDataTable<T>({
             <Filter className="h-4 w-4" /> Filter {filters.some((filter) => filter.value && filter.value !== 'all') && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
           </button>}
           {onRefresh && <RefreshButton onClick={onRefresh} loading={refreshing} label="Refresh worklist" />}
-          <div className="relative">
+          <div className={`relative ${columnMenuOpen ? 'z-[10000]' : 'z-10'}`}>
             <button type="button" className="btn-secondary inline-flex items-center gap-2" title="Configure columns" aria-label="Configure columns" aria-expanded={columnMenuOpen} onClick={() => setColumnMenuOpen((open) => !open)}>
               <Settings2 className="h-4 w-4" /> <span className="hidden lg:inline">Columns</span>
             </button>
-            {columnMenuOpen && <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-xl">
+            {columnMenuOpen && <div className="absolute right-0 z-[10001] mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-xl">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold">Workspace columns</span>
                 <button type="button" className="text-xs text-primary hover:underline" onClick={resetColumns}>Reset</button>
