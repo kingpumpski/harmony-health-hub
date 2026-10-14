@@ -41,6 +41,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Validate diagnostic CI references and migration versions
+        run: node scripts/diagnostic-ci-contract.mjs
+
       - name: Typecheck
         run: npm run typecheck
 
