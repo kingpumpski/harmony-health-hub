@@ -75,12 +75,12 @@ assert.match(approvalReconciliation, /NOTIFY pgrst, 'reload schema'/, 'approval 
 // already-recorded newer versions. Guard the local chain so reconciliation adds
 // the exact columns and RPCs the deployed frontend calls, in a safe sequence.
 assert.match(catalogueMigration, /ADD COLUMN IF NOT EXISTS sample_quantity text/, 'catalogue migration must add the sample quantity field used by the workspace');
-assert.match(catalogueMigration, /CREATE OR REPLACE FUNCTION public\\.get_laboratory_workspace/, 'catalogue migration must provide the laboratory workspace RPC');
-assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\\.lab_test_groups\\(id\\)/, 'panel migration must add the nullable group foreign key idempotently');
-assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\\.lab_orders\\(id\\)/, 'panel migration must add the parent order foreign key idempotently');
-assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\\.get_laboratory_workspace/, 'panel migration must replace the workspace RPC after adding panel columns');
-assert.match(catalogueMigration, /CREATE TABLE IF NOT EXISTS public\\.lab_result_attachments/, 'earlier diagnostic migration must safely provision attachment metadata');
-assert.match(migration, /CREATE TABLE IF NOT EXISTS public\\.lab_result_attachments/, 'repair migration must be safe when attachment metadata was already provisioned');
+assert.match(catalogueMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_workspace/, 'catalogue migration must provide the laboratory workspace RPC');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'panel migration must add the nullable group foreign key idempotently');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'panel migration must add the parent order foreign key idempotently');
+assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_workspace/, 'panel migration must replace the workspace RPC after adding panel columns');
+assert.match(catalogueMigration, /CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/, 'earlier diagnostic migration must safely provision attachment metadata');
+assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/, 'repair migration must be safe when attachment metadata was already provisioned');
 for (const column of ['lab_order_id', 'lab_result_id', 'facility_id', 'storage_path', 'file_name', 'mime_type', 'file_size_bytes', 'uploaded_by', 'created_at']) {
   assert.ok(catalogueMigration.includes(column), `catalogue migration must define attachment field ${column}`);
   assert.ok(migration.includes(column), `repair migration must preserve attachment field ${column}`);
