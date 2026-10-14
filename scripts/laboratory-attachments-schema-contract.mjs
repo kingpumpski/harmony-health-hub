@@ -16,4 +16,17 @@ assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/,
 assert.match(labPage, /isMissingLabResultAttachmentsApi/, 'laboratory workspace must handle missing attachment tables and RPCs');
 assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must retain the backwards-compatible attachment error helper');
 
+
+assert.match(migration, /REVOKE ALL ON TABLE public\\.lab_result_attachments FROM PUBLIC, anon/, 'attachment metadata must not be readable by anonymous or public roles');
+assert.match(migration, /GRANT SELECT, INSERT ON TABLE public\\.lab_result_attachments TO authenticated/, 'metadata writes must be limited to authenticated sessions');
+assert.match(migration, /file_size_bytes bigint NOT NULL CHECK \\(file_size_bytes BETWEEN 1 AND 15728640\\)/, 'attachment metadata must enforce the 15 MiB limit');
+assert.match(migration, /mime_type text NOT NULL CHECK \\(mime_type IN \\('application\\/pdf','image\\/jpeg','image\\/png'\\)\\)/, 'attachment metadata must restrict uploaded MIME types');
+assert.match(migration, /uploaded_by = auth\\.uid\\(\\)/, 'attachment metadata must be attributed to the authenticated uploader');
+assert.match(migration, /lr\\.patient_id = lo\\.patient_id[\\s\\S]*lr\\.facility_id = lo\\.facility_id/, 'linked results must match order patient and facility');
+assert.match(migration, /VALUES \\([\\s\\S]*'lab-result-attachments',[\\s\\S]*false,[\\s\\S]*15728640/, 'attachment bucket must remain private and enforce the size limit');
+assert.match(migration, /bucket_id = 'lab-result-attachments'[\\s\\S]*current_user_facility_id\\(\\)[\\s\\S]*current_user_is_clinical_staff\\(\\)/, 'storage reads must be limited to clinical staff in the active facility');
+assert.match(migration, /so\\.status IN \\('released', 'in_progress', 'completed'\\)/, 'storage access must require a released service order');
+assert.match(readFileSync(new URL('../supabase/migrations/20261013200000_lab_result_attachment_read_rpc.sql', import.meta.url), 'utf8'), /cardinality\\(_lab_order_ids\\)[\\s\\S]*> 300/, 'attachment read RPC must bound bulk requests');
+assert.match(readFileSync(new URL('../supabase/migrations/20261013200000_lab_result_attachment_read_rpc.sql', import.meta.url), 'utf8'), /REVOKE ALL ON FUNCTION public\\.get_lab_result_attachments\\(uuid\\[\\]\\) FROM PUBLIC, anon/, 'attachment RPC must not be executable by public or anonymous roles');
+
 console.log('Laboratory attachment schema repair contract passed.');
