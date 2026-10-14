@@ -22,8 +22,8 @@ const metadataInsertPolicy = migration.slice(
 );
 assert.match(metadataReadPolicy, /so\.status IN \('released', 'in_progress', 'completed'\)/, 'direct metadata reads must enforce diagnostic payment release');
 assert.match(metadataReadPolicy, /JOIN public\.patients p[\s\S]*p\.facility_id = lo\.facility_id/, 'direct metadata reads must validate patient facility lineage');
-assert.match(metadataReadPolicy, /storage_path LIKE lab_order_id::text \|\| '\\/%'/, 'metadata paths must be bound to the referenced order');
-assert.match(metadataInsertPolicy, /storage_path LIKE lab_order_id::text \|\| '\\/%'/, 'metadata inserts must not attach a different order’s storage object');
+assert.ok(metadataReadPolicy.includes("storage_path LIKE lab_order_id::text || '/%'"), 'metadata paths must be bound to the referenced order');
+assert.ok(metadataInsertPolicy.includes("storage_path LIKE lab_order_id::text || '/%'"), 'metadata inserts must not attach a different order’s storage object');
 
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
