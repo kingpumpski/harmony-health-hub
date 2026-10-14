@@ -243,7 +243,7 @@ $function$;
 
 DROP TRIGGER IF EXISTS trg_notify_critical_lab_result ON public.lab_results;
 CREATE TRIGGER trg_notify_critical_lab_result
-AFTER INSERT OR UPDATE OF is_abnormal, abnormal_flag ON public.lab_results
+AFTER INSERT OR UPDATE ON public.lab_results
 FOR EACH ROW EXECUTE FUNCTION public.notify_critical_lab_result();
 
 REVOKE ALL ON FUNCTION public.notify_critical_lab_result() FROM PUBLIC, anon, authenticated;
