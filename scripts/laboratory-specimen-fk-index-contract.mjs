@@ -7,7 +7,7 @@ const migrationPath = path.join(
   process.cwd(),
   "supabase",
   "migrations",
-  "20261013120000_index_lab_specimen_foreign_keys.sql",
+  "20261013161651_index_lab_specimen_foreign_keys.sql",
 );
 const migration = fs.readFileSync(migrationPath, "utf8");
 const expected = [
