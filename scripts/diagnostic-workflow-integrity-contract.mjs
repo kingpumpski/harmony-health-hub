@@ -59,6 +59,8 @@ assert('existing operational audit pipeline covers diagnostic attachments and pa
   migration.includes("'lab_result_attachments'") &&
   migration.includes("'lab_test_groups'") &&
   migration.includes("'lab_test_group_items'") &&
+  migration.includes("'billing_tariff_adjustments'") &&
+  migration.includes("'insurance_service_tariffs'") &&
   migration.includes('public.audit_operational_row_change()'));
 assert('notifications Realtime publication is added idempotently',
   migration.includes('pg_publication_tables') &&
