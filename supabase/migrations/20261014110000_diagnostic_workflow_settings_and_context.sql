@@ -101,7 +101,9 @@ DECLARE
   order_encounter uuid;
   order_facility uuid;
   order_notes text;
-  encounter_row record;
+  v_chief_complaint text;
+  v_diagnosis text;
+  v_clinical_notes text;
   patient_row record;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -161,6 +163,9 @@ BEGIN
        OR encounter_row.facility_id IS DISTINCT FROM order_facility THEN
       RAISE EXCEPTION 'Encounter facility or patient lineage is unresolved';
     END IF;
+    v_chief_complaint := encounter_row.chief_complaint;
+    v_diagnosis := encounter_row.principal_diagnosis;
+    v_clinical_notes := coalesce(encounter_row.clerking_notes, encounter_row.symptoms);
   END IF;
 
   RETURN pg_catalog.jsonb_build_object(
@@ -170,9 +175,9 @@ BEGIN
     'patient_name', pg_catalog.concat_ws(' ', patient_row.first_name, patient_row.last_name),
     'patient_code', patient_row.patient_code,
     'encounter_id', order_encounter,
-    'chief_complaint', encounter_row.chief_complaint,
-    'diagnosis', encounter_row.principal_diagnosis,
-    'clinical_notes', coalesce(encounter_row.clerking_notes, encounter_row.symptoms, order_notes)
+    'chief_complaint', v_chief_complaint,
+    'diagnosis', v_diagnosis,
+    'clinical_notes', coalesce(v_clinical_notes, order_notes)
   );
 END;
 $function$;
