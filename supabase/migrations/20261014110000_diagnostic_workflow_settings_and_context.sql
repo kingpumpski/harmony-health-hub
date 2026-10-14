@@ -577,7 +577,9 @@ BEGIN
   FOREACH target_table IN ARRAY ARRAY[
     'lab_result_attachments',
     'lab_test_groups',
-    'lab_test_group_items'
+    'lab_test_group_items',
+    'billing_tariff_adjustments',
+    'insurance_service_tariffs'
   ] LOOP
     IF pg_catalog.to_regclass('public.' || target_table) IS NOT NULL THEN
       EXECUTE pg_catalog.format('DROP TRIGGER IF EXISTS audit_operational_row_change ON public.%I', target_table);
