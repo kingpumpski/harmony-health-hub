@@ -66,7 +66,7 @@ export default function Header({ onMenu }: HeaderProps) {
   }, [user?.id, user?.role]);
 
   const unread = notifications.filter((n) => !n.is_read).length;
-  const hasCritical = notifications.some((n) => !n.is_read && ["critical", "warning", "high"].includes(String(n.severity).toLowerCase()));
+  const hasCritical = notifications.some((n) => !n.is_read && String(n.severity).toLowerCase() === "critical");
   const pageLabel = location.pathname.split("/").filter(Boolean).filter(segment => !/^[0-9a-f-]{8,}$/i.test(segment)).pop()?.replace(/-/g, " ").replace(/\b\w/g, letter => letter.toUpperCase()) || "Dashboard";
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "User";
   const greeting = `Welcome ${roleLabels[user?.role ?? "patient"]} ${displayName}`;
