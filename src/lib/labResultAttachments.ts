@@ -17,8 +17,7 @@ function errorDetails(error: unknown): AttachmentRequestError {
 
 export function isMissingLabResultAttachmentsTable(error: unknown) {
   const { code, message } = errorDetails(error);
-  return code === 'PGRST205'
-    || code === '42P01'
+  return ((code === 'PGRST205' || code === '42P01') && /lab_result_attachments/i.test(message ?? ''))
     || (code === 'PGRST202' && /get_lab_result_attachments/i.test(message ?? ''))
     || /could not find the (?:table|function) .*lab_result_(?:attachments|attachements)|relation .*lab_result_attachments.* does not exist|schema cache.*lab_result_(?:attachments|attachements)/i.test(message ?? '');
 }

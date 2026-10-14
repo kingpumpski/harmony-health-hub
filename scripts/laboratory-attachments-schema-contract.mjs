@@ -15,6 +15,7 @@ assert.match(migration, /facility_id = \(SELECT public\.current_user_facility_id
 assert.match(migration, /so\.related_entity_id = coalesce\(lo\.parent_order_id, lo\.id\)/, 'panel attachments must verify the parent order billing release');
 assert.match(migration, /NOTIFY pgrst, 'reload schema'/, 'migration must refresh the PostgREST schema cache');
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
+assert.match(helper, /\(\(code === 'PGRST205' \|\| code === '42P01'\) && \/lab_result_attachments\/i\.test\(message \?\? ''\)\)/, 'missing-table codes must identify the attachment table instead of misclassifying unrelated database errors');
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
 assert.match(compatibilityMigration, /CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/, 'attachment reads must use a facility-scoped API function');
 assert.match(attachmentReadHardening, /SET search_path = ''/, 'attachment read RPC must use a hardened search path');
