@@ -118,7 +118,7 @@ BEGIN
   DO UPDATE SET
     allow_lab_ordering = EXCLUDED.allow_lab_ordering,
     allow_radiology_ordering = EXCLUDED.allow_radiology_ordering,
-    notification_settings = coalesce(_notification_settings, public.facility_settings.notification_settings),
+    notification_settings = coalesce(_notification_settings, facility_settings.notification_settings),
     updated_at = pg_catalog.now()
   RETURNING * INTO saved;
 
