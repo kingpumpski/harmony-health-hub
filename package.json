@@ -54,7 +54,7 @@
     "test:appointment-active-facility-workflow": "node scripts/appointment-active-facility-workflow-contract.mjs",
     "test:patient-hub-encounter-context": "node scripts/patient-hub-encounter-context-contract.mjs",
     "test:test-mode-facility-isolation": "node scripts/test-mode-facility-isolation-contract.mjs",
-    "test:superadmin-facility-context": "node scripts/superadmin-facility-context-contract.mjs",
+    "test:superadmin-facility-context": "node scripts/superadmin-facility-context-contract.mjs && npm run test:platform-facility-directory-rpc",
     "test:encounter-worklist-ui": "node scripts/encounter-worklist-ui-contract.mjs",
     "test:encounter-page-billing-rbac": "node scripts/encounter-page-billing-rbac-contract.mjs",
     "test:patient-hub-section-load-errors": "node scripts/patient-hub-section-load-errors-contract.mjs",
@@ -124,7 +124,8 @@
     "test:laboratory-refresh-resilience": "node scripts/laboratory-refresh-resilience-contract.mjs",
     "test:billing-window-special-forms": "node scripts/billing-window-special-forms-contract.mjs",
     "test:specialist-clinical-workflows-schema": "node scripts/specialist-clinical-workflows-schema-contract.mjs",
-    "test:specialist-assessment-entry": "node scripts/specialist-assessment-entry-contract.mjs"
+    "test:specialist-assessment-entry": "node scripts/specialist-assessment-entry-contract.mjs",
+    "test:platform-facility-directory-rpc": "node scripts/platform-facility-directory-rpc-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
