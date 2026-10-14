@@ -161,6 +161,67 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_imaging_workspace(integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_imaging_workspace(integer) TO authenticated;
 
+-- Enforce department-originated ordering policy at the database boundary as well as in the UI.
+CREATE OR REPLACE FUNCTION public.enforce_diagnostic_ordering_configuration()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  actor uuid;
+  facility uuid;
+  ordering_enabled boolean := false;
+BEGIN
+  IF TG_TABLE_NAME = 'imaging_orders' THEN
+    actor := coalesce(NEW.requested_by, auth.uid());
+    facility := coalesce(
+      NEW.facility_id,
+      (SELECT p.facility_id FROM public.patients p WHERE p.id = NEW.patient_id)
+    );
+    IF NOT public.has_role(actor, 'admin')
+       AND (public.has_role(actor, 'radiologist') OR public.has_role(actor, 'radiology_technician')) THEN
+      SELECT coalesce(fs.allow_radiology_ordering, false) INTO ordering_enabled
+      FROM public.facility_settings fs
+      WHERE fs.facility_id = facility
+      LIMIT 1;
+      IF NOT coalesce(ordering_enabled, false) THEN
+        RAISE EXCEPTION 'Radiology ordering is disabled for this facility';
+      END IF;
+    END IF;
+  ELSIF TG_TABLE_NAME = 'lab_orders' THEN
+    actor := coalesce(NEW.ordered_by, auth.uid());
+    facility := coalesce(
+      NEW.facility_id,
+      (SELECT p.facility_id FROM public.patients p WHERE p.id = NEW.patient_id)
+    );
+    IF NOT public.has_role(actor, 'admin')
+       AND public.has_role(actor, 'lab_technician') THEN
+      SELECT coalesce(fs.allow_lab_ordering, false) INTO ordering_enabled
+      FROM public.facility_settings fs
+      WHERE fs.facility_id = facility
+      LIMIT 1;
+      IF NOT coalesce(ordering_enabled, false) THEN
+        RAISE EXCEPTION 'Laboratory ordering is disabled for this facility';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_enforce_diagnostic_ordering_configuration ON public.imaging_orders;
+CREATE TRIGGER trg_enforce_diagnostic_ordering_configuration
+BEFORE INSERT ON public.imaging_orders
+FOR EACH ROW EXECUTE FUNCTION public.enforce_diagnostic_ordering_configuration();
+
+DROP TRIGGER IF EXISTS trg_enforce_lab_ordering_configuration ON public.lab_orders;
+CREATE TRIGGER trg_enforce_lab_ordering_configuration
+BEFORE INSERT ON public.lab_orders
+FOR EACH ROW EXECUTE FUNCTION public.enforce_diagnostic_ordering_configuration();
+
+REVOKE ALL ON FUNCTION public.enforce_diagnostic_ordering_configuration() FROM PUBLIC, anon, authenticated;
+
 -- Only facility administrators may change ordering switches; defaults remain deny-by-default.
 CREATE OR REPLACE FUNCTION public.set_facility_workflow_settings(
   _allow_lab_ordering boolean,
