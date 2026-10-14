@@ -123,10 +123,11 @@
     "test:operational-workspace-role-resolution": "node scripts/operational-workspace-role-resolution-contract.mjs",
     "test:laboratory-refresh-resilience": "node scripts/laboratory-refresh-resilience-contract.mjs",
     "test:billing-window-special-forms": "node scripts/billing-window-special-forms-contract.mjs",
-    "test:specialist-clinical-workflows-schema": "node scripts/specialist-clinical-workflows-schema-contract.mjs",
+    "test:specialist-clinical-workflows-schema": "node scripts/specialist-clinical-workflows-schema-contract.mjs && npm run test:specialist-workflow-indexes",
     "test:specialist-assessment-entry": "node scripts/specialist-assessment-entry-contract.mjs",
     "test:platform-facility-directory-rpc": "node scripts/platform-facility-directory-rpc-contract.mjs",
-    "test:laboratory-specimen-rls": "node scripts/laboratory-specimen-rls-contract.mjs"
+    "test:laboratory-specimen-rls": "node scripts/laboratory-specimen-rls-contract.mjs",
+    "test:specialist-workflow-indexes": "node scripts/specialist-workflow-index-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
