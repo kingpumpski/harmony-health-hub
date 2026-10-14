@@ -27,6 +27,7 @@ assert.ok(metadataInsertPolicy.includes("storage_path LIKE lab_order_id::text ||
 
 assert.match(labPage, /A thrown metadata request has an unknown commit outcome/, 'upload recovery must not delete an object when metadata commit outcome is unknown');
 assert.match(labPage, /Could not open attachment/, 'laboratory attachment access must report thrown network failures');
+assert.match(labPage, /Lab report attachments unavailable[\s\S]*attachmentRequestError instanceof Error/, 'attachment list network failures must not fail the entire laboratory workspace load');
 assert.match(resultsPage, /Approved laboratory reports could not be refreshed/, 'approved-results loading must handle thrown RPC/network failures');
 assert.match(resultsPage, /finally \{\s*setLoading\(false\);\s*\}/, 'approved-results loading state must always be released');
 assert.match(helper, /PGRST205/, 'client must identify PostgREST missing-table errors');
