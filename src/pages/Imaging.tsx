@@ -205,13 +205,6 @@ export default function Imaging() {
     { key: 'priority', label: 'Priority', value: activePriority, onChange: setActivePriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
     { key: 'status', label: 'Status', value: activeStatus, onChange: setActiveStatus, options: [{ value: 'all', label: 'All statuses' }, { value: 'pending_payment', label: 'Pending payment' }, { value: 'released', label: 'Active / released' }, { value: 'in_progress', label: 'In progress' }, { value: 'completed', label: 'Completed' }, { value: 'cancelled', label: 'Cancelled' }] },
   ];
-  const completedFilters: WorklistFilter[] = [
-    { key: 'search', label: 'Patient / study', value: completedSearch, onChange: setCompletedSearch, placeholder: 'Search patient or study' },
-    { key: 'modality', label: 'Modality', value: completedModality, onChange: setCompletedModality, options: [{ value: 'all', label: 'All modalities' }, ...modalityOptions] },
-    { key: 'priority', label: 'Priority', value: completedPriority, onChange: setCompletedPriority, options: [{ value: 'all', label: 'All priorities' }, ...priorityOptions] },
-    { key: 'date', label: 'Order date', value: completedDate, onChange: setCompletedDate, type: 'date' },
-  ];
-
   return (
     <OperationalWorklistShell icon={ImageIcon} eyebrow='Diagnostics · Radiology' title='Radiology Workspace' description='Manage active patients, imaging requests, reporting and completed studies from one role-scoped radiology worklist.' actions={<RefreshButton onClick={() => { playWorkflowSound('info'); void load(); }} loading={loading} label='Refresh radiology workspace' />} counters={[
       { label: 'Active patients', value: activePatientRows.length, surface: 'bg-info/5', tone: 'text-info' },
