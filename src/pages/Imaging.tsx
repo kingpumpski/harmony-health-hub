@@ -60,7 +60,7 @@ export default function Imaging() {
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
-    void supabase.rpc('get_facility_workflow_settings').then(({ data, error }) => {
+    void supabase.rpc('get_facility_workflow_settings' as never).then(({ data, error }) => {
       if (!active) return;
       if (error) { setAllowRadiologyOrdering(false); return; }
       const settings = (data ?? {}) as { allow_radiology_ordering?: boolean; allow_lab_ordering?: boolean };
@@ -127,11 +127,11 @@ export default function Imaging() {
   };
 
   const updateRadiologyOrdering = async (enabled: boolean) => {
-    const { error } = await supabase.rpc('set_facility_workflow_settings', {
+    const { error } = await supabase.rpc('set_facility_workflow_settings' as never, {
       _allow_lab_ordering: allowLabOrdering,
       _allow_radiology_ordering: enabled,
       _notification_settings: null,
-    });
+    } as never);
     if (error) { toast({ title: 'Workflow setting was not saved', description: error.message, variant: 'destructive' }); return; }
     setAllowRadiologyOrdering(enabled);
     toast({ title: enabled ? 'Radiology ordering enabled' : 'Radiology ordering disabled', description: 'The facility workflow setting has been saved.' });
@@ -140,7 +140,7 @@ export default function Imaging() {
   const viewClinicalContext = async (order: ImagingOrder) => {
     setClinicalContextLoading(true);
     setClinicalContext(null);
-    const { data, error } = await supabase.rpc('get_diagnostic_order_clinical_context', { _order_id: order.id, _order_type: 'imaging' });
+    const { data, error } = await supabase.rpc('get_diagnostic_order_clinical_context' as never, { _order_id: order.id, _order_type: 'imaging' } as never);
     setClinicalContextLoading(false);
     if (error) { toast({ title: 'Clinical context unavailable', description: 'The encounter context could not be loaded for this facility-scoped order.', variant: 'destructive' }); return; }
     setClinicalContext((data ?? {}) as Record<string, unknown>);
