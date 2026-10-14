@@ -25,7 +25,7 @@ export function isMissingLabResultAttachmentsTable(error: unknown) {
 
 export function isMissingLaboratoryPanelFunction(error: unknown) {
   const { code, message } = errorDetails(error);
-  return code === 'PGRST202'
+  return (code === 'PGRST202' && /get_laboratory_test_groups?/i.test(message ?? ''))
     || /could not find the function .*get_laboratory_test_groups?|function .*get_laboratory_test_groups? .* does not exist|schema cache.*get_laboratory_test_groups?/i.test(message ?? '');
 }
 
@@ -35,7 +35,7 @@ export function isNetworkFetchError(error: unknown) {
 }
 
 export const labResultAttachmentsUnavailableMessage =
-  'The deployed database API does not expose laboratory report attachments yet. Apply 20261013190000_repair_lab_result_attachments_schema.sql and 20261013200000_laboratory_api_schema_compatibility.sql, then refresh the PostgREST schema cache and reload the application.';
+  'The deployed database API does not expose laboratory report attachments yet. Verify that 20261013190000_repair_lab_result_attachments_schema.sql and 20261013200000_laboratory_api_schema_compatibility.sql have been applied in order, followed by 20261014120000_harden_lab_result_attachment_read_rpc.sql. Then refresh the PostgREST schema cache and reload the application.';
 
 export const laboratoryPanelsUnavailableMessage =
   'The deployed database API does not expose laboratory panel workflows yet. Apply the pending laboratory panel migration(s), then refresh the PostgREST schema cache and reload the application.';
