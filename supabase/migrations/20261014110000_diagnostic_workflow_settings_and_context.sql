@@ -82,6 +82,85 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_facility_workflow_settings() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_facility_workflow_settings() TO authenticated;
 
+-- Reconcile the imaging worklist with active-facility and payment-release boundaries.
+-- The queue includes unpaid rows for visibility, but reports and actions remain gated.
+CREATE OR REPLACE FUNCTION public.get_imaging_workspace(_limit integer DEFAULT 200)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  facility uuid := public.current_user_facility_id();
+  result jsonb;
+  v_department text;
+BEGIN
+  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  SELECT NULLIF(lower(btrim(p.department)), '') INTO v_department
+  FROM public.profiles p WHERE p.id = uid;
+
+  IF NOT (
+    public.has_role(uid, 'admin')
+    OR (public.has_role(uid, 'radiologist') AND (v_department IS NULL OR v_department = 'radiology'))
+    OR (public.has_role(uid, 'radiology_technician') AND (v_department IS NULL OR v_department = 'radiology'))
+  ) THEN
+    RAISE EXCEPTION 'Imaging operational workspace access is not permitted';
+  END IF;
+  IF facility IS NULL THEN RAISE EXCEPTION 'Select an active facility to access the imaging workspace'; END IF;
+
+  _limit := LEAST(GREATEST(COALESCE(_limit, 200), 1), 500);
+
+  SELECT pg_catalog.jsonb_build_object(
+    'patients', COALESCE((
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(p) ORDER BY p.first_name, p.last_name)
+      FROM (
+        SELECT id, first_name, last_name, patient_code
+        FROM public.patients
+        WHERE facility_id = facility AND status <> 'inactive'
+        ORDER BY first_name, last_name
+        LIMIT _limit
+      ) p
+    ), '[]'::jsonb),
+    'orders', COALESCE((
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(x) ORDER BY x.created_at DESC)
+      FROM (
+        SELECT io.id, io.patient_id, io.encounter_id, io.modality, io.study_name,
+          io.body_site, io.priority, io.clinical_indication, io.amount, io.status,
+          io.service_order_id, so.status AS billing_status, io.requested_by,
+          io.performed_by, io.report, io.impression, io.created_at, io.updated_at,
+          pg_catalog.jsonb_build_object(
+            'id', p.id, 'first_name', p.first_name, 'last_name', p.last_name,
+            'patient_code', p.patient_code
+          ) AS patient
+        FROM public.imaging_orders io
+        JOIN public.patients p ON p.id = io.patient_id AND p.facility_id = facility
+        LEFT JOIN LATERAL (
+          SELECT s.id, s.status
+          FROM public.service_orders s
+          WHERE (s.id = io.service_order_id OR s.related_entity_id = io.id)
+            AND s.patient_id = io.patient_id
+            AND s.facility_id = facility
+            AND lower(s.department) IN ('radiology', 'imaging')
+          ORDER BY s.created_at DESC
+          LIMIT 1
+        ) so ON true
+        WHERE io.facility_id = facility
+          AND io.status <> 'cancelled'
+        ORDER BY io.created_at DESC
+        LIMIT _limit
+      ) x
+    ), '[]'::jsonb)
+  ) INTO result;
+
+  RETURN result;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.get_imaging_workspace(integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_imaging_workspace(integer) TO authenticated;
+
 -- Only facility administrators may change ordering switches; defaults remain deny-by-default.
 CREATE OR REPLACE FUNCTION public.set_facility_workflow_settings(
   _allow_lab_ordering boolean,
