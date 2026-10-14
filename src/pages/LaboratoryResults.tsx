@@ -133,12 +133,18 @@ export default function LaboratoryResults() {
   };
 
   const openAttachment = async (path: string) => {
-    const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
-    if (error) {
-      toast({ title: 'Could not open report attachment', description: error.message, variant: 'destructive' });
-      return;
+    try {
+      const { data, error } = await supabase.storage.from('lab-result-attachments').createSignedUrl(path, 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('The attachment service did not return a secure link. Refresh and retry.');
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast({
+        title: 'Could not open report attachment',
+        description: error instanceof Error ? error.message : 'Check your connection and retry.',
+        variant: 'destructive',
+      });
     }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const abnormalCount = results.filter((result) => result.is_abnormal).length;
