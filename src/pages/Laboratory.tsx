@@ -821,7 +821,7 @@ export default function Laboratory() {
                             </section>
                             <section className="rounded-xl border border-border bg-background p-4">
                               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workflow action</p>
-                              {resultFor === o.id && o.status === 'sample_collected' ? (
+                              {resultFor === o.id && o.status === 'sample_collected' && isLabOrderPaid(o) ? (
                                 <div className="mt-3 space-y-2">
                                   {item?.parameters && item.parameters.length > 0 && (
                                     <div className="overflow-x-auto rounded-lg border border-border">
