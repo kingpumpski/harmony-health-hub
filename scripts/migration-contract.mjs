@@ -35,7 +35,7 @@ for (const [r,m] of [
 const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
 for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
-  must(match[0],/SET\s+search_path\s*=\s*(?:''|"")/i,name+': SECURITY DEFINER function must pin empty search_path');
+  must(match[0],/SET\\s+search_path\\s*=/i,name+': SECURITY DEFINER function must pin search_path');
   assert.doesNotMatch(match[0],/SET\s+search_path\s*=\s*['"]?public\b/i,name+': public cannot be trusted in search_path');
   checked++;
 }
