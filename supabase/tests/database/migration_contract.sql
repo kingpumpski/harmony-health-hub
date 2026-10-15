@@ -26,11 +26,9 @@ select ok(
     CROSS JOIN LATERAL unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg(setting)
     WHERE n.nspname = 'public'
       AND p.prosecdef
-      AND cfg.setting ~* '^search_path="?public"?
-rollback;
-
+      AND (lower(cfg.setting) LIKE 'search_path=public%' OR lower(cfg.setting) LIKE 'search_path="public%')
   ),
-  'no effective public SECURITY DEFINER function may use a public-only search_path'
+  'no effective SECURITY DEFINER function may place public first in search_path'
 );
 
 select * from finish();
