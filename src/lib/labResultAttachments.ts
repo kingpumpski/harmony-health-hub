@@ -47,10 +47,10 @@ export function isNetworkFetchError(error: unknown) {
 }
 
 export const labResultAttachmentsUnavailableMessage =
-  'The deployed database API does not expose laboratory report attachments yet. Apply 20261013180000_laboratory_test_panels.sql, 20261013190000_repair_lab_result_attachments_schema.sql, 20261013200000_laboratory_api_schema_compatibility.sql, and 20261014120000_harden_lab_result_attachment_read_rpc.sql in migration order. Then refresh the PostgREST schema cache and reload the application.';
+  'The deployed database API does not expose laboratory report attachments yet. Apply 20261015060000_reconcile_missing_laboratory_objects.sql to restore the missing laboratory schema and RPCs. If deploying from baseline, apply 20261013180000_laboratory_test_panels.sql, 20261013190000_repair_lab_result_attachments_schema.sql, 20261013200000_laboratory_api_schema_compatibility.sql, and 20261014120000_harden_lab_result_attachment_read_rpc.sql in migration order first. Then refresh the PostgREST schema cache and reload the application.';
 
 export const laboratoryPanelsUnavailableMessage =
-  'The deployed database API does not expose laboratory panel workflows yet. Apply 20261013180000_laboratory_test_panels.sql and its dependent laboratory API/attachment migrations in order, then refresh the PostgREST schema cache and reload the application.';
+  'The deployed database API does not expose laboratory panel workflows yet. Apply 20261015060000_reconcile_missing_laboratory_objects.sql to restore the missing panel schema and RPCs. If deploying from baseline, apply 20261013180000_laboratory_test_panels.sql and its dependent laboratory API/attachment migrations in order first, then refresh the PostgREST schema cache and reload the application.';
 
 export const laboratoryNetworkUnavailableMessage =
   'The laboratory service could not be reached. Check the network connection and Supabase service status, then refresh to retry.';

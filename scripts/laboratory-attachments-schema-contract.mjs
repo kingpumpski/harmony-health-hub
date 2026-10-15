@@ -5,6 +5,9 @@ const panelMigration = readFileSync(new URL('../supabase/migrations/202610131800
 const migration = readFileSync(new URL('../supabase/migrations/20261013190000_repair_lab_result_attachments_schema.sql', import.meta.url), 'utf8');
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
 const attachmentReadHardening = readFileSync(new URL('../supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql', import.meta.url), 'utf8');
+const missingObjectReconciliation = readFileSync(new URL('../supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql', import.meta.url), 'utf8');
+const missingObjectDatabaseContract = readFileSync(new URL('../supabase/tests/database/laboratory_missing_objects_contract.sql', import.meta.url), 'utf8');
+const migrationWorkflow = readFileSync(new URL('../.github/workflows/supabase-migrations.yml', import.meta.url), 'utf8');
 const inpatientCompatibility = readFileSync(new URL('../supabase/migrations/20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility.sql', import.meta.url), 'utf8');
 const approvalReconciliation = readFileSync(new URL('../supabase/migrations/20261014170000_reassert_lab_result_approval_after_schema_reconciliation.sql', import.meta.url), 'utf8');
 const inpatientPage = readFileSync(new URL('../src/pages/InpatientBilling.tsx', import.meta.url), 'utf8');
@@ -39,6 +42,20 @@ assert.match(attachmentReadHardening, /lo\.facility_id = a\.facility_id/, 'attac
 assert.match(attachmentReadHardening, /lr\.lab_order_id = lo\.id[\s\S]*lr\.patient_id = lo\.patient_id[\s\S]*lr\.facility_id = lo\.facility_id/, 'linked results must match order, patient, and facility lineage');
 assert.match(attachmentReadHardening, /LIMIT 1000/, 'attachment read RPC must bound returned metadata rows');
 assert.match(attachmentReadHardening, /REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/, 'attachment RPC must not be executable by public or anonymous roles');
+assert.match(missingObjectReconciliation, /CREATE TABLE IF NOT EXISTS public\.lab_test_groups/, 'reconciliation migration must restore missing laboratory panels idempotently');
+assert.match(missingObjectReconciliation, /CREATE TABLE IF NOT EXISTS public\.lab_test_group_items/, 'reconciliation migration must restore panel membership idempotently');
+assert.match(missingObjectReconciliation, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups/, 'reconciliation migration must restore the panel group order field');
+assert.match(missingObjectReconciliation, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders/, 'reconciliation migration must restore parent order lineage');
+assert.match(missingObjectReconciliation, /ADD COLUMN IF NOT EXISTS sample_quantity text/, 'reconciliation migration must restore sample quantity');
+assert.match(missingObjectReconciliation, /CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/, 'reconciliation migration must restore the attachment metadata table');
+assert.match(missingObjectReconciliation, /CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups\([\s\S]*_include_inactive boolean DEFAULT false/, 'reconciliation migration must restore the laboratory panel RPC');
+assert.match(missingObjectReconciliation, /CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/, 'reconciliation migration must restore the attachment RPC');
+assert.match(missingObjectReconciliation, /REVOKE ALL ON FUNCTION public\.get_laboratory_test_groups\(boolean\) FROM PUBLIC, anon/, 'panel RPC must not be publicly or anonymously executable');
+assert.match(missingObjectReconciliation, /REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/, 'attachment RPC must not be publicly or anonymously executable');
+assert.match(missingObjectReconciliation, /NOTIFY pgrst, 'reload schema'/, 'reconciliation migration must refresh the PostgREST schema cache');
+assert.match(missingObjectDatabaseContract, /to_regprocedure\('public\.get_laboratory_test_groups\(boolean\)'\)/, 'database contract must verify the exact panel RPC signature');
+assert.match(missingObjectDatabaseContract, /to_regprocedure\('public\.get_lab_result_attachments\(uuid\[\]\)'\)/, 'database contract must verify the exact attachment RPC signature');
+assert.match(migrationWorkflow, /supabase test db --linked supabase\/tests\/database\/laboratory_missing_objects_contract\.sql/, 'production migration verification must run the laboratory missing-object contract');
 assert.match(compatibilityMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_test_group\(_include_inactive boolean/, 'compatibility RPC must preserve the reported singular panel function name');
 assert.match(compatibilityMigration, /JOIN public\.patients p ON p\.id=lo\.patient_id AND p\.facility_id=v_facility/, 'attachment reads must verify patient facility scope');
 assert.match(compatibilityMigration, /so\.status IN \('released','in_progress','completed'\)/, 'attachment reads must require a released laboratory service order');
@@ -55,6 +72,7 @@ assert.match(encountersPage, /get_laboratory_test_groups RPC is unavailable/, 'e
 assert.match(labPage, /get_lab_result_attachments RPC is unavailable/, 'laboratory workspace must log the underlying missing attachment RPC');
 assert.match(resultsPage, /get_lab_result_attachments RPC is unavailable/, 'clinician results must log the underlying missing attachment RPC');
 assert.match(helper, /20261014120000_harden_lab_result_attachment_read_rpc\.sql/, 'attachment recovery guidance must include the latest RPC hardening migration');
+assert.match(helper, /20261015060000_reconcile_missing_laboratory_objects\.sql/, 'client recovery guidance must identify the missing-object reconciliation migration');
 assert.match(labPage, /isMissingLabResultAttachmentsTable/, 'laboratory workspace must handle an unapplied attachment schema');
 assert.match(resultsPage, /isMissingLabResultAttachmentsTable/, 'clinician results must handle an unapplied attachment schema');
 assert.match(encountersPage, /isMissingLaboratoryPanelFunction/, 'encounter ordering must tolerate a missing panel RPC without disabling individual tests');
