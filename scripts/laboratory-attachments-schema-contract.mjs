@@ -6,6 +6,7 @@ const migration = readFileSync(new URL('../supabase/migrations/20261013190000_re
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
 const attachmentReadHardening = readFileSync(new URL('../supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql', import.meta.url), 'utf8');
 const missingObjectReconciliation = readFileSync(new URL('../supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql', import.meta.url), 'utf8');
+const attachmentColumnReconciliation = readFileSync(new URL('../supabase/migrations/20261015070000_reconcile_lab_result_attachment_columns.sql', import.meta.url), 'utf8');
 const missingObjectDatabaseContract = readFileSync(new URL('../supabase/tests/database/laboratory_missing_objects_contract.sql', import.meta.url), 'utf8');
 const migrationWorkflow = readFileSync(new URL('../.github/workflows/supabase-migrations.yml', import.meta.url), 'utf8');
 const inpatientCompatibility = readFileSync(new URL('../supabase/migrations/20261014160000_inpatient_discharge_bill_legacy_rpc_compatibility.sql', import.meta.url), 'utf8');
@@ -53,6 +54,13 @@ assert.match(missingObjectReconciliation, /CREATE OR REPLACE FUNCTION public\.ge
 assert.match(missingObjectReconciliation, /REVOKE ALL ON FUNCTION public\.get_laboratory_test_groups\(boolean\) FROM PUBLIC, anon/, 'panel RPC must not be publicly or anonymously executable');
 assert.match(missingObjectReconciliation, /REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/, 'attachment RPC must not be publicly or anonymously executable');
 assert.match(missingObjectReconciliation, /NOTIFY pgrst, 'reload schema'/, 'reconciliation migration must refresh the PostgREST schema cache');
+assert.match(attachmentColumnReconciliation, /ADD COLUMN IF NOT EXISTS lab_order_id uuid/, 'attachment reconciliation must restore missing attachment columns');
+assert.match(attachmentColumnReconciliation, /Existing laboratory attachment ids contain nulls or duplicates/, 'attachment reconciliation must validate legacy primary-key values');
+assert.match(attachmentColumnReconciliation, /Map existing values from verified source records/, 'attachment reconciliation must not invent missing legacy metadata');
+assert.match(attachmentColumnReconciliation, /lr\.patient_id IS DISTINCT FROM lo\.patient_id[\s\S]*lr\.facility_id IS DISTINCT FROM lo\.facility_id/, 'attachment reconciliation must preserve result lineage');
+assert.match(attachmentColumnReconciliation, /ENABLE ROW LEVEL SECURITY/, 'attachment reconciliation must preserve row-level security');
+assert.match(attachmentColumnReconciliation, /NOTIFY pgrst, 'reload schema'/, 'attachment reconciliation must refresh the PostgREST schema cache');
+assert.match(missingObjectDatabaseContract, /lab_result_attachments', 'storage_path'/, 'database contract must verify reconciled attachment fields');
 assert.match(missingObjectDatabaseContract, /to_regprocedure\('public\.get_laboratory_test_groups\(boolean\)'\)/, 'database contract must verify the exact panel RPC signature');
 assert.match(missingObjectDatabaseContract, /to_regprocedure\('public\.get_lab_result_attachments\(uuid\[\]\)'\)/, 'database contract must verify the exact attachment RPC signature');
 assert.match(migrationWorkflow, /supabase test db --linked supabase\/tests\/database\/laboratory_missing_objects_contract\.sql/, 'production migration verification must run the laboratory missing-object contract');

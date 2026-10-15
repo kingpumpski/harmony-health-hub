@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(18);
 
 select has_table(
   'public',
@@ -19,6 +19,17 @@ select has_table(
   'lab_result_attachments',
   'laboratory result attachment metadata table must exist'
 );
+
+select has_column('public', 'lab_result_attachments', 'id', 'attachment id must exist');
+select has_column('public', 'lab_result_attachments', 'lab_order_id', 'attachment order link must exist');
+select has_column('public', 'lab_result_attachments', 'lab_result_id', 'attachment result link must exist');
+select has_column('public', 'lab_result_attachments', 'facility_id', 'attachment facility scope must exist');
+select has_column('public', 'lab_result_attachments', 'storage_path', 'attachment storage path must exist');
+select has_column('public', 'lab_result_attachments', 'file_name', 'attachment file name must exist');
+select has_column('public', 'lab_result_attachments', 'mime_type', 'attachment MIME type must exist');
+select has_column('public', 'lab_result_attachments', 'file_size_bytes', 'attachment file size must exist');
+select has_column('public', 'lab_result_attachments', 'uploaded_by', 'attachment uploader must exist');
+select has_column('public', 'lab_result_attachments', 'created_at', 'attachment creation timestamp must exist');
 
 select has_column(
   'public',
