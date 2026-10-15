@@ -34,7 +34,10 @@ for (const [r,m] of [
 ]) must(attachment,r,m);
 const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.([a-zA-Z0-9_]+)\s*\([\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
-for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
+for (const {name,source} of migrations) {
+  // SQL comments may mention SECURITY DEFINER; they must not influence executable-code checks.
+  const executableSource = source.replace(/--[^\\n]*/g, '');
+  for (const match of executableSource.matchAll(fn)) {
   // Inspect one function definition at a time; never let a later SECURITY DEFINER
   // declaration make an earlier trigger/helper look security-definer by accident.
   if (!/\bSECURITY DEFINER\b/i.test(match[0])) continue;
@@ -50,6 +53,7 @@ for (const {name,source} of migrations) for (const match of source.matchAll(fn))
     assert.ok(hardenedLater, name+': unsafe SECURITY DEFINER search_path lacks later hardening: '+functionName);
   }
   checked++;
+  }
 }
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
