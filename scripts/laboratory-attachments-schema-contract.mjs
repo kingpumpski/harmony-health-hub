@@ -21,8 +21,8 @@ assert.match(panelMigration, /CREATE TABLE IF NOT EXISTS public\.lab_test_groups
 assert.match(panelMigration, /facility_id uuid NOT NULL REFERENCES public\.healthcare_facilities\(id\)/, 'laboratory panels must reference the canonical healthcare_facilities table');
 assert.doesNotMatch(panelMigration, /REFERENCES public\.facilities\(id\)/, 'panel migration must not reference the nonexistent legacy facilities table');
 assert.match(panelMigration, /CREATE TABLE IF NOT EXISTS public\.lab_test_group_items/, 'panel migration must create or reconcile panel-to-test relationships');
-assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\\(id\\)/, 'lab orders must support panel membership idempotently');
-assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\\.lab_orders\\(id\\)/, 'lab orders must support panel child-order lineage idempotently');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'lab orders must support panel membership idempotently');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'lab orders must support panel child-order lineage idempotently');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups/, 'panel migration must provide the frontend read RPC');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.save_laboratory_test_group/, 'panel migration must provide the panel save RPC');
 assert.match(panelMigration, /SET search_path = ''/, 'panel security-definer functions must pin an empty search path');
