@@ -37,23 +37,40 @@ BEGIN
 END
 $bulk_import_reconcile$;
 
-UPDATE public.bulk_import_jobs
-SET entity_type = CASE entity
-  WHEN 'patients' THEN 'patients'
-  WHEN 'pharmacy_inventory' THEN 'pharmacy_inventory'
-  WHEN 'icd_codes' THEN 'icd_codes'
-  WHEN 'staff' THEN 'staff'
-  ELSE entity
+DO $bulk_import_legacy_columns$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='entity'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.bulk_import_jobs
+      SET entity_type = CASE entity
+        WHEN 'patients' THEN 'patients'
+        WHEN 'pharmacy_inventory' THEN 'pharmacy_inventory'
+        WHEN 'icd_codes' THEN 'icd_codes'
+        WHEN 'staff' THEN 'staff'
+        ELSE entity
+      END
+      WHERE entity_type IS NULL
+    $sql$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='filename'
+  ) THEN
+    EXECUTE 'UPDATE public.bulk_import_jobs SET file_name = filename WHERE file_name IS NULL AND filename IS NOT NULL';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='inserted_rows'
+  ) THEN
+    EXECUTE 'UPDATE public.bulk_import_jobs SET successful_rows = inserted_rows WHERE successful_rows = 0 AND inserted_rows IS NOT NULL';
+  END IF;
 END
-WHERE entity_type IS NULL;
-
-UPDATE public.bulk_import_jobs
-SET file_name = filename
-WHERE file_name IS NULL AND filename IS NOT NULL;
-
-UPDATE public.bulk_import_jobs
-SET successful_rows = inserted_rows
-WHERE successful_rows = 0 AND inserted_rows IS NOT NULL;
+$bulk_import_legacy_columns$;
 
 ALTER TABLE public.bulk_import_jobs
   ALTER COLUMN entity_type SET NOT NULL;
