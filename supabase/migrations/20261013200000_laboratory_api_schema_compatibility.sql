@@ -1,5 +1,7 @@
 BEGIN;
 
+DROP FUNCTION IF EXISTS public.get_lab_result_attachments(uuid[]);
+
 CREATE OR REPLACE FUNCTION public.get_lab_result_attachments(_lab_order_ids uuid[])
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -44,6 +46,7 @@ $function$;
 
 -- Keep the previously reported singular RPC spelling available to older
 -- browser bundles while all current clients use the plural canonical name.
+DROP FUNCTION IF EXISTS public.get_laboratory_test_group(boolean);
 CREATE OR REPLACE FUNCTION public.get_laboratory_test_group(_include_inactive boolean DEFAULT false)
 RETURNS jsonb
 LANGUAGE sql
