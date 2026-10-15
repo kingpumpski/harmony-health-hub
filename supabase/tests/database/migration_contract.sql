@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(17);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -8,12 +8,12 @@ select has_column('public','lab_orders','parent_order_id','lab_orders.parent_ord
 select has_column('public','lab_test_catalogue','sample_quantity','catalogue sample_quantity exists');
 select has_index('public','lab_test_groups','lab_test_groups_facility_code_uidx','facility/code uniqueness exists');
 select has_index('public','lab_orders','lab_orders_panel_child_test_uidx','panel child idempotency index exists');
-select has_index('public','lab_result_attachments','lab_result_attachments_order_created_idx','attachment lookup index exists');
+select ok(exists(select 1 from pg_index i join pg_class t on t.oid=i.indrelid join pg_class ix on ix.oid=i.indexrelid join pg_attribute a on a.attrelid=t.oid and a.attname='storage_path' where t.oid='public.lab_result_attachments'::regclass and i.indisunique and a.attnum=any(i.indkey)),'attachment storage paths are unique');
 select ok((select p.prorettype='jsonb'::regtype from pg_proc p where p.oid=to_regprocedure('public.get_laboratory_test_groups(boolean)')),'panel RPC return type is jsonb');
 select ok((select p.prorettype='jsonb'::regtype from pg_proc p where p.oid=to_regprocedure('public.get_lab_result_attachments(uuid[])')),'attachment RPC return type is jsonb');
 select ok((select p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p where p.oid=to_regprocedure('public.get_lab_result_attachments(uuid[])')),'attachment RPC pins empty search_path');
 select ok(not has_function_privilege('anon','public.get_lab_result_attachments(uuid[])','EXECUTE'),'anon cannot execute attachment RPC');
-select ok(not has_function_privilege('public','public.get_lab_result_attachments(uuid[])','EXECUTE'),'PUBLIC cannot execute attachment RPC');
+select ok(not exists(select 1 from pg_proc p cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid=to_regprocedure('public.get_lab_result_attachments(uuid[])') and a.grantee=0 and a.privilege_type='EXECUTE'),'PUBLIC cannot execute attachment RPC');
 select ok(has_function_privilege('authenticated','public.get_lab_result_attachments(uuid[])','EXECUTE'),'authenticated can invoke guarded attachment RPC');
 select ok((select relrowsecurity from pg_class where oid='public.lab_result_attachments'::regclass),'attachment metadata has RLS enabled');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and qual ilike '%current_user_facility_id%'),'attachment policies retain facility scope');
