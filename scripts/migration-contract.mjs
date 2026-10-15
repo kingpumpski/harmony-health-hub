@@ -36,7 +36,7 @@ const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.([a-zA-Z0-9_]+)\s*\([\s\S]*?
 let checked=0;
 for (const {name,source} of migrations) {
   // SQL comments may mention SECURITY DEFINER; they must not influence executable-code checks.
-  const executableSource = source.replace(/--[^\\n]*/g, '');
+  const executableSource = source.replace(/--.*$/gm, '');
   for (const match of executableSource.matchAll(fn)) {
   // Inspect one function definition at a time; never let a later SECURITY DEFINER
   // declaration make an earlier trigger/helper look security-definer by accident.
