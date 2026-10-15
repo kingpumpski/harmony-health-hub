@@ -114,19 +114,6 @@ ALTER TABLE public.transfusion_records
   ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
   ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false;
 
-ALTER TABLE public.insurance_claims
-  ADD COLUMN IF NOT EXISTS invoice_id UUID,
-  ADD COLUMN IF NOT EXISTS member_number TEXT,
-  ADD COLUMN IF NOT EXISTS claim_number TEXT,
-  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
-  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS adjudicated_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
-
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
@@ -195,6 +182,19 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS invoice_id UUID,
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS claim_number TEXT,
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS adjudicated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 
