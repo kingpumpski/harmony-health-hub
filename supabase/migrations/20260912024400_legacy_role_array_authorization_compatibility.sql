@@ -21,7 +21,7 @@ GRANT EXECUTE ON FUNCTION public.has_any_role(uuid, public.app_role[]) TO authen
 -- Dynamic invocation intentionally defers resolution of the established
 -- single-role helper until this function is called, because that helper is
 -- introduced by a later migration in the historical chain.
-CREATE OR REPLACE FUNCTION public.current_user_has_role(p_roles public.app_role[])
+CREATE OR REPLACE FUNCTION public.current_user_has_any_role(p_roles public.app_role[])
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE
@@ -46,5 +46,5 @@ BEGIN
   RETURN false;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.current_user_has_role(public.app_role[]) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role[]) TO authenticated;
+REVOKE ALL ON FUNCTION public.current_user_has_any_role(public.app_role[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_any_role(public.app_role[]) TO authenticated;
