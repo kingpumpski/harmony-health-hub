@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.audit_logs
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS user_id uuid,
   ADD COLUMN IF NOT EXISTS action text,
   ADD COLUMN IF NOT EXISTS table_name text,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.sync_queue (
   synced boolean DEFAULT false
 );
 ALTER TABLE public.sync_queue
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS table_name text,
   ADD COLUMN IF NOT EXISTS payload jsonb,
   ADD COLUMN IF NOT EXISTS synced boolean DEFAULT false;
@@ -38,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.ai_symptom_icd_map (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.ai_symptom_icd_map
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS symptom text,
   ADD COLUMN IF NOT EXISTS icd_code text REFERENCES public.icd_codes(code) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS confidence numeric,
@@ -52,6 +55,7 @@ CREATE TABLE IF NOT EXISTS public.lab_tests (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.lab_tests
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS test_name text,
   ADD COLUMN IF NOT EXISTS loinc_code text,
   ADD COLUMN IF NOT EXISTS specimen text,
