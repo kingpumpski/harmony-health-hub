@@ -18,8 +18,8 @@ for (const [table, columns] of Object.entries({
   must(all,new RegExp('CREATE TABLE(?: IF NOT EXISTS)? public\\.'+table+'\\b|ALTER TABLE public\\.'+table+'\\b','i'),'Migration chain must define/reconcile public.'+table);
   for (const c of columns) must(all,new RegExp('\\b'+c+'\\b','i'),'Required column missing from migration source: '+table+'.'+c);
 }
-for (const [idx,table] of [['lab_test_groups_facility_code_uidx','lab_test_groups'],['lab_orders_panel_child_test_uidx','lab_orders'],['lab_result_attachments_order_created_idx','lab_result_attachments']]) {
-  must(all,new RegExp('CREATE (?:UNIQUE )?INDEX(?: IF NOT EXISTS)?\\s+'+idx+'\\s+ON public\\.'+table,'i'),'Required index missing: '+idx);
+for (const [idx,table] of [['lab_test_groups_facility_code_uidx','lab_test_groups'],['lab_orders_panel_child_test_uidx','lab_orders'],['lab_result_attachments_storage_path_key','lab_result_attachments']]) {
+  if (idx === 'lab_result_attachments_storage_path_key') { must(all,/storage_path text NOT NULL UNIQUE/i,'Attachment storage_path must be unique'); } else { must(all,new RegExp('CREATE (?:UNIQUE )?INDEX(?: IF NOT EXISTS)?\\s+'+idx+'\\s+ON public\\.'+table,'i'),'Required index missing: '+idx); }
 }
 for (const [sig,ret] of [['get_laboratory_test_groups\\(boolean\\)','jsonb'],['get_lab_result_attachments\\(uuid\\[\\]\\)','jsonb']]) {
   must(all,new RegExp('CREATE OR REPLACE FUNCTION public\\.'+sig+'[\\s\\S]*?RETURNS\\s+'+ret+'[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET search_path\\s*=\\s*[\'\\"]{2}','i'),'RPC contract must pin SECURITY DEFINER search_path and expected return type: '+sig);
