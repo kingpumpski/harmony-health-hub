@@ -3,6 +3,26 @@ BEGIN;
 ALTER TABLE public.lab_test_catalogue
   ADD COLUMN IF NOT EXISTS sample_quantity text;
 
+-- Reconcile installations where sample_quantity was provisioned as numeric.
+-- The canonical catalogue API represents this optional quantity as text.
+DO $sample_quantity_type$
+DECLARE
+  v_type text;
+BEGIN
+  SELECT data_type INTO v_type
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'lab_test_catalogue'
+    AND column_name = 'sample_quantity';
+
+  IF v_type IS DISTINCT FROM 'text' THEN
+    ALTER TABLE public.lab_test_catalogue
+      ALTER COLUMN sample_quantity TYPE text
+      USING sample_quantity::text;
+  END IF;
+END;
+$sample_quantity_type$;
+
 CREATE OR REPLACE FUNCTION public.get_laboratory_workspace(_limit integer DEFAULT 200)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -121,12 +141,14 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
+DROP POLICY IF EXISTS lab_result_attachments_facility_read ON public.lab_result_attachments;
 CREATE POLICY lab_result_attachments_facility_read
   ON public.lab_result_attachments FOR SELECT TO authenticated
   USING (
     facility_id = (SELECT public.current_user_facility_id())
     AND (SELECT public.current_user_is_clinical_staff())
   );
+DROP POLICY IF EXISTS lab_result_attachments_technician_insert ON public.lab_result_attachments;
 CREATE POLICY lab_result_attachments_technician_insert
   ON public.lab_result_attachments FOR INSERT TO authenticated
   WITH CHECK (
@@ -154,6 +176,7 @@ ON CONFLICT (id) DO UPDATE
 SET public = false, file_size_limit = 15728640,
     allowed_mime_types = ARRAY['application/pdf','image/jpeg','image/png'];
 
+DROP POLICY IF EXISTS lab_result_attachments_storage_read ON storage.objects;
 CREATE POLICY lab_result_attachments_storage_read
   ON storage.objects FOR SELECT TO authenticated
   USING (
@@ -165,6 +188,7 @@ CREATE POLICY lab_result_attachments_storage_read
         AND (SELECT public.current_user_is_clinical_staff())
     )
   );
+DROP POLICY IF EXISTS lab_result_attachments_storage_insert ON storage.objects;
 CREATE POLICY lab_result_attachments_storage_insert
   ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (
