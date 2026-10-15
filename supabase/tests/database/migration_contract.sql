@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(19);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
