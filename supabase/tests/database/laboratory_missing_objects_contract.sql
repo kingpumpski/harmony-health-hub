@@ -153,7 +153,8 @@ select ok(
 );
 
 select ok(
-  (SELECT pg_get_constraintdef(oid) ILIKE '%BETWEEN 1 AND 15728640%'
+  (SELECT pg_get_constraintdef(oid) ILIKE '%file_size_bytes >= 1%'
+          AND pg_get_constraintdef(oid) ILIKE '%file_size_bytes <= 15728640%'
    FROM pg_constraint
    WHERE conrelid='public.lab_result_attachments'::regclass
      AND conname='lab_result_attachments_file_size_bytes_check'),
