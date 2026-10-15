@@ -40,7 +40,7 @@ export default function AdminFinancialOverview() {
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Facility-level financial indicators for oversight. Invoice editing, payment collection, tariff changes and claim processing are not available in this view.</p>
       </div>
       <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => void load()} disabled={loading} aria-label="Refresh financial overview" title="Refresh financial overview">
-        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> <span className="hidden sm:inline">Refresh</span>
+        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
       </button>
     </header>
     {error && <section role="alert" className="rounded-xl border border-warning/40 bg-warning/5 p-4"><p className="text-sm font-medium">Financial overview unavailable</p><p className="mt-1 text-sm text-muted-foreground">{error}</p><button className="btn-secondary mt-3" onClick={() => void load()}>Retry</button></section>}
