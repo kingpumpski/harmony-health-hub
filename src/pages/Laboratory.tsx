@@ -701,7 +701,7 @@ export default function Laboratory() {
                       (() => {
                         const panelTests = orders.filter((entry) => entry.parent_order_id === o.parent_order_id);
                         const panelComplete = panelTests.length > 0 && panelTests.every((entry) => entry.status === 'approved');
-                        return <tr className="bg-primary/5"><td colSpan={7} className="py-2 text-xs font-semibold text-primary">
+                        return <tr className="bg-primary/5"><td colSpan={8} className="py-2 text-xs font-semibold text-primary">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-primary/20 px-2 py-0.5">Panel</span>
                             <span>{o.panel_name ?? 'Laboratory panel'}</span>
@@ -737,7 +737,7 @@ export default function Laboratory() {
                     </tr>
                     {expandedOrderId === o.id && (
                       <tr key={`${o.id}-details`} className="bg-muted/20">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                             <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 lg:col-span-2">
                               <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Laboratory report workspace</p><h3 className="mt-1 text-lg font-semibold">{o.test_name}</h3></div><ClinicalStatusBadge status={result?.status ?? o.status} /></div>
