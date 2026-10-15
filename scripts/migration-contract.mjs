@@ -42,9 +42,10 @@ for (const {name,source} of migrations) for (const match of source.matchAll(fn))
     // Historical definitions can be superseded by reviewed hardening migrations.
     // The live database contract below independently validates the effective catalog path.
     const later = migrations.filter(candidate => candidate.name > name).map(candidate => candidate.source).join('\n');
+    const hardeningPath = "(?:pg_catalog\\s*,\\s*public|''|\"\")";
     const hardenedLater =
-      new RegExp(String.raw\`ALTER\\s+FUNCTION\\s+public\\.\${functionName}\\s*\\([^;]*?\\)\\s+SET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*public|''|"")\`, 'i').test(later)
-      || new RegExp(String.raw\`CREATE(?: OR REPLACE)? FUNCTION\\s+public\\.\${functionName}\\s*\\([^)]*\\)[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*public|''|"")\`, 'i').test(later);
+      new RegExp('ALTER\\s+FUNCTION\\s+public\\.' + functionName + '\\s*\\([^;]*?\\)\\s+SET\\s+search_path\\s*=\\s*' + hardeningPath, 'i').test(later)
+      || new RegExp('CREATE(?: OR REPLACE)? FUNCTION\\s+public\\.' + functionName + '\\s*\\([^)]*\\)[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET\\s+search_path\\s*=\\s*' + hardeningPath, 'i').test(later);
     assert.ok(hardenedLater, name+': unsafe SECURITY DEFINER search_path lacks later hardening: '+functionName);
   }
   checked++;
