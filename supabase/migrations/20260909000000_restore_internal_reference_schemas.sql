@@ -69,7 +69,7 @@ BEGIN
     EXECUTE $view$
       CREATE VIEW public.v_patient_diagnosis_full AS
       SELECT
-        d.category,
+        i.category,
         d.diagnosis,
         d.id AS diagnosis_id,
         d.encounter_id,
