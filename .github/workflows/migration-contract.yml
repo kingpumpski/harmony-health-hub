@@ -36,7 +36,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Validate schema, security and legacy compatibility contracts
+      - name: Validate legacy schema compatibility contract and security
         run: node scripts/migration-contract.mjs
 
   database-contract:
