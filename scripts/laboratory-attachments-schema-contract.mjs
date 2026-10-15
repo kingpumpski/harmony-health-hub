@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+const catalogueMigration = readFileSync(new URL('../supabase/migrations/20261013170000_lab_paid_queue_reports_and_catalogue.sql', import.meta.url), 'utf8');
 const panelMigration = readFileSync(new URL('../supabase/migrations/20261013180000_laboratory_test_panels.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20261013190000_repair_lab_result_attachments_schema.sql', import.meta.url), 'utf8');
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
