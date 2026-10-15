@@ -109,4 +109,10 @@ assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS facility_id uuid[\s\S]*AD
 assert.match(panelMigration, /DROP FUNCTION IF EXISTS public\.get_laboratory_test_groups\(boolean\)/, 'panel RPC migration must replace incompatible legacy return types safely');
 assert.match(compatibilityMigration, /DROP FUNCTION IF EXISTS public\.get_lab_result_attachments\(uuid\[\]\)/, 'attachment RPC migration must replace incompatible legacy table return types safely');
 
+
+assert.match(missingObjectDatabaseContract, /get_laboratory_test_groups\(boolean\).*return JSONB|must return JSONB/, 'database contract must verify the panel RPC JSON return type');
+assert.match(missingObjectDatabaseContract, /get_lab_result_attachments\(uuid\[\]\).*return JSONB|must return JSONB/, 'database contract must verify the attachment RPC JSON return type');
+assert.match(missingObjectDatabaseContract, /must not be executable by anon/, 'database contract must verify anonymous attachment RPC denial');
+assert.match(missingObjectDatabaseContract, /panel groups must expose the canonical group name/, 'database contract must verify canonical panel columns');
+
 console.log('Laboratory attachment schema repair contract passed.');
