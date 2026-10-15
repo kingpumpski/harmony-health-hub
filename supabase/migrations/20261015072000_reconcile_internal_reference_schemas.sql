@@ -105,3 +105,46 @@ $migration$;
 
 ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
 ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+
+-- Apply the lockdown as part of the late repair too, because these objects may
+-- be created on installations where the earlier security migration is already recorded.
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.audit_logs TO authenticated;
+GRANT ALL ON public.audit_logs TO service_role;
+DROP POLICY IF EXISTS "admins read audit logs" ON public.audit_logs;
+CREATE POLICY "admins read audit logs" ON public.audit_logs
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+
+ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.sync_queue TO service_role;
+DROP POLICY IF EXISTS "admins read sync queue" ON public.sync_queue;
+CREATE POLICY "admins read sync queue" ON public.sync_queue
+  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+
+ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
+GRANT ALL ON public.ai_symptom_icd_map TO service_role;
+DROP POLICY IF EXISTS "staff read symptom map" ON public.ai_symptom_icd_map;
+DROP POLICY IF EXISTS "admins write symptom map" ON public.ai_symptom_icd_map;
+DROP POLICY IF EXISTS staff_read_symptom_map ON public.ai_symptom_icd_map;
+DROP POLICY IF EXISTS admins_write_symptom_map ON public.ai_symptom_icd_map;
+CREATE POLICY "staff read symptom map" ON public.ai_symptom_icd_map
+  FOR SELECT TO authenticated USING (public.is_clinical_staff(auth.uid()));
+CREATE POLICY "admins write symptom map" ON public.ai_symptom_icd_map
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.lab_tests TO authenticated;
+GRANT ALL ON public.lab_tests TO service_role;
+DROP POLICY IF EXISTS "staff read lab tests" ON public.lab_tests;
+DROP POLICY IF EXISTS "admins write lab tests" ON public.lab_tests;
+CREATE POLICY "staff read lab tests" ON public.lab_tests
+  FOR SELECT TO authenticated USING (public.is_clinical_staff(auth.uid()));
+CREATE POLICY "admins write lab tests" ON public.lab_tests
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+NOTIFY pgrst, 'reload schema';
