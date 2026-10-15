@@ -13,9 +13,6 @@ CREATE TABLE IF NOT EXISTS public.lab_test_groups (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS lab_test_groups_facility_code_uidx
-  ON public.lab_test_groups(facility_id, lower(group_code));
-
 CREATE TABLE IF NOT EXISTS public.lab_test_group_items (
   group_id uuid NOT NULL REFERENCES public.lab_test_groups(id) ON DELETE CASCADE,
   test_id uuid NOT NULL REFERENCES public.lab_test_catalogue(id) ON DELETE RESTRICT,
@@ -228,6 +225,8 @@ ALTER TABLE public.lab_test_group_items
   ALTER COLUMN test_id SET NOT NULL,
   ALTER COLUMN display_order SET NOT NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_groups_facility_code_uidx
+  ON public.lab_test_groups(facility_id, lower(group_code));
 CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_test_uidx
   ON public.lab_test_group_items(group_id, test_id);
 CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_order_uidx
