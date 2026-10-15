@@ -1,6 +1,6 @@
 begin;
 
-select plan(36);
+select plan(40);
 
 select has_table(
   'public',
@@ -124,6 +124,40 @@ select ok(
   to_regprocedure('public.get_laboratory_test_groups(boolean)') IS NOT NULL
   AND has_function_privilege('authenticated', to_regprocedure('public.get_laboratory_test_groups(boolean)'), 'EXECUTE'),
   'authenticated users must be able to call the panel RPC'
+);
+
+
+
+select ok(
+  (SELECT pg_get_constraintdef(oid) ILIKE '%ON DELETE SET NULL%'
+   FROM pg_constraint
+   WHERE conrelid='public.lab_result_attachments'::regclass
+     AND conname='lab_result_attachments_lab_result_id_fkey'),
+  'deleting a result must preserve attachment metadata by nulling its result link'
+);
+
+select ok(
+  (SELECT pg_get_constraintdef(oid) NOT ILIKE '%ON DELETE CASCADE%'
+   FROM pg_constraint
+   WHERE conrelid='public.lab_result_attachments'::regclass
+     AND conname='lab_result_attachments_facility_id_fkey'),
+  'deleting a facility must not cascade-delete attachment metadata'
+);
+
+select ok(
+  (SELECT pg_get_constraintdef(oid) NOT ILIKE '%ON DELETE SET NULL%'
+   FROM pg_constraint
+   WHERE conrelid='public.lab_result_attachments'::regclass
+     AND conname='lab_result_attachments_uploaded_by_fkey'),
+  'uploader deletion must not violate the required uploaded_by constraint'
+);
+
+select ok(
+  (SELECT pg_get_constraintdef(oid) ILIKE '%BETWEEN 1 AND 15728640%'
+   FROM pg_constraint
+   WHERE conrelid='public.lab_result_attachments'::regclass
+     AND conname='lab_result_attachments_file_size_bytes_check'),
+  'attachment file size must be bounded to 1..15728640 bytes'
 );
 
 select * from finish();
