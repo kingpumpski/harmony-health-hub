@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -18,5 +18,20 @@ select ok(has_function_privilege('authenticated','public.get_lab_result_attachme
 select ok((select relrowsecurity from pg_class where oid='public.lab_result_attachments'::regclass),'attachment metadata has RLS enabled');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and qual ilike '%current_user_facility_id%'),'attachment policies retain facility scope');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and with_check ilike '%service_orders%'),'attachment writes require service-order lineage');
+select ok(
+  NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg(setting)
+    WHERE n.nspname = 'public'
+      AND p.prosecdef
+      AND cfg.setting ~* '^search_path="?public"?
+rollback;
+
+  ),
+  'no effective public SECURITY DEFINER function may use a public-only search_path'
+);
+
 select * from finish();
 rollback;
