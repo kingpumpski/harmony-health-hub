@@ -78,6 +78,11 @@ ALTER TABLE public.lab_test_group_items
   ADD COLUMN IF NOT EXISTS test_id uuid,
   ADD COLUMN IF NOT EXISTS display_order integer;
 
+-- Ensure order-lineage columns exist before validating their foreign keys below.
+ALTER TABLE public.lab_orders
+  ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
+
 -- Keep legacy aliases for inspection but prevent them from blocking writes
 -- through the canonical RPC. Direct table writes remain revoked by RLS/grants.
 DO $legacy_aliases$
@@ -231,10 +236,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_test_uidx
   ON public.lab_test_group_items(group_id, test_id);
 CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_order_uidx
   ON public.lab_test_group_items(group_id, display_order);
-
-ALTER TABLE public.lab_orders
-  ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
 
 CREATE UNIQUE INDEX IF NOT EXISTS lab_orders_panel_child_test_uidx
   ON public.lab_orders(parent_order_id, lab_test_catalogue_id)
