@@ -25,18 +25,6 @@ ALTER TABLE public.bulk_import_jobs
   ADD COLUMN IF NOT EXISTS successful_rows INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 
-DO $bulk_import_reconcile$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM public.bulk_import_jobs
-    WHERE entity_type IS NULL
-      AND entity IS NULL
-  ) THEN
-    RAISE EXCEPTION 'Cannot reconcile bulk_import_jobs: rows have neither entity_type nor legacy entity';
-  END IF;
-END
-$bulk_import_reconcile$;
-
 DO $bulk_import_legacy_columns$
 BEGIN
   IF EXISTS (
