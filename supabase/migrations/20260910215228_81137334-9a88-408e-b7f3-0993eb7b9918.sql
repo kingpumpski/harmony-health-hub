@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_diagnosis_suggestions_suggested_icd
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
 GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
+DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions" ON public.ai_diagnosis_suggestions;
 CREATE POLICY "clinical staff manage ai diagnosis suggestions"
   ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
   USING (public.is_clinical_staff(auth.uid()))
