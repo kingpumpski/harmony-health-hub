@@ -111,8 +111,11 @@ ALTER TABLE public.nursing_care_plans
 ALTER TABLE public.transfusion_records
   ADD COLUMN IF NOT EXISTS encounter_id UUID,
   ADD COLUMN IF NOT EXISTS blood_product TEXT,
+  ADD COLUMN IF NOT EXISTS blood_group TEXT,
+  ADD COLUMN IF NOT EXISTS unit_identifier TEXT,
   ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
-  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS reaction_notes TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
@@ -183,6 +186,7 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
   ADD COLUMN IF NOT EXISTS invoice_id UUID,
   ADD COLUMN IF NOT EXISTS member_number TEXT,
   ADD COLUMN IF NOT EXISTS claim_number TEXT,
