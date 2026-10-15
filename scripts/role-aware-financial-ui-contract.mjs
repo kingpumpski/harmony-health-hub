@@ -15,7 +15,7 @@ const permissions = read('src/lib/permissions.ts');
 
 assert.match(access, /canManageFinancialSettlement = isAccountOfficer/);
 for (const role of ['physiotherapist', 'ophthalmologist', 'dentist', 'dietician']) {
-  const line = permissions.split('\\n').find((entry) => entry.startsWith(`  ${role}:`));
+  const line = permissions.split('\n').find((entry) => entry.startsWith(`  ${role}:`));
   assert.ok(line && !line.includes("'billing'"), `${role} must not receive financial-settlement permission`);
 }
 assert.match(access, /canViewFinancialOverview = isAccountOfficer \|\| isAdmin \|\| isITAdmin \|\| isSystemSuperuser/);
