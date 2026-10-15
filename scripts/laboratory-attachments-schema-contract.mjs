@@ -115,4 +115,9 @@ assert.match(missingObjectDatabaseContract, /get_lab_result_attachments\(uuid\[\
 assert.match(missingObjectDatabaseContract, /must not be executable by anon/, 'database contract must verify anonymous attachment RPC denial');
 assert.match(missingObjectDatabaseContract, /panel groups must expose the canonical group name/, 'database contract must verify canonical panel columns');
 
+
+assert.match(attachmentColumnReconciliation, /DROP CONSTRAINT IF EXISTS lab_result_attachments_lab_result_id_fkey[\s\S]*REFERENCES public\.lab_results\(id\) ON DELETE SET NULL/, 'attachment reconciliation must correct the legacy result deletion action');
+assert.match(attachmentColumnReconciliation, /DROP CONSTRAINT IF EXISTS lab_result_attachments_uploaded_by_fkey[\s\S]*REFERENCES auth\.users\(id\)/, 'attachment reconciliation must align uploader deletion with the NOT NULL contract');
+assert.match(attachmentColumnReconciliation, /CHECK \(file_size_bytes BETWEEN 1 AND 15728640\)/, 'attachment reconciliation must enforce the approved file size range');
+
 console.log('Laboratory attachment schema repair contract passed.');
