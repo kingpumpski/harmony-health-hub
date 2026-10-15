@@ -15,6 +15,55 @@ CREATE TABLE IF NOT EXISTS public.bulk_import_jobs (
   completed_at TIMESTAMPTZ
 );
 
+-- Reconcile the original bulk_import_jobs shape before adding indexes.
+-- The legacy table used entity/filename/inserted_rows and did not include
+-- entity_type/source_format/file_name/successful_rows/completed_at.
+ALTER TABLE public.bulk_import_jobs
+  ADD COLUMN IF NOT EXISTS entity_type TEXT,
+  ADD COLUMN IF NOT EXISTS source_format TEXT NOT NULL DEFAULT 'csv',
+  ADD COLUMN IF NOT EXISTS file_name TEXT,
+  ADD COLUMN IF NOT EXISTS successful_rows INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+DO $bulk_import_reconcile$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.bulk_import_jobs
+    WHERE entity_type IS NULL
+      AND entity IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot reconcile bulk_import_jobs: rows have neither entity_type nor legacy entity';
+  END IF;
+END
+$bulk_import_reconcile$;
+
+UPDATE public.bulk_import_jobs
+SET entity_type = CASE entity
+  WHEN 'patients' THEN 'patients'
+  WHEN 'pharmacy_inventory' THEN 'pharmacy_inventory'
+  WHEN 'icd_codes' THEN 'icd_codes'
+  WHEN 'staff' THEN 'staff'
+  ELSE entity
+END
+WHERE entity_type IS NULL;
+
+UPDATE public.bulk_import_jobs
+SET file_name = filename
+WHERE file_name IS NULL AND filename IS NOT NULL;
+
+UPDATE public.bulk_import_jobs
+SET successful_rows = inserted_rows
+WHERE successful_rows = 0 AND inserted_rows IS NOT NULL;
+
+ALTER TABLE public.bulk_import_jobs
+  ALTER COLUMN entity_type SET NOT NULL;
+
+ALTER TABLE public.bulk_import_jobs
+  DROP CONSTRAINT IF EXISTS bulk_import_jobs_entity_type_check;
+ALTER TABLE public.bulk_import_jobs
+  ADD CONSTRAINT bulk_import_jobs_entity_type_check
+  CHECK (entity_type IN ('patients','pharmacy_inventory','icd_codes','staff'));
+
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
   ON public.bulk_import_jobs(created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
