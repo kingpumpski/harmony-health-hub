@@ -11,6 +11,7 @@ const reportsRoute = read('src/pages/FinancialReportsRoute.tsx');
 const adminOverview = read('src/pages/AdminFinancialOverview.tsx');
 const summaryMigration = read('supabase/migrations/20261015121000_allow_readonly_financial_overview_roles.sql');
 const imaging = read('src/pages/Imaging.tsx');
+const laboratory = read('src/pages/Laboratory.tsx');
 const permissions = read('src/lib/permissions.ts');
 
 assert.match(access, /canManageFinancialSettlement = isAccountOfficer/);
@@ -50,5 +51,8 @@ assert.match(imaging, /const paymentStatusLabel = \(order: ImagingOrder\)/);
 assert.match(imaging, /key: 'paymentStatus', label: 'Payment status'/);
 assert.match(imaging, /return 'Not required'/);
 assert.match(imaging, /return 'Paid'/);
+assert.match(laboratory, /const labPaymentStatusLabel = \(order: LabOrder\)/);
+assert.match(laboratory, /<th scope=\"col\">Payment status<\/th>/);
+assert.match(laboratory, /labPaymentStatusLabel\(o\)/);
 
 console.log('Role-aware financial UI contract passed.');
