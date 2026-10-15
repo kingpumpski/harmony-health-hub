@@ -32,11 +32,21 @@ for (const [r,m] of [
   [/REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/i,'attachment RPC must revoke PUBLIC and anon'],
   [/GRANT EXECUTE ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) TO authenticated/i,'attachment RPC must grant only authenticated execution'],
 ]) must(attachment,r,m);
-const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
+const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.([a-zA-Z0-9_]+)\s*\([\s\S]*?\)[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
 for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
   must(match[0],/SET\s+search_path\s*=/i,name+': SECURITY DEFINER function must pin search_path');
-  assert.doesNotMatch(match[0],/SET\s+search_path\s*=\s*['"]?public\b/i,name+': public cannot be trusted in search_path');
+  const functionName = match[1];
+  const unsafePublicOnlyPath = /SET\s+search_path\s*=\s*['"]?public\b/i.test(match[0]);
+  if (unsafePublicOnlyPath) {
+    // Historical definitions can be superseded by reviewed hardening migrations.
+    // The live database contract below independently validates the effective catalog path.
+    const later = migrations.filter(candidate => candidate.name > name).map(candidate => candidate.source).join('\n');
+    const hardenedLater =
+      new RegExp("ALTER\\s+FUNCTION\\s+public\\." + functionName + "\\s*\\([^;]*?\\)\\s+SET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*public|''|\\"\\" )", "i").test(later)
+      || new RegExp("CREATE(?: OR REPLACE)? FUNCTION\\s+public\\." + functionName + "\\s*\\([^)]*\\)[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET\\s+search_path\\s*=\\s*(?:pg_catalog\\s*,\\s*public|''|\\"\\" )", "i").test(later);
+    assert.ok(hardenedLater, name+': unsafe SECURITY DEFINER search_path lacks later hardening: '+functionName);
+  }
   checked++;
 }
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
