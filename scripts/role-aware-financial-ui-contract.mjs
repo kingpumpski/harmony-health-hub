@@ -11,8 +11,13 @@ const reportsRoute = read('src/pages/FinancialReportsRoute.tsx');
 const adminOverview = read('src/pages/AdminFinancialOverview.tsx');
 const summaryMigration = read('supabase/migrations/20261015121000_allow_readonly_financial_overview_roles.sql');
 const imaging = read('src/pages/Imaging.tsx');
+const permissions = read('src/lib/permissions.ts');
 
 assert.match(access, /canManageFinancialSettlement = isAccountOfficer/);
+for (const role of ['physiotherapist', 'ophthalmologist', 'dentist', 'dietician']) {
+  const line = permissions.split('\\n').find((entry) => entry.startsWith(`  ${role}:`));
+  assert.ok(line && !line.includes("'billing'"), `${role} must not receive financial-settlement permission`);
+}
 assert.match(access, /canViewFinancialOverview = isAccountOfficer \|\| isAdmin \|\| isITAdmin \|\| isSystemSuperuser/);
 assert.match(sidebar, /isFinancialNavigationPath\(nav\.href\)/);
 assert.match(sidebar, /roleAccess\.isAdmin \|\| roleAccess\.isITAdmin \|\| roleAccess\.isSystemSuperuser\) return nav\.href === '\/financial-reports'/);
