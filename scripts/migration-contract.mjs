@@ -21,9 +21,8 @@ for (const [table, columns] of Object.entries({
 for (const [idx,table] of [['lab_test_groups_facility_code_uidx','lab_test_groups'],['lab_orders_panel_child_test_uidx','lab_orders'],['lab_result_attachments_storage_path_key','lab_result_attachments']]) {
   if (idx === 'lab_result_attachments_storage_path_key') { must(all,/storage_path text NOT NULL UNIQUE/i,'Attachment storage_path must be unique'); } else { must(all,new RegExp('CREATE (?:UNIQUE )?INDEX(?: IF NOT EXISTS)?\\s+'+idx+'\\s+ON public\\.'+table,'i'),'Required index missing: '+idx); }
 }
-for (const [name,ret] of [['get_laboratory_test_groups','jsonb'],['get_lab_result_attachments','jsonb']]) {
-  must(all,new RegExp('CREATE OR REPLACE FUNCTION public\\\\.'+name+'\\\\([^)]*\\\\)[\\\\s\\\\S]*?RETURNS\\\\s+'+ret+'[\\\\s\\\\S]*?SECURITY DEFINER[\\\\s\\\\S]*?SET search_path\\\\s*=','i'),'RPC contract must pin SECURITY DEFINER search_path and expected return type: '+name);
-}
+must(all,/CREATE OR REPLACE FUNCTION public\\.get_laboratory_test_groups\\([^)]*\\)[\\s\\S]*?RETURNS\\s+jsonb[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET search_path\\s*=/i,'panel RPC must pin search_path and return jsonb');
+must(all,/CREATE OR REPLACE FUNCTION public\\.get_lab_result_attachments\\([^)]*\\)[\\s\\S]*?RETURNS\\s+jsonb[\\s\\S]*?SECURITY DEFINER[\\s\\S]*?SET search_path\\s*=/i,'attachment RPC must pin search_path and return jsonb');
 const attachment = read('supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql');
 for (const [r,m] of [
   [/a\.facility_id = v_facility/,'attachment read must be facility-scoped'],
