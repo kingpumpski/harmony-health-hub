@@ -41,9 +41,9 @@ for (const {name,source} of migrations) {
   // Inspect one function definition at a time; never let a later SECURITY DEFINER
   // declaration make an earlier trigger/helper look security-definer by accident.
   if (!/\bSECURITY DEFINER\b/i.test(match[0])) continue;
-  must(match[0],/SET\s+search_path\s*=/i,name+': SECURITY DEFINER function must pin search_path');
+  must(match[0],/SET\s+search_path\s*(?:=|TO\s+)/i,name+': SECURITY DEFINER function must pin search_path');
   const functionName = match[1];
-  const unsafePublicOnlyPath = /SET\s+search_path\s*=\s*['"]?public\b/i.test(match[0]);
+  const unsafePublicOnlyPath = /SET\s+search_path\s*(?:=|TO\s+)\s*['"]?public\b/i.test(match[0]);
   if (unsafePublicOnlyPath) {
     const later = migrations.filter(candidate => candidate.name > name).map(candidate => candidate.source).join('\n');
     const hardeningPath = "(?:pg_catalog\\s*,\\s*public|''|\"\")";
