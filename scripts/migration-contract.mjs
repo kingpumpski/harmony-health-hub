@@ -90,7 +90,7 @@ for (const [r,m] of [
   [/ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending'/i,'legacy service-order payment state must be reconciled'],
   [/ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined'/i,'legacy facility routing mode must be reconciled'],
 ]) must(workflowReconciliation,r,m);
-must(
+assert.ok(
   workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS fulfillment_status') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS service_orders_queue_idx'),
   'legacy service-order columns must be reconciled before queue index creation',
 );
