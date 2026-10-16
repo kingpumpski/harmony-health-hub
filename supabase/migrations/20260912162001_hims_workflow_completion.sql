@@ -231,6 +231,11 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Existing deployments may have the review table without the canonical timestamp.
+-- Reconcile before indexes reference it, since CREATE TABLE IF NOT EXISTS does not alter legacy tables.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
