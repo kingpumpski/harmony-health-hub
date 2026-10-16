@@ -64,6 +64,17 @@ for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/i,'legacy repair must tolerate existing attachment table'],
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
 ]) must(legacy,r,m);
+const workflowReconciliation = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
+for (const [r,m] of [
+  [/ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0/i,'legacy lab parameter ordering column must be reconciled before its index'],
+  [/ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'/i,'legacy service-order fulfillment state must be reconciled before indexing'],
+  [/ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending'/i,'legacy service-order payment state must be reconciled'],
+  [/ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined'/i,'legacy facility routing mode must be reconciled'],
+]) must(workflowReconciliation,r,m);
+must(
+  workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS fulfillment_status') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS service_orders_queue_idx'),
+  'legacy service-order columns must be reconciled before queue index creation',
+);
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
