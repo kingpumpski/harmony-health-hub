@@ -26,7 +26,7 @@ ALTER TABLE public.ophthalmology_exams ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ophthalmology clinical read" ON public.ophthalmology_exams;
 CREATE POLICY "ophthalmology clinical read" ON public.ophthalmology_exams FOR SELECT TO authenticated USING (
-  public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'nurse')
+  public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse')
 );
 
 CREATE OR REPLACE FUNCTION public.create_ophthalmology_exam(
