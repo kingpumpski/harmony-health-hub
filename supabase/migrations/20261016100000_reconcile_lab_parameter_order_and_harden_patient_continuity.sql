@@ -31,6 +31,13 @@ SET fulfillment_status = CASE
 END
 WHERE fulfillment_status = 'blocked';
 
+-- Patient Hub entrypoint overrides in the earlier context-hardening migration
+-- must not reintroduce a public-only search_path for SECURITY DEFINER functions.
+ALTER FUNCTION public.create_encounter_workflow(uuid, text, text) SET search_path = '';
+ALTER FUNCTION public.record_patient_vitals(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric) SET search_path = '';
+ALTER FUNCTION public.create_patient_lab_order(uuid, text, text) SET search_path = '';
+ALTER FUNCTION public.create_patient_document(uuid, text, text, text) SET search_path = '';
+
 -- Patient-care continuity exposes sensitive clinical domains. Keep trusted
 -- schema resolution while retaining its existing role checks and RPC signature.
 ALTER FUNCTION public.get_patient_care_continuity(uuid)
