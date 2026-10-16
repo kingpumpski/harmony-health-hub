@@ -31,6 +31,15 @@ SET fulfillment_status = CASE
 END
 WHERE fulfillment_status = 'blocked';
 
+-- Reconcile the existing inpatient review table before dependent read/index paths
+-- on installations where the table predates the canonical seen_at column.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- This legacy Patient Hub snapshot is SECURITY DEFINER and had its search_path
+-- reset to public by a later context-hardening override. Restore safe resolution.
+ALTER FUNCTION public.get_patient_hub_snapshot(uuid) SET search_path = '';
+
 -- Patient Hub entrypoint overrides in the earlier context-hardening migration
 -- must not reintroduce a public-only search_path for SECURITY DEFINER functions.
 ALTER FUNCTION public.create_encounter_workflow(uuid, text, text) SET search_path = '';
