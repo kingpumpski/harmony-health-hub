@@ -47,6 +47,12 @@ ALTER FUNCTION public.record_patient_vitals(uuid, numeric, numeric, numeric, num
 ALTER FUNCTION public.create_patient_lab_order(uuid, text, text) SET search_path = '';
 ALTER FUNCTION public.create_patient_document(uuid, text, text, text) SET search_path = '';
 
+-- The legacy catalogue attachment RPC was SECURITY DEFINER with a public-only
+-- search_path. Include trusted schemas explicitly; all application objects in its
+-- body are public-qualified and auth.uid() is resolved through auth.
+ALTER FUNCTION public.attach_lab_catalogue_to_order(uuid, uuid)
+  SET search_path = pg_catalog, public, auth;
+
 -- Patient-care continuity exposes sensitive clinical domains. Keep trusted
 -- schema resolution while retaining its existing role checks and RPC signature.
 ALTER FUNCTION public.get_patient_care_continuity(uuid)
