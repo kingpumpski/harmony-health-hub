@@ -225,7 +225,10 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- Preserve clean replay when older migrations define a different return type.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id uuid,_status text,_reason text DEFAULT NULL::text,_notes text DEFAULT NULL::text,_witnessed_by uuid DEFAULT NULL::uuid
 )
 RETURNS jsonb
