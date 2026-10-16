@@ -56,6 +56,7 @@ for (const {name,source} of migrations) {
   }
 }
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
+must(legacy, /CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by\\s+ON public\\.lab_result_attachments\\(uploaded_by\\)/i, 'attachment uploader foreign key must have a covering index');
 for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_groups/i,'legacy repair must tolerate existing panel table'],
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_group_items/i,'legacy repair must tolerate existing membership table'],
