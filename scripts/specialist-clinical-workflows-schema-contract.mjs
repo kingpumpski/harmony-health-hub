@@ -5,6 +5,7 @@ const roleMigration = readFileSync("supabase/migrations/20261013161848_add_speci
 const schemaMigration = readFileSync("supabase/migrations/20261013161853_specialist_clinical_workflows_schema.sql", "utf8");
 const clinicalStaffMigration = readFileSync("supabase/migrations/20261013161858_reconcile_specialist_clinical_staff_helper.sql", "utf8");
 const accessReconciliation = readFileSync("supabase/migrations/20261016120000_reconcile_specialist_workspace_access.sql", "utf8");
+const sidebar = readFileSync("src/components/layout/Sidebar.tsx", "utf8");
 
 for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
   assert.match(roleMigration, new RegExp("ADD VALUE IF NOT EXISTS '" + role + "'"));
@@ -36,3 +37,5 @@ assert.match(accessReconciliation, /REVOKE ALL ON TABLE[\\s\\S]*FROM PUBLIC, ano
 assert.match(accessReconciliation, /ALTER TABLE public\\.specialist_review_sessions ENABLE ROW LEVEL SECURITY/);
 assert.match(accessReconciliation, /NOTIFY pgrst, 'reload schema'/);
 console.log("Specialist schema contract passed.");
+
+assert.match(sidebar, /item\(Stethoscope, 'Assessments', '\/specialist-assessments\?specialty=physiotherapy'/, "Physiotherapy Assessments must open the specialty assessment workflow, not the generic encounter creation route");
