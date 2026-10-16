@@ -65,6 +65,8 @@ for (const [r,m] of [
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
 ]) must(legacy,r,m);
 const patientContinuityHardening = read('supabase/migrations/20261016100000_reconcile_lab_parameter_order_and_harden_patient_continuity.sql');
+const patientEntrypointMigration = read('supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql');
+must(patientEntrypointMigration, /GRANT EXECUTE ON FUNCTION public\\.record_patient_vitals\\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\\) TO authenticated/i, 'vitals RPC grant must match its nine-argument signature');
 for (const [pattern, label] of [
   [/ALTER FUNCTION public\.create_encounter_workflow\(uuid, text, text\)\s+SET search_path = ''/i, 'encounter entrypoint'],
   [/ALTER FUNCTION public\.record_patient_vitals\(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric\)\s+SET search_path = ''/i, 'vitals entrypoint'],
