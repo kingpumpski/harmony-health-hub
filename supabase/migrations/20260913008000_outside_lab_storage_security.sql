@@ -12,7 +12,7 @@ CREATE POLICY "outside lab staff read" ON public.outside_lab_documents
     public.has_role(auth.uid(),'nurse') OR
     public.has_role(auth.uid(),'midwife') OR
     public.has_role(auth.uid(),'specialist_nurse') OR
-    public.has_role(auth.uid(),'lab_technician') OR
+    public.has_role(auth.uid(),'lab_technician')
   );
 
 DROP POLICY IF EXISTS "outside lab direct insert" ON public.outside_lab_documents;
@@ -43,7 +43,7 @@ BEGIN
     public.has_role(auth.uid(),'nurse') OR
     public.has_role(auth.uid(),'midwife') OR
     public.has_role(auth.uid(),'specialist_nurse') OR
-    public.has_role(auth.uid(),'lab_technician') OR
+    public.has_role(auth.uid(),'lab_technician')
   ) THEN RAISE EXCEPTION 'Outside-lab document upload is not permitted'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
     RAISE EXCEPTION 'Patient not found';
@@ -99,7 +99,7 @@ CREATE POLICY "outside lab storage upload" ON storage.objects
       public.has_role(auth.uid(),'nurse') OR
       public.has_role(auth.uid(),'midwife') OR
       public.has_role(auth.uid(),'specialist_nurse') OR
-      public.has_role(auth.uid(),'lab_technician') OR
+      public.has_role(auth.uid(),'lab_technician')
     ) AND
     split_part(name,'/',1) IN (SELECT id::text FROM public.patients)
   );
@@ -115,7 +115,7 @@ CREATE POLICY "outside lab storage read" ON storage.objects
       public.has_role(auth.uid(),'nurse') OR
       public.has_role(auth.uid(),'midwife') OR
       public.has_role(auth.uid(),'specialist_nurse') OR
-      public.has_role(auth.uid(),'lab_technician') OR
+      public.has_role(auth.uid(),'lab_technician')
     ) AND
     split_part(name,'/',1) IN (SELECT id::text FROM public.patients)
   );
