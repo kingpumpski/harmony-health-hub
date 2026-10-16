@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 const roleMigration = readFileSync("supabase/migrations/20261013161848_add_specialist_app_roles.sql", "utf8");
 const schemaMigration = readFileSync("supabase/migrations/20261013161853_specialist_clinical_workflows_schema.sql", "utf8");
 const clinicalStaffMigration = readFileSync("supabase/migrations/20261013161858_reconcile_specialist_clinical_staff_helper.sql", "utf8");
+const accessReconciliation = readFileSync("supabase/migrations/20261016120000_reconcile_specialist_workspace_access.sql", "utf8");
 
 for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
   assert.match(roleMigration, new RegExp("ADD VALUE IF NOT EXISTS '" + role + "'"));
@@ -27,4 +28,11 @@ for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"
 }
 assert.match(clinicalStaffMigration, /pg_get_functiondef/);
 assert.match(clinicalStaffMigration, /RAISE EXCEPTION/);
+for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"]) {
+  assert.ok(accessReconciliation.includes("public.has_role(v_user,'" + role + "')"), "Encounter clinical context must authorize " + role);
+}
+assert.match(accessReconciliation, /GRANT SELECT, INSERT, UPDATE ON TABLE[\\s\\S]*TO authenticated/);
+assert.match(accessReconciliation, /REVOKE ALL ON TABLE[\\s\\S]*FROM PUBLIC, anon/);
+assert.match(accessReconciliation, /ALTER TABLE public\\.specialist_review_sessions ENABLE ROW LEVEL SECURITY/);
+assert.match(accessReconciliation, /NOTIFY pgrst, 'reload schema'/);
 console.log("Specialist schema contract passed.");
