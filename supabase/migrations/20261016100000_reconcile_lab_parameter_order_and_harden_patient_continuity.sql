@@ -58,6 +58,12 @@ ALTER FUNCTION public.complete_ward_bed_cleaning(uuid, text)
 ALTER FUNCTION public.attach_lab_catalogue_to_order(uuid, uuid)
   SET search_path = pg_catalog, public, auth;
 
+-- These laboratory read RPCs existed on older deployments with mutable or
+-- public-only search paths. Their bodies schema-qualify application objects.
+ALTER FUNCTION public.get_laboratory_test_groups(boolean) SET search_path = '';
+ALTER FUNCTION public.get_lab_result_attachments(uuid[]) SET search_path = '';
+ALTER FUNCTION public.ensure_updated_at() SET search_path = '';
+
 -- Patient-care continuity exposes sensitive clinical domains. Keep trusted
 -- schema resolution while retaining its existing role checks and RPC signature.
 ALTER FUNCTION public.get_patient_care_continuity(uuid)
