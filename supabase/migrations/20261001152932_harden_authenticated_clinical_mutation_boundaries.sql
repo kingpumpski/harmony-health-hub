@@ -331,7 +331,10 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id uuid,_reason text)
+-- This RPC historically returned JSONB and a composite row; drop before changing its return type.
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(uuid,text);
+
+CREATE FUNCTION public.reopen_medication_administration(_record_id uuid,_reason text)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
