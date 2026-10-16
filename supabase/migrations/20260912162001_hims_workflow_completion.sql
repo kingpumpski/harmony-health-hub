@@ -120,11 +120,9 @@ ALTER TABLE public.facility_settings
     CHECK (payment_routing_mode IN ('pay_before_every_step','streamlined'));
 
 UPDATE public.facility_settings
-SET payment_routing_mode = CASE
-  WHEN routing_mode = 'pay_before_each_step' THEN 'pay_before_every_step'
-  ELSE 'streamlined'
-END
-WHERE payment_routing_mode IS NULL OR payment_routing_mode = 'streamlined';
+SET payment_routing_mode = 'pay_before_every_step'
+WHERE routing_mode = 'pay_before_each_step'
+  AND payment_routing_mode = 'streamlined';
 
 ALTER TABLE public.service_orders
   ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
