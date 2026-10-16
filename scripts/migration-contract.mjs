@@ -74,6 +74,9 @@ for (const [pattern, label] of [
   [/ALTER FUNCTION public\.create_patient_document\(uuid, text, text, text\)\s+SET search_path = ''/i, 'patient-document entrypoint'],
 ]) must(patientContinuityHardening, pattern, label + ' must be re-hardened after the public-only override');
 const workflowReconciliation = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
+must(workflowReconciliation, /ALTER TABLE public\\.inpatient_reviews\\s+ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now\\(\\)/i, 'legacy inpatient reviews must receive seen_at before dependent indexes');
+must(workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS seen_at') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx'), 'inpatient review timestamp must be reconciled before index creation');
+must(patientContinuityHardening, /ALTER FUNCTION public\\.get_patient_hub_snapshot\\(uuid\\) SET search_path = ''/i, 'patient hub snapshot SECURITY DEFINER must be re-hardened');
 for (const [r,m] of [
   [/ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0/i,'legacy lab parameter ordering column must be reconciled before its index'],
   [/ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'/i,'legacy service-order fulfillment state must be reconciled before indexing'],
