@@ -58,6 +58,12 @@ ALTER FUNCTION public.complete_ward_bed_cleaning(uuid, text)
 ALTER FUNCTION public.attach_lab_catalogue_to_order(uuid, uuid)
   SET search_path = pg_catalog, public, auth;
 
+-- A legacy ward lifecycle function used a mutable public-only path. Pin trusted
+-- schemas explicitly; application objects are public-qualified and auth.uid() is
+-- resolved from the auth schema.
+ALTER FUNCTION public.set_ward_unit_active(uuid, boolean)
+  SET search_path = pg_catalog, public, auth;
+
 -- The database advisor found this legacy index duplicates the canonical
 -- lab_result_id index created by the attachment-column reconciliation migration.
 DROP INDEX IF EXISTS public.lab_result_attachments_result_idx;
