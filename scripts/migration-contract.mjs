@@ -65,14 +65,12 @@ for (const [r,m] of [
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
 ]) must(legacy,r,m);
 const patientContinuityHardening = read('supabase/migrations/20261016100000_reconcile_lab_parameter_order_and_harden_patient_continuity.sql');
-for (const [signature, label] of [
-  ['create_encounter_workflow\\(uuid, text, text\\)', 'encounter entrypoint'],
-  ['record_patient_vitals\\(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric\\)', 'vitals entrypoint'],
-  ['create_patient_lab_order\\(uuid, text, text\\)', 'lab-order entrypoint'],
-  ['create_patient_document\\(uuid, text, text, text\\)', 'patient-document entrypoint'],
-]) {
-  must(patientContinuityHardening, new RegExp('ALTER\\\\s+FUNCTION\\\\s+public\\\\.' + signature + '\\\\s+SET\\\\s+search_path\\\\s*=\\\\s*[\'\\\"]{2}', 'i'), label + ' must be re-hardened after the public-only override');
-}
+for (const [pattern, label] of [
+  [/ALTER FUNCTION public\\.create_encounter_workflow\\(uuid, text, text\\)\\s+SET search_path = ''/i, 'encounter entrypoint'],
+  [/ALTER FUNCTION public\\.record_patient_vitals\\(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric\\)\\s+SET search_path = ''/i, 'vitals entrypoint'],
+  [/ALTER FUNCTION public\\.create_patient_lab_order\\(uuid, text, text\\)\\s+SET search_path = ''/i, 'lab-order entrypoint'],
+  [/ALTER FUNCTION public\\.create_patient_document\\(uuid, text, text, text\\)\\s+SET search_path = ''/i, 'patient-document entrypoint'],
+]) must(patientContinuityHardening, pattern, label + ' must be re-hardened after the public-only override');
 const workflowReconciliation = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
 for (const [r,m] of [
   [/ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0/i,'legacy lab parameter ordering column must be reconciled before its index'],
