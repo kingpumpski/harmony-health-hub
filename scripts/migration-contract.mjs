@@ -80,6 +80,10 @@ must(workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS seen_at') < workfl
 must(workflowReconciliation, /ALTER TABLE public\.patient_audit\s+ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now\(\)/i, 'legacy patient audit table must receive changed_at before its index');
 must(workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS changed_at') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS patient_audit_patient_idx'), 'patient audit timestamp must be reconciled before index creation');
 must(patientContinuityHardening, /ALTER FUNCTION public\.get_patient_hub_snapshot\(uuid\) SET search_path = ''/i, 'patient hub snapshot SECURITY DEFINER must be re-hardened');
+must(patientContinuityHardening, /ALTER FUNCTION public\\.get_laboratory_test_groups\\(boolean\\) SET search_path = ''/i, 'laboratory panel read RPC must be re-hardened');
+must(patientContinuityHardening, /ALTER FUNCTION public\\.get_lab_result_attachments\\(uuid\\[\\]\\) SET search_path = ''/i, 'laboratory attachment read RPC must be re-hardened');
+must(patientContinuityHardening, /ALTER FUNCTION public\\.ensure_updated_at\\(\\) SET search_path = ''/i, 'timestamp trigger helper must pin search_path');
+must(patientContinuityHardening, /DROP INDEX IF EXISTS public\\.lab_result_attachments_result_idx/i, 'duplicate legacy attachment result index must be removed');
 for (const [r,m] of [
   [/ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0/i,'legacy lab parameter ordering column must be reconciled before its index'],
   [/ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'/i,'legacy service-order fulfillment state must be reconciled before indexing'],
