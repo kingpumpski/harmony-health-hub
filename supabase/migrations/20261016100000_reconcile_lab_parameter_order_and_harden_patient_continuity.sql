@@ -7,7 +7,10 @@ ALTER TABLE public.lab_test_parameters
 -- Patient-care continuity exposes sensitive clinical domains. Keep trusted
 -- schema resolution while retaining its existing role checks and RPC signature.
 ALTER FUNCTION public.get_patient_care_continuity(uuid)
-  SET search_path = pg_catalog, public;
+  SET search_path = '';
+
+REVOKE ALL ON FUNCTION public.get_patient_care_continuity(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_patient_care_continuity(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
