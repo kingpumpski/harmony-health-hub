@@ -287,7 +287,10 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- PostgreSQL cannot replace this RPC when legacy migrations changed its return type.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id UUID,
   _status TEXT,
   _reason TEXT DEFAULT NULL,
