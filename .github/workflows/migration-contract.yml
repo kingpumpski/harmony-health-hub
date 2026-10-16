@@ -49,7 +49,16 @@ jobs:
         with:
           version: 2.72.7
       - name: Start local Supabase services
-        run: supabase start
+        timeout-minutes: 15
+        run: |
+          # Hosted-runner Docker/image startup can fail transiently. Retry once
+          # before treating the clean-replay gate as a code-level failure.
+          if supabase start; then
+            exit 0
+          fi
+          echo "Supabase startup failed on the first attempt; retrying once."
+          sleep 10
+          supabase start
       - name: Replay the full migration chain on a clean database
         run: supabase db reset
       - name: Verify live schema, RPC return types, privileges and RLS
