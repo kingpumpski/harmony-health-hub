@@ -58,6 +58,10 @@ ALTER FUNCTION public.complete_ward_bed_cleaning(uuid, text)
 ALTER FUNCTION public.attach_lab_catalogue_to_order(uuid, uuid)
   SET search_path = pg_catalog, public, auth;
 
+-- The database advisor found this legacy index duplicates the canonical
+-- lab_result_id index created by the attachment-column reconciliation migration.
+DROP INDEX IF EXISTS public.lab_result_attachments_result_idx;
+
 -- These laboratory read RPCs existed on older deployments with mutable or
 -- public-only search paths. Their bodies schema-qualify application objects.
 ALTER FUNCTION public.get_laboratory_test_groups(boolean) SET search_path = '';
