@@ -76,7 +76,7 @@ for (const [pattern, label] of [
 const workflowReconciliation = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
 must(workflowReconciliation, /ALTER TABLE public\.inpatient_reviews\s+ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now\(\)/i, 'legacy inpatient reviews must receive seen_at before dependent indexes');
 must(workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS seen_at') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx'), 'inpatient review timestamp must be reconciled before index creation');
-must(workflowReconciliation, /ALTER TABLE public\\.patient_audit\\s+ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now\\(\\)/i, 'legacy patient audit table must receive changed_at before its index');
+must(workflowReconciliation, /ALTER TABLE public\.patient_audit\s+ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now\(\)/i, 'legacy patient audit table must receive changed_at before its index');
 must(workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS changed_at') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS patient_audit_patient_idx'), 'patient audit timestamp must be reconciled before index creation');
 must(patientContinuityHardening, /ALTER FUNCTION public\.get_patient_hub_snapshot\(uuid\) SET search_path = ''/i, 'patient hub snapshot SECURITY DEFINER must be re-hardened');
 for (const [r,m] of [
