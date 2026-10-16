@@ -47,6 +47,11 @@ ALTER FUNCTION public.record_patient_vitals(uuid, numeric, numeric, numeric, num
 ALTER FUNCTION public.create_patient_lab_order(uuid, text, text) SET search_path = '';
 ALTER FUNCTION public.create_patient_document(uuid, text, text, text) SET search_path = '';
 
+-- A ward lifecycle RPC was introduced with a public-only path. Keep pg_catalog
+-- first and include auth for auth.uid(); application objects are public-qualified.
+ALTER FUNCTION public.complete_ward_bed_cleaning(uuid, text)
+  SET search_path = pg_catalog, public, auth;
+
 -- The legacy catalogue attachment RPC was SECURITY DEFINER with a public-only
 -- search_path. Include trusted schemas explicitly; all application objects in its
 -- body are public-qualified and auth.uid() is resolved through auth.
