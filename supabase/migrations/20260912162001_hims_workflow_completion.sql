@@ -252,6 +252,11 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   new_record JSONB
 );
 
+-- Older installations may already have patient_audit without its timestamp.
+-- Add the column before the index, because CREATE TABLE IF NOT EXISTS is not a schema migration.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
 
