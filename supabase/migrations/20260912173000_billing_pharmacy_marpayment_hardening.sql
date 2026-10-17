@@ -303,7 +303,7 @@ BEGIN
   PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,jsonb_build_object('record_id',_record_id,'administered_by',auth.uid(),'timestamp',now(),'reason',_reason,'witnessed_by',_witnessed_by));
   SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id;
   RETURN r;
-END; $;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
