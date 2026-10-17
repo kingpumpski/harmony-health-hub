@@ -242,6 +242,51 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile pre-existing claims tables before creating indexes/RPCs. Some deployed
+-- schemas contain a partial insurance_claims table from earlier billing iterations.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS invoice_id UUID,
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS claim_number TEXT,
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC,
+  ADD COLUMN IF NOT EXISTS status TEXT,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS adjudicated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+UPDATE public.insurance_claims
+SET payer_name = COALESCE(NULLIF(payer_name,''),'Unspecified payer'),
+    amount_claimed = COALESCE(amount_claimed,0),
+    amount_paid = COALESCE(amount_paid,0),
+    status = COALESCE(status,'draft'),
+    created_at = COALESCE(created_at,now()),
+    updated_at = COALESCE(updated_at,created_at,now())
+WHERE payer_name IS NULL OR payer_name='' OR amount_claimed IS NULL OR amount_paid IS NULL
+   OR status IS NULL OR created_at IS NULL OR updated_at IS NULL;
+
+ALTER TABLE public.insurance_claims
+  ALTER COLUMN payer_name SET DEFAULT 'Unspecified payer',
+  ALTER COLUMN payer_name SET NOT NULL,
+  ALTER COLUMN amount_claimed SET DEFAULT 0,
+  ALTER COLUMN amount_claimed SET NOT NULL,
+  ALTER COLUMN amount_paid SET DEFAULT 0,
+  ALTER COLUMN amount_paid SET NOT NULL,
+  ALTER COLUMN status SET DEFAULT 'draft',
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 
