@@ -33,6 +33,13 @@ for (const [r,m] of [
   [/REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/i,'attachment RPC must revoke PUBLIC and anon'],
   [/GRANT EXECUTE ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) TO authenticated/i,'attachment RPC must grant only authenticated execution'],
 ]) must(attachment,r,m);
+const clinicalBoundary = read('supabase/migrations/20260914024000_harden_authenticated_clinical_rpc_boundaries.sql');
+for (const fnName of ['create_imaging_order_with_payment_gate','create_lab_order_with_payment_gate']) {
+  const start = clinicalBoundary.indexOf('CREATE OR REPLACE FUNCTION public.' + fnName + '(');
+  const end = start < 0 ? -1 : clinicalBoundary.indexOf('$function$;', start);
+  const fnSource = start < 0 || end < 0 ? '' : clinicalBoundary.slice(start, end + '$function$;'.length);
+  must(fnSource,/SECURITY DEFINER[\\s\\S]*?SET\\s+search_path\\s*=\\s*['"]{2}/i,fnName+' must use an empty pinned search_path');
+}
 const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
 for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
