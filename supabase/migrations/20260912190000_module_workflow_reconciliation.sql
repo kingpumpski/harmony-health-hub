@@ -198,9 +198,9 @@ BEGIN
   VALUES(trim(_drug_name),NULLIF(trim(COALESCE(_strength,'')),''),COALESCE(_stock_quantity,0),COALESCE(_reorder_level,0),COALESCE(_unit_price,0))
   RETURNING * INTO r;
   PERFORM public.record_system_audit('pharmacy_inventory_created','pharmacy','pharmacy_inventory',r.id,'info',jsonb_build_object('drug_name',r.drug_name,'stock_quantity',r.stock_quantity,'actor_id',auth.uid()));
-  RETURN r;
+  RETURN to_jsonb(r);
 END;
-$$;
+$;
 REVOKE ALL ON FUNCTION public.create_pharmacy_inventory_item(TEXT,TEXT,INTEGER,INTEGER,NUMERIC) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_pharmacy_inventory_item(TEXT,TEXT,INTEGER,INTEGER,NUMERIC) TO authenticated;
 
@@ -256,9 +256,9 @@ CREATE OR REPLACE FUNCTION public.schedule_medication_administration(
   _notes TEXT DEFAULT NULL,
   _due_window_minutes INTEGER DEFAULT 30
 )
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
-AS $$
+AS $
 DECLARE r public.medication_administrations;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
