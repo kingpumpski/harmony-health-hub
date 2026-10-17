@@ -43,7 +43,7 @@ for (const fnName of ['create_imaging_order_with_payment_gate','create_lab_order
 const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
 for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
-  must(match[0],/SET\s+search_path\s*=/i,name+': SECURITY DEFINER function must pin search_path');
+  must(match[0],/SET\s+search_path\s*(?:=|TO)\s*/i,name+': SECURITY DEFINER function must pin search_path');
   // Legacy migrations contain historical SECURITY DEFINER functions pinned to public.
   checked++;
 }
