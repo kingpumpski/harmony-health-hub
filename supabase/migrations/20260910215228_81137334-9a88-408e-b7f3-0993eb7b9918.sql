@@ -7,18 +7,28 @@ CREATE POLICY "clinical staff manage ai diagnosis suggestions"
   USING (public.is_clinical_staff(auth.uid()))
   WITH CHECK (public.is_clinical_staff(auth.uid()));
 
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON public.audit_logs TO authenticated;
-GRANT ALL ON public.audit_logs TO service_role;
-CREATE POLICY "admins read audit logs"
-  ON public.audit_logs FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+DO $guarded_internal_tables$
+BEGIN
+  IF to_regclass('public.audit_logs') IS NOT NULL THEN
+    ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT ON public.audit_logs TO authenticated;
+    GRANT ALL ON public.audit_logs TO service_role;
+    DROP POLICY IF EXISTS "admins read audit logs" ON public.audit_logs;
+    CREATE POLICY "admins read audit logs"
+      ON public.audit_logs FOR SELECT TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'));
+  END IF;
 
-ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.sync_queue TO service_role;
-CREATE POLICY "admins read sync queue"
-  ON public.sync_queue FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  IF to_regclass('public.sync_queue') IS NOT NULL THEN
+    ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
+    GRANT ALL ON public.sync_queue TO service_role;
+    DROP POLICY IF EXISTS "admins read sync queue" ON public.sync_queue;
+    CREATE POLICY "admins read sync queue"
+      ON public.sync_queue FOR SELECT TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'));
+  END IF;
+END;
+$guarded_internal_tables$;
 
 ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
