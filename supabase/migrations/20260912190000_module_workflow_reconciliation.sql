@@ -256,7 +256,7 @@ CREATE OR REPLACE FUNCTION public.schedule_medication_administration(
   _notes TEXT DEFAULT NULL,
   _due_window_minutes INTEGER DEFAULT 30
 )
-RETURNS JSONB
+RETURNS public.medication_administrations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $
 DECLARE r public.medication_administrations;
@@ -294,9 +294,9 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
 )
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
-AS $$
+AS $
 DECLARE r public.medication_administrations;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
@@ -313,9 +313,9 @@ BEGIN
       updated_at=now()
   WHERE id=_record_id RETURNING * INTO r;
   PERFORM public.record_system_audit('medication_'||_status,'clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'reason',r.reason));
-  RETURN r;
+  RETURN to_jsonb(r);
 END;
-$$;
+$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS public.medication_administrations
