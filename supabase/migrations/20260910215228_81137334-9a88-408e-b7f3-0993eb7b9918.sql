@@ -30,27 +30,39 @@ BEGIN
 END;
 $guarded_internal_tables$;
 
-ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
-GRANT ALL ON public.ai_symptom_icd_map TO service_role;
-CREATE POLICY "staff read symptom map"
-  ON public.ai_symptom_icd_map FOR SELECT TO authenticated
-  USING (public.is_clinical_staff(auth.uid()));
-CREATE POLICY "admins write symptom map"
-  ON public.ai_symptom_icd_map FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+DO $guarded_reference_tables$
+BEGIN
+  IF to_regclass('public.ai_symptom_icd_map') IS NOT NULL THEN
+    ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
+    GRANT ALL ON public.ai_symptom_icd_map TO service_role;
+    DROP POLICY IF EXISTS "staff read symptom map" ON public.ai_symptom_icd_map;
+    CREATE POLICY "staff read symptom map"
+      ON public.ai_symptom_icd_map FOR SELECT TO authenticated
+      USING (public.is_clinical_staff(auth.uid()));
+    DROP POLICY IF EXISTS "admins write symptom map" ON public.ai_symptom_icd_map;
+    CREATE POLICY "admins write symptom map"
+      ON public.ai_symptom_icd_map FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  END IF;
 
-ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON public.lab_tests TO authenticated;
-GRANT ALL ON public.lab_tests TO service_role;
-CREATE POLICY "staff read lab tests"
-  ON public.lab_tests FOR SELECT TO authenticated
-  USING (public.is_clinical_staff(auth.uid()));
-CREATE POLICY "admins write lab tests"
-  ON public.lab_tests FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  IF to_regclass('public.lab_tests') IS NOT NULL THEN
+    ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT ON public.lab_tests TO authenticated;
+    GRANT ALL ON public.lab_tests TO service_role;
+    DROP POLICY IF EXISTS "staff read lab tests" ON public.lab_tests;
+    CREATE POLICY "staff read lab tests"
+      ON public.lab_tests FOR SELECT TO authenticated
+      USING (public.is_clinical_staff(auth.uid()));
+    DROP POLICY IF EXISTS "admins write lab tests" ON public.lab_tests;
+    CREATE POLICY "admins write lab tests"
+      ON public.lab_tests FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'));
+  END IF;
+END;
+$guarded_reference_tables$;
 
 -- Views must respect the querying user's permissions
 ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
