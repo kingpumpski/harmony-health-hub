@@ -255,6 +255,20 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Older deployments may already have inpatient_reviews without the canonical
+-- review timestamp or patient lookup column. Reconcile before dependent indexes.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS review_type TEXT NOT NULL DEFAULT 'ward_review',
+  ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS reviewer_name TEXT,
+  ADD COLUMN IF NOT EXISTS reviewer_role TEXT,
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS findings TEXT,
+  ADD COLUMN IF NOT EXISTS assessment TEXT,
+  ADD COLUMN IF NOT EXISTS plan TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
