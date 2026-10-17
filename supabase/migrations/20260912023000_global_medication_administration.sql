@@ -17,6 +17,39 @@ CREATE TABLE IF NOT EXISTS public.medication_administrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile pre-existing installations before creating indexes, triggers and policies.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing legacy table.
+ALTER TABLE public.medication_administrations
+  ADD COLUMN IF NOT EXISTS prescription_id UUID,
+  ADD COLUMN IF NOT EXISTS medication_name TEXT,
+  ADD COLUMN IF NOT EXISTS dose TEXT,
+  ADD COLUMN IF NOT EXISTS route TEXT,
+  ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS administered_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'scheduled',
+  ADD COLUMN IF NOT EXISTS reason TEXT,
+  ADD COLUMN IF NOT EXISTS administered_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS witnessed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS notes TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Preserve legacy status values, but constrain new writes to supported MAR states.
+DO $mar_status_contract$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.medication_administrations'::regclass
+      AND conname = 'medication_administrations_status_check'
+  ) THEN
+    ALTER TABLE public.medication_administrations
+      ADD CONSTRAINT medication_administrations_status_check
+      CHECK (status IN ('scheduled','administered','held','refused','omitted','cancelled')) NOT VALID;
+  END IF;
+END;
+$mar_status_contract$;
+
 CREATE INDEX IF NOT EXISTS idx_mar_patient_time ON public.medication_administrations(patient_id, scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mar_status_time ON public.medication_administrations(status, scheduled_at);
 ALTER TABLE public.medication_administrations ENABLE ROW LEVEL SECURITY;
