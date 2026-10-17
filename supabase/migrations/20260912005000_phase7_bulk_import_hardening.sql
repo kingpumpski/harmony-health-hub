@@ -25,7 +25,7 @@ ALTER TABLE public.bulk_import_jobs
   ADD COLUMN IF NOT EXISTS successful_rows INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 
-DO $
+DO $bulk_import_reconcile$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -54,7 +54,7 @@ BEGIN
   ) THEN
     EXECUTE 'UPDATE public.bulk_import_jobs SET successful_rows = inserted_rows WHERE successful_rows = 0 AND inserted_rows > 0';
   END IF;
-END $;
+END $bulk_import_reconcile$;
 
 UPDATE public.bulk_import_jobs
 SET source_format = COALESCE(source_format, 'csv'),
