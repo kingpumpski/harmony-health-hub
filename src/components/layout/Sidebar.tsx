@@ -24,7 +24,7 @@ const specialtyNavGroups: Record<Exclude<SpecialtyId, 'general_practitioner'>, N
   ],
   physiotherapist: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'Physiotherapy', icon: Activity, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Assessments', '/encounters?specialty=physiotherapy', 'encounters'), item(FileText, 'Procedures', '/procedures', 'procedures')] },
+    { label: 'Physiotherapy', icon: Activity, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(Stethoscope, 'Assessments', '/specialist-assessments?specialty=physiotherapy', 'encounters'), item(FileText, 'Procedures', '/procedures', 'procedures')] },
   ],
   orthopaedic: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },

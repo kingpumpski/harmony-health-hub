@@ -25,8 +25,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.attach_lab_catalogue_to_order(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.attach_lab_catalogue_to_order(UUID) TO authenticated;
+-- Match the two-argument function declared above; keep it unavailable to
+-- PUBLIC/anon and grant execution only to authenticated callers.
+REVOKE ALL ON FUNCTION public.attach_lab_catalogue_to_order(UUID, UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.attach_lab_catalogue_to_order(UUID, UUID) TO authenticated;
 
 -- Ensure the transition functions cannot be invoked anonymously.
 REVOKE EXECUTE ON FUNCTION public.collect_lab_sample(UUID) FROM anon;

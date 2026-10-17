@@ -30,7 +30,7 @@ CREATE TABLE public.user_roles (
 
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role public.app_role)
 RETURNS BOOLEAN
-LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_roles
@@ -40,7 +40,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.is_clinical_staff(_user_id UUID)
 RETURNS BOOLEAN
-LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_roles
@@ -51,7 +51,7 @@ $$;
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path = public
+RETURNS TRIGGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, first_name, last_name)

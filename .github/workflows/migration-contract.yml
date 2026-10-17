@@ -1,0 +1,67 @@
+name: Migration contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'scripts/migration-contract.mjs'
+      - '.github/workflows/migration-contract.yml'
+  push:
+    branches: [main, 'feature/**', 'fix/**', 'ci/**']
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'scripts/migration-contract.mjs'
+      - '.github/workflows/migration-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: Schema and security contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate legacy schema compatibility contract and security
+        run: node scripts/migration-contract.mjs
+
+  database-contract:
+    name: Clean database migration replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.72.7
+      - name: Start local Supabase services
+        timeout-minutes: 15
+        run: |
+          # Hosted-runner Docker/image startup can fail transiently. Retry once
+          # before treating the clean-replay gate as a code-level failure.
+          if supabase start; then
+            exit 0
+          fi
+          echo "Supabase startup failed on the first attempt; retrying once."
+          sleep 10
+          supabase start
+      - name: Replay the full migration chain on a clean database
+        run: supabase db reset
+      - name: Verify live schema, RPC return types, privileges and RLS
+        run: supabase test db supabase/tests/database/migration_contract.sql
+      - name: Verify laboratory panel, attachment lineage, and facility constraints
+        run: supabase test db supabase/tests/database/laboratory_missing_objects_contract.sql

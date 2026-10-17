@@ -287,7 +287,10 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- PostgreSQL cannot replace this RPC when legacy migrations changed its return type.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id UUID,
   _status TEXT,
   _reason TEXT DEFAULT NULL,
@@ -317,7 +320,10 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
+-- Earlier migrations may have installed this RPC with a different composite return type.
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(UUID,TEXT);
+
+CREATE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS public.medication_administrations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$

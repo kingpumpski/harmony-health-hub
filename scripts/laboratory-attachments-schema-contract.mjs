@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+const catalogueMigration = readFileSync(new URL('../supabase/migrations/20261013170000_lab_paid_queue_reports_and_catalogue.sql', import.meta.url), 'utf8');
 const panelMigration = readFileSync(new URL('../supabase/migrations/20261013180000_laboratory_test_panels.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20261013190000_repair_lab_result_attachments_schema.sql', import.meta.url), 'utf8');
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
@@ -17,12 +18,12 @@ const labPage = readFileSync(new URL('../src/pages/Laboratory.tsx', import.meta.
 const resultsPage = readFileSync(new URL('../src/pages/LaboratoryResults.tsx', import.meta.url), 'utf8');
 const encountersPage = readFileSync(new URL('../src/pages/Encounters.tsx', import.meta.url), 'utf8');
 
-assert.match(panelMigration, /CREATE TABLE public\.lab_test_groups/, 'panel migration must create the laboratory panel table');
+assert.match(panelMigration, /CREATE TABLE IF NOT EXISTS public\.lab_test_groups/, 'panel migration must create or reconcile the laboratory panel table');
 assert.match(panelMigration, /facility_id uuid NOT NULL REFERENCES public\.healthcare_facilities\(id\)/, 'laboratory panels must reference the canonical healthcare_facilities table');
 assert.doesNotMatch(panelMigration, /REFERENCES public\.facilities\(id\)/, 'panel migration must not reference the nonexistent legacy facilities table');
-assert.match(panelMigration, /CREATE TABLE public\.lab_test_group_items/, 'panel migration must create panel-to-test relationships');
-assert.match(panelMigration, /ADD COLUMN group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'lab orders must support panel membership');
-assert.match(panelMigration, /ADD COLUMN parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'lab orders must support panel child-order lineage');
+assert.match(panelMigration, /CREATE TABLE IF NOT EXISTS public\.lab_test_group_items/, 'panel migration must create or reconcile panel-to-test relationships');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'lab orders must support panel membership idempotently');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'lab orders must support panel child-order lineage idempotently');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups/, 'panel migration must provide the frontend read RPC');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.save_laboratory_test_group/, 'panel migration must provide the panel save RPC');
 assert.match(panelMigration, /SET search_path = ''/, 'panel security-definer functions must pin an empty search path');
@@ -99,5 +100,24 @@ assert.match(approvalReconciliation, /so\.related_entity_id = coalesce\(o\.paren
 assert.match(approvalReconciliation, /so\.status IN \('released', 'in_progress', 'completed'\)/, 'approval must require a released billing service order');
 assert.match(approvalReconciliation, /REVOKE ALL ON FUNCTION public\.approve_lab_result\(uuid\) FROM PUBLIC, anon/, 'approval RPC must not be publicly or anonymously executable');
 assert.match(approvalReconciliation, /NOTIFY pgrst, 'reload schema'/, 'approval reconciliation must refresh the PostgREST schema cache');
+
+
+assert.match(catalogueMigration, /ALTER COLUMN sample_quantity TYPE text[\s\S]*USING sample_quantity::text/, 'catalogue migration must reconcile legacy numeric sample_quantity types');
+assert.match(catalogueMigration, /DROP POLICY IF EXISTS lab_result_attachments_facility_read/, 'catalogue migration must tolerate pre-existing attachment policies');
+assert.match(panelMigration, /DO \$panel_legacy_preflight\$[\s\S]*Legacy lab_test_groups rows need verified facility/, 'panel reconciliation must fail closed for ambiguous populated legacy groups');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS facility_id uuid[\s\S]*ADD COLUMN IF NOT EXISTS group_name text[\s\S]*ADD COLUMN IF NOT EXISTS group_code text/, 'panel reconciliation must add canonical columns to partially provisioned group tables');
+assert.match(panelMigration, /DROP FUNCTION IF EXISTS public\.get_laboratory_test_groups\(boolean\)/, 'panel RPC migration must replace incompatible legacy return types safely');
+assert.match(compatibilityMigration, /DROP FUNCTION IF EXISTS public\.get_lab_result_attachments\(uuid\[\]\)/, 'attachment RPC migration must replace incompatible legacy table return types safely');
+
+
+assert.match(missingObjectDatabaseContract, /get_laboratory_test_groups\(boolean\).*return JSONB|must return JSONB/, 'database contract must verify the panel RPC JSON return type');
+assert.match(missingObjectDatabaseContract, /get_lab_result_attachments\(uuid\[\]\).*return JSONB|must return JSONB/, 'database contract must verify the attachment RPC JSON return type');
+assert.match(missingObjectDatabaseContract, /must not be executable by anon/, 'database contract must verify anonymous attachment RPC denial');
+assert.match(missingObjectDatabaseContract, /panel groups must expose the canonical group name/, 'database contract must verify canonical panel columns');
+
+
+assert.match(attachmentColumnReconciliation, /DROP CONSTRAINT IF EXISTS lab_result_attachments_lab_result_id_fkey[\s\S]*REFERENCES public\.lab_results\(id\) ON DELETE SET NULL/, 'attachment reconciliation must correct the legacy result deletion action');
+assert.match(attachmentColumnReconciliation, /DROP CONSTRAINT IF EXISTS lab_result_attachments_uploaded_by_fkey[\s\S]*REFERENCES auth\.users\(id\)/, 'attachment reconciliation must align uploader deletion with the NOT NULL contract');
+assert.match(attachmentColumnReconciliation, /CHECK \(file_size_bytes BETWEEN 1 AND 15728640\)/, 'attachment reconciliation must enforce the approved file size range');
 
 console.log('Laboratory attachment schema repair contract passed.');

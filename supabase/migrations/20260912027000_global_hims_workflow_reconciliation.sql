@@ -3,7 +3,7 @@
 
 -- Nursing handover acknowledgement must be server-authoritative.
 CREATE OR REPLACE FUNCTION public.acknowledge_nursing_handover(_handover_id UUID)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE uid UUID := auth.uid(); h public.nursing_shift_handovers%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -18,7 +18,7 @@ GRANT EXECUTE ON FUNCTION public.acknowledge_nursing_handover(UUID) TO authentic
 
 -- Theatre status lifecycle is protected by role and row locking.
 CREATE OR REPLACE FUNCTION public.transition_theatre_case(_case_id UUID, _status TEXT, _cancellation_reason TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE uid UUID := auth.uid(); c public.theatre_cases%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -36,9 +36,9 @@ END; $$;
 GRANT EXECUTE ON FUNCTION public.transition_theatre_case(UUID,TEXT,TEXT) TO authenticated;
 
 -- Claims UI uses _status; retain a single canonical transition contract.
-DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,TEXT);
+DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT);
 CREATE OR REPLACE FUNCTION public.transition_insurance_claim(_claim_id UUID, _status TEXT, _amount_approved NUMERIC DEFAULT NULL, _amount_paid NUMERIC DEFAULT NULL, _rejection_reason TEXT DEFAULT NULL, _notes TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE c public.insurance_claims%ROWTYPE; uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;

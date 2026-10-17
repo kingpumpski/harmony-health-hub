@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Cover the uploader foreign key for user deletion and referential checks.
+CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by
+  ON public.lab_result_attachments(uploaded_by);
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;

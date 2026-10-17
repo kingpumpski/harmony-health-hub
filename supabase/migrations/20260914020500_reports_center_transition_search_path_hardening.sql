@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION public.validate_report_generation_item_transition()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 BEGIN
   IF NEW.run_id <> OLD.run_id OR NEW.report_id <> OLD.report_id THEN
@@ -28,7 +28,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.validate_report_generation_run_transition()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_completed INTEGER;
