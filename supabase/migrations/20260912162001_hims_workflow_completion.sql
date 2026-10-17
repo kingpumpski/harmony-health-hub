@@ -285,6 +285,25 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   new_record JSONB
 );
 
+-- Older installations may already have patient_audit with a legacy shape.
+-- Add the columns consumed by this migration before building indexes/triggers.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS action TEXT DEFAULT 'UPDATE',
+  ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS old_record JSONB,
+  ADD COLUMN IF NOT EXISTS new_record JSONB;
+
+UPDATE public.patient_audit
+SET action = COALESCE(NULLIF(action, ''), 'UPDATE'),
+    changed_at = COALESCE(changed_at, now());
+
+ALTER TABLE public.patient_audit
+  ALTER COLUMN action SET DEFAULT 'UPDATE',
+  ALTER COLUMN changed_at SET DEFAULT now(),
+  ALTER COLUMN changed_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
 
