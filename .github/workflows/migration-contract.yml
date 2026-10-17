@@ -53,8 +53,12 @@ jobs:
         shell: bash
         run: |
           for attempt in 1 2 3 4; do
-            if supabase start; then
+            if supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
+            fi
+            if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|syntax error at or near|migration .* failed' /tmp/supabase-start.log; then
+              echo "Supabase startup reached a deterministic migration/schema error; stopping retries so the SQL failure stays visible."
+              exit 1
             fi
             if [ "$attempt" -lt 4 ]; then
               delay=$((attempt * 20))
