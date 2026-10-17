@@ -68,7 +68,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
 ) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.medication_administrations;
 BEGIN
   IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist')) THEN
