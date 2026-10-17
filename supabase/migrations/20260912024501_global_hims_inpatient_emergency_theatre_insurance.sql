@@ -218,6 +218,55 @@ CREATE TABLE IF NOT EXISTS public.transfusion_records (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile older transfusion tables that predate the canonical continuity contract.
+-- Add columns before dependent indexes/RPCs; preserve all existing records.
+ALTER TABLE public.transfusion_records
+  ADD COLUMN IF NOT EXISTS blood_product TEXT,
+  ADD COLUMN IF NOT EXISTS unit_identifier TEXT,
+  ADD COLUMN IF NOT EXISTS blood_group TEXT,
+  ADD COLUMN IF NOT EXISTS compatibility_checked BOOLEAN,
+  ADD COLUMN IF NOT EXISTS consent_confirmed BOOLEAN,
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
+  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN,
+  ADD COLUMN IF NOT EXISTS reaction_notes TEXT,
+  ADD COLUMN IF NOT EXISTS administered_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS witnessed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS status TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+UPDATE public.transfusion_records
+SET blood_product = COALESCE(NULLIF(blood_product,''),'unspecified'),
+    unit_identifier = COALESCE(NULLIF(unit_identifier,''),'legacy-' || id::text),
+    compatibility_checked = COALESCE(compatibility_checked,false),
+    consent_confirmed = COALESCE(consent_confirmed,false),
+    reaction_observed = COALESCE(reaction_observed,false),
+    status = COALESCE(status,'planned'),
+    created_at = COALESCE(created_at,now()),
+    updated_at = COALESCE(updated_at,created_at,now())
+WHERE blood_product IS NULL OR blood_product='' OR unit_identifier IS NULL OR unit_identifier=''
+   OR compatibility_checked IS NULL OR consent_confirmed IS NULL OR reaction_observed IS NULL
+   OR status IS NULL OR created_at IS NULL OR updated_at IS NULL;
+
+ALTER TABLE public.transfusion_records
+  ALTER COLUMN blood_product SET DEFAULT 'unspecified',
+  ALTER COLUMN blood_product SET NOT NULL,
+  ALTER COLUMN unit_identifier SET NOT NULL,
+  ALTER COLUMN compatibility_checked SET DEFAULT false,
+  ALTER COLUMN compatibility_checked SET NOT NULL,
+  ALTER COLUMN consent_confirmed SET DEFAULT false,
+  ALTER COLUMN consent_confirmed SET NOT NULL,
+  ALTER COLUMN reaction_observed SET DEFAULT false,
+  ALTER COLUMN reaction_observed SET NOT NULL,
+  ALTER COLUMN status SET DEFAULT 'planned',
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_transfusion_patient ON public.transfusion_records(patient_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_transfusion_unit ON public.transfusion_records(unit_identifier) WHERE status IN ('issued','running');
 
