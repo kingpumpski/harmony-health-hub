@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   encounter_id uuid REFERENCES public.encounters(id) ON DELETE SET NULL,
+  patient_id uuid REFERENCES public.patients(id) ON DELETE SET NULL,
   suggested_icd text REFERENCES public.icd_codes(code) ON DELETE SET NULL,
   reasoning text,
   accepted boolean,
