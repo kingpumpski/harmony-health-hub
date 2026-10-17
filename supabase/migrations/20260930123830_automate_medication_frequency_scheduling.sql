@@ -32,6 +32,7 @@ VALUES(NEW.patient_id,NEW.id,coalesce(nullif(btrim(NEW.medication_name),''),btri
 END IF; RETURN NEW; END; $$;
 DROP TRIGGER IF EXISTS trg_create_initial_medication_administration ON public.prescriptions;
 CREATE TRIGGER trg_create_initial_medication_administration AFTER INSERT ON public.prescriptions FOR EACH ROW EXECUTE FUNCTION public.create_initial_medication_administration();
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(_record_id uuid,_status text,_reason text DEFAULT NULL,_notes text DEFAULT NULL,_witnessed_by uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE r public.medication_administrations%ROWTYPE; p public.prescriptions%ROWTYPE; uid uuid:=auth.uid(); overdue boolean; v_interval interval; v_next timestamptz; v_end timestamptz;
