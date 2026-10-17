@@ -219,7 +219,52 @@ REVOKE ALL ON FUNCTION public.recover_stale_report_run(UUID, INTEGER) FROM PUBLI
 GRANT EXECUTE ON FUNCTION public.recover_stale_report_run(UUID, INTEGER) TO authenticated;
 
 
-CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(_report_id UUID,_facility_id UUID,_period_start DATE,_period_end DATE,_due_date DATE,_data_snapshot JSONB DEFAULT '{}'::jsonb) RETURNS public.report_submissions LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.report_submissions; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; INSERT INTO public.report_submissions(report_id,facility_id,period_start,period_end,due_date,data_snapshot) VALUES(_report_id,_facility_id,_period_start,_period_end,_due_date,COALESCE(_data_snapshot,'{}'::jsonb)) ON CONFLICT(report_id,facility_id,period_start,period_end) DO UPDATE SET due_date=EXCLUDED.due_date,data_snapshot=EXCLUDED.data_snapshot,updated_at=now() WHERE public.report_submissions.status IN ('pending','overdue') RETURNING * INTO v; IF v.id IS NULL THEN SELECT * INTO v FROM public.report_submissions WHERE report_id=_report_id AND facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end; END IF; RETURN v; END $$;
+CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(
+  _report_id UUID,
+  _facility_id UUID,
+  _period_start DATE,
+  _period_end DATE,
+  _due_date DATE,
+  _data_snapshot JSONB DEFAULT '{}'::jsonb
+)
+RETURNS INTEGER
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user UUID := auth.uid();
+  v_count INTEGER := 0;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Authentication is required.' USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT public.has_facility_access(v_user, _facility_id) THEN
+    RAISE EXCEPTION 'You do not have access to this facility' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.report_submissions (
+    report_id, facility_id, period_start, period_end, due_date, status, data_snapshot
+  )
+  VALUES (
+    _report_id, _facility_id, _period_start, _period_end, _due_date,
+    'pending', COALESCE(_data_snapshot, '{}'::jsonb)
+  )
+  ON CONFLICT (report_id, facility_id, period_start, period_end)
+  DO UPDATE SET
+    due_date = EXCLUDED.due_date,
+    data_snapshot = EXCLUDED.data_snapshot,
+    updated_at = now()
+  WHERE public.report_submissions.status IN ('pending', 'overdue');
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.upsert_report_submission_tracking(UUID, UUID, DATE, DATE, DATE, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.upsert_report_submission_tracking(UUID, UUID, DATE, DATE, DATE, JSONB) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.sync_overdue_report_submissions(_facility_id UUID,_period_start DATE,_period_end DATE) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; UPDATE public.report_submissions SET status='overdue',updated_at=now() WHERE facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end AND status='pending' AND due_date<current_date; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 CREATE OR REPLACE FUNCTION public.mark_report_submissions_submitted(_submission_ids UUID[]) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Report submission permission denied'; END IF; UPDATE public.report_submissions SET status='submitted',submitted_at=now(),submitted_by=auth.uid(),updated_at=now() WHERE id=ANY(_submission_ids) AND public.has_facility_access(auth.uid(),facility_id) AND status IN ('pending','overdue'); GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 
