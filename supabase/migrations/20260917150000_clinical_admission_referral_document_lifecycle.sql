@@ -189,7 +189,7 @@ RETURNS TABLE(
   referral_id UUID, patient_id UUID, patient_name TEXT, telephone TEXT,
   specialty TEXT, appointment_date TIMESTAMPTZ, referred_at TIMESTAMPTZ, status TEXT
 )
-LANGUAGE sql SECURITY DEFINER STABLE SET search_path='' AS $
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path='' AS $$
   SELECT r.id,r.patient_id,concat(p.first_name,' ',p.last_name),p.phone,r.specialty,
          r.appointment_date,r.created_at,r.status
   FROM public.patient_referrals r
