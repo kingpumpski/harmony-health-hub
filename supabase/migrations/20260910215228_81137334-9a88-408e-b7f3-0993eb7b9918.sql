@@ -64,9 +64,10 @@ BEGIN
 END;
 $guarded_reference_tables$;
 
--- Views must respect the querying user's permissions
-ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
-ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+-- Views must respect the querying user's permissions when present in this schema generation.
+-- Historical/clean installations may not have created these optional views yet.
+ALTER VIEW IF EXISTS public.v_patient_diagnosis_full SET (security_invoker = true);
+ALTER VIEW IF EXISTS public.v_ai_clinical_decision SET (security_invoker = true);
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;
