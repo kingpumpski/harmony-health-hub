@@ -301,8 +301,9 @@ BEGIN
     UPDATE public.medication_administrations SET status=_status,reason=_reason,notes=COALESCE(_notes,notes),updated_at=now() WHERE id=_record_id;
   END IF;
   PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,jsonb_build_object('record_id',_record_id,'administered_by',auth.uid(),'timestamp',now(),'reason',_reason,'witnessed_by',_witnessed_by));
-  RETURN jsonb_build_object('id',_record_id,'status',_status,'administered_by',auth.uid(),'administered_at',now());
-END; $$;
+  SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id;
+  RETURN r;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
