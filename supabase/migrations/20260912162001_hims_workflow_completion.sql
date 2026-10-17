@@ -112,6 +112,58 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Legacy installations may already have service_orders with an older, narrower
+-- shape. CREATE TABLE IF NOT EXISTS does not reconcile that existing table.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS encounter_id UUID REFERENCES public.encounters(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS department TEXT NOT NULL DEFAULT 'unspecified',
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'unspecified',
+  ADD COLUMN IF NOT EXISTS service_name TEXT NOT NULL DEFAULT 'Unspecified service',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine',
+  ADD COLUMN IF NOT EXISTS release_reason TEXT,
+  ADD COLUMN IF NOT EXISTS released_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Normalize null legacy values before the workflow indexes and state machine rely on them.
+UPDATE public.service_orders
+SET department = COALESCE(NULLIF(department, ''), 'unspecified'),
+    service_type = COALESCE(NULLIF(service_type, ''), 'unspecified'),
+    service_name = COALESCE(NULLIF(service_name, ''), 'Unspecified service'),
+    amount = COALESCE(amount, 0),
+    payment_status = COALESCE(NULLIF(payment_status, ''), 'pending'),
+    fulfillment_status = COALESCE(NULLIF(fulfillment_status, ''), 'blocked'),
+    priority = COALESCE(NULLIF(priority, ''), 'routine'),
+    created_at = COALESCE(created_at, now()),
+    updated_at = COALESCE(updated_at, created_at, now());
+
+ALTER TABLE public.service_orders
+  ALTER COLUMN department SET DEFAULT 'unspecified',
+  ALTER COLUMN department SET NOT NULL,
+  ALTER COLUMN service_type SET DEFAULT 'unspecified',
+  ALTER COLUMN service_type SET NOT NULL,
+  ALTER COLUMN service_name SET DEFAULT 'Unspecified service',
+  ALTER COLUMN service_name SET NOT NULL,
+  ALTER COLUMN amount SET DEFAULT 0,
+  ALTER COLUMN amount SET NOT NULL,
+  ALTER COLUMN payment_status SET DEFAULT 'pending',
+  ALTER COLUMN payment_status SET NOT NULL,
+  ALTER COLUMN fulfillment_status SET DEFAULT 'blocked',
+  ALTER COLUMN fulfillment_status SET NOT NULL,
+  ALTER COLUMN priority SET DEFAULT 'routine',
+  ALTER COLUMN priority SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
 CREATE INDEX IF NOT EXISTS service_orders_patient_idx
