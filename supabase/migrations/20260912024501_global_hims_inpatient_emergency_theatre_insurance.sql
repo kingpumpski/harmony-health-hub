@@ -79,9 +79,31 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Reconcile legacy emergency_cases tables before indexing the canonical triage fields.
+-- Reconcile legacy emergency_cases tables before indexing canonical triage fields.
+-- Earlier deployments used arrival_at/triage_priority; preserve those values while
+-- adding the current API's arrival_time/acuity fields.
 ALTER TABLE public.emergency_cases
-  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent';
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT;
+
+DO $emergency_queue_compatibility$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='arrival_at') THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = COALESCE(arrival_time, arrival_at) WHERE arrival_time IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='triage_priority') THEN
+    EXECUTE $map$UPDATE public.emergency_cases SET acuity = CASE triage_priority WHEN 'critical' THEN 'resuscitation' WHEN 'moderate' THEN 'less_urgent' WHEN 'routine' THEN 'non_urgent' ELSE 'urgent' END WHERE acuity IS NULL$map$;
+  END IF;
+  UPDATE public.emergency_cases SET arrival_time = COALESCE(arrival_time, created_at, now()) WHERE arrival_time IS NULL;
+  UPDATE public.emergency_cases SET acuity = COALESCE(acuity, 'urgent') WHERE acuity IS NULL;
+END;
+$emergency_queue_compatibility$;
+
+ALTER TABLE public.emergency_cases
+  ALTER COLUMN arrival_time SET DEFAULT now(),
+  ALTER COLUMN arrival_time SET NOT NULL,
+  ALTER COLUMN acuity SET DEFAULT 'urgent',
+  ALTER COLUMN acuity SET NOT NULL;
 
 DO $emergency_acuity_constraint$
 BEGIN
