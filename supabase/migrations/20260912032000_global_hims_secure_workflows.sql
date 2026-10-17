@@ -67,8 +67,8 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
-) RETURNS public.medication_administrations
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE v public.medication_administrations;
 BEGIN
   IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist')) THEN
@@ -87,8 +87,8 @@ BEGIN
       witnessed_by=COALESCE(_witnessed_by,witnessed_by)
   WHERE id=_record_id;
   SELECT * INTO v FROM public.medication_administrations WHERE id=_record_id;
-  RETURN v;
-END; $$;
+  RETURN to_jsonb(v);
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_nursing_care_plan(UUID,TEXT,TEXT,TEXT,TEXT,UUID,UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_nursing_care_plan(UUID,TEXT,TEXT,TEXT,TEXT,UUID,UUID) TO authenticated;
