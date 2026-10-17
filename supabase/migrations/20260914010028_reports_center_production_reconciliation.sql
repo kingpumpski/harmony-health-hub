@@ -132,6 +132,11 @@ DECLARE
   v_user UUID := auth.uid();
   v_run public.report_generation_runs;
   v_cutoff TIMESTAMPTZ;
+  v_completed INTEGER := 0;
+  v_warning INTEGER := 0;
+  v_failed INTEGER := 0;
+  v_total INTEGER := 0;
+  v_final_status public.report_generation_runs.status%TYPE;
 BEGIN
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'Authentication is required';
@@ -160,9 +165,15 @@ BEGIN
   END IF;
 
   v_cutoff := now() - make_interval(mins => _stale_after_minutes);
+
   IF COALESCE(v_run.started_at, v_run.created_at) > v_cutoff THEN
     RETURN FALSE;
   END IF;
+
+  -- Mark this transaction as an internal recovery operation. The generation-run
+  -- transition trigger uses this only for the exceptional case where the run
+  -- failed before its item rows could be created.
+  PERFORM set_config('app.reports_center_stale_recovery', 'true', true);
 
   UPDATE public.report_generation_items
   SET status = 'failed',
@@ -171,9 +182,32 @@ BEGIN
   WHERE run_id = v_run.id
     AND status IN ('queued', 'processing');
 
+  -- Reconcile the run counters from the actual item states. A stale run may
+  -- already contain completed/warning items, so forcing every item to failed
+  -- would violate the lifecycle/accounting invariant. Such a run is partial_failed.
+  SELECT
+    COUNT(*) FILTER (WHERE status = 'completed'),
+    COUNT(*) FILTER (WHERE status = 'warning'),
+    COUNT(*) FILTER (WHERE status = 'failed'),
+    COUNT(*)
+  INTO v_completed, v_warning, v_failed, v_total
+  FROM public.report_generation_items
+  WHERE run_id = v_run.id;
+
+  IF v_total = 0 THEN
+    -- The run failed before item creation. This is the only trusted exception
+    -- to the normal item/run accounting requirement.
+    v_final_status := 'failed';
+    v_failed := v_run.total_reports;
+  ELSE
+    v_final_status := CASE WHEN v_failed = v_total THEN 'failed' ELSE 'partial_failed' END;
+  END IF;
+
   UPDATE public.report_generation_runs
-  SET status = 'failed',
-      failed_count = GREATEST(total_reports - COALESCE(success_count, 0) - COALESCE(warning_count, 0), 0),
+  SET status = v_final_status,
+      success_count = v_completed,
+      warning_count = v_warning,
+      failed_count = v_failed,
       completed_at = now()
   WHERE id = v_run.id;
 
@@ -183,6 +217,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.recover_stale_report_run(UUID, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.recover_stale_report_run(UUID, INTEGER) TO authenticated;
+
 
 CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(_report_id UUID,_facility_id UUID,_period_start DATE,_period_end DATE,_due_date DATE,_data_snapshot JSONB DEFAULT '{}'::jsonb) RETURNS public.report_submissions LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.report_submissions; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; INSERT INTO public.report_submissions(report_id,facility_id,period_start,period_end,due_date,data_snapshot) VALUES(_report_id,_facility_id,_period_start,_period_end,_due_date,COALESCE(_data_snapshot,'{}'::jsonb)) ON CONFLICT(report_id,facility_id,period_start,period_end) DO UPDATE SET due_date=EXCLUDED.due_date,data_snapshot=EXCLUDED.data_snapshot,updated_at=now() WHERE public.report_submissions.status IN ('pending','overdue') RETURNING * INTO v; IF v.id IS NULL THEN SELECT * INTO v FROM public.report_submissions WHERE report_id=_report_id AND facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end; END IF; RETURN v; END $$;
 CREATE OR REPLACE FUNCTION public.sync_overdue_report_submissions(_facility_id UUID,_period_start DATE,_period_end DATE) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; UPDATE public.report_submissions SET status='overdue',updated_at=now() WHERE facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end AND status='pending' AND due_date<current_date; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
