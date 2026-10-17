@@ -258,7 +258,7 @@ CREATE OR REPLACE FUNCTION public.schedule_medication_administration(
 )
 RETURNS public.medication_administrations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
-AS $
+AS $$
 DECLARE r public.medication_administrations;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
