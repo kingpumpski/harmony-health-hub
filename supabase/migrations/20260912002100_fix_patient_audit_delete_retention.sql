@@ -1,6 +1,10 @@
 -- Keep the immutable audit snapshot when a patient is deleted.
--- The retention migration makes patient_audit.patient_id nullable and uses ON DELETE SET NULL.
--- A DELETE trigger must write NULL itself because the parent row is already being removed.
+-- The retention migration makes the canonical patient_audit.patient_id nullable and
+-- uses ON DELETE SET NULL. Guard this function replacement for legacy-only schemas.
+DO $audit_retention_guard$
+BEGIN
+  IF to_regclass('public.patient_audit') IS NOT NULL THEN
+    EXECUTE $function_definition$
 CREATE OR REPLACE FUNCTION public.audit_patient_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -48,4 +52,8 @@ BEGIN
 END;
 $audit_patient_change$;
 
-REVOKE ALL ON FUNCTION public.audit_patient_change() FROM PUBLIC;
+$function_definition$;
+    REVOKE ALL ON FUNCTION public.audit_patient_change() FROM PUBLIC;
+  END IF;
+END;
+$audit_retention_guard$;
