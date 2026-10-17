@@ -49,7 +49,21 @@ jobs:
         with:
           version: latest
       - name: Start local Supabase services
-        run: supabase start
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4; do
+            if supabase start; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              delay=$((attempt * 20))
+              echo "Supabase image pull/start failed (attempt $attempt/4); retrying in ${delay}s."
+              sleep "$delay"
+            fi
+          done
+          echo "Supabase failed to start after bounded retries; migration replay was not run."
+          exit 1
       - name: Replay the full migration chain on a clean database
         run: supabase db reset
       - name: Verify live schema, RPC return types, privileges and RLS
