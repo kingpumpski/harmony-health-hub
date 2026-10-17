@@ -38,7 +38,7 @@ for (const fnName of ['create_imaging_order_with_payment_gate','create_lab_order
   const start = clinicalBoundary.indexOf('CREATE OR REPLACE FUNCTION public.' + fnName + '(');
   const end = start < 0 ? -1 : clinicalBoundary.indexOf('$function$;', start);
   const fnSource = start < 0 || end < 0 ? '' : clinicalBoundary.slice(start, end + '$function$;'.length);
-  must(fnSource,/SECURITY DEFINER[\\s\\S]*?SET\\s+search_path\\s*=\\s*['"]{2}/i,fnName+' must use an empty pinned search_path');
+  must(fnSource,/SECURITY DEFINER[\s\S]*?SET\s+search_path\s*=\s*['"]{2}/i,fnName+' must use an empty pinned search_path');
 }
 const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
