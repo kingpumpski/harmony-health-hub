@@ -140,6 +140,61 @@ CREATE TABLE IF NOT EXISTS public.theatre_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile legacy theatre_cases columns (scheduled_at/theatre/anaesthetist_id)
+-- with the canonical theatre scheduling API while preserving existing cases.
+ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS theatre_name TEXT,
+  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS urgency TEXT,
+  ADD COLUMN IF NOT EXISTS preoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS postoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+
+DO $theatre_schedule_compatibility$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='scheduled_at') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET scheduled_start = COALESCE(scheduled_start, scheduled_at) WHERE scheduled_start IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='theatre') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET theatre_name = COALESCE(theatre_name, theatre) WHERE theatre_name IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='anaesthetist_id') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET anesthetist_id = COALESCE(anesthetist_id, anaesthetist_id) WHERE anesthetist_id IS NULL';
+  END IF;
+  UPDATE public.theatre_cases
+  SET scheduled_start = COALESCE(scheduled_start, created_at, now()),
+      urgency = COALESCE(urgency, 'elective'),
+      status = CASE status WHEN 'planned' THEN 'scheduled' WHEN 'cleared' THEN 'approved' ELSE status END
+  WHERE scheduled_start IS NULL OR urgency IS NULL OR status IN ('planned','cleared');
+END;
+$theatre_schedule_compatibility$;
+
+ALTER TABLE public.theatre_cases
+  ALTER COLUMN scheduled_start SET DEFAULT now(),
+  ALTER COLUMN scheduled_start SET NOT NULL,
+  ALTER COLUMN urgency SET DEFAULT 'elective',
+  ALTER COLUMN urgency SET NOT NULL,
+  ALTER COLUMN status SET DEFAULT 'scheduled',
+  ALTER COLUMN status SET NOT NULL;
+
+-- Replace the legacy status check so canonical workflow transitions are accepted.
+ALTER TABLE public.theatre_cases DROP CONSTRAINT IF EXISTS theatre_cases_status_check;
+DO $theatre_status_constraint$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.theatre_cases'::regclass
+      AND conname = 'theatre_cases_canonical_status_check'
+  ) THEN
+    ALTER TABLE public.theatre_cases
+      ADD CONSTRAINT theatre_cases_canonical_status_check
+      CHECK (status IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed')) NOT VALID;
+  END IF;
+END;
+$theatre_status_constraint$;
+
 CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status);
 CREATE INDEX IF NOT EXISTS idx_theatre_patient ON public.theatre_cases(patient_id, scheduled_start DESC);
 
