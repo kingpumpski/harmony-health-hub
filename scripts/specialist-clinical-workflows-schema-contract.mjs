@@ -34,7 +34,7 @@ for (const role of ["physiotherapist", "ophthalmologist", "dentist", "dietician"
 }
 assert.match(accessReconciliation, /GRANT SELECT, INSERT, UPDATE ON TABLE[\s\S]*TO authenticated/);
 assert.match(accessReconciliation, /REVOKE ALL ON TABLE[\s\S]*FROM PUBLIC, anon/);
-assert.match(accessReconciliation, /ALTER TABLE public\\.specialist_review_sessions ENABLE ROW LEVEL SECURITY/);
+assert.match(accessReconciliation, /ALTER TABLE public\.specialist_review_sessions ENABLE ROW LEVEL SECURITY/);
 assert.match(accessReconciliation, /NOTIFY pgrst, 'reload schema'/);
 assert.match(sidebar, /item\(Stethoscope, 'Assessments', '\/specialist-assessments\?specialty=physiotherapy'/, "Physiotherapy Assessments must open the specialty assessment workflow, not the generic encounter creation route");
 console.log("Specialist schema contract passed.");
