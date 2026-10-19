@@ -40,12 +40,18 @@ for (const fnName of ['create_imaging_order_with_payment_gate','create_lab_order
   const fnSource = start < 0 || end < 0 ? '' : clinicalBoundary.slice(start, end + '$function$;'.length);
   must(fnSource,/SECURITY DEFINER[\s\S]*?SET\s+search_path\s*=\s*['"]{2}/i,fnName+' must use an empty pinned search_path');
 }
-const fn = /CREATE(?: OR REPLACE)? FUNCTION public\.[\s\S]*?\bSECURITY DEFINER\b[\s\S]*?(?=CREATE(?: OR REPLACE)? FUNCTION public\.|$)/gi;
 let checked=0;
-for (const {name,source} of migrations) for (const match of source.matchAll(fn)) {
-  must(match[0],/SET\s+search_path\s*(?:=|TO)\s*/i,name+': SECURITY DEFINER function must pin search_path');
-  // Legacy migrations contain historical SECURITY DEFINER functions pinned to public.
-  checked++;
+for (const {name,source} of migrations) {
+  // Split at each function declaration so a preceding function or comment cannot
+  // cause the search_path assertion to inspect the wrong function body.
+  const functionParts = source.split(/(?=CREATE(?: OR REPLACE)? FUNCTION public\.)/i);
+  for (const part of functionParts) {
+    if (!/^CREATE(?: OR REPLACE)? FUNCTION public\./i.test(part) || !/\bSECURITY DEFINER\b/i.test(part)) continue;
+    const functionHeader = part.split(/\bAS\s+\$[A-Za-z_]*\$/i, 1)[0];
+    must(functionHeader,/SET\s+search_path\s*(?:=|TO)\s*/i,name+': SECURITY DEFINER function must pin search_path');
+    // Legacy migrations contain historical SECURITY DEFINER functions pinned to public.
+    checked++;
+  }
 }
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
