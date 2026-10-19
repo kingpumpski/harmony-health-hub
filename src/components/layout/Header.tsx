@@ -15,6 +15,7 @@ const roleLabels: Record<UserRole, string> = {
   admin: "Administrator", practitioner: "Dr.", nurse: "Nurse", midwife: "Midwife", specialist_nurse: "Specialist Nurse",
   radiologist: "Radiologist", radiology_technician: "Radiology Technician", lab_technician: "Lab Technician", pharmacist: "Pharmacist", accountant: "Accounts Officer",
   front_desk: "Front Desk Officer", canteen: "Canteen Staff", patient: "Patient", it_admin: "IT Admin", system_superuser: "System Superuser",
+  dentist: "Dentist", dietician: "Dietician", ophthalmologist: "Ophthalmologist", physiotherapist: "Physiotherapist",
 };
 
 interface HeaderProps { onMenu?: () => void }
