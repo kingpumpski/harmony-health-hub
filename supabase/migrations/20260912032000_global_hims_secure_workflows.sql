@@ -88,7 +88,7 @@ BEGIN
   WHERE id=_record_id;
   SELECT * INTO v FROM public.medication_administrations WHERE id=_record_id;
   RETURN to_jsonb(v);
-END; $;
+END; $$;
 
 REVOKE ALL ON FUNCTION public.create_nursing_care_plan(UUID,TEXT,TEXT,TEXT,TEXT,UUID,UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_nursing_care_plan(UUID,TEXT,TEXT,TEXT,TEXT,UUID,UUID) TO authenticated;
