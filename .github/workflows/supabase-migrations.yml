@@ -8,15 +8,15 @@ on:
         required: true
         default: validate
         type: choice
+        options:
+          - validate
+          - apply
+          - verify
       confirm_production_apply:
         description: 'For apply mode only, enter APPLY_PRODUCTION to acknowledge a production schema change'
         required: true
         default: ''
         type: string
-        options:
-          - validate
-          - apply
-          - verify
 
 permissions:
   contents: read
@@ -47,6 +47,9 @@ jobs:
 
       - name: Enforce repository project-integrity gate
         run: npm run test:project-integrity
+
+      - name: Reject conflicting migration versions
+        run: npm run test:migration-filename-uniqueness
 
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
