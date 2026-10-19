@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20261008120000_add_hr_payroll_foundation.sql', 'utf8');
 const recordManagementMigration = fs.readFileSync('supabase/migrations/20261015080000_add_hr_payroll_record_management.sql', 'utf8');
+const archiveCompatibilityMigration = fs.readFileSync('supabase/migrations/20261019143000_reconcile_hr_employee_archive_columns.sql', 'utf8');
 const hr = fs.readFileSync('src/pages/HumanResources.tsx', 'utf8');
 const payroll = fs.readFileSync('src/pages/Payroll.tsx', 'utf8');
 const hrPayrollDatabaseContract = fs.readFileSync('supabase/tests/database/hr_payroll_record_management_contract.sql', 'utf8');
@@ -62,6 +63,17 @@ for (const needle of [
 ]) {
   if (!recordManagementMigration.toLowerCase().includes(needle)) {
     throw new Error('Missing HR/payroll record-management control: ' + needle);
+  }
+}
+
+for (const needle of [
+  'add column if not exists archived_at timestamptz',
+  'add column if not exists archived_by uuid',
+  'create trigger hr_employees_record_management_guard',
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!archiveCompatibilityMigration.toLowerCase().includes(needle)) {
+    throw new Error('Missing HR archive compatibility repair: ' + needle);
   }
 }
 
