@@ -67,6 +67,7 @@ for (const [r,m] of [
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
 ]) must(legacy,r,m);
 // Catch malformed single-dollar function openers and terminators before clean replay.
+assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 must(all,/END;\s*\$;/,'migration chain must not contain unterminated single-dollar PL/pgSQL function delimiters');
 must(all,/^\s*AS\s+\$(?:\s*)$/m,'migration chain must not use a single-dollar function opener');
 const workflow = read('.github/workflows/migration-contract.yml');
