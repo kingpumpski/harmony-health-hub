@@ -66,8 +66,9 @@ for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/i,'legacy repair must tolerate existing attachment table'],
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
 ]) must(legacy,r,m);
-// Catch the malformed single-dollar function terminator that previously blocked clean replay.
+// Catch malformed single-dollar function openers and terminators before clean replay.
 must(all,/END;\s*\$;/,'migration chain must not contain unterminated single-dollar PL/pgSQL function delimiters');
+must(all,/^\s*AS\s+\$(?:\s*)$/m,'migration chain must not use a single-dollar function opener');
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
