@@ -1,5 +1,10 @@
 -- Reconcile prescription state with the payment-gated pharmacy workflow.
 -- A prescription remains clinically distinct from its pharmacy service order:
+-- Older installations may not have updated_at on prescriptions. Establish the
+-- timestamp contract before functions and backfill updates reference the column.
+ALTER TABLE public.prescriptions
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 -- unpaid/pending -> paid after the linked billable item is fully paid ->
 -- dispensed after the pharmacy dispensing plan is completed.
 
