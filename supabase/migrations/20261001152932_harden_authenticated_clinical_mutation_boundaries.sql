@@ -328,6 +328,8 @@ BEGIN
 END;
 $function$;
 
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(uuid,text);
+
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id uuid,_reason text)
 RETURNS boolean
 LANGUAGE plpgsql
