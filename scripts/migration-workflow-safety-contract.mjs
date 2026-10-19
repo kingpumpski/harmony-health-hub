@@ -7,6 +7,11 @@ assert.ok(fs.existsSync(workflowPath),"Supabase migration workflow must exist");
 const source=fs.readFileSync(workflowPath,"utf8");
 
 assert.match(source,/confirm_production_apply:/,"production migration confirmation input is required");
+const modeInput = source.split('      mode:')[1]?.split('      confirm_production_apply:')[0] ?? '';
+assert.match(modeInput, /type: choice[\s\S]*options:\s*\n\s*- validate\s*\n\s*- apply\s*\n\s*- verify/, 'migration modes must be choices on the mode input');
+const confirmationInput = source.split('      confirm_production_apply:')[1]?.split('\npermissions:')[0] ?? '';
+assert.doesNotMatch(confirmationInput, /options:/, 'production confirmation must remain free text');
+assert.match(source, /npm run test:migration-filename-uniqueness/, 'migration execution must reject duplicate versions before linking');
 assert.match(source,/test "\$\{\{ inputs\.confirm_production_apply \}\}" = "APPLY_PRODUCTION"/,"apply mode must verify explicit production confirmation");
 assert.match(source,/inputs\.mode == 'apply' && inputs\.confirm_production_apply == 'APPLY_PRODUCTION'/,"migration apply step must be gated by explicit confirmation");
 assert.match(source,/supabase db push --linked/,"migration push command must remain explicit");
