@@ -14,8 +14,11 @@ export default function EmergencyBoard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ patientId: '', chiefComplaint: '', acuity: 'urgent', arrivalMode: 'walk_in' });
   const load = useCallback(async () => {
+    setLoading(true);
+    try {
     const { data, error } = await (supabase as any).rpc('get_emergency_workspace', { _limit: 300 });
     if (error) {
       toast({ title: 'Unable to load emergency queue', description: error.message, variant: 'destructive' });
@@ -24,6 +27,7 @@ export default function EmergencyBoard() {
     const workspace = (data ?? {}) as { patients?: Patient[]; cases?: Row[] };
     setPatients(workspace.patients ?? []);
     setRows(workspace.cases ?? []);
+    } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   const createCase = async (event: FormEvent) => {

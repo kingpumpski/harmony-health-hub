@@ -25,12 +25,15 @@ export default function DepartmentQueue() {
   const [rows, setRows] = useState<QueueRow[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [filter, setFilter] = useState<QueueFilter>('all');
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
     const currentDepartment = user.department?.trim() ?? '';
     setDepartment(currentDepartment);
     if (!currentDepartment) { setRows([]); return; }
+    setLoading(true);
+    try {
     const { data, error } = await supabase.rpc('get_department_queue', { _department: currentDepartment, _limit: 100 });
     if (error) { toast({ title: 'Could not load department queue', description: error.message, variant: 'destructive' }); return; }
     const queue = (data ?? []) as QueueRpcRow[];
@@ -42,6 +45,7 @@ export default function DepartmentQueue() {
         patients: { first_name: item.patient_first_name, last_name: item.patient_last_name, patient_code: item.patient_code },
       },
     })));
+    } finally { setLoading(false); }
   }, [user?.id, user?.department]);
 
   useEffect(() => {
