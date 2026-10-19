@@ -333,7 +333,7 @@ BEGIN
   PERFORM public.record_system_audit('medication_slot_reopened','clinical','medication_administrations',r.id,'warning',jsonb_build_object('patient_id',r.patient_id,'reason',_reason,'actor_id',auth.uid()));
   RETURN to_jsonb(r);
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.notify_due_medications()
 RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
