@@ -53,6 +53,10 @@ for (const {name,source} of migrations) {
     checked++;
   }
 }
+const symptomMapMigration = '20260910215226_reconcile_ai_symptom_icd_map.sql';
+must(read('supabase/migrations/' + symptomMapMigration),/CREATE TABLE IF NOT EXISTS public\\.ai_symptom_icd_map/i,'clean replay must restore the AI symptom/ICD map');
+must(all,/CREATE TABLE IF NOT EXISTS public\\.ai_symptom_icd_map/i,'AI symptom/ICD map must be defined in the migration chain');
+assert.ok(files.indexOf(symptomMapMigration) >= 0 && files.indexOf(symptomMapMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI symptom/ICD map must exist before historical RLS hardening references it');
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_groups/i,'legacy repair must tolerate existing panel table'],
