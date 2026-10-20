@@ -3,13 +3,11 @@
 -- and expands immutable audit coverage without changing existing workflow RPCs.
 
 CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id UUID)
-RETURNS BOOLEAN
+RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
-DECLARE
-  changed BOOLEAN := false;
+AS $
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
@@ -36,10 +34,9 @@ BEGIN
       )
     );
 
-  changed := FOUND;
-  RETURN changed;
+  RETURN;
 END;
-$$;
+$;
 
 CREATE OR REPLACE FUNCTION public.mark_notifications_read(_notification_ids UUID[])
 RETURNS INTEGER
