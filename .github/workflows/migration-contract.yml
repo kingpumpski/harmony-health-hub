@@ -1,0 +1,81 @@
+name: Migration contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'scripts/migration-contract.mjs'
+  push:
+    branches: [main, 'feature/**', 'fix/**', 'ci/**']
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'scripts/migration-contract.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: Schema and security contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate legacy schema compatibility contract and security
+        if: hashFiles('scripts/migration-contract.mjs') != ''
+        run: node scripts/migration-contract.mjs
+      - name: Explain skipped static contract
+        if: hashFiles('scripts/migration-contract.mjs') == ''
+        run: echo "Static migration contract is not present on this legacy PR branch; clean replay still runs, and the full contract is required on branches that include the contract assets."
+
+  database-contract:
+    name: Clean database migration replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase services
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3 4; do
+            if supabase start 2>&1 | tee /tmp/supabase-start.log; then
+              exit 0
+            fi
+            if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|syntax error at or near|migration .* failed' /tmp/supabase-start.log; then
+              echo "Supabase startup reached a deterministic migration/schema error; stopping retries so the SQL failure stays visible."
+              exit 1
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              delay=$((attempt * 20))
+              echo "Supabase image pull/start failed (attempt $attempt/4); retrying in ${delay}s."
+              sleep "$delay"
+            fi
+          done
+          echo "Supabase failed to start after bounded retries; migration replay was not run."
+          exit 1
+      - name: Replay the full migration chain on a clean database
+        run: supabase db reset
+      - name: Verify live schema, RPC return types, privileges and RLS
+        if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
+        run: supabase test db supabase/tests/database/migration_contract.sql
+      - name: Explain skipped database contract
+        if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
+        run: echo "Database contract SQL is not present on this legacy PR branch; migration replay remains required."
