@@ -136,7 +136,7 @@ ALTER TABLE public.theatre_cases
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 -- Preserve values from the previous column names when those legacy columns exist.
-DO $
+DO $theatre_schedule_compatibility$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -151,7 +151,7 @@ BEGIN
     EXECUTE 'UPDATE public.theatre_cases SET scheduled_start = scheduled_at WHERE scheduled_start IS NULL';
   END IF;
 END;
-$;
+$theatre_schedule_compatibility$;
 CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status);
 CREATE INDEX IF NOT EXISTS idx_theatre_patient ON public.theatre_cases(patient_id, scheduled_start DESC);
 
