@@ -24,7 +24,7 @@ for (const [idx,table] of [['lab_test_groups_facility_code_uidx','lab_test_group
 must(all,/CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups\([^)]*\)[\s\S]*?RETURNS\s+jsonb[\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path\s*=/i,'panel RPC must pin search_path and return jsonb');
 must(all,/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\([^)]*\)[\s\S]*?RETURNS\s+jsonb[\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path\s*=/i,'attachment RPC must pin search_path and return jsonb');
 const attachment = read('supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql');
-must(attachment,/SET\s+search_path\s*=\s*['"]?(?!public\b)/i,'sensitive attachment RPC must not trust public in search_path');
+must(attachment,/SET\s+search_path\s*=\s*''/i,'sensitive attachment RPC must use an empty pinned search_path');
 for (const [r,m] of [
   [/a\.facility_id = v_facility/,'attachment read must be facility-scoped'],
   [/JOIN public\.patients p[\s\S]*?p\.facility_id = lo\.facility_id/,'attachment read must verify patient/order facility lineage'],
