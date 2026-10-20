@@ -22,8 +22,8 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id uuid)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE v_user uuid:=auth.uid();
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+DECLARE v_user uuid:=auth.uid(); v_inserted integer:=0;
 BEGIN
  IF v_user IS NULL OR NOT public.has_role(v_user,'admin') THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF;
  IF _facility_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.healthcare_facilities hf WHERE hf.id=_facility_id) THEN RAISE EXCEPTION 'Facility not found'; END IF;
@@ -31,7 +31,9 @@ BEGIN
  INSERT INTO public.facility_report_config(facility_id,report_id,is_enabled,submission_deadline_day)
  SELECT _facility_id,id,TRUE,submission_deadline_day FROM public.report_definitions WHERE is_active
  ON CONFLICT(facility_id,report_id) DO NOTHING;
-END; $$;
+ GET DIAGNOSTICS v_inserted = ROW_COUNT;
+ RETURN v_inserted;
+END; $;
 REVOKE ALL ON FUNCTION public.stage_data_migration_rows(uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.stage_data_migration_rows(uuid,jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.seed_facility_reports(uuid) FROM PUBLIC,anon;
