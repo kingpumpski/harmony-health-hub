@@ -56,9 +56,88 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Cover the uploader foreign key for user deletion and referential checks.
+-- Reconcile partially provisioned attachment tables before policies and RPCs
+-- reference the canonical columns. Do not invent a storage path or patient/order
+-- relationship for legacy rows that cannot be linked safely.
+ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
+  ADD COLUMN IF NOT EXISTS lab_order_id uuid,
+  ADD COLUMN IF NOT EXISTS lab_result_id uuid,
+  ADD COLUMN IF NOT EXISTS facility_id uuid,
+  ADD COLUMN IF NOT EXISTS storage_path text,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS mime_type text,
+  ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
+  ADD COLUMN IF NOT EXISTS uploaded_by uuid,
+  ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- Backfill only technical metadata that can be generated without inventing a
+-- clinical relationship. Legacy attachments without an order or storage path
+-- remain preserved but cannot be returned by the guarded read RPC.
+UPDATE public.lab_result_attachments
+SET id = gen_random_uuid()
+WHERE id IS NULL;
+
+-- If a legacy installation reused attachment IDs, retain every row and repair
+-- duplicate technical identifiers before enforcing uniqueness.
+WITH duplicate_ids AS (
+  SELECT ctid,
+         row_number() OVER (PARTITION BY id ORDER BY created_at NULLS LAST, ctid) AS duplicate_rank
+  FROM public.lab_result_attachments
+  WHERE id IS NOT NULL
+)
+UPDATE public.lab_result_attachments AS attachment
+SET id = gen_random_uuid()
+FROM duplicate_ids
+WHERE attachment.ctid = duplicate_ids.ctid
+  AND duplicate_ids.duplicate_rank > 1;
+
+UPDATE public.lab_result_attachments
+SET created_at = now()
+WHERE created_at IS NULL;
+
+ALTER TABLE public.lab_result_attachments
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ALTER COLUMN id SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx
+  ON public.lab_result_attachments(id);
+
+-- Recover facility scope only where the order linkage is unambiguous. Existing
+-- non-null facility IDs are deliberately not overwritten if they disagree.
+UPDATE public.lab_result_attachments AS attachment
+SET facility_id = lo.facility_id
+FROM public.lab_orders AS lo
+WHERE attachment.facility_id IS NULL
+  AND attachment.lab_order_id = lo.id;
+
+-- Existing installations may contain incomplete or duplicated storage metadata.
+-- Preserve those rows for explicit review, but never make ambiguous paths readable.
+CREATE INDEX IF NOT EXISTS lab_result_attachments_order_facility_idx
+  ON public.lab_result_attachments(lab_order_id, facility_id);
 CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by
   ON public.lab_result_attachments(uploaded_by);
+
+-- Enforce unique paths where legacy data permits it. Existing duplicates are
+-- retained for review and excluded from reads rather than guessed or rewritten.
+DO $attachment_path_uniqueness$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.lab_result_attachments
+    WHERE storage_path IS NOT NULL
+    GROUP BY storage_path
+    HAVING count(*) > 1
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
+      ON public.lab_result_attachments(storage_path)
+      WHERE storage_path IS NOT NULL';
+  ELSE
+    RAISE NOTICE 'Duplicate legacy attachment storage paths detected; ambiguous paths will remain unreadable until reviewed.';
+  END IF;
+END;
+$attachment_path_uniqueness$;
 
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
@@ -77,6 +156,13 @@ CREATE POLICY lab_result_attachments_technician_insert
   ON public.lab_result_attachments FOR INSERT TO authenticated
   WITH CHECK (
     facility_id = (SELECT public.current_user_facility_id())
+    AND lab_order_id IS NOT NULL
+    AND storage_path IS NOT NULL
+    AND length(btrim(storage_path)) > 0
+    AND file_name IS NOT NULL
+    AND length(btrim(file_name)) > 0
+    AND mime_type IN ('application/pdf','image/jpeg','image/png')
+    AND file_size_bytes BETWEEN 1 AND 15728640
     AND uploaded_by = auth.uid()
     AND (
       (SELECT public.current_user_has_role('admin'::public.app_role))
@@ -275,6 +361,16 @@ BEGIN
       AND p.facility_id = lo.facility_id
     WHERE a.facility_id = v_facility
       AND a.lab_order_id = ANY(coalesce(_lab_order_ids, ARRAY[]::uuid[]))
+      -- Legacy rows with missing or duplicate storage paths are not readable.
+      AND a.storage_path IS NOT NULL
+      AND a.file_name IS NOT NULL
+      AND a.mime_type IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.lab_result_attachments duplicate
+        WHERE duplicate.storage_path = a.storage_path
+          AND duplicate.id <> a.id
+      )
       AND EXISTS (
         SELECT 1
         FROM public.service_orders so
