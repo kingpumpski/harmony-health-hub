@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.emergency_cases
+  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent'
+  CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
