@@ -1,6 +1,34 @@
--- Performance reconciliation: every public foreign key now has a covering index.
+-- Performance reconciliation: every available public foreign key now has a covering index.
 -- Generated from the live production schema and applied as migration 20260916103212.
 -- Keep IF NOT EXISTS so re-running against a reconciled schema is harmless.
+
+-- These import/staging tables exist on some provisioned installations but
+-- are not part of every historical schema. Add their FK indexes only when the
+-- table and referenced column exist; do not make clean replay depend on optional legacy tables.
+DO $guarded_diagnosis_fk_indexes$
+BEGIN
+  IF to_regclass('public.diagnosis_import_batches') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_batches') AND attname = 'approved_by' AND attnum > 0 AND NOT attisdropped) THEN
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_approved_by ON public.diagnosis_import_batches (approved_by)';
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_batches') AND attname = 'created_by' AND attnum > 0 AND NOT attisdropped) THEN
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_created_by ON public.diagnosis_import_batches (created_by)';
+    END IF;
+  END IF;
+  IF to_regclass('public.diagnosis_import_rows') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_rows') AND attname = 'icd10_code_id' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_rows_icd10_code_id ON public.diagnosis_import_rows (icd10_code_id)';
+  END IF;
+  IF to_regclass('public.diagnosis_standard_mappings') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_standard_mappings') AND attname = 'reviewed_by' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_standard_mappings_reviewed_by ON public.diagnosis_standard_mappings (reviewed_by)';
+  END IF;
+  IF to_regclass('public.stg_diagnoses') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.stg_diagnoses') AND attname = 'icd10_code_id' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_stg_diagnoses_icd10_code_id ON public.stg_diagnoses (icd10_code_id)';
+  END IF;
+END;
+$guarded_diagnosis_fk_indexes$;
 
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
@@ -125,25 +153,25 @@ END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.diagnosis_import_batches') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'diagnosis_import_batches' AND column_name = 'approved_by') THEN
-    EXECUTE 'create index if not exists idx_fk_diagnosis_import_batches_approved_by on public.diagnosis_import_batches (approved_by);';
+    EXECUTE '';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.diagnosis_import_batches') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'diagnosis_import_batches' AND column_name = 'created_by') THEN
-    EXECUTE 'create index if not exists idx_fk_diagnosis_import_batches_created_by on public.diagnosis_import_batches (created_by);';
+    EXECUTE '';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.diagnosis_import_rows') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'diagnosis_import_rows' AND column_name = 'icd10_code_id') THEN
-    EXECUTE 'create index if not exists idx_fk_diagnosis_import_rows_icd10_code_id on public.diagnosis_import_rows (icd10_code_id);';
+    EXECUTE '';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.diagnosis_standard_mappings') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'diagnosis_standard_mappings' AND column_name = 'reviewed_by') THEN
-    EXECUTE 'create index if not exists idx_fk_diagnosis_standard_mappings_reviewed_by on public.diagnosis_standard_mappings (reviewed_by);';
+    EXECUTE '';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
@@ -467,7 +495,7 @@ END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.stg_diagnoses') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'stg_diagnoses' AND column_name = 'icd10_code_id') THEN
-    EXECUTE 'create index if not exists idx_fk_stg_diagnoses_icd10_code_id on public.stg_diagnoses (icd10_code_id);';
+    EXECUTE '';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
