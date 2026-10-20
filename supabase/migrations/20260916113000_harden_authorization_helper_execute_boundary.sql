@@ -14,5 +14,13 @@ BEGIN
   END IF;
 END;
 $current_user_role_helper_guard$;
-revoke execute on function public.current_user_is_clinical_staff() from anon, public;
-revoke execute on function public.current_user_can_edit_patient_record() from anon, public;
+DO $current_user_other_helpers_guard$
+BEGIN
+  IF pg_catalog.to_regprocedure('public.current_user_is_clinical_staff()') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.current_user_is_clinical_staff() FROM anon, public';
+  END IF;
+  IF pg_catalog.to_regprocedure('public.current_user_can_edit_patient_record()') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.current_user_can_edit_patient_record() FROM anon, public';
+  END IF;
+END;
+$current_user_other_helpers_guard$;
