@@ -56,6 +56,34 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Reconcile partially provisioned attachment tables before policies and RPCs
+-- reference the canonical columns. Do not invent a storage path or patient/order
+-- relationship for legacy rows that cannot be linked safely.
+ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
+  ADD COLUMN IF NOT EXISTS lab_order_id uuid,
+  ADD COLUMN IF NOT EXISTS lab_result_id uuid,
+  ADD COLUMN IF NOT EXISTS facility_id uuid,
+  ADD COLUMN IF NOT EXISTS storage_path text,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS mime_type text,
+  ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
+  ADD COLUMN IF NOT EXISTS uploaded_by uuid,
+  ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- Recover facility scope only where the order linkage is unambiguous. Existing
+-- non-null facility IDs are deliberately not overwritten if they disagree.
+UPDATE public.lab_result_attachments AS attachment
+SET facility_id = lo.facility_id
+FROM public.lab_orders AS lo
+WHERE attachment.facility_id IS NULL
+  AND attachment.lab_order_id = lo.id;
+
+-- Existing installations may contain incomplete or duplicated storage metadata.
+-- Preserve those rows for explicit review, but never make ambiguous paths readable.
+CREATE INDEX IF NOT EXISTS lab_result_attachments_order_facility_idx
+  ON public.lab_result_attachments(lab_order_id, facility_id);
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
