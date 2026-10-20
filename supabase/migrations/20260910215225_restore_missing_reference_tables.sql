@@ -1,6 +1,6 @@
--- Restore foundational reference/operational tables before the historical
--- 20260910215228 RLS migration applies grants and policies to them. All changes
--- are additive so partially provisioned installations retain existing rows.
+-- Restore foundational reference/operational tables before migrations
+-- 20260910215226 through 20260910215228 reference them. The following RLS
+-- migration applies grants and policies. Changes are additive and preserve rows.
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.audit_logs (
