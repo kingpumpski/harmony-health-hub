@@ -1,3 +1,4 @@
+-- Some indexes originate from provisioned legacy-only tables; those targets are guarded.
 -- Performance reconciliation: every available public foreign key now has a covering index.
 -- Generated from the live production schema and applied as migration 20260916103212.
 -- Keep IF NOT EXISTS so re-running against a reconciled schema is harmless.
