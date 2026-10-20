@@ -23,7 +23,7 @@ for (const [idx,table] of [['lab_test_groups_facility_code_uidx','lab_test_group
 }
 must(all,/CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups\([^)]*\)[\s\S]*?RETURNS\s+jsonb[\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path\s*=/i,'panel RPC must pin search_path and return jsonb');
 must(all,/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\([^)]*\)[\s\S]*?RETURNS\s+jsonb[\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path\s*=/i,'attachment RPC must pin search_path and return jsonb');
-const attachment = read('supabase/migrations/20261014120000_harden_lab_result_attachment_read_rpc.sql');
+const attachment = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 must(attachment,/SET\s+search_path\s*=\s*''/i,'sensitive attachment RPC must use an empty pinned search_path');
 for (const [r,m] of [
   [/a\.facility_id = v_facility/,'attachment read must be facility-scoped'],
@@ -77,6 +77,8 @@ for (const [r,m] of [
   [/file_size_bytes BETWEEN 1 AND 15728640/i,'attachment metadata writes must validate file size'],
   [/duplicate\.storage_path = a\.storage_path[\s\S]*?duplicate\.id <> a\.id/i,'ambiguous legacy storage paths must fail closed'],
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
+  [/CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx/i,'effective attachment RPC migration must conditionally enforce unique storage paths'],
+  [/AND a\\.storage_path IS NOT NULL[\\s\\S]*?AND NOT EXISTS \\(\\s*SELECT 1[\\s\\S]*?duplicate\\.storage_path = a\\.storage_path/i,'effective attachment RPC must fail closed for incomplete and duplicate paths'],
 ]) must(legacy,r,m);
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
