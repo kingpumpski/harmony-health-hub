@@ -1,8 +1,10 @@
 begin;
-select plan(18);
+select plan(20);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
+select has_column('public','lab_result_attachments','file_size_bytes','legacy attachment size metadata exists');
+select has_index('public','lab_result_attachments','lab_result_attachments_id_legacy_uidx','legacy attachment identifiers are unique');
 select has_column('public','lab_orders','group_id','lab_orders.group_id exists');
 select has_column('public','lab_orders','parent_order_id','lab_orders.parent_order_id exists');
 select has_column('public','lab_test_catalogue','sample_quantity','catalogue sample_quantity exists');
