@@ -1,6 +1,34 @@
--- Performance reconciliation: every public foreign key now has a covering index.
+-- Performance reconciliation: every available public foreign key now has a covering index.
 -- Generated from the live production schema and applied as migration 20260916103212.
 -- Keep IF NOT EXISTS so re-running against a reconciled schema is harmless.
+
+-- These import/staging tables exist on some provisioned installations but
+-- are not part of every historical schema. Add their FK indexes only when the
+-- table and referenced column exist; do not make clean replay depend on optional legacy tables.
+DO $guarded_diagnosis_fk_indexes$
+BEGIN
+  IF to_regclass('public.diagnosis_import_batches') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_batches') AND attname = 'approved_by' AND attnum > 0 AND NOT attisdropped) THEN
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_approved_by ON public.diagnosis_import_batches (approved_by)';
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_batches') AND attname = 'created_by' AND attnum > 0 AND NOT attisdropped) THEN
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_created_by ON public.diagnosis_import_batches (created_by)';
+    END IF;
+  END IF;
+  IF to_regclass('public.diagnosis_import_rows') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_import_rows') AND attname = 'icd10_code_id' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_rows_icd10_code_id ON public.diagnosis_import_rows (icd10_code_id)';
+  END IF;
+  IF to_regclass('public.diagnosis_standard_mappings') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.diagnosis_standard_mappings') AND attname = 'reviewed_by' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_standard_mappings_reviewed_by ON public.diagnosis_standard_mappings (reviewed_by)';
+  END IF;
+  IF to_regclass('public.stg_diagnoses') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.stg_diagnoses') AND attname = 'icd10_code_id' AND attnum > 0 AND NOT attisdropped) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_stg_diagnoses_icd10_code_id ON public.stg_diagnoses (icd10_code_id)';
+  END IF;
+END;
+$guarded_diagnosis_fk_indexes$;
 
 create index if not exists idx_fk_admissions_admitted_by on public.admissions (admitted_by);
 create index if not exists idx_fk_ai_clinical_events_actor_id on public.ai_clinical_events (actor_id);
@@ -22,10 +50,10 @@ create index if not exists idx_fk_bulk_import_jobs_created_by on public.bulk_imp
 create index if not exists idx_fk_care_transitions_responsible_officer on public.care_transitions (responsible_officer);
 create index if not exists idx_fk_dental_records_performed_by on public.dental_records (performed_by);
 create index if not exists idx_fk_diagnoses_icd_code on public.diagnoses (icd_code);
-create index if not exists idx_fk_diagnosis_import_batches_approved_by on public.diagnosis_import_batches (approved_by);
-create index if not exists idx_fk_diagnosis_import_batches_created_by on public.diagnosis_import_batches (created_by);
-create index if not exists idx_fk_diagnosis_import_rows_icd10_code_id on public.diagnosis_import_rows (icd10_code_id);
-create index if not exists idx_fk_diagnosis_standard_mappings_reviewed_by on public.diagnosis_standard_mappings (reviewed_by);
+
+
+
+
 create index if not exists idx_fk_emergency_cases_assigned_officer on public.emergency_cases (assigned_officer);
 create index if not exists idx_fk_facility_configuration_updated_by on public.facility_configuration (updated_by);
 create index if not exists idx_fk_facility_diagnosis_standards_standard_id on public.facility_diagnosis_standards (standard_id);
@@ -79,7 +107,7 @@ create index if not exists idx_fk_report_submissions_submitted_by on public.repo
 create index if not exists idx_fk_service_orders_approved_by on public.service_orders (approved_by);
 create index if not exists idx_fk_service_orders_released_by on public.service_orders (released_by);
 create index if not exists idx_fk_staff_shift_assignments_user_id on public.staff_shift_assignments (user_id);
-create index if not exists idx_fk_stg_diagnoses_icd10_code_id on public.stg_diagnoses (icd10_code_id);
+
 create index if not exists idx_fk_theatre_cases_anaesthetist_id on public.theatre_cases (anaesthetist_id);
 create index if not exists idx_fk_theatre_cases_created_by on public.theatre_cases (created_by);
 create index if not exists idx_fk_theatre_cases_encounter_id on public.theatre_cases (encounter_id);
