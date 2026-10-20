@@ -189,7 +189,18 @@ END $migration$;
 DO $migration$ BEGIN
   -- Production reconciliation may include legacy relations absent from a clean install.
   IF to_regclass('public.facility_diagnosis_standards') IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'facility_diagnosis_standards' AND column_name = 'standard_id') THEN
-    EXECUTE 'create index if not exists idx_fk_facility_diagnosis_standards_standard_id on public.facility_diagnosis_standards (standard_id);';
+    EXECUTE 'DO $guarded_facility_diagnosis_index$
+BEGIN
+  IF to_regclass('public.facility_diagnosis_standards') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM pg_attribute
+       WHERE attrelid = to_regclass('public.facility_diagnosis_standards')
+         AND attname = 'standard_id' AND attnum > 0 AND NOT attisdropped
+     ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_facility_diagnosis_standards_standard_id ON public.facility_diagnosis_standards (standard_id)';
+  END IF;
+END;
+$guarded_facility_diagnosis_index$;';
   END IF;
 END $migration$;
 DO $migration$ BEGIN
