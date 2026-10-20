@@ -1,4 +1,5 @@
 -- Production reconciliation for Reports Center.
+-- Delimiters in all PL/pgSQL bodies use complete dollar-quote tags.
 -- This migration mirrors the schema/function contract applied to the production
 -- Supabase project so the repository and remote migration history remain aligned.
 -- All objects are intentionally idempotent.
