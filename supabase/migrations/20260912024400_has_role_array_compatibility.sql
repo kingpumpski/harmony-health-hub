@@ -4,7 +4,6 @@ CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _roles public.app_role
 RETURNS BOOLEAN
 LANGUAGE SQL
 STABLE
-SECURITY DEFINER
 SET search_path = ''
 AS $$
   SELECT EXISTS (
