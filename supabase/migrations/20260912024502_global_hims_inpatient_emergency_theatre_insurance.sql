@@ -200,39 +200,39 @@ ALTER TABLE public.insurance_claim_events ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  CREATE POLICY "ward operations clinical access" ON public.ward_units FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse'));
+  CREATE POLICY "ward operations clinical access" ON public.ward_units FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'midwife'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "ward beds clinical access" ON public.ward_beds FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse'));
+  CREATE POLICY "ward beds clinical access" ON public.ward_beds FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'midwife'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "nursing care plan access" ON public.nursing_care_plans FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  CREATE POLICY "nursing care plan access" ON public.nursing_care_plans FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'midwife'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "nursing handover access" ON public.nursing_shift_handovers FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (outgoing_officer = auth.uid() OR incoming_officer = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  CREATE POLICY "nursing handover access" ON public.nursing_shift_handovers FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'midwife'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (outgoing_officer = auth.uid() OR incoming_officer = auth.uid() OR public.has_role(auth.uid(),'admin'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "emergency clinical access" ON public.emergency_cases FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'front_desk')) WITH CHECK (assigned_officer = auth.uid() OR public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'front_desk'));
+  CREATE POLICY "emergency clinical access" ON public.emergency_cases FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text) OR public.has_role(auth.uid(),'front_desk'::text)) WITH CHECK (assigned_officer = auth.uid() OR public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'front_desk'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "theatre clinical access" ON public.theatre_cases FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (created_by = auth.uid() OR surgeon_id = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  CREATE POLICY "theatre clinical access" ON public.theatre_cases FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (created_by = auth.uid() OR surgeon_id = auth.uid() OR public.has_role(auth.uid(),'admin'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "transfusion clinical access" ON public.transfusion_records FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse')) WITH CHECK (administered_by = auth.uid() OR witnessed_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
+  CREATE POLICY "transfusion clinical access" ON public.transfusion_records FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'practitioner'::text) OR public.has_role(auth.uid(),'nurse'::text) OR public.has_role(auth.uid(),'specialist_nurse'::text)) WITH CHECK (administered_by = auth.uid() OR witnessed_by = auth.uid() OR public.has_role(auth.uid(),'admin'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "insurance claims accounts access" ON public.insurance_claims FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'practitioner')) WITH CHECK (created_by = auth.uid() OR public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant'));
+  CREATE POLICY "insurance claims accounts access" ON public.insurance_claims FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'accountant'::text) OR public.has_role(auth.uid(),'practitioner'::text)) WITH CHECK (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'accountant'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$
 BEGIN
-  CREATE POLICY "insurance claim events read" ON public.insurance_claim_events FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'practitioner'));
+  CREATE POLICY "insurance claim events read" ON public.insurance_claim_events FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin'::text) OR public.has_role(auth.uid(),'accountant'::text) OR public.has_role(auth.uid(),'practitioner'::text));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE OR REPLACE FUNCTION public.touch_global_hims_updated_at() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN NEW.updated_at=now(); RETURN NEW; END; $$;
@@ -256,7 +256,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE c public.insurance_claims%ROWTYPE; uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::text) OR public.has_role(uid,'accountant'::text)) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
   IF _to_status NOT IN ('submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided') THEN RAISE EXCEPTION 'Invalid claim status'; END IF;
   SELECT * INTO c FROM public.insurance_claims WHERE id=_claim_id FOR UPDATE;
   IF c.id IS NULL THEN RAISE EXCEPTION 'Claim not found'; END IF;
