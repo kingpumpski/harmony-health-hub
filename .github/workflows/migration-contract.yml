@@ -7,14 +7,12 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
-      - '.github/workflows/migration-contract.yml'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
-      - '.github/workflows/migration-contract.yml'
   workflow_dispatch:
 
 permissions:
