@@ -5,7 +5,7 @@ RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=publi
 DECLARE v_status text; v_result public.diagnoses;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
  SELECT status INTO v_status FROM public.encounters WHERE id=_encounter_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF v_status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is closed'; END IF;
@@ -20,7 +20,7 @@ RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_encounter uuid; v_status text;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to remove diagnoses'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to remove diagnoses'; END IF;
  SELECT encounter_id INTO v_encounter FROM public.diagnoses WHERE id=_diagnosis_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Diagnosis does not exist'; END IF;
  SELECT status INTO v_status FROM public.encounters WHERE id=v_encounter;
@@ -33,7 +33,7 @@ RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path=publ
 DECLARE result public.encounters;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
  SELECT * INTO result FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF result.status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is already closed'; END IF;
@@ -47,7 +47,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'practitioner') OR has_role(auth.uid(),'nurse') OR has_role(auth.uid(),'midwife') OR has_role(auth.uid(),'specialist_nurse') OR has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Referral creation is not permitted'; END IF;
+ IF NOT (has_role(auth.uid(),'admin'::public.app_role) OR has_role(auth.uid(),'practitioner'::public.app_role) OR has_role(auth.uid(),'nurse'::public.app_role) OR has_role(auth.uid(),'midwife'::public.app_role) OR has_role(auth.uid(),'specialist_nurse'::public.app_role) OR has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Referral creation is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF NULLIF(btrim(_destination),'') IS NULL OR NULLIF(btrim(_reason),'') IS NULL THEN RAISE EXCEPTION 'Destination and reason are required'; END IF;
  IF _urgency NOT IN ('routine','urgent','emergency') THEN RAISE EXCEPTION 'Invalid referral urgency'; END IF;
@@ -61,7 +61,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'practitioner') OR has_role(auth.uid(),'nurse') OR has_role(auth.uid(),'midwife') OR has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
+ IF NOT (has_role(auth.uid(),'admin'::public.app_role) OR has_role(auth.uid(),'practitioner'::public.app_role) OR has_role(auth.uid(),'nurse'::public.app_role) OR has_role(auth.uid(),'midwife'::public.app_role) OR has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
  IF NOT EXISTS (SELECT 1 FROM patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF _transition_type NOT IN ('discharge','transfer','follow_up') THEN RAISE EXCEPTION 'Invalid transition type'; END IF;
  IF _follow_up_required AND _follow_up_date IS NULL THEN RAISE EXCEPTION 'Follow-up date is required when follow-up is required'; END IF;
@@ -75,7 +75,7 @@ RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_pat
 DECLARE v_cycle public.fertility_cycles; v_cycle_number integer;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF upper(trim(_cycle_type)) NOT IN ('IVF','IUI','ICSI','FET') THEN RAISE EXCEPTION 'Unsupported fertility cycle type'; END IF;
  SELECT COALESCE(MAX(cycle_number),0)+1 INTO v_cycle_number FROM public.fertility_cycles WHERE patient_id=_patient_id;
@@ -89,7 +89,7 @@ RETURNS public.fertility_monitoring LANGUAGE plpgsql SECURITY DEFINER SET search
 DECLARE v_row public.fertility_monitoring; v_patient uuid; v_status text;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  SELECT patient_id,status INTO v_patient,v_status FROM public.fertility_cycles WHERE id=_cycle_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Fertility cycle not found'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=v_patient AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
@@ -109,7 +109,7 @@ RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_pat
 DECLARE v_cycle public.fertility_cycles; v_patient uuid;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF lower(trim(_status)) NOT IN ('active','completed','cancelled','successful','unsuccessful') THEN RAISE EXCEPTION 'Unsupported fertility cycle status'; END IF;
  SELECT patient_id INTO v_patient FROM public.fertility_cycles WHERE id=_cycle_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Fertility cycle not found'; END IF;
@@ -124,7 +124,7 @@ RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE _id uuid;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'dentist')) THEN RAISE EXCEPTION 'Dental clinical role required'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'dentist')) THEN RAISE EXCEPTION 'Dental clinical role required'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  INSERT INTO public.dental_records(patient_id,examination,treatment_plan,procedures_performed,performed_by) VALUES(_patient_id,NULLIF(trim(_examination),''),NULLIF(trim(_treatment_plan),''),NULLIF(trim(_procedures_performed),''),auth.uid()) RETURNING id INTO _id;
  RETURN _id;
@@ -153,7 +153,7 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inv
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id uuid; patient_uuid uuid;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  IF _patient_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  SELECT * INTO item FROM public.pharmacy_inventory WHERE id=_inventory_id FOR UPDATE;
