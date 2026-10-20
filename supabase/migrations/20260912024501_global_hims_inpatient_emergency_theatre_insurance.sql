@@ -143,14 +143,22 @@ CREATE TABLE IF NOT EXISTS public.theatre_cases (
 -- Reconcile legacy theatre_cases columns (scheduled_at/theatre/anaesthetist_id)
 -- with the canonical theatre scheduling API while preserving existing cases.
 ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS procedure_name TEXT,
+  ADD COLUMN IF NOT EXISTS surgeon_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS theatre_name TEXT,
-  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS urgency TEXT,
+  ADD COLUMN IF NOT EXISTS urgency TEXT NOT NULL DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'scheduled',
   ADD COLUMN IF NOT EXISTS preoperative_notes TEXT,
   ADD COLUMN IF NOT EXISTS postoperative_notes TEXT,
-  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 DO $theatre_schedule_compatibility$
 BEGIN
