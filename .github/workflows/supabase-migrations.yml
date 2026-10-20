@@ -48,6 +48,9 @@ jobs:
       - name: Enforce repository project-integrity gate
         run: npm run test:project-integrity
 
+      - name: Reject conflicting migration versions
+        run: npm run test:migration-filename-uniqueness
+
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
@@ -82,6 +85,10 @@ jobs:
       - name: Verify laboratory missing-object reconciliation
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/laboratory_missing_objects_contract.sql
+
+      - name: Verify HR and payroll record management
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/hr_payroll_record_management_contract.sql
 
       - name: Verify security access contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
