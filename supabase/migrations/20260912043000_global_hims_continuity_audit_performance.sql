@@ -17,8 +17,8 @@ CREATE OR REPLACE FUNCTION public.audit_global_hims_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
-AS $$
+SET search_path = ''
+AS $
 DECLARE
   v_actor UUID := auth.uid();
   v_entity UUID;
@@ -33,7 +33,7 @@ BEGIN
   ELSIF TG_TABLE_NAME LIKE 'maternity_%' THEN
     v_action := lower(TG_OP) || '_maternity_' || replace(TG_TABLE_NAME, 'maternity_', '');
   END IF;
-  IF TG_TABLE_NAME = 'maternity_episodes' AND TG_OP <> 'DELETE' AND COALESCE(NEW.risk_level, 'routine') = 'critical' THEN
+  IF TG_TABLE_NAME = 'maternity_episodes' AND TG_OP <> 'DELETE' AND COALESCE(to_jsonb(NEW)->>'risk_level', 'routine') = 'critical' THEN
     v_severity := 'critical';
   END IF;
   v_metadata := jsonb_build_object(
