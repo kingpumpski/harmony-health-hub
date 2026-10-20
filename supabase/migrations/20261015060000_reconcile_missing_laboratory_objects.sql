@@ -84,6 +84,26 @@ WHERE attachment.facility_id IS NULL
 CREATE INDEX IF NOT EXISTS lab_result_attachments_order_facility_idx
   ON public.lab_result_attachments(lab_order_id, facility_id);
 
+-- Enforce unique paths where legacy data permits it. Existing duplicates are
+-- retained for review and excluded from reads rather than guessed or rewritten.
+DO $attachment_path_uniqueness$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.lab_result_attachments
+    WHERE storage_path IS NOT NULL
+    GROUP BY storage_path
+    HAVING count(*) > 1
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
+      ON public.lab_result_attachments(storage_path)
+      WHERE storage_path IS NOT NULL;
+  ELSE
+    RAISE NOTICE 'Duplicate legacy attachment storage paths detected; ambiguous paths will remain unreadable until reviewed.';
+  END IF;
+END;
+$attachment_path_uniqueness$;
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
@@ -101,7 +121,18 @@ CREATE POLICY lab_result_attachments_technician_insert
   ON public.lab_result_attachments FOR INSERT TO authenticated
   WITH CHECK (
     facility_id = (SELECT public.current_user_facility_id())
+    AND lab_order_id IS NOT NULL
+    AND storage_path IS NOT NULL
+    AND length(btrim(storage_path)) > 0
+    AND file_name IS NOT NULL
+    AND length(btrim(file_name)) > 0
+    AND mime_type IN ('application/pdf','image/jpeg','image/png')
+    AND file_size_bytes BETWEEN 1 AND 15728640
     AND uploaded_by = auth.uid()
+    AND NOT EXISTS (
+      SELECT 1 FROM public.lab_result_attachments existing
+      WHERE existing.storage_path = lab_result_attachments.storage_path
+    )
     AND (
       (SELECT public.current_user_has_role('admin'::public.app_role))
       OR (SELECT public.current_user_has_role('it_admin'::public.app_role))
