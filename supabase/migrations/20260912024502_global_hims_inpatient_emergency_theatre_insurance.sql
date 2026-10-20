@@ -171,6 +171,8 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
 );
 -- Reconcile legacy claim tables before indexes and lifecycle triggers depend on timestamps.
 ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
