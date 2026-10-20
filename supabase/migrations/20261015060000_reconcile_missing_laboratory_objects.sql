@@ -71,6 +71,25 @@ ALTER TABLE public.lab_result_attachments
   ADD COLUMN IF NOT EXISTS uploaded_by uuid,
   ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
+-- Backfill only technical metadata that can be generated without inventing a
+-- clinical relationship. Legacy attachments without an order or storage path
+-- remain preserved but cannot be returned by the guarded read RPC.
+UPDATE public.lab_result_attachments
+SET id = gen_random_uuid()
+WHERE id IS NULL;
+
+UPDATE public.lab_result_attachments
+SET created_at = now()
+WHERE created_at IS NULL;
+
+ALTER TABLE public.lab_result_attachments
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ALTER COLUMN id SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx
+  ON public.lab_result_attachments(id);
+
 -- Recover facility scope only where the order linkage is unambiguous. Existing
 -- non-null facility IDs are deliberately not overwritten if they disagree.
 UPDATE public.lab_result_attachments AS attachment
