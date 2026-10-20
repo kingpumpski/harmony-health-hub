@@ -34,6 +34,18 @@ BEGIN
 END;
 $bulk_import_entity_type_check$;
 
+-- Complete the pre-existing legacy table before indexes and constraints use
+-- columns that CREATE TABLE IF NOT EXISTS cannot add to an existing relation.
+ALTER TABLE public.bulk_import_jobs
+  ADD COLUMN IF NOT EXISTS source_format TEXT,
+  ADD COLUMN IF NOT EXISTS file_name TEXT,
+  ADD COLUMN IF NOT EXISTS total_rows INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS successful_rows INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS failed_rows INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS errors JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'completed',
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
   ON public.bulk_import_jobs(created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
@@ -51,6 +63,17 @@ CREATE POLICY "users read own bulk import jobs"
   ON public.bulk_import_jobs FOR SELECT TO authenticated
   USING (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
 
-ALTER TABLE public.bulk_import_jobs
-  ADD CONSTRAINT bulk_import_jobs_row_counts_valid
-  CHECK (successful_rows + failed_rows <= total_rows);
+DO $bulk_import_row_counts$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.bulk_import_jobs'::regclass
+      AND conname = 'bulk_import_jobs_row_counts_valid'
+  ) THEN
+    ALTER TABLE public.bulk_import_jobs
+      ADD CONSTRAINT bulk_import_jobs_row_counts_valid
+      CHECK (successful_rows + failed_rows <= total_rows);
+  END IF;
+END;
+$bulk_import_row_counts$;
+
