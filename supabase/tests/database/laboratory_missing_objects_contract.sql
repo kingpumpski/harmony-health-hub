@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(49);
 
 select has_table(
   'public',
@@ -51,6 +51,16 @@ select has_column(
   'sample_quantity',
   'lab_test_catalogue.sample_quantity must be available to laboratory workflows'
 );
+
+select col_type_is('public', 'lab_test_groups', 'facility_id', 'uuid', 'panel facility must be a UUID');
+select col_not_null('public', 'lab_test_groups', 'facility_id', 'panel facility is required');
+select col_type_is('public', 'lab_test_groups', 'group_name', 'text', 'panel name must be text');
+select col_type_is('public', 'lab_test_groups', 'group_code', 'text', 'panel code must be text');
+select col_type_is('public', 'lab_test_group_items', 'group_id', 'uuid', 'panel membership group must be a UUID');
+select col_type_is('public', 'lab_test_group_items', 'test_id', 'uuid', 'panel membership test must be a UUID');
+select col_type_is('public', 'lab_orders', 'group_id', 'uuid', 'order panel link must be a UUID');
+select col_type_is('public', 'lab_orders', 'parent_order_id', 'uuid', 'parent order link must be a UUID');
+select col_type_is('public', 'lab_test_catalogue', 'sample_quantity', 'text', 'sample quantity must be text');
 
 select ok(
   to_regprocedure('public.get_laboratory_test_groups(boolean)') IS NOT NULL,
