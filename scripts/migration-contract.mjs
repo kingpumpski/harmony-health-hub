@@ -53,6 +53,13 @@ for (const {name,source} of migrations) {
     checked++;
   }
 }
+const referenceTablesMigration = '20260910215225_restore_missing_reference_tables.sql';
+must(read('supabase/migrations/' + referenceTablesMigration),/CREATE TABLE IF NOT EXISTS public[.]audit_logs/i,'clean replay must restore audit log table');
+must(read('supabase/migrations/' + referenceTablesMigration),/CREATE TABLE IF NOT EXISTS public[.]sync_queue/i,'clean replay must restore sync queue table');
+must(read('supabase/migrations/' + referenceTablesMigration),/CREATE TABLE IF NOT EXISTS public[.]lab_tests/i,'clean replay must restore laboratory reference table');
+for (const table of ['audit_logs','sync_queue','lab_tests']) {
+  assert.ok(files.indexOf(referenceTablesMigration) >= 0 && files.indexOf(referenceTablesMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'), table+' must exist before historical RLS hardening references it');
+}
 const symptomMapMigration = '20260910215226_reconcile_ai_symptom_icd_map.sql';
 must(read('supabase/migrations/' + symptomMapMigration),/CREATE TABLE IF NOT EXISTS public[.]ai_symptom_icd_map/i,'clean replay must restore the AI symptom/ICD map');
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_symptom_icd_map/i,'AI symptom/ICD map must be defined in the migration chain');
