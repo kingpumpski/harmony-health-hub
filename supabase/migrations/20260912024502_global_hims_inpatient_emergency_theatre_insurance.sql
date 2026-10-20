@@ -79,9 +79,29 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Older facilities may already have emergency_cases with a reduced legacy shape.
+-- Reconcile every column required by this migration before creating indexes or workflows.
 ALTER TABLE public.emergency_cases
-  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent'
-  CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS arrival_mode TEXT,
+  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent',
+  ADD COLUMN IF NOT EXISTS chief_complaint TEXT,
+  ADD COLUMN IF NOT EXISTS triage_summary TEXT,
+  ADD COLUMN IF NOT EXISTS assigned_officer UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'waiting',
+  ADD COLUMN IF NOT EXISTS disposition TEXT,
+  ADD COLUMN IF NOT EXISTS disposition_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $
+BEGIN
+  ALTER TABLE public.emergency_cases
+    ADD CONSTRAINT emergency_cases_acuity_allowed
+    CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END;
+$;
 
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
