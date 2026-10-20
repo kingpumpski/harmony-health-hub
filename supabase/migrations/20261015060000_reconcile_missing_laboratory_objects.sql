@@ -129,10 +129,6 @@ CREATE POLICY lab_result_attachments_technician_insert
     AND mime_type IN ('application/pdf','image/jpeg','image/png')
     AND file_size_bytes BETWEEN 1 AND 15728640
     AND uploaded_by = auth.uid()
-    AND NOT EXISTS (
-      SELECT 1 FROM public.lab_result_attachments existing
-      WHERE existing.storage_path = lab_result_attachments.storage_path
-    )
     AND (
       (SELECT public.current_user_has_role('admin'::public.app_role))
       OR (SELECT public.current_user_has_role('it_admin'::public.app_role))
