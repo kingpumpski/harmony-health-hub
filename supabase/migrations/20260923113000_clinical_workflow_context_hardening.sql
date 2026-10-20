@@ -13,7 +13,7 @@ BEGIN
  IF _icd_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.icd_codes WHERE code=upper(trim(_icd_code))) THEN RAISE EXCEPTION 'Diagnosis code is not in the approved ICD-10/STG catalogue'; END IF;
  INSERT INTO public.diagnoses(encounter_id,diagnosis,icd_code,is_principal) VALUES(_encounter_id,trim(_diagnosis),NULLIF(upper(trim(_icd_code)),''),false) RETURNING * INTO v_result;
  RETURN v_result;
-END; $;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
