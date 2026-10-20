@@ -28,7 +28,7 @@ jobs:
   replay:
     name: Replay all migrations on a clean local database
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -38,26 +38,41 @@ jobs:
         with:
           version: 2.121.0
 
-      - name: Start local Supabase and replay migration chain
+      - name: Start local Supabase services
         shell: bash
         run: |
-          set -uo pipefail
-          for attempt in 1 2 3 4; do
-            if timeout 20m supabase start 2>&1 | tee /tmp/supabase-start.log; then
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if timeout 10m supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
             fi
             if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|ERROR: column .* does not exist|syntax error at or near|migration .* failed|permission denied|duplicate key value' /tmp/supabase-start.log; then
-              echo "Migration replay encountered a deterministic schema/SQL failure; not retrying."
+              echo "Supabase startup reached a deterministic schema/SQL failure; not retrying."
               exit 1
             fi
-            if [ "$attempt" -lt 4 ]; then
+            if [ "$attempt" -lt 3 ]; then
               delay=$((attempt * 20))
-              echo "Local Supabase startup failed for an infrastructure reason (attempt $attempt/4); retrying in ${delay}s."
+              echo "Supabase startup failed for an infrastructure reason (attempt $attempt/3); retrying in ${delay}s."
               sleep "$delay"
             fi
           done
           echo "Local Supabase did not start after bounded retries."
           exit 1
+
+      - name: Replay the complete migration chain from a clean database
+        timeout-minutes: 25
+        run: supabase db reset
+
+      - name: Run database schema and security contract
+        if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/migration_contract.sql
+
+      - name: Run static migration contract
+        if: hashFiles('scripts/migration-contract.mjs') != ''
+        run: |
+          npm ci
+          node scripts/migration-contract.mjs
 
       - name: Stop local Supabase
         if: always()
