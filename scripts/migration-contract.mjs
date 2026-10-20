@@ -78,7 +78,7 @@ for (const [r,m] of [
   [/duplicate\.storage_path = a\.storage_path[\s\S]*?duplicate\.id <> a\.id/i,'ambiguous legacy storage paths must fail closed'],
   [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
   [/CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx/i,'effective attachment RPC migration must conditionally enforce unique storage paths'],
-  [/AND a\\.storage_path IS NOT NULL[\\s\\S]*?AND NOT EXISTS \\(\\s*SELECT 1[\\s\\S]*?duplicate\\.storage_path = a\\.storage_path/i,'effective attachment RPC must fail closed for incomplete and duplicate paths'],
+  [/AND a\.storage_path IS NOT NULL[\s\S]*?AND NOT EXISTS \(\s*SELECT 1[\s\S]*?duplicate\.storage_path = a\.storage_path/i,'effective attachment RPC must fail closed for incomplete and duplicate paths'],
 ]) must(legacy,r,m);
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
