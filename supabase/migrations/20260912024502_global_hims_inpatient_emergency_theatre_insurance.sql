@@ -94,15 +94,6 @@ ALTER TABLE public.emergency_cases
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-DO $
-BEGIN
-  ALTER TABLE public.emergency_cases
-    ADD CONSTRAINT emergency_cases_acuity_allowed
-    CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
-EXCEPTION WHEN duplicate_object THEN NULL;
-END;
-$;
-
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
