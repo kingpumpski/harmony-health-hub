@@ -1,11 +1,20 @@
--- Lock down reference/internal tables
-ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
-GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
-CREATE POLICY "clinical staff manage ai diagnosis suggestions"
-  ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
-  USING (public.is_clinical_staff(auth.uid()))
-  WITH CHECK (public.is_clinical_staff(auth.uid()));
+-- Lock down the AI diagnosis suggestions table when it exists at this point
+-- in the migration chain. Some legacy histories create it in a later clinical
+-- migration; that later migration installs its own RLS policy. Do not fail a
+-- fresh replay solely because this optional table has not been created yet.
+DO $migration$
+BEGIN
+  IF to_regclass('public.ai_diagnosis_suggestions') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated';
+    EXECUTE 'GRANT ALL ON public.ai_diagnosis_suggestions TO service_role';
+    EXECUTE 'CREATE POLICY "clinical staff manage ai diagnosis suggestions"
+      ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
+      USING (public.is_clinical_staff(auth.uid()))
+      WITH CHECK (public.is_clinical_staff(auth.uid()))';
+  END IF;
+END
+$migration$;
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.audit_logs TO authenticated;
