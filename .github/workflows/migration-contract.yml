@@ -44,7 +44,7 @@ jobs:
   database-contract:
     name: Clean database migration replay
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v5
       - uses: supabase/setup-cli@v1
@@ -56,25 +56,27 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3 4; do
-            if supabase start 2>&1 | tee /tmp/supabase-start.log; then
+            if timeout 3m supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
             fi
-            if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|syntax error at or near|migration .* failed' /tmp/supabase-start.log; then
-              echo "Supabase startup reached a deterministic migration/schema error; stopping retries so the SQL failure stays visible."
+            if grep -Eiq 'SQLSTATE|invalid input value for enum|ERROR: relation .* does not exist|ERROR: column .* does not exist|syntax error at or near|migration .* failed|permission denied|duplicate key value' /tmp/supabase-start.log; then
+              echo "Supabase startup reached a deterministic migration/schema/security failure; stopping retries so the SQL failure stays visible."
               exit 1
             fi
             if [ "$attempt" -lt 4 ]; then
               delay=$((attempt * 20))
-              echo "Supabase image pull/start failed (attempt $attempt/4); retrying in ${delay}s."
+              echo "Supabase startup failed for an infrastructure reason (attempt $attempt/4); retrying in ${delay}s."
               sleep "$delay"
             fi
           done
           echo "Supabase failed to start after bounded retries; migration replay was not run."
           exit 1
       - name: Replay the full migration chain on a clean database
+        timeout-minutes: 35
         run: supabase db reset
       - name: Verify live schema, RPC return types, privileges and RLS
         if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
+        timeout-minutes: 10
         run: supabase test db supabase/tests/database/migration_contract.sql
       - name: Explain skipped database contract
         if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
