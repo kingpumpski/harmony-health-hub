@@ -83,7 +83,7 @@ for (const [r,m] of [
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 assert.ok(!/END;\s*(?<!\$)\$(?!\$);/.test(all),'migration chain must not contain unterminated single-dollar PL/pgSQL function delimiters');
-const malformedOpeners = migrations.filter(({source}) => /\\bAS\\s+\\$(?=\\s|$)/.test(source)).map(({name}) => name);
+const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
