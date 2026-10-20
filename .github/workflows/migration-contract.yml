@@ -35,7 +35,11 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate legacy schema compatibility contract and security
+        if: hashFiles('scripts/migration-contract.mjs') != ''
         run: node scripts/migration-contract.mjs
+      - name: Explain skipped static contract
+        if: hashFiles('scripts/migration-contract.mjs') == ''
+        run: echo "Static migration contract is not present on this legacy PR branch; clean replay still runs, and the full contract is required on branches that include the contract assets."
 
   database-contract:
     name: Clean database migration replay
@@ -70,4 +74,8 @@ jobs:
       - name: Replay the full migration chain on a clean database
         run: supabase db reset
       - name: Verify live schema, RPC return types, privileges and RLS
+        if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
         run: supabase test db supabase/tests/database/migration_contract.sql
+      - name: Explain skipped database contract
+        if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
+        run: echo "Database contract SQL is not present on this legacy PR branch; migration replay remains required."
