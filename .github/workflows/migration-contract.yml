@@ -52,6 +52,7 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
+          set -o pipefail
           for attempt in 1 2 3 4; do
             if supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
