@@ -42,7 +42,7 @@ ALTER TABLE public.medication_administrations
   ALTER COLUMN updated_at SET DEFAULT now(),
   ALTER COLUMN updated_at SET NOT NULL;
 
-DO $mar_status_contract$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -55,4 +55,4 @@ BEGIN
       CHECK (status IN ('scheduled','administered','held','refused','omitted','cancelled'));
   END IF;
 END;
-$mar_status_contract$;
+$$;
