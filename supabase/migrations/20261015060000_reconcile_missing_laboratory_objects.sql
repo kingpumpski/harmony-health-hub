@@ -95,9 +95,9 @@ BEGIN
     GROUP BY storage_path
     HAVING count(*) > 1
   ) THEN
-    CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
       ON public.lab_result_attachments(storage_path)
-      WHERE storage_path IS NOT NULL;
+      WHERE storage_path IS NOT NULL';
   ELSE
     RAISE NOTICE 'Duplicate legacy attachment storage paths detected; ambiguous paths will remain unreadable until reviewed.';
   END IF;
