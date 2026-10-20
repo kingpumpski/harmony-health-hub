@@ -4,7 +4,7 @@
 -- a clean migration run never compiles against retired column names.
 
 -- These indexes are applied only when the legacy table and all indexed columns exist.
-DO $continuity_index_reconciliation$
+DO $$
 DECLARE
   v_index record;
   v_relation regclass;
@@ -45,7 +45,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$continuity_index_reconciliation$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.audit_global_hims_change()
 RETURNS TRIGGER
