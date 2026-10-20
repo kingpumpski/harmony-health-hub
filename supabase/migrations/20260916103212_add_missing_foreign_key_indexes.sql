@@ -56,7 +56,18 @@ create index if not exists idx_fk_diagnoses_icd_code on public.diagnoses (icd_co
 
 create index if not exists idx_fk_emergency_cases_assigned_officer on public.emergency_cases (assigned_officer);
 create index if not exists idx_fk_facility_configuration_updated_by on public.facility_configuration (updated_by);
-create index if not exists idx_fk_facility_diagnosis_standards_standard_id on public.facility_diagnosis_standards (standard_id);
+DO $guarded_facility_diagnosis_index$
+BEGIN
+  IF to_regclass('public.facility_diagnosis_standards') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM pg_attribute
+       WHERE attrelid = to_regclass('public.facility_diagnosis_standards')
+         AND attname = 'standard_id' AND attnum > 0 AND NOT attisdropped
+     ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_facility_diagnosis_standards_standard_id ON public.facility_diagnosis_standards (standard_id)';
+  END IF;
+END;
+$guarded_facility_diagnosis_index$;
 create index if not exists idx_fk_facility_report_config_report_id on public.facility_report_config (report_id);
 create index if not exists idx_fk_healthcare_facilities_created_by on public.healthcare_facilities (created_by);
 create index if not exists idx_fk_imaging_orders_encounter_id on public.imaging_orders (encounter_id);
