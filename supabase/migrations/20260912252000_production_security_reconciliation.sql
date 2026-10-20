@@ -36,7 +36,7 @@ BEGIN
 
   RETURN;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.mark_notifications_read(_notification_ids UUID[])
 RETURNS INTEGER
