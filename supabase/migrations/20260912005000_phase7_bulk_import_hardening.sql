@@ -15,6 +15,25 @@ CREATE TABLE IF NOT EXISTS public.bulk_import_jobs (
   completed_at TIMESTAMPTZ
 );
 
+-- A partially provisioned legacy table can predate entity_type. Preserve existing
+-- rows without inventing a category; new workflow writes should supply the category.
+ALTER TABLE public.bulk_import_jobs
+  ADD COLUMN IF NOT EXISTS entity_type TEXT;
+
+DO $bulk_import_entity_type_check$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.bulk_import_jobs'::regclass
+      AND conname = 'bulk_import_jobs_entity_type_legacy_valid'
+  ) THEN
+    ALTER TABLE public.bulk_import_jobs
+      ADD CONSTRAINT bulk_import_jobs_entity_type_legacy_valid
+      CHECK (entity_type IS NULL OR entity_type IN ('patients','pharmacy_inventory','icd_codes'));
+  END IF;
+END;
+$bulk_import_entity_type_check$;
+
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
   ON public.bulk_import_jobs(created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
