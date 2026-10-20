@@ -86,6 +86,17 @@ CREATE POLICY "users read own bulk import jobs"
   ON public.bulk_import_jobs FOR SELECT TO authenticated
   USING (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
 
-ALTER TABLE public.bulk_import_jobs
-  ADD CONSTRAINT bulk_import_jobs_row_counts_valid
-  CHECK (successful_rows + failed_rows <= total_rows);
+DO $bulk_import_row_counts$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.bulk_import_jobs'::regclass
+      AND conname = 'bulk_import_jobs_row_counts_valid'
+  ) THEN
+    ALTER TABLE public.bulk_import_jobs
+      ADD CONSTRAINT bulk_import_jobs_row_counts_valid
+      CHECK (successful_rows + failed_rows <= total_rows);
+  END IF;
+END;
+$bulk_import_row_counts$;
+
