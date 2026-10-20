@@ -78,6 +78,20 @@ UPDATE public.lab_result_attachments
 SET id = gen_random_uuid()
 WHERE id IS NULL;
 
+-- If a legacy installation reused attachment IDs, retain every row and repair
+-- duplicate technical identifiers before enforcing uniqueness.
+WITH duplicate_ids AS (
+  SELECT ctid,
+         row_number() OVER (PARTITION BY id ORDER BY created_at NULLS LAST, ctid) AS duplicate_rank
+  FROM public.lab_result_attachments
+  WHERE id IS NOT NULL
+)
+UPDATE public.lab_result_attachments AS attachment
+SET id = gen_random_uuid()
+FROM duplicate_ids
+WHERE attachment.ctid = duplicate_ids.ctid
+  AND duplicate_ids.duplicate_rank > 1;
+
 UPDATE public.lab_result_attachments
 SET created_at = now()
 WHERE created_at IS NULL;
