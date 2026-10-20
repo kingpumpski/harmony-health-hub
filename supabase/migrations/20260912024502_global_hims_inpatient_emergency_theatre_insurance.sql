@@ -115,6 +115,13 @@ CREATE TABLE IF NOT EXISTS public.theatre_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile reduced theatre tables on legacy installs before schedule indexes.
+ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS urgency TEXT NOT NULL DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'scheduled',
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status);
 CREATE INDEX IF NOT EXISTS idx_theatre_patient ON public.theatre_cases(patient_id, scheduled_start DESC);
 
