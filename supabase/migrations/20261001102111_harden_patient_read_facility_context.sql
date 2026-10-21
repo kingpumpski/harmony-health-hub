@@ -10,7 +10,7 @@ BEGIN
  SELECT facility_id INTO patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
- IF public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') THEN RETURN patient_facility; END IF;
+ IF public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) THEN RETURN patient_facility; END IF;
  IF active_facility IS NULL THEN RAISE EXCEPTION 'Active facility context is required'; END IF;
  IF patient_facility IS DISTINCT FROM active_facility THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  RETURN patient_facility;
@@ -70,7 +70,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); is_core boolean; is_lab boolean; is_pharmacy boolean;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- is_core:=public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse'); is_lab:=public.has_role(uid,'lab_technician'); is_pharmacy:=public.has_role(uid,'pharmacist');
+ is_core:=public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role); is_lab:=public.has_role(uid,'lab_technician'::public.app_role); is_pharmacy:=public.has_role(uid,'pharmacist'::public.app_role);
  IF NOT(is_core OR is_lab OR is_pharmacy) THEN RAISE EXCEPTION 'Not authorized to access patient clinical history'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  RETURN jsonb_build_object(
