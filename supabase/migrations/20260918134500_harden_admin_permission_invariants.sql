@@ -39,7 +39,7 @@ SECURITY DEFINER
 SET search_path=public
 AS $$
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator access required';
   END IF;
   IF _permission_keys IS NULL THEN
