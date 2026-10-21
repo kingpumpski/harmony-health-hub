@@ -62,7 +62,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); c public.emergency_cases%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('waiting','triage','treatment','observation','admitted','discharged','referred','left_without_being_seen','cancelled') THEN RAISE EXCEPTION 'Invalid emergency status'; END IF;
  SELECT * INTO c FROM public.emergency_cases WHERE id=_case_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Emergency case not found'; END IF;
@@ -85,7 +85,7 @@ RETURNS public.imaging_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path 
 AS $function$
 DECLARE uid uuid:=auth.uid(); o public.imaging_orders; s public.service_orders; es text;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician')) THEN RAISE EXCEPTION 'Radiology operational role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role) OR public.has_role(uid,'radiology_technician'::public.app_role)) THEN RAISE EXCEPTION 'Radiology operational role required'; END IF;
  SELECT * INTO o FROM public.imaging_orders WHERE id=_imaging_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Imaging order not found'; END IF;
  PERFORM public.assert_patient_facility_context(o.patient_id);
