@@ -1,3 +1,23 @@
+-- The catalogue's canonical creation migration is timestamped later in this
+-- historical chain. Create its full compatible shape before this migration's RLS
+-- statements reference it; the later CREATE TABLE IF NOT EXISTS remains idempotent.
+CREATE TABLE IF NOT EXISTS public.lab_test_catalogue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_code TEXT NOT NULL UNIQUE,
+  test_name TEXT NOT NULL,
+  category TEXT,
+  specimen_type TEXT,
+  unit TEXT,
+  reference_low NUMERIC,
+  reference_high NUMERIC,
+  reference_text TEXT,
+  default_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (default_charge >= 0),
+  turnaround_minutes INTEGER CHECK (turnaround_minutes IS NULL OR turnaround_minutes > 0),
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.facility_departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   department_code TEXT NOT NULL UNIQUE,
