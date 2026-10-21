@@ -11,6 +11,7 @@ VALUES
    jsonb_build_object('canonical_alias_for','PROCEDURE','requires_facility_tariff_configuration',true))
 ON CONFLICT (service_code) DO UPDATE
 SET service_name=EXCLUDED.service_name,
+    category=EXCLUDED.category,
     department=EXCLUDED.department,
     unit=EXCLUDED.unit,
     active=true,
