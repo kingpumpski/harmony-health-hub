@@ -27,9 +27,9 @@ DROP POLICY IF EXISTS "staff read visit authorizations" ON public.patient_visit_
 CREATE POLICY "staff read visit authorizations" ON public.patient_visit_authorizations
   FOR SELECT TO authenticated
   USING (
-    public.has_role(auth.uid(), 'admin')
-    OR public.has_role(auth.uid(), 'accountant')
-    OR public.has_role(auth.uid(), 'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
     OR EXISTS (SELECT 1 FROM public.patients p WHERE p.id = patient_id AND p.user_id = auth.uid())
   );
@@ -65,9 +65,9 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _source NOT IN ('appointment', 'accounts') THEN RAISE EXCEPTION 'Invalid activation source'; END IF;
   IF NOT (
-    public.has_role(auth.uid(), 'admin')
-    OR public.has_role(auth.uid(), 'accountant')
-    OR public.has_role(auth.uid(), 'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
   ) THEN RAISE EXCEPTION 'Only authorised staff can activate visit coverage'; END IF;
 
@@ -130,9 +130,9 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN RAISE EXCEPTION 'Patient does not exist'; END IF;
   IF NOT (
-    public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'practitioner')
-    OR public.has_role(auth.uid(), 'nurse') OR public.has_role(auth.uid(), 'midwife')
-    OR public.has_role(auth.uid(), 'specialist_nurse') OR public.has_role(auth.uid(), 'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)
+    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'You are not authorized to create appointments'; END IF;
   IF _scheduled_at IS NULL THEN RAISE EXCEPTION 'Appointment time is required'; END IF;
 
@@ -155,7 +155,7 @@ DECLARE
   result public.appointments;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'practitioner') OR public.has_role(auth.uid(), 'nurse') OR public.has_role(auth.uid(), 'midwife') OR public.has_role(auth.uid(), 'specialist_nurse')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Only attending clinical officers may claim appointments';
   END IF;
   UPDATE public.appointments
