@@ -6,15 +6,15 @@ RETURNS public.appointments LANGUAGE plpgsql SECURITY DEFINER SET search_path = 
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; result public.appointments;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Not authorized to schedule appointments'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to schedule appointments'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Active patient does not exist'; END IF;
  IF v_patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
- IF v_facility IS NULL AND NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN RAISE EXCEPTION 'An active facility is required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND v_patient_facility IS DISTINCT FROM v_facility THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+ IF v_facility IS NULL AND NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN RAISE EXCEPTION 'An active facility is required'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND v_patient_facility IS DISTINCT FROM v_facility THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  IF _scheduled_at IS NULL THEN RAISE EXCEPTION 'Scheduled time is required'; END IF;
  INSERT INTO public.appointments(patient_id,practitioner_id,department,scheduled_at,duration_minutes,reason,status,notes,created_at,updated_at,treatment_status,facility_id)
- VALUES(_patient_id,CASE WHEN public.has_role(uid,'practitioner') THEN uid ELSE NULL END,NULLIF(pg_catalog.btrim(_department),''),_scheduled_at,30,NULLIF(pg_catalog.btrim(_reason),''),'scheduled',NULL,pg_catalog.now(),pg_catalog.now(),'scheduled',v_patient_facility)
+ VALUES(_patient_id,CASE WHEN public.has_role(uid,'practitioner'::public.app_role) THEN uid ELSE NULL END,NULLIF(pg_catalog.btrim(_department),''),_scheduled_at,30,NULLIF(pg_catalog.btrim(_reason),''),'scheduled',NULL,pg_catalog.now(),pg_catalog.now(),'scheduled',v_patient_facility)
  RETURNING * INTO result;
  RETURN result;
 END;$function$;
@@ -28,8 +28,8 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter not found'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v.patient_id FOR SHARE;
  IF v.facility_id IS NULL OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Encounter or patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
- IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN RAISE EXCEPTION 'Only the encounter creator or an administrator may save this draft'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
+ IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN RAISE EXCEPTION 'Only the encounter creator or an administrator may save this draft'; END IF;
  IF v.status<>'draft' THEN RAISE EXCEPTION 'Only draft encounters can be edited'; END IF;
  UPDATE public.encounters SET symptoms=NULLIF(pg_catalog.btrim(_symptoms),''),clerking_notes=NULLIF(pg_catalog.btrim(_clerking_notes),''),treatment_plan=NULLIF(pg_catalog.btrim(_treatment_plan),''),updated_at=pg_catalog.now() WHERE id=_encounter_id RETURNING * INTO v;
  RETURN v;
@@ -44,8 +44,8 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter not found'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v.patient_id FOR SHARE;
  IF v.facility_id IS NULL OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Encounter or patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
- IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN RAISE EXCEPTION 'Only the encounter creator or an administrator may save this clerking sheet'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
+ IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN RAISE EXCEPTION 'Only the encounter creator or an administrator may save this clerking sheet'; END IF;
  IF v.status<>'draft' THEN RAISE EXCEPTION 'Only draft encounters can be edited'; END IF;
  UPDATE public.encounters SET chief_complaint=NULLIF(pg_catalog.btrim(_chief_complaint),''),symptoms=NULLIF(pg_catalog.btrim(_symptoms),''),history_of_present_illness=NULLIF(pg_catalog.btrim(_history_of_present_illness),''),clerking_notes=NULLIF(pg_catalog.btrim(_clerking_notes),''),assessment=NULLIF(pg_catalog.btrim(_assessment),''),plan=NULLIF(pg_catalog.btrim(_plan),''),treatment_plan=NULLIF(pg_catalog.btrim(_treatment_plan),''),follow_up_date=_follow_up_date,updated_at=pg_catalog.now() WHERE id=_encounter_id RETURNING * INTO v;
  RETURN v;
@@ -56,14 +56,14 @@ RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v public.encounters; v_patient_facility uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to complete encounters'; END IF;
  SELECT * INTO v FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v.patient_id FOR SHARE;
  IF v.facility_id IS NULL OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Encounter or patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
  IF v.status IN('completed','cancelled') THEN RAISE EXCEPTION 'Encounter is already closed'; END IF;
- IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN RAISE EXCEPTION 'Only the assigned clinician may complete this encounter'; END IF;
+ IF v.practitioner_id<>uid AND NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN RAISE EXCEPTION 'Only the assigned clinician may complete this encounter'; END IF;
  IF v.principal_diagnosis IS NULL OR NULLIF(pg_catalog.btrim(v.principal_diagnosis),'') IS NULL THEN RAISE EXCEPTION 'Principal diagnosis required'; END IF;
  UPDATE public.encounters SET status='completed',completed_at=coalesce(completed_at,pg_catalog.now()),updated_at=pg_catalog.now() WHERE id=_encounter_id RETURNING * INTO v;
  RETURN v;
@@ -74,12 +74,12 @@ RETURNS public.prescriptions LANGUAGE plpgsql SECURITY DEFINER SET search_path =
 DECLARE uid uuid:=auth.uid(); v_enc public.encounters%ROWTYPE; v_patient_facility uuid; v_facility uuid:=public.current_user_facility_id(); result public.prescriptions;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
  SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v_enc.patient_id FOR SHARE;
  IF v_enc.facility_id IS NULL OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Encounter or patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v_enc.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v_enc.facility_id IS DISTINCT FROM v_facility OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
  IF v_enc.status IN('completed','cancelled') THEN RAISE EXCEPTION 'Completed or cancelled encounters are read-only'; END IF;
  IF NULLIF(pg_catalog.btrim(_medication),'') IS NULL THEN RAISE EXCEPTION 'Medication is required'; END IF;
  IF _diagnosis_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.diagnoses d WHERE d.id=_diagnosis_id AND d.encounter_id=_encounter_id AND (d.facility_id=v_enc.facility_id OR d.facility_id IS NULL)) THEN RAISE EXCEPTION 'Selected treatment diagnosis does not belong to this encounter'; END IF;
@@ -94,11 +94,11 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $functio
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_lab_order_id uuid; v_service_order_id uuid; v_requires_payment boolean:=coalesce(_amount,0)>0; v_service_status text:=case when coalesce(_amount,0)>0 then 'pending_payment_approval' else 'released' end;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Laboratory order access required'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory order access required'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Active patient does not exist'; END IF;
  IF v_patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v_patient_facility IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  IF coalesce(_amount,0)<0 THEN RAISE EXCEPTION 'Amount cannot be negative'; END IF;
  IF _encounter_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.encounters e WHERE e.id=_encounter_id AND e.patient_id=_patient_id AND e.facility_id=v_patient_facility AND e.status<>'cancelled') THEN RAISE EXCEPTION 'Selected encounter does not belong to the patient facility context'; END IF;
  INSERT INTO public.lab_orders(patient_id,encounter_id,test_name,test_category,priority,status,clinical_notes,ordered_by,facility_id)
@@ -114,11 +114,11 @@ CREATE OR REPLACE FUNCTION public.collect_lab_sample(_lab_order_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); o public.lab_orders%ROWTYPE; g public.service_orders%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
  SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
  IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Laboratory order belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Laboratory order belongs to a different facility context'; END IF;
  IF o.status<>'ordered' THEN RAISE EXCEPTION 'Only ordered laboratory requests can have samples collected'; END IF;
  SELECT * INTO g FROM public.service_orders WHERE related_entity_id=o.id AND department='laboratory' AND patient_id=o.patient_id ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
  IF g.id IS NOT NULL AND (g.facility_id IS NULL OR g.facility_id IS DISTINCT FROM o.facility_id) THEN RAISE EXCEPTION 'Laboratory payment record facility lineage is unresolved or mismatched'; END IF;
@@ -131,12 +131,12 @@ CREATE OR REPLACE FUNCTION public.enter_lab_result_structured(_lab_order_id uuid
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); o public.lab_orders%ROWTYPE; c public.lab_test_catalogue%ROWTYPE; rid uuid; required_code text;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician')) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
  IF jsonb_typeof(coalesce(_parameter_results,'{}'::jsonb))<>'object' THEN RAISE EXCEPTION 'Structured laboratory results must be a JSON object'; END IF;
  SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
  IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Laboratory order belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN RAISE EXCEPTION 'Laboratory order belongs to a different facility context'; END IF;
  IF o.status<>'sample_collected' THEN RAISE EXCEPTION 'Sample must be collected before result entry'; END IF;
  IF EXISTS(SELECT 1 FROM public.lab_results WHERE lab_order_id=o.id AND status IN('completed','approved')) THEN RAISE EXCEPTION 'A completed result already exists for this laboratory order'; END IF;
  IF o.lab_test_catalogue_id IS NOT NULL THEN
