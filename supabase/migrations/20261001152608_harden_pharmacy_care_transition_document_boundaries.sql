@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing(_prescription_id u
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE p public.prescriptions;i public.pharmacy_inventory;existing public.pharmacy_dispensing_plans;plan_id uuid;order_id uuid;price numeric;encounter_status text;uid uuid:=auth.uid();pf uuid;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  SELECT * INTO p FROM public.prescriptions WHERE id=_prescription_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Prescription not found'; END IF;
  pf:=public.assert_patient_facility_context(p.patient_id);
@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE p public.pharmacy_dispensing_plans;i public.pharmacy_inventory;r public.prescriptions;so public.service_orders;uid uuid:=auth.uid();pf uuid;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.pharmacy_dispensing_plans WHERE id=_plan_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Dispensing plan not found'; END IF;
  pf:=public.assert_patient_facility_context(p.patient_id);
  IF p.facility_id IS NULL OR p.facility_id IS DISTINCT FROM pf THEN RAISE EXCEPTION 'Dispensing plan facility attribution is unresolved or mismatched'; END IF;
@@ -53,7 +53,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_id uuid;pf uuid;uid uuid:=auth.uid();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF _transition_type NOT IN('discharge','transfer','follow_up') THEN RAISE EXCEPTION 'Invalid transition type'; END IF;
  IF _follow_up_required AND _follow_up_date IS NULL THEN RAISE EXCEPTION 'Follow-up date is required when follow-up is required'; END IF;
@@ -68,7 +68,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE uid uuid:=auth.uid();v_id uuid;pf uuid;v_type text:=NULLIF(pg_catalog.btrim(COALESCE(_document_type,'')),'');v_name text:=NULLIF(pg_catalog.btrim(COALESCE(_file_name,'')),'');v_path text:=NULLIF(pg_catalog.btrim(COALESCE(_storage_path,'')),'');v_prefix text;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF v_type IS NULL OR v_name IS NULL OR v_path IS NULL THEN RAISE EXCEPTION 'Document type, file name and storage path are required'; END IF;
  v_prefix:=_patient_id::text || '/';
