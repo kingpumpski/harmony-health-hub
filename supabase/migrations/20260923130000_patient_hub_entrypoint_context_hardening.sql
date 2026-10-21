@@ -13,9 +13,9 @@ DECLARE result public.encounters;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'practitioner') OR
-    public.has_role(auth.uid(), 'nurse') OR public.has_role(auth.uid(), 'midwife') OR
-    public.has_role(auth.uid(), 'specialist_nurse')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Only authorized clinical staff may create encounters'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.patients WHERE id = _patient_id AND COALESCE(status,'active') <> 'inactive'
@@ -39,8 +39,8 @@ DECLARE v_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR
-    public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)
   ) THEN RAISE EXCEPTION 'Vital recording is not permitted'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.patients WHERE id = _patient_id AND COALESCE(status,'active') <> 'inactive'
@@ -61,8 +61,8 @@ DECLARE v_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR
-    public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory order creation is not permitted'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.patients WHERE id = _patient_id AND COALESCE(status,'active') <> 'inactive'
@@ -84,9 +84,9 @@ DECLARE v_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR
-    public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR
-    public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.patients WHERE id = _patient_id AND COALESCE(status,'active') <> 'inactive'
