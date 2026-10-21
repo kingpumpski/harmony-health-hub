@@ -16,7 +16,7 @@ BEGIN
   SELECT facility_id INTO patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
   IF patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
-  IF public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') THEN RETURN patient_facility; END IF;
+  IF public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) THEN RETURN patient_facility; END IF;
   IF active_facility IS NULL THEN RAISE EXCEPTION 'Active facility context is required'; END IF;
   IF patient_facility IS DISTINCT FROM active_facility THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
   RETURN patient_facility;
@@ -33,7 +33,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); result public.ai_clinical_sessions;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Not authorized to create AI clinical sessions'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to create AI clinical sessions'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  IF _specialist NOT IN('physician','surgeon','neurosurgeon','radiologist','ophthalmologist','pharmacist','nurse') THEN RAISE EXCEPTION 'Unsupported AI specialist'; END IF;
  IF _input_snapshot IS NULL THEN RAISE EXCEPTION 'AI case snapshot is required'; END IF;
@@ -55,7 +55,7 @@ BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
  IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
- IF NOT EXISTS(SELECT 1 FROM public.patients p WHERE p.id=_patient_id AND (p.user_id=uid OR public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist'))) THEN RAISE EXCEPTION 'Not authorised to request this patient report'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.patients p WHERE p.id=_patient_id AND (p.user_id=uid OR public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role))) THEN RAISE EXCEPTION 'Not authorised to request this patient report'; END IF;
  IF v_type<>'medical_summary' THEN RAISE EXCEPTION 'Unsupported report type'; END IF;
  INSERT INTO public.ai_report_requests(patient_id,requested_by,report_type,status) VALUES(_patient_id,uid,v_type,'processing') RETURNING * INTO v_report;
  RETURN v_report;
@@ -71,9 +71,9 @@ AS $function$
 DECLARE result public.appointments; patient_facility uuid; uid uuid:=auth.uid(); active_facility uuid:=public.current_user_facility_id();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Not authorized to schedule appointments'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to schedule appointments'; END IF;
  patient_facility:=public.assert_patient_facility_context(_patient_id);
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (active_facility IS NULL OR active_facility IS DISTINCT FROM patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (active_facility IS NULL OR active_facility IS DISTINCT FROM patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  IF _scheduled_at IS NULL THEN RAISE EXCEPTION 'Scheduled time is required'; END IF;
  IF NULLIF(pg_catalog.btrim(_consultation_type),'') IS NULL THEN RAISE EXCEPTION 'Consultation type is required'; END IF;
  IF _practitioner_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=_practitioner_id) THEN RAISE EXCEPTION 'Selected clinician does not exist'; END IF;
@@ -93,7 +93,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); result public.prescriptions; v_encounter public.encounters%ROWTYPE;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
  SELECT * INTO v_encounter FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF v_encounter.id IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF v_encounter.status IN('completed','cancelled') THEN RAISE EXCEPTION 'Completed or cancelled encounters are read-only'; END IF;
@@ -114,7 +114,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_id uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  IF NULLIF(pg_catalog.btrim(_document_type),'') IS NULL THEN RAISE EXCEPTION 'Document type is required'; END IF;
  IF NULLIF(pg_catalog.btrim(_file_url),'') IS NULL THEN RAISE EXCEPTION 'Document file reference is required'; END IF;
@@ -162,7 +162,7 @@ CREATE OR REPLACE FUNCTION public.get_attending_patient_history(_patient_id uuid
 AS $function$
 DECLARE r jsonb; uid uuid:=auth.uid();
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to view attending clinical history'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to view attending clinical history'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  IF _current_encounter_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.encounters WHERE id=_current_encounter_id AND patient_id=_patient_id) THEN RAISE EXCEPTION 'Encounter does not belong to patient'; END IF;
  SELECT jsonb_build_object('patient',(SELECT jsonb_build_object('id',p.id,'patient_code',p.patient_code,'name',concat_ws(' ',p.first_name,p.last_name),'blood_group',p.blood_group,'genotype',p.genotype,'allergies',NULLIF(trim(p.allergies),''),'chronic_conditions',NULLIF(trim(p.chronic_conditions),'')) FROM public.patients p WHERE p.id=_patient_id),'prior_encounters',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC) FROM (SELECT e.id,e.created_at,e.status,NULLIF(trim(e.principal_diagnosis),'') principal_diagnosis,NULLIF(left(trim(e.symptoms),280),'') presenting_symptoms,NULLIF(left(trim(e.treatment_plan),360),'') prior_treatment_plan FROM public.encounters e WHERE e.patient_id=_patient_id AND (_current_encounter_id IS NULL OR e.id<>_current_encounter_id) ORDER BY e.created_at DESC LIMIT 8)x),'[]'::jsonb),'major_diagnoses',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.last_seen DESC) FROM (SELECT NULLIF(trim(d.diagnosis),'') diagnosis,max(e.created_at) last_seen,count(*)::int occurrences FROM public.diagnoses d JOIN public.encounters e ON e.id=d.encounter_id WHERE e.patient_id=_patient_id AND (_current_encounter_id IS NULL OR e.id<>_current_encounter_id) AND NULLIF(trim(d.diagnosis),'') IS NOT NULL GROUP BY NULLIF(trim(d.diagnosis),'') ORDER BY last_seen DESC LIMIT 12)x),'[]'::jsonb),'abnormal_labs',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.entered_at DESC) FROM (SELECT lo.id lab_order_id,lo.test_name,lo.test_category,lr.interpretation,lr.result_data,lr.entered_at FROM public.lab_orders lo JOIN public.lab_results lr ON lr.lab_order_id=lo.id WHERE lo.patient_id=_patient_id AND lr.is_abnormal=true ORDER BY lr.entered_at DESC LIMIT 8)x),'[]'::jsonb),'recent_prescriptions',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC) FROM (SELECT pr.medication,pr.dosage,pr.frequency,pr.duration,pr.status,pr.created_at FROM public.prescriptions pr WHERE pr.patient_id=_patient_id AND pr.status<>'cancelled' ORDER BY pr.created_at DESC LIMIT 8)x),'[]'::jsonb),'latest_triage',(SELECT to_jsonb(x) FROM (SELECT v.recorded_at,v.priority,v.systolic,v.diastolic,v.pulse_rate,v.temperature,v.respiratory_rate,v.oxygen_saturation,v.weight_kg,v.bmi,NULLIF(left(trim(v.notes),280),'') notes FROM public.vital_signs v WHERE v.patient_id=_patient_id ORDER BY v.recorded_at DESC LIMIT 1)x),'active_admission',(SELECT to_jsonb(x) FROM (SELECT a.admitted_at,a.ward,a.bed,a.status,NULLIF(left(trim(a.notes),280),'') notes FROM public.admissions a WHERE a.patient_id=_patient_id AND a.status='admitted' ORDER BY a.admitted_at DESC LIMIT 1)x)) INTO r; RETURN r;
