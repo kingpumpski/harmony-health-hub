@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION public.create_ophthalmology_exam(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE v_id UUID;
 BEGIN
@@ -65,7 +65,7 @@ CREATE OR REPLACE FUNCTION public.review_ophthalmology_exam(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
