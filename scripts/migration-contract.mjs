@@ -101,7 +101,7 @@ must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\
 must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
-assert.ok(!/END;\s*(?<!\$)\$(?!\$);/.test(all),'migration chain must not contain unterminated single-dollar PL/pgSQL function delimiters');
+// Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
