@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.collect_lab_sample(_lab_order_id UUID)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); o public.lab_orders%ROWTYPE; g public.service_orders%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
  SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
  IF o.status<>'ordered' THEN RAISE EXCEPTION 'Only ordered laboratory requests can have samples collected'; END IF;
@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.enter_lab_result(_lab_order_id UUID,_result_te
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); o public.lab_orders%ROWTYPE; c public.lab_test_catalogue%ROWTYPE; rid UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'lab_technician')) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
  SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
  IF o.status<>'sample_collected' THEN RAISE EXCEPTION 'Sample must be collected before result entry'; END IF;
@@ -35,7 +35,7 @@ CREATE OR REPLACE FUNCTION public.approve_lab_result(_lab_result_id UUID)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); r public.lab_results%ROWTYPE; o public.lab_orders%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Laboratory approval role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Laboratory approval role required'; END IF;
  SELECT * INTO r FROM public.lab_results WHERE id=_lab_result_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory result not found'; END IF;
  IF r.status<>'completed' THEN RAISE EXCEPTION 'Only completed results can be approved'; END IF;
