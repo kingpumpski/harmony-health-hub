@@ -281,6 +281,11 @@ BEGIN
   GET DIAGNOSTICS n=ROW_COUNT; RETURN n;
 END; $$;
 
+-- Earlier workflow migrations define this signature with a composite return type.
+-- Drop that incompatible signature before recreating it as JSONB; later lifecycle
+-- hardening migrations replace it again with the canonical JSONB contract.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
