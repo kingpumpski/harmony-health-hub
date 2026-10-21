@@ -39,9 +39,9 @@ declare
 begin
   if v_uid is null then raise exception 'Authentication is required'; end if;
   if not (
-    public.has_role(v_uid,'admin') or public.has_role(v_uid,'practitioner')
-    or public.has_role(v_uid,'nurse') or public.has_role(v_uid,'midwife')
-    or public.has_role(v_uid,'lab_technician') or public.has_role(v_uid,'front_desk')
+    public.has_role(v_uid,'admin'::public.app_role) or public.has_role(v_uid,'practitioner'::public.app_role)
+    or public.has_role(v_uid,'nurse'::public.app_role) or public.has_role(v_uid,'midwife'::public.app_role)
+    or public.has_role(v_uid,'lab_technician'::public.app_role) or public.has_role(v_uid,'front_desk'::public.app_role)
   ) then raise exception 'Laboratory order access required'; end if;
   if _patient_id is null or nullif(btrim(_test_name),'') is null then
     raise exception 'Patient and test name are required';
