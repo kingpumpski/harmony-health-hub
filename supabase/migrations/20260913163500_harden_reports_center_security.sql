@@ -19,7 +19,7 @@ AS $$
           AND fm.facility_id = _facility_id
           AND fm.is_active = TRUE
       )
-      OR public.has_role(auth.uid(), 'admin')
+      OR public.has_role(auth.uid(),'admin'::public.app_role)
     )
 $$;
 
