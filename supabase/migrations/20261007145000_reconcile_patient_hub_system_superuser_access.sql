@@ -21,19 +21,19 @@ BEGIN
     AND coalesce(p.status,'active') <> 'inactive'
     AND (p.user_id=uid OR (p.user_id IS NULL AND lower(p.email)=lower((auth.jwt()->>'email'))))
   ORDER BY (p.user_id=uid) DESC,p.created_at DESC LIMIT 1;
-  is_patient := public.has_role(uid,'patient');
-  is_it_admin := public.has_role(uid,'it_admin');
-  is_system_superuser := public.has_role(uid,'system_superuser');
-  is_core := public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse');
-  is_lab := public.has_role(uid,'lab_technician');
-  is_pharmacy := public.has_role(uid,'pharmacist');
+  is_patient := public.has_role(uid,'patient'::public.app_role);
+  is_it_admin := public.has_role(uid,'it_admin'::public.app_role);
+  is_system_superuser := public.has_role(uid,'system_superuser'::public.app_role);
+  is_core := public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role);
+  is_lab := public.has_role(uid,'lab_technician'::public.app_role);
+  is_pharmacy := public.has_role(uid,'pharmacist'::public.app_role);
   IF is_patient THEN
     IF v_owned_patient IS NULL THEN RAISE EXCEPTION 'Patient clinical history access is not permitted'; END IF;
   ELSIF NOT (is_core OR is_it_admin OR is_system_superuser OR is_lab OR is_pharmacy) THEN
     RAISE EXCEPTION 'Not authorized to access patient clinical history';
   END IF;
-  IF NOT is_patient AND NOT public.has_role(uid,'admin') AND NOT is_it_admin AND NOT is_system_superuser THEN
+  IF NOT is_patient AND NOT public.has_role(uid,'admin'::public.app_role) AND NOT is_it_admin AND NOT is_system_superuser THEN
     IF NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id=_patient_id AND public.current_user_has_facility_access(p.facility_id)) THEN
       RAISE EXCEPTION 'Patient facility access is not permitted';
     END IF;
