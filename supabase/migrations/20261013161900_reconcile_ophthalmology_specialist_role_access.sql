@@ -86,6 +86,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.create_ophthalmology_exam(UUID,TEXT,TEXT,TEXT,NUMERIC,TEXT,TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.review_ophthalmology_exam(UUID,JSONB) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_ophthalmology_exam(UUID,TEXT,TEXT,TEXT,NUMERIC,TEXT,TEXT) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.review_ophthalmology_exam(UUID,JSONB) FROM anon;
 GRANT EXECUTE ON FUNCTION public.create_ophthalmology_exam(UUID,TEXT,TEXT,TEXT,NUMERIC,TEXT,TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.review_ophthalmology_exam(UUID,JSONB) TO authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.ophthalmology_exams FROM authenticated;
