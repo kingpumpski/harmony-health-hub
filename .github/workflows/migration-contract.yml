@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: migration-contract-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: migration-contract-${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   static-contract:
