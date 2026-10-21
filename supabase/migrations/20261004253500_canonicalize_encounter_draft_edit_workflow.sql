@@ -40,21 +40,21 @@ begin
 
   if not (
     v_enc.practitioner_id = uid
-    or public.has_role(uid,'admin')
-    or public.has_role(uid,'it_admin')
-    or public.has_role(uid,'system_superuser')
+    or public.has_role(uid,'admin'::public.app_role)
+    or public.has_role(uid,'it_admin'::public.app_role)
+    or public.has_role(uid,'system_superuser'::public.app_role)
   ) then
     raise exception 'Only the encounter creator or an administrator can edit this draft';
   end if;
 
   if not (
-    public.has_role(uid,'admin')
-    or public.has_role(uid,'it_admin')
-    or public.has_role(uid,'system_superuser')
-    or public.has_role(uid,'practitioner')
-    or public.has_role(uid,'nurse')
-    or public.has_role(uid,'midwife')
-    or public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    or public.has_role(uid,'it_admin'::public.app_role)
+    or public.has_role(uid,'system_superuser'::public.app_role)
+    or public.has_role(uid,'practitioner'::public.app_role)
+    or public.has_role(uid,'nurse'::public.app_role)
+    or public.has_role(uid,'midwife'::public.app_role)
+    or public.has_role(uid,'specialist_nurse'::public.app_role)
   ) then
     raise exception 'Clinical authorization required';
   end if;
