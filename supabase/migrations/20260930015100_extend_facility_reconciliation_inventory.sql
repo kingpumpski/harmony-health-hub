@@ -20,7 +20,7 @@ union all select 'patient_documents',d.id,d.patient_id,d.created_at,jsonb_build_
 union all select 'triage_assessments',t.id,t.patient_id,t.created_at,jsonb_build_object('priority',t.priority,'bmi',t.bmi) from public.triage_assessments t where t.facility_id is null
 union all select 'vital_signs',v.id,v.patient_id,v.created_at,jsonb_build_object('systolic',v.systolic,'diastolic',v.diastolic,'temperature',v.temperature,'encounter_id',v.encounter_id) from public.vital_signs v where v.facility_id is null
 union all select 'medication_administrations',m.id,m.patient_id,m.created_at,jsonb_build_object('medication_name',m.medication_name,'status',m.status,'prescription_id',m.prescription_id) from public.medication_administrations m where m.facility_id is null
-)x where public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500));$$;
+)x where public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role) order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500));$$;
 revoke all on function public.list_unresolved_clinical_facility_records(integer) from public,anon;grant execute on function public.list_unresolved_clinical_facility_records(integer) to authenticated;
 create or replace function public.reconcile_extended_clinical_facility_record(_entity_type text,_entity_id uuid,_target_facility_id uuid,_reason text)
 returns jsonb language plpgsql security definer set search_path='' as $$declare v_actor uuid:=auth.uid();v_parent uuid;v_source uuid;v_patient uuid;v_exists boolean:=false;v_metadata jsonb:='{}'::jsonb;begin
