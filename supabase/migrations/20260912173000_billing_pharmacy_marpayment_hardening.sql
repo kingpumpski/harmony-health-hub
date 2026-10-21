@@ -62,8 +62,8 @@ ALTER TABLE public.invoice_item_payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "invoice item payments staff access" ON public.invoice_item_payments;
 CREATE POLICY "invoice item payments staff access" ON public.invoice_item_payments
 FOR ALL TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'))
-WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role));
 
 -- Returns the patient's open billable items for a selected period. It also materialises
 -- newly discovered clinical events into the patient's open invoice, so refreshes do not duplicate them.
@@ -96,7 +96,7 @@ DECLARE
   r RECORD;
   days_count INTEGER;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
@@ -199,7 +199,7 @@ DECLARE
   total NUMERIC := 0;
   order_id UUID;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
   IF _item_ids IS NULL OR cardinality(_item_ids)=0 THEN RAISE EXCEPTION 'Select at least one unpaid item'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.invoices WHERE id=_invoice_id) THEN RAISE EXCEPTION 'Invoice not found'; END IF;
 
@@ -307,7 +307,7 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
   IF trim(coalesce(_reason,''))='' THEN RAISE EXCEPTION 'A reopening explanation is required'; END IF;
   UPDATE public.medication_administrations SET locked_at=NULL,lock_reason=NULL,reopened_at=now(),reopened_by=auth.uid(),reopen_reason=_reason,updated_at=now() WHERE id=_record_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Medication administration record not found'; END IF;
