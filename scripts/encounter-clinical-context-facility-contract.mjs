@@ -10,6 +10,7 @@ for(const n of [
 'grant execute on function public.get_encounter_clinical_context(uuid, uuid) to authenticated'
 ]) if(!migration.includes(n)) throw new Error('Missing clinical context boundary: '+n);
 const testIndex=migration.indexOf('if public.hms_test_mode_enabled()');
-const nonTestIndex=migration.indexOf('elsif not public.has_role(v_user,\'admin\')');
+const nonTestMatch=migration.match(/elsif not public\.has_role\(v_user,\s*'admin'(?:::public\.app_role)?\)/);
+const nonTestIndex=nonTestMatch ? migration.indexOf(nonTestMatch[0]) : -1;
 if(testIndex<0||nonTestIndex<0||testIndex>nonTestIndex) throw new Error('Clinical context must evaluate test-mode isolation before non-test admin exception');
 console.log('Encounter clinical context facility boundary contract passed.');
