@@ -73,7 +73,7 @@ BEGIN
     WHERE id = v_lab_order_id
       AND facility_id IS NOT NULL
       AND (
-        (public.has_role(v_uid, 'admin') OR public.has_role(v_uid, 'it_admin'))
+        (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role))
         OR facility_id = v_facility_id
       );
 
