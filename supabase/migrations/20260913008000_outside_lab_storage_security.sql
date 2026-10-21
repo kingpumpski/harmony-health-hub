@@ -7,14 +7,14 @@ DROP POLICY IF EXISTS "outside lab staff read" ON public.outside_lab_documents;
 CREATE POLICY "outside lab staff read" ON public.outside_lab_documents
   FOR SELECT TO authenticated
   USING (
-    public.has_role(auth.uid(),'admin') OR
-    public.has_role(auth.uid(),'practitioner') OR
-    public.has_role(auth.uid(),'nurse') OR
-    public.has_role(auth.uid(),'midwife') OR
-    public.has_role(auth.uid(),'specialist_nurse') OR
-    public.has_role(auth.uid(),'lab_technician') OR
-    public.has_role(auth.uid(),'radiologist') OR
-    public.has_role(auth.uid(),'ophthalmologist')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'lab_technician'::public.app_role) OR
+    public.has_role(auth.uid(),'radiologist'::public.app_role) OR
+    public.has_role(auth.uid(),'ophthalmologist'::public.app_role)
   );
 
 DROP POLICY IF EXISTS "outside lab direct insert" ON public.outside_lab_documents;
@@ -40,14 +40,14 @@ DECLARE
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR
-    public.has_role(auth.uid(),'practitioner') OR
-    public.has_role(auth.uid(),'nurse') OR
-    public.has_role(auth.uid(),'midwife') OR
-    public.has_role(auth.uid(),'specialist_nurse') OR
-    public.has_role(auth.uid(),'lab_technician') OR
-    public.has_role(auth.uid(),'radiologist') OR
-    public.has_role(auth.uid(),'ophthalmologist')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'lab_technician'::public.app_role) OR
+    public.has_role(auth.uid(),'radiologist'::public.app_role) OR
+    public.has_role(auth.uid(),'ophthalmologist'::public.app_role)
   ) THEN RAISE EXCEPTION 'Outside-lab document upload is not permitted'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
     RAISE EXCEPTION 'Patient not found';
@@ -98,14 +98,14 @@ CREATE POLICY "outside lab storage upload" ON storage.objects
   WITH CHECK (
     bucket_id = 'outside-lab' AND
     (
-      public.has_role(auth.uid(),'admin') OR
-      public.has_role(auth.uid(),'practitioner') OR
-      public.has_role(auth.uid(),'nurse') OR
-      public.has_role(auth.uid(),'midwife') OR
-      public.has_role(auth.uid(),'specialist_nurse') OR
-      public.has_role(auth.uid(),'lab_technician') OR
-      public.has_role(auth.uid(),'radiologist') OR
-      public.has_role(auth.uid(),'ophthalmologist')
+      public.has_role(auth.uid(),'admin'::public.app_role) OR
+      public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+      public.has_role(auth.uid(),'nurse'::public.app_role) OR
+      public.has_role(auth.uid(),'midwife'::public.app_role) OR
+      public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+      public.has_role(auth.uid(),'lab_technician'::public.app_role) OR
+      public.has_role(auth.uid(),'radiologist'::public.app_role) OR
+      public.has_role(auth.uid(),'ophthalmologist'::public.app_role)
     ) AND
     split_part(name,'/',1) IN (SELECT id::text FROM public.patients)
   );
@@ -116,14 +116,14 @@ CREATE POLICY "outside lab storage read" ON storage.objects
   USING (
     bucket_id = 'outside-lab' AND
     (
-      public.has_role(auth.uid(),'admin') OR
-      public.has_role(auth.uid(),'practitioner') OR
-      public.has_role(auth.uid(),'nurse') OR
-      public.has_role(auth.uid(),'midwife') OR
-      public.has_role(auth.uid(),'specialist_nurse') OR
-      public.has_role(auth.uid(),'lab_technician') OR
-      public.has_role(auth.uid(),'radiologist') OR
-      public.has_role(auth.uid(),'ophthalmologist')
+      public.has_role(auth.uid(),'admin'::public.app_role) OR
+      public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+      public.has_role(auth.uid(),'nurse'::public.app_role) OR
+      public.has_role(auth.uid(),'midwife'::public.app_role) OR
+      public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+      public.has_role(auth.uid(),'lab_technician'::public.app_role) OR
+      public.has_role(auth.uid(),'radiologist'::public.app_role) OR
+      public.has_role(auth.uid(),'ophthalmologist'::public.app_role)
     ) AND
     split_part(name,'/',1) IN (SELECT id::text FROM public.patients)
   );
@@ -133,5 +133,5 @@ CREATE POLICY "outside lab storage delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (
     bucket_id = 'outside-lab' AND
-    (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner'))
+    (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role))
   );
