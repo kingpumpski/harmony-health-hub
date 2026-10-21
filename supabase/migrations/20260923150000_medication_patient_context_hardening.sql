@@ -20,6 +20,9 @@ BEGIN
 END;
 $$;
 
+-- The lifecycle contract changes its return type across historical revisions; PostgreSQL requires dropping the old signature first.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
