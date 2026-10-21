@@ -79,6 +79,44 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile tables created by the preceding enterprise migration. CREATE TABLE IF NOT
+-- EXISTS does not add columns when the legacy table already exists.
+ALTER TABLE public.emergency_cases
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS acuity TEXT DEFAULT 'urgent',
+  ADD COLUMN IF NOT EXISTS triage_summary TEXT,
+  ADD COLUMN IF NOT EXISTS disposition_at TIMESTAMPTZ;
+
+ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS theatre_name TEXT,
+  ADD COLUMN IF NOT EXISTS urgency TEXT DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS preoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS postoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+
+ALTER TABLE public.nursing_shift_handovers
+  ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES public.ward_units(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS shift_label TEXT,
+  ADD COLUMN IF NOT EXISTS pending_tasks TEXT,
+  ADD COLUMN IF NOT EXISTS safety_concerns TEXT;
+
+ALTER TABLE public.nursing_care_plans
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+ALTER TABLE public.transfusion_records
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS blood_product TEXT,
+  ADD COLUMN IF NOT EXISTS blood_group TEXT,
+  ADD COLUMN IF NOT EXISTS unit_identifier TEXT,
+  ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
+  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS reaction_notes TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
@@ -147,6 +185,24 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
+  ADD COLUMN IF NOT EXISTS invoice_id UUID,
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS claim_number TEXT,
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS adjudicated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 

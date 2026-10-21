@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.notify_financial_settlement_event()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_patient_name TEXT;

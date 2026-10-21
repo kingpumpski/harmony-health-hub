@@ -316,73 +316,34 @@ ALTER TABLE public.lab_result_attachments
   ALTER COLUMN created_at SET DEFAULT now(),
   ALTER COLUMN created_at SET NOT NULL;
 
-DO $constraints$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_lab_order_id_fkey'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_lab_order_id_fkey
-      FOREIGN KEY (lab_order_id)
-      REFERENCES public.lab_orders(id) ON DELETE CASCADE;
-  END IF;
+-- Rebuild named constraints to reconcile legacy delete actions as well as
+-- constraint existence. This preserves attachment metadata when a result,
+-- facility, or uploader is retired and enforces the canonical file policy.
+ALTER TABLE public.lab_result_attachments
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_lab_order_id_fkey,
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_lab_result_id_fkey,
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_facility_id_fkey,
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_uploaded_by_fkey,
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_file_size_bytes_check,
+  DROP CONSTRAINT IF EXISTS lab_result_attachments_mime_type_check;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_lab_result_id_fkey'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_lab_result_id_fkey
-      FOREIGN KEY (lab_result_id)
-      REFERENCES public.lab_results(id) ON DELETE SET NULL;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_facility_id_fkey'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_facility_id_fkey
-      FOREIGN KEY (facility_id)
-      REFERENCES public.healthcare_facilities(id);
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_uploaded_by_fkey'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_uploaded_by_fkey
-      FOREIGN KEY (uploaded_by)
-      REFERENCES auth.users(id);
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_file_size_bytes_check'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_file_size_bytes_check
-      CHECK (file_size_bytes BETWEEN 1 AND 15728640);
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_constraint
-    WHERE conrelid = 'public.lab_result_attachments'::regclass
-      AND conname = 'lab_result_attachments_mime_type_check'
-  ) THEN
-    ALTER TABLE public.lab_result_attachments
-      ADD CONSTRAINT lab_result_attachments_mime_type_check
-      CHECK (mime_type IN ('application/pdf', 'image/jpeg', 'image/png'));
-  END IF;
-END;
-$constraints$;
+ALTER TABLE public.lab_result_attachments
+  ADD CONSTRAINT lab_result_attachments_lab_order_id_fkey
+    FOREIGN KEY (lab_order_id)
+    REFERENCES public.lab_orders(id) ON DELETE CASCADE,
+  ADD CONSTRAINT lab_result_attachments_lab_result_id_fkey
+    FOREIGN KEY (lab_result_id)
+    REFERENCES public.lab_results(id) ON DELETE SET NULL,
+  ADD CONSTRAINT lab_result_attachments_facility_id_fkey
+    FOREIGN KEY (facility_id)
+    REFERENCES public.healthcare_facilities(id),
+  ADD CONSTRAINT lab_result_attachments_uploaded_by_fkey
+    FOREIGN KEY (uploaded_by)
+    REFERENCES auth.users(id),
+  ADD CONSTRAINT lab_result_attachments_file_size_bytes_check
+    CHECK (file_size_bytes BETWEEN 1 AND 15728640),
+  ADD CONSTRAINT lab_result_attachments_mime_type_check
+    CHECK (mime_type IN ('application/pdf', 'image/jpeg', 'image/png'));
 
 CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_facility_id
   ON public.lab_result_attachments (facility_id);

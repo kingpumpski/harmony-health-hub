@@ -1,3 +1,8 @@
+-- Compatibility repair: older prescriptions tables predate updated_at, but
+-- this payment/dispensing lifecycle and later pharmacy RPCs maintain it.
+ALTER TABLE public.prescriptions
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 -- Reconcile prescription state with the payment-gated pharmacy workflow.
 -- A prescription remains clinically distinct from its pharmacy service order:
 -- unpaid/pending -> paid after the linked billable item is fully paid ->

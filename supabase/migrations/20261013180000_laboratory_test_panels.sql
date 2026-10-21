@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE public.lab_test_groups (
+CREATE TABLE IF NOT EXISTS public.lab_test_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
   group_name text NOT NULL CHECK (length(btrim(group_name)) BETWEEN 2 AND 120),
@@ -13,10 +13,7 @@ CREATE TABLE public.lab_test_groups (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX lab_test_groups_facility_code_uidx
-  ON public.lab_test_groups(facility_id, lower(group_code));
-
-CREATE TABLE public.lab_test_group_items (
+CREATE TABLE IF NOT EXISTS public.lab_test_group_items (
   group_id uuid NOT NULL REFERENCES public.lab_test_groups(id) ON DELETE CASCADE,
   test_id uuid NOT NULL REFERENCES public.lab_test_catalogue(id) ON DELETE RESTRICT,
   display_order integer NOT NULL CHECK (display_order >= 0),
@@ -24,18 +21,233 @@ CREATE TABLE public.lab_test_group_items (
   UNIQUE (group_id, display_order)
 );
 
-ALTER TABLE public.lab_orders
-  ADD COLUMN group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
-  ADD COLUMN parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX lab_orders_panel_child_test_uidx
+-- Reconcile partially provisioned legacy panel tables before any RPC references
+-- the canonical columns. Populated tables with ambiguous panel lineage fail closed.
+DO $panel_legacy_preflight$
+DECLARE
+  v_groups_missing boolean;
+  v_items_missing boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM (
+      VALUES ('facility_id'), ('group_name'), ('group_code'), ('default_charge'),
+             ('is_active'), ('created_by')
+    ) required(column_name)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM information_schema.columns c
+      WHERE c.table_schema='public' AND c.table_name='lab_test_groups'
+        AND c.column_name=required.column_name
+    )
+  ) INTO v_groups_missing;
+
+  SELECT EXISTS (
+    SELECT 1 FROM (
+      VALUES ('group_id'), ('test_id'), ('display_order')
+    ) required(column_name)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM information_schema.columns c
+      WHERE c.table_schema='public' AND c.table_name='lab_test_group_items'
+        AND c.column_name=required.column_name
+    )
+  ) INTO v_items_missing;
+
+  IF v_groups_missing AND EXISTS (SELECT 1 FROM public.lab_test_groups) THEN
+    RAISE EXCEPTION
+      'Legacy lab_test_groups rows need verified facility, group-code, and creator lineage before schema reconciliation.';
+  END IF;
+
+  IF v_items_missing AND EXISTS (SELECT 1 FROM public.lab_test_group_items) THEN
+    RAISE EXCEPTION
+      'Legacy lab_test_group_items rows need verified canonical group/test/order mapping before schema reconciliation.';
+  END IF;
+END;
+$panel_legacy_preflight$;
+
+ALTER TABLE public.lab_test_groups
+  ADD COLUMN IF NOT EXISTS facility_id uuid,
+  ADD COLUMN IF NOT EXISTS group_name text,
+  ADD COLUMN IF NOT EXISTS group_code text,
+  ADD COLUMN IF NOT EXISTS default_charge numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true,
+  ADD COLUMN IF NOT EXISTS created_by uuid,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+ALTER TABLE public.lab_test_group_items
+  ADD COLUMN IF NOT EXISTS group_id uuid,
+  ADD COLUMN IF NOT EXISTS test_id uuid,
+  ADD COLUMN IF NOT EXISTS display_order integer;
+
+-- Ensure order-lineage columns exist before validating their foreign keys below.
+ALTER TABLE public.lab_orders
+  ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public.lab_test_groups(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE;
+
+-- Keep legacy aliases for inspection but prevent them from blocking writes
+-- through the canonical RPC. Direct table writes remain revoked by RLS/grants.
+DO $legacy_aliases$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_groups'
+               AND column_name='name') THEN
+    ALTER TABLE public.lab_test_groups ALTER COLUMN name DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='lab_test_group_id') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN lab_test_group_id DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='test_catalogue_id') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN test_catalogue_id DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='sort_order') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN sort_order DROP NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='id') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='required') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN required SET DEFAULT true;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='created_at') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN created_at SET DEFAULT now();
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='lab_test_group_items'
+               AND column_name='updated_at') THEN
+    ALTER TABLE public.lab_test_group_items ALTER COLUMN updated_at SET DEFAULT now();
+  END IF;
+END;
+$legacy_aliases$;
+
+DO $panel_constraints$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.lab_test_groups
+             WHERE facility_id IS NULL OR group_name IS NULL
+                OR group_code IS NULL OR created_by IS NULL
+                OR default_charge IS NULL OR is_active IS NULL) THEN
+    RAISE EXCEPTION 'Laboratory panel rows have incomplete canonical metadata.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.lab_test_group_items
+             WHERE group_id IS NULL OR test_id IS NULL OR display_order IS NULL) THEN
+    RAISE EXCEPTION 'Laboratory panel item rows have incomplete canonical lineage.';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_groups'::regclass
+      AND conname='lab_test_groups_facility_id_fkey') THEN
+    ALTER TABLE public.lab_test_groups
+      ADD CONSTRAINT lab_test_groups_facility_id_fkey
+      FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_groups'::regclass
+      AND conname='lab_test_groups_created_by_fkey') THEN
+    ALTER TABLE public.lab_test_groups
+      ADD CONSTRAINT lab_test_groups_created_by_fkey
+      FOREIGN KEY (created_by) REFERENCES auth.users(id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_group_items'::regclass
+      AND conname='lab_test_group_items_group_id_fkey') THEN
+    ALTER TABLE public.lab_test_group_items
+      ADD CONSTRAINT lab_test_group_items_group_id_fkey
+      FOREIGN KEY (group_id) REFERENCES public.lab_test_groups(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_group_items'::regclass
+      AND conname='lab_test_group_items_test_id_fkey') THEN
+    ALTER TABLE public.lab_test_group_items
+      ADD CONSTRAINT lab_test_group_items_test_id_fkey
+      FOREIGN KEY (test_id) REFERENCES public.lab_test_catalogue(id) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_orders'::regclass
+      AND conname='lab_orders_group_id_fkey') THEN
+    ALTER TABLE public.lab_orders
+      ADD CONSTRAINT lab_orders_group_id_fkey
+      FOREIGN KEY (group_id) REFERENCES public.lab_test_groups(id) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_orders'::regclass
+      AND conname='lab_orders_parent_order_id_fkey') THEN
+    ALTER TABLE public.lab_orders
+      ADD CONSTRAINT lab_orders_parent_order_id_fkey
+      FOREIGN KEY (parent_order_id) REFERENCES public.lab_orders(id) ON DELETE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_groups'::regclass
+      AND conname='lab_test_groups_group_name_check') THEN
+    ALTER TABLE public.lab_test_groups ADD CONSTRAINT lab_test_groups_group_name_check
+      CHECK (length(btrim(group_name)) BETWEEN 2 AND 120);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_groups'::regclass
+      AND conname='lab_test_groups_group_code_check') THEN
+    ALTER TABLE public.lab_test_groups ADD CONSTRAINT lab_test_groups_group_code_check
+      CHECK (length(btrim(group_code)) BETWEEN 2 AND 40);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_groups'::regclass
+      AND conname='lab_test_groups_default_charge_check') THEN
+    ALTER TABLE public.lab_test_groups ADD CONSTRAINT lab_test_groups_default_charge_check
+      CHECK (default_charge >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.lab_test_group_items'::regclass
+      AND conname='lab_test_group_items_display_order_check') THEN
+    ALTER TABLE public.lab_test_group_items ADD CONSTRAINT lab_test_group_items_display_order_check
+      CHECK (display_order >= 0);
+  END IF;
+END;
+$panel_constraints$;
+
+ALTER TABLE public.lab_test_groups
+  ALTER COLUMN facility_id SET NOT NULL,
+  ALTER COLUMN group_name SET NOT NULL,
+  ALTER COLUMN group_code SET NOT NULL,
+  ALTER COLUMN default_charge SET DEFAULT 0,
+  ALTER COLUMN default_charge SET NOT NULL,
+  ALTER COLUMN is_active SET DEFAULT true,
+  ALTER COLUMN is_active SET NOT NULL,
+  ALTER COLUMN created_by SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET DEFAULT now();
+
+ALTER TABLE public.lab_test_group_items
+  ALTER COLUMN group_id SET NOT NULL,
+  ALTER COLUMN test_id SET NOT NULL,
+  ALTER COLUMN display_order SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_groups_facility_code_uidx
+  ON public.lab_test_groups(facility_id, lower(group_code));
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_test_uidx
+  ON public.lab_test_group_items(group_id, test_id);
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_group_items_group_order_uidx
+  ON public.lab_test_group_items(group_id, display_order);
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_orders_panel_child_test_uidx
   ON public.lab_orders(parent_order_id, lab_test_catalogue_id)
   WHERE parent_order_id IS NOT NULL;
-CREATE INDEX lab_test_group_items_test_id_idx ON public.lab_test_group_items(test_id);
+CREATE INDEX IF NOT EXISTS lab_test_group_items_test_id_idx ON public.lab_test_group_items(test_id);
 
 ALTER TABLE public.lab_test_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_test_group_items ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_test_groups, public.lab_test_group_items FROM PUBLIC, anon, authenticated;
+
+DROP FUNCTION IF EXISTS public.get_laboratory_test_group(boolean);
+DROP FUNCTION IF EXISTS public.get_laboratory_test_groups(boolean);
 
 CREATE OR REPLACE FUNCTION public.get_laboratory_test_groups(_include_inactive boolean DEFAULT false)
 RETURNS jsonb

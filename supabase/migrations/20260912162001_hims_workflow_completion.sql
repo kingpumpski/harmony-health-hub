@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   UNIQUE (test_id, code)
 );
 
+-- Legacy installations may already have lab_test_parameters without the canonical ordering column.
+-- Reconcile it before creating the index below; the later migration also repairs deployed schemas.
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS lab_test_catalog_active_idx
   ON public.lab_test_catalog (active, category, name);
 CREATE INDEX IF NOT EXISTS lab_test_parameters_test_idx
@@ -106,6 +111,34 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile the legacy service_orders/facility_settings tables before indexing
+-- or installing lifecycle triggers. CREATE TABLE IF NOT EXISTS alone does not
+-- add columns to installations that already have the legacy tables.
+ALTER TABLE public.facility_settings
+  ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined'
+    CHECK (payment_routing_mode IN ('pay_before_every_step','streamlined'));
+
+UPDATE public.facility_settings
+SET payment_routing_mode = 'pay_before_every_step'
+WHERE routing_mode = 'pay_before_each_step'
+  AND payment_routing_mode = 'streamlined';
+
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'general',
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine',
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+-- Preserve lifecycle intent from the legacy status column when present.
+UPDATE public.service_orders
+SET fulfillment_status = CASE
+  WHEN status::text IN ('released','in_progress','completed','cancelled') THEN status::text
+  ELSE 'blocked'
+END
+WHERE fulfillment_status = 'blocked';
 
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
@@ -198,6 +231,11 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Existing deployments may have the review table without the canonical timestamp.
+-- Reconcile before indexes reference it, since CREATE TABLE IF NOT EXISTS does not alter legacy tables.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
@@ -213,6 +251,11 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   old_record JSONB,
   new_record JSONB
 );
+
+-- Older installations may already have patient_audit without its timestamp.
+-- Add the column before the index, because CREATE TABLE IF NOT EXISTS is not a schema migration.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
