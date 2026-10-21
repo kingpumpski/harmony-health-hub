@@ -15,7 +15,7 @@ begin
   if uid is null then raise exception 'Authentication required'; end if;
   if not public.current_user_has_catalogue_create_permission('create_services') then raise exception 'Create services privilege required'; end if;
   select lower(trim(coalesce(p.department,''))) into actor_department from public.profiles p where p.id=uid;
-  if not (public.has_role(uid,'admin') or public.has_role(uid,'it_admin')) and (target_department='' or actor_department='' or target_department<>actor_department) then raise exception 'You may create services only for your department'; end if;
+  if not (public.has_role(uid,'admin'::public.app_role) or public.has_role(uid,'it_admin'::public.app_role)) and (target_department='' or actor_department='' or target_department<>actor_department) then raise exception 'You may create services only for your department'; end if;
   if length(trim(coalesce(_service_code,'')))<2 then raise exception 'Service code is required'; end if;
   if length(trim(coalesce(_service_name,'')))<2 then raise exception 'Service name is required'; end if;
   if target_department='' then raise exception 'Department is required'; end if;
@@ -50,7 +50,7 @@ create or replace function public.create_pharmacy_inventory_item(_drug_name text
 returns public.pharmacy_inventory language plpgsql security definer set search_path=public as $$
 declare r public.pharmacy_inventory; uid uuid:=auth.uid();
 begin
-  if uid is null or not (public.has_role(uid,'admin') or public.has_role(uid,'it_admin') or public.has_role(uid,'pharmacist') or public.current_user_has_catalogue_create_permission('create_items')) then raise exception 'Create pharmacy item privilege required'; end if;
+  if uid is null or not (public.has_role(uid,'admin'::public.app_role) or public.has_role(uid,'it_admin'::public.app_role) or public.has_role(uid,'pharmacist'::public.app_role) or public.current_user_has_catalogue_create_permission('create_items')) then raise exception 'Create pharmacy item privilege required'; end if;
   if length(trim(coalesce(_drug_name,'')))<2 then raise exception 'Drug name is required'; end if;
   if coalesce(_stock_quantity,0)<0 or coalesce(_reorder_level,0)<0 or coalesce(_unit_price,0)<0 then raise exception 'Inventory values cannot be negative'; end if;
   if _expiry_date is not null and _expiry_date < current_date then raise exception 'Expiry date cannot be in the past'; end if;
