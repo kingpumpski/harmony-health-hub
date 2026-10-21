@@ -20,7 +20,7 @@ DECLARE
   v_session_id uuid;
   v_has_shift_data boolean;
 BEGIN
-  IF v_uid IS NULL OR NOT public.has_role(v_uid, 'patient') THEN
+  IF v_uid IS NULL OR NOT public.has_role(v_uid,'patient'::public.app_role) THEN
     RAISE EXCEPTION 'Patient telemedicine access is not permitted';
   END IF;
 
