@@ -52,14 +52,14 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility to access laboratory panels'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory panel access is not permitted'; END IF;
   IF _include_inactive AND NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR (public.has_role(uid,'lab_technician') AND EXISTS (
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR (public.has_role(uid,'lab_technician'::public.app_role) AND EXISTS (
       SELECT 1 FROM public.profiles p
       WHERE p.id=uid AND (p.department IS NULL OR lower(btrim(p.department)) IN ('laboratory','lab'))
     ))
@@ -116,8 +116,8 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR (public.has_role(uid,'lab_technician') AND EXISTS (
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR (public.has_role(uid,'lab_technician'::public.app_role) AND EXISTS (
       SELECT 1 FROM public.profiles p
       WHERE p.id=uid AND (p.department IS NULL OR lower(btrim(p.department)) IN ('laboratory','lab'))
     ))
@@ -257,15 +257,15 @@ DECLARE
   ordered_test_count integer;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Clinical encounter ordering access required'; END IF;
   PERFORM public.ensure_encounter_facility_attribution(_encounter_id);
   SELECT * INTO e FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Encounter not found'; END IF;
   IF e.status IN ('completed','cancelled') THEN RAISE EXCEPTION 'Completed or cancelled encounters are read-only'; END IF;
-  IF e.practitioner_id<>uid AND NOT public.has_role(uid,'admin') THEN
+  IF e.practitioner_id<>uid AND NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only the encounter clinician or an administrator may order from this encounter';
   END IF;
   SELECT * INTO panel FROM public.lab_test_groups
@@ -314,10 +314,10 @@ DECLARE
   v_specimen_type text;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory clinical role required'; END IF;
   SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
@@ -325,7 +325,7 @@ BEGIN
   IF NOT FOUND OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Laboratory patient facility attribution is unresolved'; END IF;
   IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
   IF v_patient_facility IS DISTINCT FROM o.facility_id THEN RAISE EXCEPTION 'Laboratory order and patient facility lineage do not match'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order belongs to a different facility context';
   END IF;
@@ -380,7 +380,7 @@ DECLARE
   rid uuid;
   required_code text;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role)) THEN
     RAISE EXCEPTION 'Laboratory technician role required';
   END IF;
   IF jsonb_typeof(coalesce(_parameter_results,'{}'::jsonb))<>'object' THEN RAISE EXCEPTION 'Structured laboratory results must be a JSON object'; END IF;
@@ -390,7 +390,7 @@ BEGIN
   IF NOT FOUND OR v_patient_facility IS NULL THEN RAISE EXCEPTION 'Laboratory patient facility attribution is unresolved'; END IF;
   IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
   IF v_patient_facility IS DISTINCT FROM o.facility_id THEN RAISE EXCEPTION 'Laboratory order and patient facility lineage do not match'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order belongs to a different facility context';
   END IF;
@@ -444,7 +444,7 @@ DECLARE
   c public.lab_test_catalogue%ROWTYPE;
   result_id uuid;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role)) THEN
     RAISE EXCEPTION 'Laboratory technician role required';
   END IF;
   SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
@@ -453,7 +453,7 @@ BEGIN
   IF NOT FOUND OR v_patient_facility IS NULL OR o.facility_id IS NULL OR v_patient_facility IS DISTINCT FROM o.facility_id THEN
     RAISE EXCEPTION 'Laboratory order and patient facility lineage is unresolved or mismatched';
   END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order belongs to a different facility context';
   END IF;
@@ -499,13 +499,13 @@ DECLARE
   r public.lab_results%ROWTYPE;
   result_id uuid;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'lab_technician')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role)) THEN
     RAISE EXCEPTION 'Laboratory technician role required';
   END IF;
   IF jsonb_typeof(coalesce(_parameter_results,'{}'::jsonb))<>'object' THEN RAISE EXCEPTION 'Structured laboratory results must be a JSON object'; END IF;
   SELECT * INTO o FROM public.lab_orders WHERE id=_lab_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
-  IF o.facility_id IS NULL OR (NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND o.facility_id IS DISTINCT FROM v_facility) THEN
+  IF o.facility_id IS NULL OR (NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order facility context is invalid';
   END IF;
   IF o.status<>'sample_collected' THEN RAISE EXCEPTION 'Sample must be collected before result entry'; END IF;
@@ -551,8 +551,8 @@ DECLARE
   o public.lab_orders%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'practitioner')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory approval role required'; END IF;
   SELECT * INTO r FROM public.lab_results WHERE id=_lab_result_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory result not found'; END IF;
@@ -560,7 +560,7 @@ BEGIN
   IF NOT FOUND OR r.facility_id IS NULL OR o.facility_id IS NULL OR r.facility_id IS DISTINCT FROM o.facility_id THEN
     RAISE EXCEPTION 'Laboratory result facility mismatch: attribution is unresolved or result/order facility IDs differ';
   END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
      AND (v_facility IS NULL OR r.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory result belongs to a different facility context';
   END IF;
@@ -691,9 +691,9 @@ DECLARE
   result jsonb;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical report access is not permitted'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical report access is not permitted'; END IF;
   _limit:=least(greatest(coalesce(_limit,100),1),300);
   SELECT coalesce(jsonb_agg(row_data ORDER BY approved_at DESC NULLS LAST),'[]'::jsonb)
   INTO result
