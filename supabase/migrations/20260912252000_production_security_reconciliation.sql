@@ -2,6 +2,9 @@
 -- Keeps notification mutations user-scoped, narrows longitudinal clinical access,
 -- and expands immutable audit coverage without changing existing workflow RPCs.
 
+-- The previous notification migration returned VOID; PostgreSQL requires dropping the signature before changing its return type.
+DROP FUNCTION IF EXISTS public.mark_notification_read(UUID);
+
 CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
