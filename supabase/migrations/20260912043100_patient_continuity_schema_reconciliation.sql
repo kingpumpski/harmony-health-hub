@@ -5,7 +5,15 @@
 -- Reconcile the canonical payer field before the continuity function is parsed.
 ALTER TABLE public.insurance_claims
   ADD COLUMN IF NOT EXISTS payer_name TEXT,
-  ADD COLUMN IF NOT EXISTS member_number TEXT;
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 DO $insurance_claim_payer_compatibility$
 DECLARE
