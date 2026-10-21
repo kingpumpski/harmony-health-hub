@@ -339,12 +339,12 @@ UPDATE public.inpatient_reviews
 SET seen_at = COALESCE(seen_at, created_at, now())
 WHERE seen_at IS NULL;
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.inpatient_reviews WHERE patient_id IS NULL) THEN
     RAISE EXCEPTION 'Cannot reconcile inpatient_reviews: some rows have no matching admission patient';
   END IF;
-END $;
+END $$;
 
 ALTER TABLE public.inpatient_reviews
   ALTER COLUMN patient_id SET NOT NULL,
@@ -373,7 +373,7 @@ ALTER TABLE public.patient_audit
   ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
   ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='actor_user_id') THEN
     EXECUTE 'UPDATE public.patient_audit SET changed_by = COALESCE(changed_by, actor_user_id) WHERE changed_by IS NULL';
@@ -384,7 +384,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='operation') THEN
     EXECUTE 'UPDATE public.patient_audit SET action = operation WHERE action = ''UPDATE'' AND operation IS NOT NULL';
   END IF;
-END $;
+END $$;
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
