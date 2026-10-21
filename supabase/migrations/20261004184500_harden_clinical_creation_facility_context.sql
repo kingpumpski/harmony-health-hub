@@ -23,9 +23,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'Emergency operations role required'; END IF;
   IF _patient_id IS NULL OR NULLIF(pg_catalog.btrim(_chief_complaint),'') IS NULL
     THEN RAISE EXCEPTION 'Patient and chief complaint are required'; END IF;
@@ -37,7 +37,7 @@ BEGIN
   IF _arrival_mode NOT IN ('walk_in','ambulance','referral','other')
     THEN RAISE EXCEPTION 'Invalid emergency arrival mode'; END IF;
   IF _assigned_officer IS NOT NULL AND _assigned_officer <> uid
-     AND NOT public.has_role(uid,'admin') AND NOT public.has_role(uid,'it_admin')
+     AND NOT public.has_role(uid,'admin'::public.app_role) AND NOT public.has_role(uid,'it_admin'::public.app_role)
     THEN RAISE EXCEPTION 'Only an administrator may assign another officer during creation'; END IF;
 
   v_priority := CASE _acuity
@@ -127,9 +127,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Not authorized to create anesthetic assessments'; END IF;
 
   v_facility := public.assert_patient_facility_context(_patient_id);
