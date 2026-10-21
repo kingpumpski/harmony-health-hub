@@ -21,8 +21,8 @@ AS $$
 DECLARE v_order public.service_orders;
 BEGIN
   IF NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
   ) THEN
     RAISE EXCEPTION 'Service order creation denied';
