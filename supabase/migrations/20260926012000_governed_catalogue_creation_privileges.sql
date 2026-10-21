@@ -2,7 +2,7 @@
 create or replace function public.current_user_has_catalogue_create_permission(_permission text)
 returns boolean language sql stable security definer set search_path=public as $$
   select auth.uid() is not null and (
-    public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') or
+    public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role) or
     exists (select 1 from public.user_roles ur join public.role_permissions rp on rp.role=ur.role and rp.permission_key=_permission join public.permissions p on p.permission_key=rp.permission_key and p.is_active where ur.user_id=auth.uid())
   );
 $$;
