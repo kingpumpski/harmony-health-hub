@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: migration-contract-${{ github.workflow }}
+  group: migration-contract-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
