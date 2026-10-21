@@ -9,7 +9,7 @@ AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_facility uuid := public.current_user_facility_id();
-  v_global_admin boolean := public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'it_admin');
+  v_global_admin boolean := public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role);
   v_patient_facility uuid;
   encounter_patient_id uuid;
   encounter_facility_id uuid;
@@ -17,10 +17,10 @@ DECLARE
   o public.lab_orders%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'it_admin')
-    OR public.has_role(uid, 'lab_technician')
-    OR public.has_role(uid, 'practitioner')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Laboratory approval role required';
   END IF;
