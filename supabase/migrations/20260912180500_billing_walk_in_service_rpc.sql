@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION public.create_walk_in_billable_service(_patient_id UU
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE t public.service_tariffs%ROWTYPE; so UUID;
 BEGIN
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+ IF NOT (public.has_role(auth.uid(), '299'::public.app_role) OR public.has_role(auth.uid(), '338'::public.app_role) OR public.has_role(auth.uid(), '382'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  SELECT * INTO t FROM public.service_tariffs WHERE service_code=_service_code AND active;
