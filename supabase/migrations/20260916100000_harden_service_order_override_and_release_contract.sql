@@ -12,7 +12,7 @@ DECLARE
   v_order public.service_orders;
   v_override public.billing_overrides;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Only Accounts staff can grant billing overrides';
   END IF;
   IF length(trim(COALESCE(_reason,''))) < 3 THEN
@@ -64,9 +64,9 @@ DECLARE
   v_override BOOLEAN := false;
 BEGIN
   IF NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Only authorized billing staff can release a service order';
   END IF;
