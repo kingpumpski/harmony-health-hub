@@ -18,10 +18,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'nurse')
-    OR public.has_role(uid, 'specialist_nurse')
-    OR public.has_role(uid, 'midwife')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Nursing clinical role required';
   END IF;
