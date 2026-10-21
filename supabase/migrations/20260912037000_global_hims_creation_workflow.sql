@@ -16,7 +16,7 @@ DECLARE
   v_assigned UUID;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Emergency operations role required';
   END IF;
   IF _patient_id IS NULL OR NULLIF(trim(_chief_complaint),'') IS NULL THEN
@@ -28,7 +28,7 @@ BEGIN
   IF _arrival_mode NOT IN ('walk_in','ambulance','referral','other') THEN
     RAISE EXCEPTION 'Invalid arrival mode';
   END IF;
-  IF _assigned_officer IS NOT NULL AND _assigned_officer <> uid AND NOT public.has_role(uid,'admin') THEN
+  IF _assigned_officer IS NOT NULL AND _assigned_officer <> uid AND NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only an administrator may assign another officer during creation';
   END IF;
   v_assigned := COALESCE(_assigned_officer, uid);
@@ -51,7 +51,7 @@ DECLARE
   v_id UUID;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'front_desk')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Claims operations role required';
   END IF;
   IF _patient_id IS NULL OR NULLIF(trim(_payer_name),'') IS NULL THEN
