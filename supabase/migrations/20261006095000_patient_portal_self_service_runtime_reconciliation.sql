@@ -28,7 +28,7 @@ language plpgsql stable security definer set search_path=''
 as $$
 declare uid uuid:=auth.uid(); v_facility uuid; v_at timestamptz:=coalesce(_scheduled_at,now()+interval '1 day');
 begin
-  if uid is null or not public.has_role(uid,'patient') then raise exception 'Patient telemedicine access is not permitted'; end if;
+  if uid is null or not public.has_role(uid,'patient'::public.app_role) then raise exception 'Patient telemedicine access is not permitted'; end if;
   if v_at <= now() then raise exception 'Choose a future date and time'; end if;
   select p.facility_id into v_facility from public.patients p
   where (p.user_id=uid or (p.user_id is null and lower(p.email)=lower(auth.jwt()->>'email')))
@@ -57,7 +57,7 @@ begin
   if uid is null then raise exception 'Authentication required'; end if;
   own:=exists(select 1 from public.patients p where p.id=_patient_id and coalesce(p.status,'active')<>'inactive'
     and (p.user_id=uid or (p.user_id is null and lower(p.email)=lower(auth.jwt()->>'email'))));
-  if not public.has_role(uid,'patient') or not own then raise exception 'You may only request appointments for your own patient record'; end if;
+  if not public.has_role(uid,'patient'::public.app_role) or not own then raise exception 'You may only request appointments for your own patient record'; end if;
   pf:=public.assert_patient_facility_context(_patient_id);
   if _scheduled_at is null or _scheduled_at <= now() then raise exception 'A future appointment time is required'; end if;
   insert into public.appointments(patient_id,practitioner_id,department,scheduled_at,duration_minutes,reason,status,created_at,updated_at,treatment_status,facility_id)
@@ -77,7 +77,7 @@ language plpgsql stable security definer set search_path=''
 as $$
 declare uid uuid:=auth.uid(); v_patient uuid; v_facility uuid;
 begin
-  if uid is null or not public.has_role(uid,'patient') then raise exception 'Patient meal menu access is not permitted'; end if;
+  if uid is null or not public.has_role(uid,'patient'::public.app_role) then raise exception 'Patient meal menu access is not permitted'; end if;
   select p.id,p.facility_id into v_patient,v_facility from public.patients p
   where (p.user_id=uid or (p.user_id is null and lower(p.email)=lower(auth.jwt()->>'email')))
     and coalesce(p.status,'active') <> 'inactive'
@@ -103,7 +103,7 @@ language plpgsql stable security definer set search_path=''
 as $$
 declare uid uuid:=auth.uid(); v_patient uuid; lim integer:=greatest(1,least(coalesce(_limit,50),100));
 begin
-  if uid is null or not public.has_role(uid,'patient') then raise exception 'Patient outside diagnostics access is not permitted'; end if;
+  if uid is null or not public.has_role(uid,'patient'::public.app_role) then raise exception 'Patient outside diagnostics access is not permitted'; end if;
   select p.id into v_patient from public.patients p
   where (p.user_id=uid or (p.user_id is null and lower(p.email)=lower(auth.jwt()->>'email')))
     and coalesce(p.status,'active') <> 'inactive'
