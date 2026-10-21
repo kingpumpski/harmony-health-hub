@@ -334,8 +334,8 @@ DECLARE
   v_result_id uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory technician role required'; END IF;
   IF jsonb_typeof(COALESCE(_parameter_results, '{}'::jsonb)) <> 'object' THEN
     RAISE EXCEPTION 'Structured laboratory results must be a JSON object';
@@ -397,8 +397,8 @@ DECLARE
   item public.lab_test_catalogue%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory catalogue access required'; END IF;
   IF _default_charge IS NULL OR _default_charge < 0 THEN
     RAISE EXCEPTION 'Tariff must be a non-negative amount';
