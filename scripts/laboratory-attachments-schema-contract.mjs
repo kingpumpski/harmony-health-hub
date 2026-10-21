@@ -37,7 +37,7 @@ assert.match(helper, /\(\(code === 'PGRST205' \|\| code === '42P01'\) && \/lab_r
 assert.match(helper, /20261013190000_repair_lab_result_attachments_schema\.sql/, 'client guidance must name the repair migration');
 assert.match(compatibilityMigration, /CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/, 'attachment reads must use a facility-scoped API function');
 assert.match(attachmentReadHardening, /SET search_path = ''/, 'attachment read RPC must use a hardened search path');
-assert.match(attachmentReadHardening, /public\.has_role\(uid, 'admin'\)[\s\S]*public\.has_role\(uid, 'it_admin'\)/, 'facility administrators must retain troubleshooting access within the selected facility');
+assert.match(attachmentReadHardening, /public\.has_role\(uid,\s*'admin'(?:::public\.app_role)?\)[\s\S]*public\.has_role\(uid,\s*'it_admin'(?:::public\.app_role)?\)/, 'facility administrators must retain troubleshooting access within the selected facility');
 assert.match(attachmentReadHardening, /cardinality\(_lab_order_ids\)[\s\S]*> 300/, 'attachment read RPC must bound bulk requests');
 assert.match(attachmentReadHardening, /lo\.facility_id = a\.facility_id/, 'attachment reads must match attachment and order facilities');
 assert.match(attachmentReadHardening, /lr\.lab_order_id = lo\.id[\s\S]*lr\.patient_id = lo\.patient_id[\s\S]*lr\.facility_id = lo\.facility_id/, 'linked results must match order, patient, and facility lineage');
