@@ -251,14 +251,14 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility to access laboratory panels'; END IF;
   IF NOT (
-    public.has_role(uid, 'admin') OR public.has_role(uid, 'it_admin')
-    OR public.has_role(uid, 'lab_technician') OR public.has_role(uid, 'practitioner')
-    OR public.has_role(uid, 'nurse') OR public.has_role(uid, 'midwife')
-    OR public.has_role(uid, 'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory panel access is not permitted'; END IF;
   IF _include_inactive AND NOT (
-    public.has_role(uid, 'admin') OR public.has_role(uid, 'it_admin')
-    OR (public.has_role(uid, 'lab_technician') AND EXISTS (
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR (public.has_role(uid,'lab_technician'::public.app_role) AND EXISTS (
       SELECT 1
       FROM public.profiles p
       WHERE p.id = uid
@@ -326,8 +326,8 @@ BEGIN
     RAISE EXCEPTION 'Select an active facility to access laboratory report attachments';
   END IF;
   IF NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'it_admin')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'it_admin'::public.app_role)
     OR public.current_user_is_clinical_staff()
   ) THEN
     RAISE EXCEPTION 'Clinical staff or facility administrator access is required for laboratory report attachments';
