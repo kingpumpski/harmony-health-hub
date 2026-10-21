@@ -13,7 +13,7 @@ AS $$
 DECLARE
   inv uuid; tariff numeric; r record; days_count integer; uid uuid := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
   IF _patient_id IS NULL OR _from IS NULL OR _to IS NULL OR _from > _to THEN RAISE EXCEPTION 'Invalid patient billing period'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(_patient_id::text,0));
