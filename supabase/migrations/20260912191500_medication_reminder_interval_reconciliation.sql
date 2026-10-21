@@ -4,7 +4,7 @@ RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r RECORD; n INTEGER:=0; bucket TEXT; elapsed_minutes INTEGER;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   FOR r IN
     SELECT m.*,p.first_name,p.last_name
     FROM public.medication_administrations m
