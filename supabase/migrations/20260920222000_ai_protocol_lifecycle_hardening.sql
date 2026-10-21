@@ -7,7 +7,7 @@ AS $$
 DECLARE v_row public.ai_protocols; v_status text := lower(btrim(_status));
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF v_status NOT IN ('pending_review','approved','rejected','archived') THEN RAISE EXCEPTION 'Invalid protocol status'; END IF;
   SELECT * INTO v_row FROM public.ai_protocols WHERE id=_protocol_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Protocol not found'; END IF;
