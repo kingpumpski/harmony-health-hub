@@ -10,7 +10,7 @@ AS $$
 DECLARE
   v_catalog public.lab_test_catalogue%ROWTYPE;
 BEGIN
-  IF NOT (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'admin')) THEN
+  IF NOT (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
   SELECT * INTO v_catalog FROM public.lab_test_catalogue WHERE id = _catalogue_id AND active = true;
