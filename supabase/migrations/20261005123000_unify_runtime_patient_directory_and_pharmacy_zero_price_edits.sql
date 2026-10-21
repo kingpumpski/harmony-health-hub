@@ -26,10 +26,10 @@ DECLARE
   v_catalogue_id uuid;
 BEGIN
   IF v_uid IS NULL OR NOT (
-    public.has_role(v_uid,'admin')
-    OR public.has_role(v_uid,'it_admin')
-    OR public.has_role(v_uid,'system_superuser')
-    OR public.has_role(v_uid,'pharmacist')
+    public.has_role(v_uid,'admin'::public.app_role)
+    OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role)
+    OR public.has_role(v_uid,'pharmacist'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items')
   ) THEN
     RAISE EXCEPTION 'Pharmacy inventory management permission required';
@@ -238,10 +238,10 @@ DECLARE
   v_facility uuid := public.current_user_facility_id();
 BEGIN
   IF v_uid IS NULL OR NOT (
-    public.has_role(v_uid,'admin')
-    OR public.has_role(v_uid,'it_admin')
-    OR public.has_role(v_uid,'system_superuser')
-    OR public.has_role(v_uid,'pharmacist')
+    public.has_role(v_uid,'admin'::public.app_role)
+    OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role)
+    OR public.has_role(v_uid,'pharmacist'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items')
   ) THEN
     RAISE EXCEPTION 'Pharmacy inventory management permission required';
