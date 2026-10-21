@@ -7,7 +7,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $
 DECLARE uid uuid:=auth.uid(); b public.ward_beds%ROWTYPE; a public.admissions%ROWTYPE; v_existing_bed_id uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(_patient_id::text,0));
