@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id UUID,_inv
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id UUID; patient_uuid UUID; uid UUID:=auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'pharmacist') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
   IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
   IF _patient_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   SELECT * INTO item FROM public.pharmacy_inventory WHERE id=_inventory_id FOR UPDATE;
@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_pos_sale(_sale_id UUID)
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_status TEXT; uid UUID:=auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
+  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
   SELECT * INTO result FROM public.pharmacy_pos_sales WHERE id=_sale_id FOR UPDATE;
   IF NOT FOUND OR result.status<>'awaiting_payment' THEN RAISE EXCEPTION 'POS sale is not awaiting payment'; END IF;
   SELECT status INTO order_status FROM public.service_orders WHERE id=result.service_order_id FOR UPDATE;
