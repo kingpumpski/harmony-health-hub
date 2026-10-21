@@ -4,7 +4,7 @@
 create or replace function public.list_unresolved_clinical_facility_records(_limit integer default 100)
 returns table(entity_type text,entity_id uuid,patient_id uuid,created_at timestamptz,metadata jsonb)
 language plpgsql security definer set search_path='' as $$declare r record;begin
-if not(public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin')) then raise exception 'Only administrators can inspect unresolved facility records';end if;
+if not(public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role)) then raise exception 'Only administrators can inspect unresolved facility records';end if;
 for r in select * from (
 select 'emergency_cases' t,id,patient_id,created_at,jsonb_build_object('status',status,'triage_priority',triage_priority) m from public.emergency_cases where facility_id is null
 union all select 'maternity_episodes',id,patient_id,created_at,jsonb_build_object('status',status,'risk_level',risk_level) from public.maternity_episodes where facility_id is null
