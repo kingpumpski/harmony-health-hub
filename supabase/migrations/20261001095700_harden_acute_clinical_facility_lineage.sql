@@ -10,7 +10,7 @@ BEGIN
   IF patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
   IF NEW.facility_id IS NULL THEN NEW.facility_id := patient_facility;
   ELSIF NEW.facility_id IS DISTINCT FROM patient_facility THEN RAISE EXCEPTION 'Clinical record facility does not match patient facility'; END IF;
-  IF uid IS NOT NULL AND NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF uid IS NOT NULL AND NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     context_facility := public.current_user_facility_id();
     IF context_facility IS NULL OR context_facility IS DISTINCT FROM patient_facility THEN RAISE EXCEPTION 'Clinical record belongs to a different facility context'; END IF;
   END IF;
@@ -24,7 +24,7 @@ DECLARE uid uuid := auth.uid(); session_facility uuid; context_facility uuid;
 BEGIN
   SELECT s.facility_id INTO session_facility FROM public.ai_clinical_sessions s WHERE s.id=NEW.session_id;
   IF NOT FOUND OR session_facility IS NULL THEN RAISE EXCEPTION 'AI clinical session facility attribution is unresolved'; END IF;
-  IF uid IS NOT NULL AND NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF uid IS NOT NULL AND NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     context_facility := public.current_user_facility_id();
     IF context_facility IS NULL OR context_facility IS DISTINCT FROM session_facility THEN RAISE EXCEPTION 'AI clinical event belongs to a different facility context'; END IF;
   END IF;
