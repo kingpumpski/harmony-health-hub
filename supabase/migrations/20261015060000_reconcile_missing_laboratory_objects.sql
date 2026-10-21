@@ -350,6 +350,13 @@ BEGIN
       AND p.facility_id = lo.facility_id
     WHERE a.facility_id = v_facility
       AND a.lab_order_id = ANY(coalesce(_lab_order_ids, ARRAY[]::uuid[]))
+      AND a.storage_path IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.lab_result_attachments duplicate
+        WHERE duplicate.storage_path = a.storage_path
+          AND duplicate.id <> a.id
+      )
       AND EXISTS (
         SELECT 1
         FROM public.service_orders so
