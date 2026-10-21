@@ -23,14 +23,14 @@ BEGIN
   FROM public.profiles p WHERE p.id = v_uid;
 
   IF NOT (
-    public.has_role(v_uid, 'admin')
-    OR public.has_role(v_uid, 'it_admin')
-    OR (public.has_role(v_uid, 'lab_technician') AND (v_department IS NULL OR v_department = 'laboratory'))
-    OR public.has_role(v_uid, 'practitioner')
-    OR (public.has_role(v_uid, 'nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(v_uid, 'midwife') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(v_uid, 'specialist_nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
-    OR (public.has_role(v_uid, 'radiologist') AND (v_department IS NULL OR v_department = 'radiology'))
+    public.has_role(v_uid,'admin'::public.app_role)
+    OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR (public.has_role(v_uid,'lab_technician'::public.app_role) AND (v_department IS NULL OR v_department = 'laboratory'))
+    OR public.has_role(v_uid,'practitioner'::public.app_role)
+    OR (public.has_role(v_uid,'nurse'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(v_uid,'midwife'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(v_uid,'specialist_nurse'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical')))
+    OR (public.has_role(v_uid,'radiologist'::public.app_role) AND (v_department IS NULL OR v_department = 'radiology'))
   ) THEN RAISE EXCEPTION 'Laboratory workspace access is not permitted'; END IF;
 
   _limit := LEAST(GREATEST(COALESCE(_limit, 200), 1), 500);
@@ -212,9 +212,9 @@ BEGIN
   IF NOT (
     public.current_user_has_catalogue_create_permission('create_items')
     OR public.current_user_has_catalogue_create_permission('create_services')
-    OR public.has_role(v_uid,'admin')
-    OR public.has_role(v_uid,'it_admin')
-    OR public.has_role(v_uid,'lab_technician')
+    OR public.has_role(v_uid,'admin'::public.app_role)
+    OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'lab_technician'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory catalogue privilege required'; END IF;
   IF length(trim(coalesce(_test_code,''))) < 2 OR length(trim(coalesce(_test_name,''))) < 2 THEN
     RAISE EXCEPTION 'Test code and test name are required';
