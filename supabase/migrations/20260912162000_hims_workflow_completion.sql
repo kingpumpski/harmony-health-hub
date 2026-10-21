@@ -34,8 +34,7 @@ CREATE TABLE IF NOT EXISTS public.facility_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS facility_settings_singleton_idx
-  ON public.facility_settings ((true));
+-- Do not impose a global singleton: facilities may have independent settings.
 
 INSERT INTO public.facility_settings (facility_name)
 SELECT 'Harmony Health Hub'
@@ -323,14 +322,29 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
 
 -- Reconcile the existing Phase 1 inpatient review table before indexing it.
 ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS assessment TEXT;
+
+UPDATE public.inpatient_reviews ir
+SET patient_id = COALESCE(ir.patient_id, a.patient_id)
+FROM public.admissions a
+WHERE a.id = ir.admission_id
+  AND ir.patient_id IS NULL;
 
 UPDATE public.inpatient_reviews
 SET seen_at = COALESCE(seen_at, created_at, now())
 WHERE seen_at IS NULL;
 
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.inpatient_reviews WHERE patient_id IS NULL) THEN
+    RAISE EXCEPTION 'Cannot reconcile inpatient_reviews: some rows have no matching admission patient';
+  END IF;
+END $;
+
 ALTER TABLE public.inpatient_reviews
+  ALTER COLUMN patient_id SET NOT NULL,
   ALTER COLUMN seen_at SET DEFAULT now(),
   ALTER COLUMN seen_at SET NOT NULL;
 
