@@ -6,7 +6,7 @@ DECLARE
  v_enc public.encounters%ROWTYPE; v_admission UUID; v_override BOOLEAN:=FALSE; v_order RECORD;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Admission is not permitted for this role'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Admission is not permitted for this role'; END IF;
  SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter not found'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=v_enc.patient_id) THEN RAISE EXCEPTION 'Encounter patient not found'; END IF;
@@ -41,7 +41,7 @@ CREATE OR REPLACE FUNCTION public.discharge_admission_workflow(_admission_id UUI
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); a public.admissions%ROWTYPE; p public.patients%ROWTYPE; n UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Admission discharge is not permitted'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Admission discharge is not permitted'; END IF;
  SELECT * INTO a FROM public.admissions WHERE id=_admission_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Admission not found'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=a.patient_id) THEN RAISE EXCEPTION 'Admission patient not found'; END IF;
