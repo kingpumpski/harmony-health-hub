@@ -80,8 +80,8 @@ DECLARE
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin')
-    OR public.has_role(auth.uid(),'practitioner')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role)
+    OR public.has_role(auth.uid(),'practitioner'::public.app_role)
   ) THEN RAISE EXCEPTION 'Authorized clinical role required'; END IF;
 
   v_facility := public.assert_patient_facility_context(_patient_id);
