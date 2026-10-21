@@ -25,11 +25,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'practitioner')
-    OR public.has_role(auth.uid(),'nurse')
-    OR public.has_role(auth.uid(),'midwife')
-    OR public.has_role(auth.uid(),'specialist_nurse')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(),'nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'midwife'::public.app_role)
+    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Admission is not permitted for this role';
   END IF;
