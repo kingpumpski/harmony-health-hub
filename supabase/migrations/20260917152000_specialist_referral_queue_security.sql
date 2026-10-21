@@ -5,7 +5,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_status TEXT; v_patient UUID; v_specialty TEXT;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
   SELECT status,patient_id,specialty INTO v_status,v_patient,v_specialty FROM public.patient_referrals WHERE id=_referral_id FOR UPDATE;
   IF v_status IS NULL THEN RAISE EXCEPTION 'Referral not found'; END IF;
   IF v_status NOT IN ('requested','accepted') THEN RAISE EXCEPTION 'Referral is not awaiting scheduling'; END IF;
