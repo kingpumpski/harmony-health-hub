@@ -82,9 +82,45 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
 -- Reconcile pre-existing emergency_cases tables before indexing newer triage fields.
 -- CREATE TABLE IF NOT EXISTS does not add columns to a legacy table.
 ALTER TABLE public.emergency_cases
-  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent';
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT;
 
-DO $migration$
+DO $emergency_queue_compatibility$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='arrival_at'
+  ) THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = COALESCE(arrival_time, arrival_at) WHERE arrival_time IS NULL';
+  END IF;
+  UPDATE public.emergency_cases
+  SET arrival_time = COALESCE(arrival_time, created_at, now())
+  WHERE arrival_time IS NULL;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='triage_priority'
+  ) THEN
+    EXECUTE $map$UPDATE public.emergency_cases
+      SET acuity = CASE triage_priority
+        WHEN 'critical' THEN 'resuscitation'
+        WHEN 'moderate' THEN 'less_urgent'
+        WHEN 'routine' THEN 'non_urgent'
+        ELSE 'urgent'
+      END
+      WHERE acuity IS NULL$map$;
+  END IF;
+  UPDATE public.emergency_cases SET acuity = COALESCE(acuity, 'urgent') WHERE acuity IS NULL;
+END;
+$emergency_queue_compatibility$;
+
+ALTER TABLE public.emergency_cases
+  ALTER COLUMN arrival_time SET DEFAULT now(),
+  ALTER COLUMN arrival_time SET NOT NULL,
+  ALTER COLUMN acuity SET DEFAULT 'urgent',
+  ALTER COLUMN acuity SET NOT NULL;
+
+DO $emergency_acuity_constraint$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -93,10 +129,10 @@ BEGIN
   ) THEN
     ALTER TABLE public.emergency_cases
       ADD CONSTRAINT emergency_cases_acuity_check
-      CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+      CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent')) NOT VALID;
   END IF;
-END
-$migration$;
+END;
+$emergency_acuity_constraint$;
 
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
