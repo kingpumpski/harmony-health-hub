@@ -32,7 +32,7 @@ revoke all on function public.list_unresolved_clinical_facility_records(integer)
 
 create or replace function public.reconcile_extended_clinical_facility_record(_entity_type text,_entity_id uuid,_target_facility_id uuid,_reason text)
 returns jsonb language plpgsql security definer set search_path='' as $$declare v_actor uuid:=auth.uid();v_source uuid;v_parent uuid;v_patient uuid;v_exists boolean:=false;begin
-if v_actor is null or not(public.has_role(v_actor,'admin') or public.has_role(v_actor,'it_admin')) then raise exception 'Only administrators can reconcile clinical facility attribution';end if;
+if v_actor is null or not(public.has_role(v_actor,'admin'::public.app_role) or public.has_role(v_actor,'it_admin'::public.app_role)) then raise exception 'Only administrators can reconcile clinical facility attribution';end if;
 if _target_facility_id is null or nullif(btrim(_reason),'') is null then raise exception 'Target facility and reconciliation reason are required';end if;
 if not exists(select 1 from public.healthcare_facilities f where f.id=_target_facility_id and f.is_active) then raise exception 'Target facility is not active';end if;
 if _entity_type not in ('emergency_cases','maternity_episodes','fertility_cycles','inpatient_bed_movements','nursing_care_plans','nursing_shift_handovers','patient_referrals','care_transitions','insurance_cases','insurance_claims','pharmacy_dispensing_plans','pharmacy_pos_sales','procedure_notes','theatre_cases','transfusion_records','vital_alerts','ai_case_memory','ai_clinical_sessions','ai_report_requests','nursing_notes','ai_diagnosis_suggestions','ward_beds') then raise exception 'Unsupported extended clinical entity type';end if;
