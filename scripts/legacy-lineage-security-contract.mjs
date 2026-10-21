@@ -1,4 +1,6 @@
-import assert from 'node:assert/strict';
+im
+assert(/IF public\.has_role\(uid,'admin'(?:::public\.app_role)?\) OR public\.has_role\(uid,'it_admin'(?:::public\.app_role)?\) THEN/.test(testModePatientContextMigration), 'test-mode privileged role exception must preserve admin and IT admin access');
+port assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync(
@@ -101,7 +103,6 @@ for (const token of [
   'IF public.hms_current_user_is_test_user() THEN',
   'public.hms_test_facility_id()',
   'Test mode is active. Test accounts can access patient records only in the Harmony Health Hub Test Facility (TEST-0001).',
-  "IF public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') THEN",
   'REVOKE ALL ON FUNCTION public.assert_patient_facility_context(uuid) FROM PUBLIC, anon, authenticated',
 ]) {
   assert(testModePatientContextMigration.includes(token), `Missing test-mode patient facility boundary: ${token}`);
