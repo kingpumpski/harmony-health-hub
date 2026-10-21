@@ -13,7 +13,7 @@ DECLARE
   v_gate public.service_orders%ROWTYPE;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication is required'; END IF;
-  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin')) THEN
+  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
 
@@ -59,7 +59,7 @@ DECLARE
   v_result UUID;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication is required'; END IF;
-  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin')) THEN
+  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
 
@@ -97,7 +97,7 @@ DECLARE
   v_result public.lab_results%ROWTYPE;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication is required'; END IF;
-  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin')) THEN
+  IF NOT (public.is_clinical_staff(v_uid) OR public.has_role(v_uid,'admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical staff access required';
   END IF;
 
@@ -135,7 +135,7 @@ DECLARE
   v_service_status TEXT := CASE WHEN v_requires_payment THEN 'pending_payment_approval' ELSE 'released' END;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication is required'; END IF;
-  IF NOT (public.has_role(v_uid,'admin') OR public.has_role(v_uid,'practitioner') OR public.has_role(v_uid,'nurse') OR public.has_role(v_uid,'midwife') OR public.has_role(v_uid,'lab_technician') OR public.has_role(v_uid,'front_desk')) THEN
+  IF NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'practitioner'::public.app_role) OR public.has_role(v_uid,'nurse'::public.app_role) OR public.has_role(v_uid,'midwife'::public.app_role) OR public.has_role(v_uid,'lab_technician'::public.app_role) OR public.has_role(v_uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Laboratory order access required';
   END IF;
   IF _patient_id IS NULL OR NULLIF(btrim(_test_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and test name are required'; END IF;
