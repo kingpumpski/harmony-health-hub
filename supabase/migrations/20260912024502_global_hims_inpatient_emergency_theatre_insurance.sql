@@ -219,6 +219,9 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile the canonical payer field as well as legacy claim lifecycle columns.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS payer_name TEXT;
 -- Reconcile legacy claim tables before indexes and lifecycle triggers depend on timestamps.
 ALTER TABLE public.insurance_claims
   ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
