@@ -6,7 +6,7 @@ DECLARE
   v_count INTEGER := 0;
   v_user UUID := auth.uid();
 BEGIN
-  IF v_user IS NULL OR NOT public.has_role(v_user, 'admin') THEN
+  IF v_user IS NULL OR NOT public.has_role(v_user,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only administrators may seed facility report configuration';
   END IF;
 
