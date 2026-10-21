@@ -54,8 +54,8 @@ BEGIN
  IF _patient_id IS NULL OR NULLIF(pg_catalog.btrim(_procedure_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and procedure are required'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF _encounter_id IS NOT NULL THEN SELECT patient_id,status INTO ep,es FROM public.encounters WHERE id=_encounter_id AND facility_id=pf; IF NOT FOUND OR ep<>_patient_id THEN RAISE EXCEPTION 'Encounter does not belong to patient facility'; END IF; IF es IN('completed','cancelled') THEN RAISE EXCEPTION 'Cannot create theatre case for a closed encounter'; END IF; END IF;
- IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner') THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
- IF _anesthetist_id IS NOT NULL AND NOT public.has_role(_anesthetist_id,'practitioner') THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
+ IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner'::public.app_role) THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
+ IF _anesthetist_id IS NOT NULL AND NOT public.has_role(_anesthetist_id,'practitioner'::public.app_role) THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
  INSERT INTO public.theatre_cases(facility_id,patient_id,encounter_id,procedure_name,surgeon_id,anesthetist_id,scheduled_start,theatre_name,urgency,status,created_by)
  VALUES(pf,_patient_id,_encounter_id,pg_catalog.btrim(_procedure_name),_surgeon_id,_anesthetist_id,_scheduled_start,NULLIF(pg_catalog.btrim(_theatre_name),''),COALESCE(NULLIF(pg_catalog.btrim(_urgency),''),'elective'),'requested',uid) RETURNING id INTO v_id;
  RETURN v_id;
