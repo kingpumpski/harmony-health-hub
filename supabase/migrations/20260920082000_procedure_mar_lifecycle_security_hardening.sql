@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.create_procedure_note(
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); sid public.service_orders%ROWTYPE; id UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF COALESCE(_charge_amount,0)<0 THEN RAISE EXCEPTION 'Charge amount cannot be negative'; END IF;
  IF COALESCE(_charge_amount,0)>0 THEN
@@ -30,7 +30,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r public.medication_administrations%ROWTYPE; p public.prescriptions%ROWTYPE; i public.pharmacy_inventory%ROWTYPE; uid UUID:=auth.uid(); overdue BOOLEAN; order_status TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
  IF _status NOT IN('administered','held','refused','omitted','not_given','cancelled') THEN RAISE EXCEPTION 'Unsupported medication administration status'; END IF;
  SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Medication administration record not found'; END IF;
