@@ -135,7 +135,7 @@ for (const needle of [
   'CREATE OR REPLACE FUNCTION public.request_patient_telemedicine_session',
   "nullif(trim(_reason), '') IS NULL",
   "_scheduled_at <= now()",
-  'public.has_role(v_uid, \'patient\'::public.app_role)',
+  'public.has_role(v_uid,\'patient\'::public.app_role)',
   'public.facility_memberships',
   'public.staff_shift_assignments',
   's.starts_at <= _scheduled_at',
