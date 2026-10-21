@@ -23,11 +23,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(auth.uid(), 'admin') OR
-    public.has_role(auth.uid(), 'nurse') OR
-    public.has_role(auth.uid(), 'specialist_nurse') OR
-    public.has_role(auth.uid(), 'practitioner') OR
-    public.has_role(auth.uid(), 'midwife')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Inpatient transfer is not permitted';
   END IF;
