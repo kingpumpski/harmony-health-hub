@@ -77,15 +77,50 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   UNIQUE (test_id, code)
 );
 
+-- Reconcile partially provisioned legacy facility settings before workflows use them.
+ALTER TABLE public.facility_settings
+  ADD COLUMN IF NOT EXISTS country_code CHAR(2) NOT NULL DEFAULT 'GH',
+  ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'GHS',
+  ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Accra',
+  ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined',
+  ADD COLUMN IF NOT EXISTS enable_patient_portal BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS enable_ai_decision_support BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30,
+  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
+
 -- Reconcile partially provisioned legacy service-order tables before indexing them.
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing legacy table.
 ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'general',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS release_reason TEXT,
+  ADD COLUMN IF NOT EXISTS released_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
   ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine';
 
--- Preserve the legacy lifecycle when these canonical fields are introduced.
-DO $
+-- Normalize recognized legacy routing values without changing facility identity.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'facility_settings' AND column_name = 'routing_mode'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.facility_settings
+      SET payment_routing_mode = CASE
+        WHEN routing_mode IN ('pay_before_each_step','pay_before_every_step','strict') THEN 'pay_before_every_step'
+        ELSE 'streamlined'
+      END
+      WHERE payment_routing_mode = 'streamlined'
+    $sql$;
+  END IF;
+END $$;
+
+-- Preserve the legacy lifecycle when canonical fulfillment state is introduced.
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -102,7 +137,7 @@ BEGIN
         AND lower(COALESCE(status::text, '')) IN ('released','in_progress','completed','cancelled')
     $sql$;
   END IF;
-END $;
+END $$;
 
 -- Reconcile partially provisioned legacy catalog tables before indexing them.
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
