@@ -156,9 +156,9 @@ FOR SELECT TO authenticated
 USING (
   status='published'
   AND (
-    public.has_role((SELECT auth.uid()),'admin')
-    OR public.has_role((SELECT auth.uid()),'canteen')
-    OR NOT public.has_role((SELECT auth.uid()),'patient')
+    public.has_role((select auth.uid()),'admin'::public.app_role)
+    OR public.has_role((select auth.uid()),'canteen'::public.app_role)
+    OR NOT public.has_role((select auth.uid()),'patient'::public.app_role)
     OR EXISTS (
       SELECT 1
       FROM public.patients p
@@ -180,9 +180,9 @@ USING (
     WHERE m.id=meal_menu_items.menu_id
       AND m.status='published'
       AND (
-        public.has_role((SELECT auth.uid()),'admin')
-        OR public.has_role((SELECT auth.uid()),'canteen')
-        OR NOT public.has_role((SELECT auth.uid()),'patient')
+        public.has_role((select auth.uid()),'admin'::public.app_role)
+        OR public.has_role((select auth.uid()),'canteen'::public.app_role)
+        OR NOT public.has_role((select auth.uid()),'patient'::public.app_role)
         OR EXISTS (
           SELECT 1
           FROM public.patients p
