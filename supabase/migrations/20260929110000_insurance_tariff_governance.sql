@@ -31,7 +31,7 @@ AS $function$
 DECLARE r public.insurance_service_tariffs; uid uuid:=auth.uid();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Tariff configuration privilege required'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Tariff configuration privilege required'; END IF;
  IF _insurance_company_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.insurance_companies WHERE id=_insurance_company_id AND active) THEN RAISE EXCEPTION 'Active insurance company is required'; END IF;
  IF length(pg_catalog.btrim(coalesce(_service_code,'')))<2 THEN RAISE EXCEPTION 'Service code is required'; END IF;
  IF _effective_from IS NULL THEN RAISE EXCEPTION 'Effective-from date is required'; END IF;
@@ -58,7 +58,7 @@ AS $function$
 DECLARE r public.insurance_service_tariffs; uid uuid:=auth.uid(); old public.insurance_service_tariffs;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Tariff configuration privilege required'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Tariff configuration privilege required'; END IF;
  SELECT * INTO old FROM public.insurance_service_tariffs WHERE id=_id FOR UPDATE;
  IF old.id IS NULL THEN RAISE EXCEPTION 'Insurance tariff not found'; END IF;
  IF coalesce(_base_charge,0)<0 OR coalesce(_insurance_charge,0)<0 OR coalesce(_top_up,0)<0 THEN RAISE EXCEPTION 'Tariff amounts cannot be negative'; END IF;
