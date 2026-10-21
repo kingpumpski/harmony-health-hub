@@ -16,15 +16,15 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin') OR
-    public.has_role(uid,'practitioner') OR
-    public.has_role(uid,'nurse') OR
-    public.has_role(uid,'midwife') OR
-    public.has_role(uid,'specialist_nurse') OR
-    public.has_role(uid,'pharmacist') OR
-    public.has_role(uid,'lab_technician') OR
-    public.has_role(uid,'accountant') OR
-    public.has_role(uid,'front_desk')
+    public.has_role(uid,'admin'::public.app_role) OR
+    public.has_role(uid,'practitioner'::public.app_role) OR
+    public.has_role(uid,'nurse'::public.app_role) OR
+    public.has_role(uid,'midwife'::public.app_role) OR
+    public.has_role(uid,'specialist_nurse'::public.app_role) OR
+    public.has_role(uid,'pharmacist'::public.app_role) OR
+    public.has_role(uid,'lab_technician'::public.app_role) OR
+    public.has_role(uid,'accountant'::public.app_role) OR
+    public.has_role(uid,'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Patient continuity access denied';
   END IF;
