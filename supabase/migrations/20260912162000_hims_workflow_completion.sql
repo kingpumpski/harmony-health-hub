@@ -77,6 +77,33 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   UNIQUE (test_id, code)
 );
 
+-- Reconcile partially provisioned legacy service-order tables before indexing them.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing legacy table.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine';
+
+-- Preserve the legacy lifecycle when these canonical fields are introduced.
+DO $
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'service_orders' AND column_name = 'status'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.service_orders
+      SET fulfillment_status = CASE
+        WHEN lower(COALESCE(status::text, '')) IN ('released','in_progress','completed','cancelled')
+          THEN lower(status::text)
+        ELSE fulfillment_status
+      END
+      WHERE fulfillment_status = 'blocked'
+        AND lower(COALESCE(status::text, '')) IN ('released','in_progress','completed','cancelled')
+    $sql$;
+  END IF;
+END $;
+
 -- Reconcile partially provisioned legacy catalog tables before indexing them.
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
 ALTER TABLE public.lab_test_parameters
