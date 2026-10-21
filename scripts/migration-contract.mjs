@@ -94,11 +94,11 @@ for (const [r,m] of [
 // Guard partial legacy schemas: missing audit tables are valid, and canonical
 // tariff aliases must satisfy installations where service_tariffs.category is NOT NULL.
 const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
-must(patientAuditRetention,/IF to_regclass\('public\\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
-must(patientAuditRetention,/ELSIF to_regclass\('public\\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
+must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
-must(canonicalTariffs,/INSERT INTO public\\.service_tariffs\\s*\\(\\s*service_code,\\s*service_name,\\s*category,\\s*department,\\s*unit,\\s*amount,\\s*active,\\s*currency,\\s*metadata\\s*\\)/i,'canonical tariff aliases must explicitly populate required category');
-must(canonicalTariffs,/category\\s*=\\s*EXCLUDED\\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
+must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
+must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 assert.ok(!/END;\s*(?<!\$)\$(?!\$);/.test(all),'migration chain must not contain unterminated single-dollar PL/pgSQL function delimiters');
