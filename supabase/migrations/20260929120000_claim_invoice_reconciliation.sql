@@ -11,7 +11,7 @@ DECLARE
   v_insurance numeric := 0;
   v_patient uuid;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Accounts role required';
   END IF;
   SELECT * INTO c FROM public.insurance_claims WHERE id=_claim_id FOR UPDATE;
