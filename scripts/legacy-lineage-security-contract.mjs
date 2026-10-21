@@ -1,6 +1,4 @@
-im
-assert(/IF public\.has_role\(uid,'admin'(?:::public\.app_role)?\) OR public\.has_role\(uid,'it_admin'(?:::public\.app_role)?\) THEN/.test(testModePatientContextMigration), 'test-mode privileged role exception must preserve admin and IT admin access');
-port assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync(
@@ -107,6 +105,8 @@ for (const token of [
 ]) {
   assert(testModePatientContextMigration.includes(token), `Missing test-mode patient facility boundary: ${token}`);
 }
+
+assert(/IF public\.has_role\(uid,'admin'(?:::public\.app_role)?\) OR public\.has_role\(uid,'it_admin'(?:::public\.app_role)?\) THEN/.test(testModePatientContextMigration), 'test-mode privileged role exception must preserve admin and IT admin access');
 
 const patientReadMigration = fs.readFileSync(
   'supabase/migrations/20261001102111_harden_patient_read_facility_context.sql',
