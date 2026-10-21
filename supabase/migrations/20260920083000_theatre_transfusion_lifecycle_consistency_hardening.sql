@@ -14,8 +14,8 @@ BEGIN
    IF NOT FOUND OR ep<>_patient_id THEN RAISE EXCEPTION 'Encounter does not belong to patient'; END IF;
    IF es IN('completed','cancelled') THEN RAISE EXCEPTION 'Cannot create theatre case for a closed encounter'; END IF;
  END IF;
- IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner') THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
- IF _anesthetist_id IS NOT NULL AND NOT(public.has_role(_anesthetist_id,'practitioner')) THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
+ IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner'::public.app_role) THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
+ IF _anesthetist_id IS NOT NULL AND NOT(public.has_role(_anesthetist_id,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
  INSERT INTO public.theatre_cases(patient_id,encounter_id,procedure_name,surgeon_id,anesthetist_id,scheduled_start,theatre_name,urgency,status,created_by)
  VALUES(_patient_id,_encounter_id,btrim(_procedure_name),_surgeon_id,_anesthetist_id,_scheduled_start,NULLIF(btrim(_theatre_name),''),COALESCE(NULLIF(btrim(_urgency),''),'elective'),'requested',uid)
  RETURNING id INTO id;
