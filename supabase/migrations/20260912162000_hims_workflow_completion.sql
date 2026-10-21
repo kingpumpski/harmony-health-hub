@@ -155,7 +155,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='notes') THEN
     EXECUTE 'UPDATE public.lab_test_catalog SET description = COALESCE(description, notes) WHERE description IS NULL';
   END IF;
-  EXECUTE 'UPDATE public.lab_test_catalog SET code = ''legacy-'' || id::text WHERE code IS NULL OR btrim(code) = '''''';';
+  EXECUTE $sql$UPDATE public.lab_test_catalog SET code = 'legacy-' || id::text WHERE code IS NULL OR btrim(code) = ''$sql$;
   EXECUTE $sql$WITH duplicates AS (SELECT id, row_number() OVER (PARTITION BY code ORDER BY id) AS rn FROM public.lab_test_catalog) UPDATE public.lab_test_catalog t SET code = 'legacy-' || t.id::text FROM duplicates d WHERE d.id = t.id AND d.rn > 1$sql$;
 END $$;
 
@@ -188,7 +188,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='display_order') THEN
     EXECUTE 'UPDATE public.lab_test_parameters SET sort_order = display_order WHERE sort_order = 0 AND display_order IS NOT NULL';
   END IF;
-  EXECUTE 'UPDATE public.lab_test_parameters SET code = ''legacy-'' || id::text WHERE code IS NULL OR btrim(code) = '''''';';
+  EXECUTE $sql$UPDATE public.lab_test_parameters SET code = 'legacy-' || id::text WHERE code IS NULL OR btrim(code) = ''$sql$;
   EXECUTE $sql$WITH duplicates AS (SELECT id, row_number() OVER (PARTITION BY test_id, code ORDER BY id) AS rn FROM public.lab_test_parameters) UPDATE public.lab_test_parameters t SET code = 'legacy-' || t.id::text FROM duplicates d WHERE d.id = t.id AND d.rn > 1$sql$;
 END $$;
 
