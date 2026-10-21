@@ -5,7 +5,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog','public'
 AS $function$
 DECLARE uid uuid := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
   RETURN QUERY
   SELECT c.id,c.invoice_id,coalesce(c.insurance_company_id,p.insurance_company_id,ic.insurance_company_id),coalesce(co.code,co2.code),coalesce(co.name,co2.name),coalesce(sum(greatest(coalesce(ii.insurance_charge,0),0)),0)::numeric
   FROM public.insurance_claims c
