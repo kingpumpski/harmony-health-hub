@@ -23,11 +23,11 @@ BEGIN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  v_admin := public.has_role(v_uid, 'admin');
-  v_pharmacist := public.has_role(v_uid, 'pharmacist');
-  v_front_desk := public.has_role(v_uid, 'front_desk');
-  v_catalogue_manager := public.has_role(v_uid, 'it_admin')
-    OR public.has_role(v_uid, 'system_superuser')
+  v_admin := public.has_role(v_uid,'admin'::public.app_role);
+  v_pharmacist := public.has_role(v_uid,'pharmacist'::public.app_role);
+  v_front_desk := public.has_role(v_uid,'front_desk'::public.app_role);
+  v_catalogue_manager := public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items');
   v_clinical_pharmacy := v_admin OR v_pharmacist;
 
@@ -159,10 +159,10 @@ DECLARE
   v_uid uuid := auth.uid();
 BEGIN
   IF v_uid IS NULL OR NOT (
-    public.has_role(v_uid, 'admin')
-    OR public.has_role(v_uid, 'it_admin')
-    OR public.has_role(v_uid, 'system_superuser')
-    OR public.has_role(v_uid, 'pharmacist')
+    public.has_role(v_uid,'admin'::public.app_role)
+    OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role)
+    OR public.has_role(v_uid,'pharmacist'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items')
   ) THEN
     RAISE EXCEPTION 'Pharmacy inventory management permission required';
