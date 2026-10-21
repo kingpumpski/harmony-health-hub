@@ -66,7 +66,7 @@ create or replace function public.reconcile_clinical_facility_record(_entity_typ
 returns jsonb language plpgsql security definer set search_path=''
 as $$ declare v_actor uuid:=auth.uid(); v_source uuid; v_patient uuid; v_parent uuid; v_ref uuid; v_exists boolean:=false; v_metadata jsonb:='{}'::jsonb;
 begin
- if v_actor is null or not(public.has_role(v_actor,'admin') or public.has_role(v_actor,'it_admin')) then raise exception 'Only administrators can reconcile clinical facility attribution'; end if;
+ if v_actor is null or not(public.has_role(v_actor,'admin'::public.app_role) or public.has_role(v_actor,'it_admin'::public.app_role)) then raise exception 'Only administrators can reconcile clinical facility attribution'; end if;
  if _target_facility_id is null or nullif(btrim(_reason),'') is null then raise exception 'Target facility and reconciliation reason are required'; end if;
  if not exists(select 1 from public.healthcare_facilities f where f.id=_target_facility_id and f.is_active) then raise exception 'Target facility is not active'; end if;
  perform set_config('hms.facility_reconciliation','on',true);
