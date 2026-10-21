@@ -4,7 +4,8 @@
 -- Older installations may already have a partial insurance_claims table.
 -- Reconcile the canonical payer field before the continuity function is parsed.
 ALTER TABLE public.insurance_claims
-  ADD COLUMN IF NOT EXISTS payer_name TEXT;
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
+  ADD COLUMN IF NOT EXISTS member_number TEXT;
 
 DO $insurance_claim_payer_compatibility$
 DECLARE
