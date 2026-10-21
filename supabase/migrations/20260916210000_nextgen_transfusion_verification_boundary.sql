@@ -51,11 +51,11 @@ DECLARE
   r public.transfusion_records%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR
-    public.has_role(uid,'practitioner') OR
-    public.has_role(uid,'nurse') OR
-    public.has_role(uid,'midwife') OR
-    public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR
+    public.has_role(uid,'practitioner'::public.app_role) OR
+    public.has_role(uid,'nurse'::public.app_role) OR
+    public.has_role(uid,'midwife'::public.app_role) OR
+    public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical role required';
   END IF;
