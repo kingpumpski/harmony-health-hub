@@ -21,8 +21,8 @@ BEGIN
     RAISE EXCEPTION 'Select an active facility to access laboratory report attachments';
   END IF;
   IF NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'it_admin')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'it_admin'::public.app_role)
     OR public.current_user_is_clinical_staff()
   ) THEN
     RAISE EXCEPTION 'Clinical staff or facility administrator access is required for laboratory report attachments';
