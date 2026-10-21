@@ -9,12 +9,12 @@ AS $function$
 DECLARE v_row public.fertility_monitoring; v_uid uuid:=auth.uid(); v_facility uuid; v_cycle_facility uuid; v_patient_id uuid;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'system_superuser') OR public.has_role(v_uid,'practitioner') OR public.has_role(v_uid,'nurse') OR public.has_role(v_uid,'midwife')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT(public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role) OR public.has_role(v_uid,'practitioner'::public.app_role) OR public.has_role(v_uid,'nurse'::public.app_role) OR public.has_role(v_uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  SELECT patient_id,facility_id INTO v_patient_id,v_cycle_facility FROM public.fertility_cycles WHERE id=_cycle_id;
  IF v_patient_id IS NULL OR v_cycle_facility IS NULL THEN RAISE EXCEPTION 'Fertility cycle not found or facility attribution is unresolved'; END IF;
  PERFORM public.assert_patient_facility_context(v_patient_id);
  v_facility:=public.current_user_facility_id();
- IF NOT(public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'system_superuser')) AND (v_facility IS NULL OR v_facility IS DISTINCT FROM v_cycle_facility) THEN RAISE EXCEPTION 'Fertility cycle belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role)) AND (v_facility IS NULL OR v_facility IS DISTINCT FROM v_cycle_facility) THEN RAISE EXCEPTION 'Fertility cycle belongs to a different facility context'; END IF;
  IF _visit_date IS NULL THEN RAISE EXCEPTION 'Visit date is required'; END IF;
  IF _cycle_day IS NOT NULL AND _cycle_day<1 THEN RAISE EXCEPTION 'Cycle day must be positive'; END IF;
  IF _follicle_count_left IS NOT NULL AND _follicle_count_left<0 THEN RAISE EXCEPTION 'Left follicle count cannot be negative'; END IF;
@@ -36,12 +36,12 @@ AS $function$
 DECLARE v_id uuid; v_patient_id uuid; v_episode_facility uuid; v_active_facility uuid; v_uid uuid:=auth.uid();
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'system_superuser') OR public.has_role(v_uid,'practitioner') OR public.has_role(v_uid,'nurse') OR public.has_role(v_uid,'midwife') OR public.has_role(v_uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Maternity observation recording is not permitted'; END IF;
+ IF NOT(public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role) OR public.has_role(v_uid,'practitioner'::public.app_role) OR public.has_role(v_uid,'nurse'::public.app_role) OR public.has_role(v_uid,'midwife'::public.app_role) OR public.has_role(v_uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Maternity observation recording is not permitted'; END IF;
  SELECT patient_id,facility_id INTO v_patient_id,v_episode_facility FROM public.maternity_episodes WHERE id=_episode_id AND status NOT IN('completed','cancelled');
  IF v_patient_id IS NULL OR v_episode_facility IS NULL THEN RAISE EXCEPTION 'Active maternity episode not found or facility attribution is unresolved'; END IF;
  PERFORM public.assert_patient_facility_context(v_patient_id);
  v_active_facility:=public.current_user_facility_id();
- IF NOT(public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'system_superuser')) AND (v_active_facility IS NULL OR v_active_facility IS DISTINCT FROM v_episode_facility) THEN RAISE EXCEPTION 'Maternity episode belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role)) AND (v_active_facility IS NULL OR v_active_facility IS DISTINCT FROM v_episode_facility) THEN RAISE EXCEPTION 'Maternity episode belongs to a different facility context'; END IF;
  IF _pulse IS NOT NULL AND _pulse<0 THEN RAISE EXCEPTION 'Pulse cannot be negative'; END IF;
  IF _fetal_heart_rate IS NOT NULL AND _fetal_heart_rate<0 THEN RAISE EXCEPTION 'Fetal heart rate cannot be negative'; END IF;
  IF _effacement_percent IS NOT NULL AND (_effacement_percent<0 OR _effacement_percent>100) THEN RAISE EXCEPTION 'Effacement must be between 0 and 100'; END IF;
