@@ -95,6 +95,22 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Reconcile installations where department_queues predates the canonical queue timestamp.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing legacy table.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Reconcile deployments where department_queues predates queued_at.
+-- Backfill from the original queue creation time when available, preserving worklist order.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ;
+UPDATE public.department_queues
+SET queued_at = COALESCE(queued_at, created_at, now())
+WHERE queued_at IS NULL;
+ALTER TABLE public.department_queues
+  ALTER COLUMN queued_at SET DEFAULT now(),
+  ALTER COLUMN queued_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 

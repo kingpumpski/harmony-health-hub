@@ -3,21 +3,55 @@
 -- The continuity RPC is reconciled here with the canonical global HIMS schema so
 -- a clean migration run never compiles against retired column names.
 
-CREATE INDEX IF NOT EXISTS idx_patient_referrals_patient_created ON public.patient_referrals(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_care_transitions_patient_created ON public.care_transitions(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_medication_administrations_patient_scheduled ON public.medication_administrations(patient_id, scheduled_at DESC);
-CREATE INDEX IF NOT EXISTS idx_emergency_cases_patient_created ON public.emergency_cases(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_theatre_cases_patient_scheduled ON public.theatre_cases(patient_id, scheduled_start DESC);
-CREATE INDEX IF NOT EXISTS idx_transfusion_records_patient_created ON public.transfusion_records(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient_created ON public.insurance_claims(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_admissions_patient_admitted ON public.admissions(patient_id, admitted_at DESC);
-CREATE INDEX IF NOT EXISTS idx_service_orders_patient_created ON public.service_orders(patient_id, created_at DESC);
+-- These indexes are applied only when the legacy table and all indexed columns exist.
+DO $$
+DECLARE
+  v_index record;
+  v_relation regclass;
+BEGIN
+  FOR v_index IN
+    SELECT * FROM (VALUES
+      ('idx_patient_referrals_patient_created', 'patient_referrals', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC'),
+      ('idx_care_transitions_patient_created', 'care_transitions', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC'),
+      ('idx_medication_administrations_patient_scheduled', 'medication_administrations', ARRAY['patient_id', 'scheduled_at']::text[], 'patient_id, scheduled_at DESC'),
+      ('idx_emergency_cases_patient_created', 'emergency_cases', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC'),
+      ('idx_theatre_cases_patient_scheduled', 'theatre_cases', ARRAY['patient_id', 'scheduled_start']::text[], 'patient_id, scheduled_start DESC'),
+      ('idx_transfusion_records_patient_created', 'transfusion_records', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC'),
+      ('idx_insurance_claims_patient_created', 'insurance_claims', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC'),
+      ('idx_admissions_patient_admitted', 'admissions', ARRAY['patient_id', 'admitted_at']::text[], 'patient_id, admitted_at DESC'),
+      ('idx_service_orders_patient_created', 'service_orders', ARRAY['patient_id', 'created_at']::text[], 'patient_id, created_at DESC')
+    ) AS requested(index_name, table_name, columns_to_check, index_columns)
+  LOOP
+    v_relation := to_regclass(format('public.%I', v_index.table_name));
+    IF v_relation IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1
+         FROM unnest(v_index.columns_to_check) AS required(column_name)
+         WHERE NOT EXISTS (
+           SELECT 1
+           FROM pg_attribute
+           WHERE attrelid = v_relation
+             AND attname = required.column_name
+             AND attnum > 0
+             AND NOT attisdropped
+         )
+       ) THEN
+      EXECUTE format(
+        'CREATE INDEX IF NOT EXISTS %I ON public.%I (%s)',
+        v_index.index_name,
+        v_index.table_name,
+        v_index.index_columns
+      );
+    END IF;
+  END LOOP;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.audit_global_hims_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -33,7 +67,7 @@ BEGIN
   ELSIF TG_TABLE_NAME LIKE 'maternity_%' THEN
     v_action := lower(TG_OP) || '_maternity_' || replace(TG_TABLE_NAME, 'maternity_', '');
   END IF;
-  IF TG_TABLE_NAME = 'maternity_episodes' AND TG_OP <> 'DELETE' AND COALESCE(NEW.risk_level, 'routine') = 'critical' THEN
+  IF TG_TABLE_NAME = 'maternity_episodes' AND TG_OP <> 'DELETE' AND COALESCE(to_jsonb(NEW)->>'risk_level', 'routine') = 'critical' THEN
     v_severity := 'critical';
   END IF;
   v_metadata := jsonb_build_object(
@@ -66,7 +100,7 @@ RETURNS JSONB LANGUAGE sql STABLE SET search_path = public AS $$
     'emergency', COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.arrival_time DESC) FROM (SELECT id,chief_complaint,acuity,arrival_mode,status,arrival_time,created_at,disposition FROM public.emergency_cases WHERE patient_id=_patient_id ORDER BY arrival_time DESC LIMIT 100) r),'[]'::jsonb),
     'theatre', COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.scheduled_start DESC) FROM (SELECT id,procedure_name,theatre_name,scheduled_start,urgency,status,anesthetist_id,created_at FROM public.theatre_cases WHERE patient_id=_patient_id ORDER BY scheduled_start DESC LIMIT 100) r),'[]'::jsonb),
     'transfusion', COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.created_at DESC) FROM (SELECT id,blood_product,unit_identifier,blood_group,status,started_at,completed_at,reaction_observed,reaction_notes,created_at FROM public.transfusion_records WHERE patient_id=_patient_id ORDER BY created_at DESC LIMIT 100) r),'[]'::jsonb),
-    'claims', COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.created_at DESC) FROM (SELECT id,payer_name,member_number,amount_claimed,amount_approved,amount_paid,status,service_from,service_to,rejection_reason,created_at FROM public.insurance_claims WHERE patient_id=_patient_id ORDER BY created_at DESC LIMIT 100) r),'[]'::jsonb),
+    'claims', COALESCE((SELECT jsonb_agg(to_jsonb(r) || jsonb_build_object('rejection_reason', to_jsonb(r)->>'rejection_reason') ORDER BY r.created_at DESC) FROM (SELECT * FROM public.insurance_claims WHERE patient_id=_patient_id ORDER BY created_at DESC LIMIT 100) r),'[]'::jsonb),
     'admissions', COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.admitted_at DESC) FROM (SELECT id,status,reason,admitted_at,discharged_at,discharge_summary FROM public.admissions WHERE patient_id=_patient_id ORDER BY admitted_at DESC LIMIT 100) r),'[]'::jsonb)
   );
 $$;

@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   UNIQUE (test_id, code)
 );
 
+-- Reconcile older deployments where lab_test_parameters already exists but lacks
+-- columns introduced by the canonical parameter catalogue.
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS lab_test_catalog_active_idx
   ON public.lab_test_catalog (active, category, name);
 CREATE INDEX IF NOT EXISTS lab_test_parameters_test_idx
@@ -106,6 +111,58 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Legacy installations may already have service_orders with an older, narrower
+-- shape. CREATE TABLE IF NOT EXISTS does not reconcile that existing table.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS encounter_id UUID REFERENCES public.encounters(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS department TEXT NOT NULL DEFAULT 'unspecified',
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'unspecified',
+  ADD COLUMN IF NOT EXISTS service_name TEXT NOT NULL DEFAULT 'Unspecified service',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine',
+  ADD COLUMN IF NOT EXISTS release_reason TEXT,
+  ADD COLUMN IF NOT EXISTS released_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Normalize null legacy values before the workflow indexes and state machine rely on them.
+UPDATE public.service_orders
+SET department = COALESCE(NULLIF(department, ''), 'unspecified'),
+    service_type = COALESCE(NULLIF(service_type, ''), 'unspecified'),
+    service_name = COALESCE(NULLIF(service_name, ''), 'Unspecified service'),
+    amount = COALESCE(amount, 0),
+    payment_status = COALESCE(NULLIF(payment_status, ''), 'pending'),
+    fulfillment_status = COALESCE(NULLIF(fulfillment_status, ''), 'blocked'),
+    priority = COALESCE(NULLIF(priority, ''), 'routine'),
+    created_at = COALESCE(created_at, now()),
+    updated_at = COALESCE(updated_at, created_at, now());
+
+ALTER TABLE public.service_orders
+  ALTER COLUMN department SET DEFAULT 'unspecified',
+  ALTER COLUMN department SET NOT NULL,
+  ALTER COLUMN service_type SET DEFAULT 'unspecified',
+  ALTER COLUMN service_type SET NOT NULL,
+  ALTER COLUMN service_name SET DEFAULT 'Unspecified service',
+  ALTER COLUMN service_name SET NOT NULL,
+  ALTER COLUMN amount SET DEFAULT 0,
+  ALTER COLUMN amount SET NOT NULL,
+  ALTER COLUMN payment_status SET DEFAULT 'pending',
+  ALTER COLUMN payment_status SET NOT NULL,
+  ALTER COLUMN fulfillment_status SET DEFAULT 'blocked',
+  ALTER COLUMN fulfillment_status SET NOT NULL,
+  ALTER COLUMN priority SET DEFAULT 'routine',
+  ALTER COLUMN priority SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
@@ -198,6 +255,20 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Older deployments may already have inpatient_reviews without the canonical
+-- review timestamp or patient lookup column. Reconcile before dependent indexes.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS review_type TEXT NOT NULL DEFAULT 'ward_review',
+  ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS reviewer_name TEXT,
+  ADD COLUMN IF NOT EXISTS reviewer_role TEXT,
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS findings TEXT,
+  ADD COLUMN IF NOT EXISTS assessment TEXT,
+  ADD COLUMN IF NOT EXISTS plan TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
@@ -213,6 +284,25 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   old_record JSONB,
   new_record JSONB
 );
+
+-- Older installations may already have patient_audit with a legacy shape.
+-- Add the columns consumed by this migration before building indexes/triggers.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS action TEXT DEFAULT 'UPDATE',
+  ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS old_record JSONB,
+  ADD COLUMN IF NOT EXISTS new_record JSONB;
+
+UPDATE public.patient_audit
+SET action = COALESCE(NULLIF(action, ''), 'UPDATE'),
+    changed_at = COALESCE(changed_at, now());
+
+ALTER TABLE public.patient_audit
+  ALTER COLUMN action SET DEFAULT 'UPDATE',
+  ALTER COLUMN changed_at SET DEFAULT now(),
+  ALTER COLUMN changed_at SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);

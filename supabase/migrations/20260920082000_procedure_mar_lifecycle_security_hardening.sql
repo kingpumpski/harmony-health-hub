@@ -21,6 +21,7 @@ BEGIN
  RETURN id;
 END; $$;
 
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )

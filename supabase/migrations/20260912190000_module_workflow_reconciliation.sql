@@ -294,7 +294,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
 )
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
@@ -313,12 +313,12 @@ BEGIN
       updated_at=now()
   WHERE id=_record_id RETURNING * INTO r;
   PERFORM public.record_system_audit('medication_'||_status,'clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'reason',r.reason));
-  RETURN r;
+  RETURN to_jsonb(r);
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
@@ -331,7 +331,7 @@ BEGIN
   RETURNING * INTO r;
   IF NOT FOUND THEN RAISE EXCEPTION 'Locked medication slot not found'; END IF;
   PERFORM public.record_system_audit('medication_slot_reopened','clinical','medication_administrations',r.id,'warning',jsonb_build_object('patient_id',r.patient_id,'reason',_reason,'actor_id',auth.uid()));
-  RETURN r;
+  RETURN to_jsonb(r);
 END;
 $$;
 

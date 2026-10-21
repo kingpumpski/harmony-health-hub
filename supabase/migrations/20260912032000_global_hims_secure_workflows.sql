@@ -67,7 +67,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
-) RETURNS UUID
+) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.medication_administrations;
 BEGIN
@@ -86,7 +86,8 @@ BEGIN
       administered_by=CASE WHEN _status IN ('administered','held','refused','omitted') THEN auth.uid() ELSE administered_by END,
       witnessed_by=COALESCE(_witnessed_by,witnessed_by)
   WHERE id=_record_id;
-  RETURN _record_id;
+  SELECT * INTO v FROM public.medication_administrations WHERE id=_record_id;
+  RETURN to_jsonb(v);
 END; $$;
 
 REVOKE ALL ON FUNCTION public.create_nursing_care_plan(UUID,TEXT,TEXT,TEXT,TEXT,UUID,UUID) FROM PUBLIC;
