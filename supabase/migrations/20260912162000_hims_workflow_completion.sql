@@ -457,43 +457,43 @@ ALTER TABLE public.patient_audit ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS facility_settings_staff_read ON public.facility_settings;
 CREATE POLICY facility_settings_staff_read
 ON public.facility_settings FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(), 'admin') OR public.is_clinical_staff(auth.uid()));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.is_clinical_staff(auth.uid()));
 
 DROP POLICY IF EXISTS facility_settings_admin_write ON public.facility_settings;
 CREATE POLICY facility_settings_admin_write
 ON public.facility_settings FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_catalog_staff_read ON public.lab_test_catalog;
 CREATE POLICY lab_catalog_staff_read
 ON public.lab_test_catalog FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_catalog_admin_write ON public.lab_test_catalog;
 CREATE POLICY lab_catalog_admin_write
 ON public.lab_test_catalog FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_parameters_staff_read ON public.lab_test_parameters;
 CREATE POLICY lab_parameters_staff_read
 ON public.lab_test_parameters FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_parameters_admin_write ON public.lab_test_parameters;
 CREATE POLICY lab_parameters_admin_write
 ON public.lab_test_parameters FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS service_orders_staff_read ON public.service_orders;
 CREATE POLICY service_orders_staff_read
 ON public.service_orders FOR SELECT TO authenticated
 USING (
   public.is_clinical_staff(auth.uid())
-  OR public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR patient_id IN (SELECT id FROM public.patients WHERE user_id = auth.uid())
 );
 
@@ -502,39 +502,39 @@ CREATE POLICY service_orders_staff_insert
 ON public.service_orders FOR INSERT TO authenticated
 WITH CHECK (
   public.is_clinical_staff(auth.uid())
-  OR public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
 );
 
 DROP POLICY IF EXISTS service_orders_release ON public.service_orders;
 CREATE POLICY service_orders_release
 ON public.service_orders FOR UPDATE TO authenticated
 USING (
-  public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR public.is_clinical_staff(auth.uid())
 )
 WITH CHECK (
-  public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR public.is_clinical_staff(auth.uid())
 );
 
 DROP POLICY IF EXISTS inpatient_reviews_staff_read ON public.inpatient_reviews;
 CREATE POLICY inpatient_reviews_staff_read
 ON public.inpatient_reviews FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS inpatient_reviews_staff_write ON public.inpatient_reviews;
 CREATE POLICY inpatient_reviews_staff_write
 ON public.inpatient_reviews FOR ALL TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS patient_audit_staff_read ON public.patient_audit;
 CREATE POLICY patient_audit_staff_read
 ON public.patient_audit FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- Audit rows are written only by the SECURITY DEFINER trigger; no direct client insert policy.
 
