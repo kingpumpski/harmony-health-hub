@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE uid UUID:=auth.uid(); eid UUID; iid UUID; sid UUID; st TEXT; es TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role) OR public.has_role(uid,'radiology_technician'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
  IF _patient_id IS NULL OR NULLIF(btrim(_study_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and study name are required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF _encounter_id IS NOT NULL THEN
@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION public.start_imaging_order(_imaging_order_id UUID)
 RETURNS public.imaging_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); o public.imaging_orders; s public.service_orders; es TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Radiology role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role) OR public.has_role(uid,'radiology_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Radiology role required'; END IF;
  SELECT * INTO o FROM public.imaging_orders WHERE id=_imaging_order_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Imaging order not found'; END IF;
  IF o.status<>'released' THEN RAISE EXCEPTION 'Imaging order must be released before it can start'; END IF;
@@ -53,7 +53,7 @@ CREATE OR REPLACE FUNCTION public.complete_imaging_order(_imaging_order_id UUID,
 RETURNS public.imaging_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); o public.imaging_orders; s public.service_orders; es TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Radiology role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role) OR public.has_role(uid,'radiology_technician'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Radiology role required'; END IF;
  IF NULLIF(btrim(COALESCE(_report,'')),'') IS NULL AND NULLIF(btrim(COALESCE(_impression,'')),'') IS NULL THEN RAISE EXCEPTION 'A report or impression is required before completion'; END IF;
  SELECT * INTO o FROM public.imaging_orders WHERE id=_imaging_order_id FOR UPDATE;
  IF NOT FOUND OR o.status<>'in_progress' THEN RAISE EXCEPTION 'Imaging order must be in progress before completion'; END IF;
