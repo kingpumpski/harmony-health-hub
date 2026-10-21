@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
 ALTER TABLE public.emergency_cases
   ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent';
 
-DO $
+DO $migration$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -95,7 +95,8 @@ BEGIN
       ADD CONSTRAINT emergency_cases_acuity_check
       CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
   END IF;
-END $;
+END
+$migration$;
 
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
