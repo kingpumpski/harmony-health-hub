@@ -14,7 +14,7 @@ SET search_path = public
 AS $$
 DECLARE assignment_id UUID;
 BEGIN
-  IF NOT public.has_role(auth.uid(), 'admin') THEN
+  IF NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Shift management access denied';
   END IF;
   IF _user_id IS NULL OR NULLIF(trim(_department), '') IS NULL OR NULLIF(trim(_shift_label), '') IS NULL THEN
@@ -53,7 +53,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NOT public.has_role(auth.uid(), 'admin') THEN
+  IF NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Shift management access denied';
   END IF;
   UPDATE public.staff_shift_assignments
