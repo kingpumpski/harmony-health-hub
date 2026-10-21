@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing(_prescription_id u
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE p public.prescriptions;i public.pharmacy_inventory;plan_id uuid;order_id uuid;price numeric;encounter_status text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.prescriptions WHERE id=_prescription_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Prescription not found'; END IF;
  IF p.status NOT IN('pending','paid') THEN RAISE EXCEPTION 'Prescription is not available for dispensing preparation'; END IF;
@@ -44,7 +44,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE p public.pharmacy_dispensing_plans;i public.pharmacy_inventory;order_status text;encounter_status text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.pharmacy_dispensing_plans WHERE id=_plan_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Dispensing plan not found'; END IF;
  IF p.status<>'unpaid' THEN RAISE EXCEPTION 'Dispensing plan is already processed'; END IF;
@@ -66,7 +66,7 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inv
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales;item public.pharmacy_inventory;order_id uuid;patient_uuid uuid;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  SELECT * INTO item FROM public.pharmacy_inventory WHERE id=_inventory_id FOR UPDATE;
  IF NOT FOUND OR NOT item.active OR item.stock_quantity<_quantity THEN RAISE EXCEPTION 'Insufficient or unavailable stock'; END IF;
@@ -82,7 +82,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_pos_sale(_sale_id uuid)
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales;item public.pharmacy_inventory;order_status text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
  SELECT * INTO result FROM public.pharmacy_pos_sales WHERE id=_sale_id FOR UPDATE;
  IF NOT FOUND OR result.status<>'awaiting_payment' THEN RAISE EXCEPTION 'POS sale is not awaiting payment'; END IF;
  SELECT status INTO order_status FROM public.service_orders WHERE id=result.service_order_id FOR UPDATE;
