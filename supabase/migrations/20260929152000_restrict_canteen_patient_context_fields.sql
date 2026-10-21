@@ -23,7 +23,7 @@ AS $$
 DECLARE uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'canteen')) THEN RAISE EXCEPTION 'Canteen or administrator role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'canteen'::public.app_role)) THEN RAISE EXCEPTION 'Canteen or administrator role required'; END IF;
   RETURN QUERY
   SELECT mo.id,p.id,p.patient_code,pg_catalog.concat_ws(' ',p.first_name,p.last_name),mo.meal_type,mo.scheduled_for,mo.status,
     mp.plan_type,mp.restrictions,NULLIF(pg_catalog.btrim(p.chronic_conditions),''),
