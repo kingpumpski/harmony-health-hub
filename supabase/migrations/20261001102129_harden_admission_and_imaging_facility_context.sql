@@ -6,17 +6,17 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_admission uuid; v_bed_id uuid; v_ward_name text; v_bed_ward uuid; v_ward_facility uuid; v_transfer jsonb; v_ward_input text:=NULLIF(pg_catalog.btrim(_ward),''); v_bed_input text:=NULLIF(pg_catalog.btrim(_bed),'');
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF v_patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_facility IS NULL OR v_facility IS DISTINCT FROM v_patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_facility IS NULL OR v_facility IS DISTINCT FROM v_patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  IF v_ward_input IS NULL THEN RAISE EXCEPTION 'Ward is required'; END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(_patient_id::text,0));
  IF EXISTS(SELECT 1 FROM public.admissions WHERE patient_id=_patient_id AND status='admitted') THEN RAISE EXCEPTION 'Patient already has an active admission'; END IF;
  SELECT wu.id,wu.name,wu.facility_id INTO v_bed_ward,v_ward_name,v_ward_facility FROM public.ward_units wu WHERE wu.active=true AND (lower(pg_catalog.btrim(wu.name))=lower(v_ward_input) OR lower(pg_catalog.btrim(wu.code))=lower(v_ward_input)) AND wu.facility_id=v_patient_facility ORDER BY wu.name LIMIT 1;
  IF v_bed_ward IS NULL THEN RAISE EXCEPTION 'Active ward not found in the patient facility'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND NOT public.has_facility_access(uid,v_ward_facility) THEN RAISE EXCEPTION 'Facility access required for admission ward'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND NOT public.has_facility_access(uid,v_ward_facility) THEN RAISE EXCEPTION 'Facility access required for admission ward'; END IF;
  IF v_bed_input IS NOT NULL THEN
    IF v_bed_input !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN RAISE EXCEPTION 'Bed must be a valid ward bed ID'; END IF;
    v_bed_id:=v_bed_input::uuid;
@@ -38,11 +38,11 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE uid uuid:=auth.uid(); v_active_facility uuid:=public.current_user_facility_id(); v_patient_facility uuid; v_encounter_facility uuid; eid uuid; iid uuid; sid uuid; st text; es text;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'radiologist') OR public.has_role(uid,'radiology_technician') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role) OR public.has_role(uid,'radiology_technician'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Imaging order access required'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive' FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Active patient does not exist'; END IF;
  IF v_patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (v_active_facility IS NULL OR v_patient_facility IS DISTINCT FROM v_active_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (v_active_facility IS NULL OR v_patient_facility IS DISTINCT FROM v_active_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
  IF _encounter_id IS NOT NULL THEN
    SELECT patient_id,status,facility_id INTO eid,es,v_encounter_facility FROM public.encounters WHERE id=_encounter_id FOR SHARE;
    IF NOT FOUND OR eid<>_patient_id THEN RAISE EXCEPTION 'Encounter does not belong to patient'; END IF;
