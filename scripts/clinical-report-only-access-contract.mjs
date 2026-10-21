@@ -68,20 +68,20 @@ const approveLab = migration.slice(
   migration.indexOf('REVOKE ALL ON FUNCTION public.approve_lab_result')
 );
 assert('imaging acquisition start is restricted to imaging staff',
-  startImaging.includes("public.has_role(uid, 'radiology_technician')") &&
-  startImaging.includes("public.has_role(uid, 'radiologist')") &&
-  !startImaging.includes("public.has_role(uid, 'practitioner')") &&
-  !startImaging.includes("public.has_role(uid, 'nurse')"));
+  /public\.has_role\(uid,\s*'radiology_technician'(?:::public\.app_role)?\)/.test(startImaging) &&
+  /public\.has_role\(uid,\s*'radiologist'(?:::public\.app_role)?\)/.test(startImaging) &&
+  !/public\.has_role\(uid,\s*'practitioner'(?:::public\.app_role)?\)/.test(startImaging) &&
+  !/public\.has_role\(uid,\s*'nurse'(?:::public\.app_role)?\)/.test(startImaging));
 assert('radiology report completion is restricted to radiologists and administrators',
-  completeImaging.includes("public.has_role(uid, 'radiologist')") &&
-  completeImaging.includes("public.has_role(uid, 'admin')") &&
-  !completeImaging.includes("public.has_role(uid, 'practitioner')") &&
-  !completeImaging.includes("public.has_role(uid, 'radiology_technician')") &&
+  /public\.has_role\(uid,\s*'radiologist'(?:::public\.app_role)?\)/.test(completeImaging) &&
+  /public\.has_role\(uid,\s*'admin'(?:::public\.app_role)?\)/.test(completeImaging) &&
+  !/public\.has_role\(uid,\s*'practitioner'(?:::public\.app_role)?\)/.test(completeImaging) &&
+  !/public\.has_role\(uid,\s*'radiology_technician'(?:::public\.app_role)?\)/.test(completeImaging) &&
   completeImaging.includes("'/clinical-results'"));
 assert('laboratory result approval is restricted to lab technicians and administrators',
-  approveLab.includes("public.has_role(uid, 'lab_technician')") &&
-  approveLab.includes("public.has_role(uid, 'admin')") &&
-  !approveLab.includes("public.has_role(uid, 'practitioner')") &&
+  /public\.has_role\(uid,\s*'lab_technician'(?:::public\.app_role)?\)/.test(approveLab) &&
+  /public\.has_role\(uid,\s*'admin'(?:::public\.app_role)?\)/.test(approveLab) &&
+  !/public\.has_role\(uid,\s*'practitioner'(?:::public\.app_role)?\)/.test(approveLab) &&
   approveLab.includes('r.patient_id IS DISTINCT FROM o.patient_id') &&
   approveLab.includes("'/lab-results'"));
 
