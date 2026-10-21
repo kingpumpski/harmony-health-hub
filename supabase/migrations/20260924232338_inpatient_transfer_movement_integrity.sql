@@ -29,11 +29,11 @@ CREATE POLICY "inpatient bed movements clinical read"
   ON public.inpatient_bed_movements
   FOR SELECT TO authenticated
   USING (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'practitioner')
-    OR public.has_role(auth.uid(),'nurse')
-    OR public.has_role(auth.uid(),'midwife')
-    OR public.has_role(auth.uid(),'specialist_nurse')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(),'nurse'::public.app_role)
+    OR public.has_role(auth.uid(),'midwife'::public.app_role)
+    OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
   );
 
 REVOKE INSERT, UPDATE, DELETE ON public.inpatient_bed_movements FROM authenticated;
@@ -67,11 +67,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Inpatient movement is not permitted';
   END IF;
@@ -79,7 +79,7 @@ BEGIN
   -- Non-admin inpatient movement must remain inside the caller's active facility.
   -- Admins retain cross-facility troubleshooting authority; all other roles are
   -- constrained by the destination/source bed facility boundary.
-  IF NOT public.has_role(uid,'admin') THEN
+  IF NOT public.has_role(uid,'admin'::public.app_role) THEN
     IF public.current_user_facility_id() IS NULL THEN
       RAISE EXCEPTION 'Active facility context required';
     END IF;
@@ -116,7 +116,7 @@ BEGIN
     RAISE EXCEPTION 'Destination bed not found';
   END IF;
 
-  IF NOT public.has_role(uid,'admin')
+  IF NOT public.has_role(uid,'admin'::public.app_role)
      AND (v_destination.facility_id IS NULL OR v_destination.facility_id IS DISTINCT FROM public.current_user_facility_id()) THEN
     RAISE EXCEPTION 'Destination bed is outside the active facility';
   END IF;
@@ -164,7 +164,7 @@ BEGIN
       RAISE EXCEPTION 'Source bed not found';
     END IF;
 
-    IF NOT public.has_role(uid,'admin')
+    IF NOT public.has_role(uid,'admin'::public.app_role)
        AND (v_source.facility_id IS NULL OR v_source.facility_id IS DISTINCT FROM public.current_user_facility_id()) THEN
       RAISE EXCEPTION 'Source bed is outside the active facility';
     END IF;
@@ -321,9 +321,9 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Nursing role required';
   END IF;
@@ -383,9 +383,9 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Nursing role required';
   END IF;
@@ -461,10 +461,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Admission discharge is not permitted';
   END IF;
@@ -691,9 +691,9 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Nursing role required';
   END IF;
@@ -755,9 +755,9 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Nursing role required';
   END IF;
@@ -829,10 +829,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Admission creation is not permitted';
   END IF;
@@ -973,7 +973,7 @@ SET search_path = ''
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
   RETURN public.create_admission_workflow(
     _patient_id,
     _ward,
@@ -1013,11 +1013,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Admission is not permitted for this role';
   END IF;
@@ -1246,11 +1246,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to add diagnoses';
   END IF;
@@ -1317,11 +1317,11 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to set principal diagnosis';
   END IF;
@@ -1375,11 +1375,11 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to remove diagnoses';
   END IF;
@@ -1443,11 +1443,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to prescribe';
   END IF;
@@ -1529,8 +1529,8 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
     public.is_clinical_staff(uid)
-    OR public.has_role(uid,'specialist_nurse')
-    OR public.has_role(uid,'admin')
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
+    OR public.has_role(uid,'admin'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to create anesthetic assessments';
   END IF;
@@ -1592,8 +1592,8 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
     public.is_clinical_staff(uid)
-    OR public.has_role(uid,'specialist_nurse')
-    OR public.has_role(uid,'admin')
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
+    OR public.has_role(uid,'admin'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to acknowledge vital alerts';
   END IF;
@@ -1638,7 +1638,7 @@ AS $$
 DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'lab_technician') OR public.has_role(uid,'pharmacist')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'lab_technician'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN
     RAISE EXCEPTION 'Not authorized to create AI clinical sessions';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
@@ -1662,7 +1662,7 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   UPDATE public.ai_clinical_sessions SET status='analysis_requested', updated_at=pg_catalog.now()
   WHERE id=_session_id AND status='draft'
-    AND (created_by=uid OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist'))
+    AND (created_by=uid OR public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role))
   RETURNING * INTO result;
   IF result.id IS NULL THEN
     SELECT * INTO result FROM public.ai_clinical_sessions WHERE id=_session_id;
@@ -1695,7 +1695,7 @@ BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
-  IF NOT (EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id AND p.user_id = uid) OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist')) THEN RAISE EXCEPTION 'Not authorised to request this patient report'; END IF;
+  IF NOT (EXISTS (SELECT 1 FROM public.patients p WHERE p.id = _patient_id AND p.user_id = uid) OR public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised to request this patient report'; END IF;
   IF v_type <> 'medical_summary' THEN RAISE EXCEPTION 'Unsupported report type'; END IF;
   INSERT INTO public.ai_report_requests(patient_id, requested_by, report_type, status) VALUES (_patient_id, uid, v_type, 'processing') RETURNING * INTO v_report;
   RETURN v_report;
@@ -1715,7 +1715,7 @@ BEGIN
   IF _request_id IS NULL THEN RAISE EXCEPTION 'Report request is required'; END IF;
   SELECT * INTO v_request FROM public.ai_report_requests WHERE id = _request_id FOR UPDATE;
   IF v_request.id IS NULL THEN RAISE EXCEPTION 'Report request not found'; END IF;
-  IF NOT (v_request.requested_by = uid OR public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'radiologist')) THEN RAISE EXCEPTION 'Not authorised to complete this patient report'; END IF;
+  IF NOT (v_request.requested_by = uid OR public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'radiologist'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised to complete this patient report'; END IF;
   IF v_request.status <> 'processing' THEN IF v_request.status IN ('completed','failed') THEN RETURN v_request; END IF; RAISE EXCEPTION 'Report request is not processing'; END IF;
   IF v_content IS NULL AND v_error IS NULL THEN RAISE EXCEPTION 'Report content or error is required'; END IF;
   UPDATE public.ai_report_requests SET status = CASE WHEN v_content IS NOT NULL THEN 'completed' ELSE 'failed' END, content = CASE WHEN v_content IS NOT NULL THEN v_content ELSE NULL END, error = CASE WHEN v_content IS NULL THEN v_error ELSE NULL END, completed_at = now() WHERE id = _request_id RETURNING * INTO v_request;
@@ -1749,7 +1749,7 @@ DECLARE uid uuid := auth.uid(); v_id uuid; v_type text := NULLIF(btrim(COALESCE(
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
   IF v_type IS NULL OR v_name IS NULL OR v_path IS NULL THEN RAISE EXCEPTION 'Document type, file name and storage path are required'; END IF;
   IF position(_patient_id::text || '/' in v_path) <> 1 THEN RAISE EXCEPTION 'Storage path must be scoped to the patient'; END IF;
   IF _file_size IS NULL OR _file_size <= 0 OR _file_size > 10485760 THEN RAISE EXCEPTION 'Invalid document size'; END IF;
@@ -1770,7 +1770,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, p
 DECLARE uid uuid := auth.uid(); v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
   INSERT INTO public.patient_documents(patient_id,document_type,file_url,notes,uploaded_by) VALUES (_patient_id,_document_type,_file_url,_notes,uid) RETURNING id INTO v_id;
   RETURN jsonb_build_object('document_id',v_id);
 END; $$;
@@ -1801,11 +1801,11 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Inpatient review creation is not permitted';
   END IF;
@@ -1927,9 +1927,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin')
+    public.has_role(uid,'admin'::public.app_role)
     OR public.is_clinical_staff(uid)
-    OR public.has_role(uid,'canteen')
+    OR public.has_role(uid,'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Meal plan creation is not permitted';
   END IF;
@@ -1974,9 +1974,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin')
+    public.has_role(uid,'admin'::public.app_role)
     OR public.is_clinical_staff(uid)
-    OR public.has_role(uid,'canteen')
+    OR public.has_role(uid,'canteen'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Meal delivery update is not permitted';
   END IF;
@@ -2027,7 +2027,7 @@ RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_
 DECLARE uid uuid := auth.uid(); v_patient public.patients; v_id uuid; v_code text;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'front_desk') OR public.has_role(uid,'nurse')) THEN RAISE EXCEPTION 'Patient registration is not permitted'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)) THEN RAISE EXCEPTION 'Patient registration is not permitted'; END IF;
  IF _patient IS NULL OR jsonb_typeof(_patient) <> 'object' THEN RAISE EXCEPTION 'Patient payload is required'; END IF;
  v_id := NULLIF(_patient->>'id','')::uuid; v_code := NULLIF(pg_catalog.btrim(_patient->>'patient_code'),'');
  IF NULLIF(pg_catalog.btrim(_patient->>'first_name'),'') IS NULL OR NULLIF(pg_catalog.btrim(_patient->>'last_name'),'') IS NULL THEN RAISE EXCEPTION 'First name and last name are required'; END IF;
@@ -2042,7 +2042,7 @@ RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_
 DECLARE uid uuid := auth.uid(); v_patient public.patients;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'front_desk') OR public.has_role(uid,'nurse')) THEN RAISE EXCEPTION 'Patient update is not permitted'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)) THEN RAISE EXCEPTION 'Patient update is not permitted'; END IF;
  IF _patient_id IS NULL OR _changes IS NULL OR jsonb_typeof(_changes) <> 'object' THEN RAISE EXCEPTION 'Patient and changes are required'; END IF;
  IF _changes ? 'status' AND COALESCE(_changes->>'status','') NOT IN ('active','inactive','discharged') THEN RAISE EXCEPTION 'Invalid patient status'; END IF;
  SELECT * INTO v_patient FROM public.patients WHERE id=_patient_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found'; END IF;
@@ -2145,7 +2145,7 @@ BEGIN
   IF uid IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
   END IF;
-  IF NOT public.has_role(uid, 'admin') THEN
+  IF NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator role required to update facility configuration';
   END IF;
   IF _changes IS NULL OR jsonb_typeof(_changes) <> 'object' THEN
@@ -2227,13 +2227,13 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
-    OR public.has_role(uid,'radiologist')
-    OR public.has_role(uid,'lab_technician')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
+    OR public.has_role(uid,'radiologist'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical role required to complete outside-lab AI analysis';
   END IF;
@@ -2286,7 +2286,7 @@ DECLARE
   v_version TEXT := NULLIF(pg_catalog.btrim(COALESCE(_version, '')), '');
   v_row public.icd_codes;
 BEGIN
-  IF uid IS NULL OR NOT public.has_role(uid, 'admin') THEN
+  IF uid IS NULL OR NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator access required';
   END IF;
   IF v_code = '' OR v_description IS NULL THEN
