@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.create_service_order(
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_order public.service_orders;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'front_desk') OR public.is_clinical_staff(auth.uid())) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.is_clinical_staff(auth.uid())) THEN
     RAISE EXCEPTION 'Service order creation denied';
   END IF;
   IF _patient_id IS NULL OR NULLIF(TRIM(_service_name),'') IS NULL THEN
@@ -32,7 +32,7 @@ DROP POLICY IF EXISTS "service_orders_authenticated_read" ON public.service_orde
 DROP POLICY IF EXISTS "service_orders_staff_read" ON public.service_orders;
 CREATE POLICY "service_orders_staff_read" ON public.service_orders
 FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant')
-  OR public.has_role(auth.uid(),'front_desk') OR public.is_clinical_staff(auth.uid()));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role)
+  OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.is_clinical_staff(auth.uid()));
 
 NOTIFY pgrst, 'reload schema';
