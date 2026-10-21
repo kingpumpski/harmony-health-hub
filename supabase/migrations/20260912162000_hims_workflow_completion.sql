@@ -148,7 +148,7 @@ ALTER TABLE public.lab_test_catalog
   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='specimen') THEN
     EXECUTE 'UPDATE public.lab_test_catalog SET specimen_type = COALESCE(specimen_type, specimen) WHERE specimen_type IS NULL';
@@ -156,7 +156,12 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='notes') THEN
     EXECUTE 'UPDATE public.lab_test_catalog SET description = COALESCE(description, notes) WHERE description IS NULL';
   END IF;
-END $;
+  EXECUTE 'UPDATE public.lab_test_catalog SET code = ''legacy-'' || id::text WHERE code IS NULL';
+END $$;
+
+ALTER TABLE public.lab_test_catalog ALTER COLUMN code SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_catalog_code_compat_idx
+  ON public.lab_test_catalog (code);
 
 ALTER TABLE public.lab_test_parameters
   ADD COLUMN IF NOT EXISTS code TEXT,
@@ -169,7 +174,7 @@ ALTER TABLE public.lab_test_parameters
   ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_low') THEN
     EXECUTE 'UPDATE public.lab_test_parameters SET reference_low = COALESCE(reference_low, ref_low) WHERE reference_low IS NULL';
@@ -180,7 +185,15 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_text') THEN
     EXECUTE 'UPDATE public.lab_test_parameters SET reference_text = COALESCE(reference_text, ref_text) WHERE reference_text IS NULL';
   END IF;
-END $;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='display_order') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET sort_order = display_order WHERE sort_order = 0 AND display_order IS NOT NULL';
+  END IF;
+  EXECUTE 'UPDATE public.lab_test_parameters SET code = ''legacy-'' || id::text WHERE code IS NULL';
+END $$;
+
+ALTER TABLE public.lab_test_parameters ALTER COLUMN code SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_parameters_test_code_compat_idx
+  ON public.lab_test_parameters (test_id, code);
 
 -- Reconcile partially provisioned legacy catalog tables before indexing them.
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
@@ -343,11 +356,18 @@ ALTER TABLE public.patient_audit
   ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
   ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-UPDATE public.patient_audit
-SET changed_by = COALESCE(changed_by, actor_user_id),
-    changed_at = COALESCE(changed_at, occurred_at, now()),
-    action = COALESCE(action, operation, 'UPDATE')
-WHERE changed_by IS NULL OR changed_at IS NULL OR action IS NULL;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='actor_user_id') THEN
+    EXECUTE 'UPDATE public.patient_audit SET changed_by = COALESCE(changed_by, actor_user_id) WHERE changed_by IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='occurred_at') THEN
+    EXECUTE 'UPDATE public.patient_audit SET changed_at = COALESCE(changed_at, occurred_at, now()) WHERE changed_at IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='operation') THEN
+    EXECUTE 'UPDATE public.patient_audit SET action = operation WHERE action = ''UPDATE'' AND operation IS NOT NULL';
+  END IF;
+END $;
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
