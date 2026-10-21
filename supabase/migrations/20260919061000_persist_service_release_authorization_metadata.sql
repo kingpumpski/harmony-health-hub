@@ -16,9 +16,9 @@ DECLARE
   v_encounter_status text;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR
-    public.has_role(auth.uid(),'accountant') OR
-    public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'accountant'::public.app_role) OR
+    public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'Accounts release permission required'; END IF;
 
   SELECT * INTO v_order FROM public.service_orders WHERE id=_service_order_id FOR UPDATE;
