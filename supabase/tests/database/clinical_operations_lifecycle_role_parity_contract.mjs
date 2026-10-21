@@ -14,7 +14,7 @@ for (const role of theatreRoles) {
   assert.match(migration, new RegExp(`public\\.has_role\\([^)]*,'${role}'(?:::public\\.app_role)?\\)`));
 }
 for (const role of transfusionRoles) {
-  assert.match(migration, new RegExp(`public\\.has_role\\([^)]*,'${role}'\\)`));
+  assert.match(migration, new RegExp(`public\\.has_role\\([^)]*,'${role}'(?:::public\\.app_role)?\\)`));
 }
 
 assert.match(page, /specialist_nurse: \['capacity', 'nursing', 'emergency', 'theatre', 'transfusion'\]/);
