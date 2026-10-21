@@ -35,7 +35,7 @@ AS $function$
 DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist') OR public.has_role(auth.uid(),'radiology_technician') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'radiologist'::public.app_role) OR public.has_role(auth.uid(),'radiology_technician'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Appointment history access is not permitted'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.scheduled_at DESC) FROM (SELECT a.id,a.patient_id,a.scheduled_at,a.reason,a.status,a.department,a.attending_officer_id,a.treatment_status,a.treatment_notes FROM public.appointments a WHERE a.patient_id=_patient_id ORDER BY a.scheduled_at DESC LIMIT v_limit)x),'[]'::jsonb);
 END $function$;
@@ -46,7 +46,7 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $function$
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Clinical access required'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Clinical access required'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  RETURN QUERY SELECT t.bmi,public.get_bmi_category(t.bmi),t.weight_kg,t.height_m,t.created_at FROM public.triage_assessments t WHERE t.patient_id=_patient_id AND t.bmi IS NOT NULL ORDER BY t.created_at DESC LIMIT 1;
 END; $function$;
@@ -58,9 +58,9 @@ AS $function$
 DECLARE can_sensitive boolean;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'lab_technician') OR public.has_role(auth.uid(),'radiologist') OR public.has_role(auth.uid(),'radiology_technician') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'canteen')) THEN RAISE EXCEPTION 'Not authorized to access the staff patient directory'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'lab_technician'::public.app_role) OR public.has_role(auth.uid(),'radiologist'::public.app_role) OR public.has_role(auth.uid(),'radiology_technician'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.has_role(auth.uid(),'canteen'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to access the staff patient directory'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
- can_sensitive:=public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk');
+ can_sensitive:=public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role);
  RETURN QUERY SELECT p.id,p.patient_code,p.first_name,p.last_name,p.phone,CASE WHEN can_sensitive THEN p.ghana_card_number ELSE NULL END,p.status::text,CASE WHEN can_sensitive THEN p.insurance_provider ELSE NULL END,CASE WHEN can_sensitive THEN p.insurance_number ELSE NULL END FROM public.patients p WHERE p.id=_patient_id;
 END; $function$;
 
@@ -87,7 +87,7 @@ AS $function$
 DECLARE v_limit integer:=greatest(1,least(coalesce(_limit,100),100));
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Billing history access is not permitted'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Billing history access is not permitted'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  RETURN COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC) FROM (SELECT i.id,i.patient_id,i.invoice_number,i.total_amount,i.status,i.created_at FROM public.invoices i WHERE i.patient_id=_patient_id ORDER BY i.created_at DESC LIMIT v_limit)x),'[]'::jsonb);
 END $function$;
