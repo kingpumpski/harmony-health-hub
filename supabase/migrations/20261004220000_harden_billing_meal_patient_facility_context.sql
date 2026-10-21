@@ -89,10 +89,10 @@ DECLARE
   v_patient_facility uuid;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'it_admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'it_admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
