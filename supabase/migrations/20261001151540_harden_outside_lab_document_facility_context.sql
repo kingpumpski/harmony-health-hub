@@ -11,7 +11,7 @@ DECLARE
   v_uid uuid := auth.uid();
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'practitioner') OR public.has_role(v_uid,'nurse') OR public.has_role(v_uid,'midwife') OR public.has_role(v_uid,'specialist_nurse') OR public.has_role(v_uid,'lab_technician')) THEN
+  IF NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'practitioner'::public.app_role) OR public.has_role(v_uid,'nurse'::public.app_role) OR public.has_role(v_uid,'midwife'::public.app_role) OR public.has_role(v_uid,'specialist_nurse'::public.app_role) OR public.has_role(v_uid,'lab_technician'::public.app_role)) THEN
     RAISE EXCEPTION 'Outside-lab document upload is not permitted';
   END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
@@ -39,7 +39,7 @@ DECLARE
   v_active_facility uuid := public.current_user_facility_id();
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'practitioner') OR public.has_role(v_uid,'nurse') OR public.has_role(v_uid,'midwife') OR public.has_role(v_uid,'specialist_nurse') OR public.has_role(v_uid,'radiologist') OR public.has_role(v_uid,'lab_technician')) THEN
+  IF NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'practitioner'::public.app_role) OR public.has_role(v_uid,'nurse'::public.app_role) OR public.has_role(v_uid,'midwife'::public.app_role) OR public.has_role(v_uid,'specialist_nurse'::public.app_role) OR public.has_role(v_uid,'radiologist'::public.app_role) OR public.has_role(v_uid,'lab_technician'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical role required to complete outside-lab AI analysis';
   END IF;
   IF _document_id IS NULL OR NULLIF(btrim(COALESCE(_analysis,'')),'') IS NULL THEN RAISE EXCEPTION 'Document id and AI analysis are required'; END IF;
@@ -47,7 +47,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Outside-lab document not found'; END IF;
   SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v_document.patient_id;
   IF v_patient_facility IS NULL OR v_document.facility_id IS DISTINCT FROM v_patient_facility THEN RAISE EXCEPTION 'Outside-lab document facility lineage is unresolved or inconsistent'; END IF;
-  IF NOT (public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin')) AND (v_active_facility IS NULL OR v_active_facility <> v_patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
+  IF NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role)) AND (v_active_facility IS NULL OR v_active_facility <> v_patient_facility) THEN RAISE EXCEPTION 'Patient belongs to a different facility context'; END IF;
   UPDATE public.outside_lab_documents SET ai_analysis=btrim(_analysis),ai_analyzed_at=COALESCE(ai_analyzed_at,now()) WHERE id=_document_id RETURNING * INTO v_document;
   PERFORM public.record_system_audit('outside_lab_ai_analysis_completed','outside_lab','outside_lab_document',v_document.id,'info',jsonb_build_object('patient_id',v_document.patient_id,'facility_id',v_document.facility_id));
   RETURN v_document;
