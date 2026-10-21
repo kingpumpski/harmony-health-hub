@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(11);
 
 select has_column(
   'public',
@@ -24,6 +24,24 @@ select ok(
       and not tgisinternal
   ),
   'employee archive and update guard must be installed'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'guard_hr_employee_archive'
+      and p.proconfig @> ARRAY['search_path=""']::text[]
+  ),
+  'employee archive guard must pin an empty search_path'
+);
+
+select ok(
+  NOT has_function_privilege('anon', 'public.guard_hr_employee_archive()', 'EXECUTE')
+  AND NOT has_function_privilege('authenticated', 'public.guard_hr_employee_archive()', 'EXECUTE'),
+  'employee archive trigger function must not be directly executable by API roles'
 );
 
 select ok(
