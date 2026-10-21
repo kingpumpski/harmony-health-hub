@@ -56,6 +56,17 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS lab_order_id uuid,
+  ADD COLUMN IF NOT EXISTS lab_result_id uuid,
+  ADD COLUMN IF NOT EXISTS facility_id uuid,
+  ADD COLUMN IF NOT EXISTS storage_path text,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS mime_type text,
+  ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
+  ADD COLUMN IF NOT EXISTS uploaded_by uuid,
+  ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
