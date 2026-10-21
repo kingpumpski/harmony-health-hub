@@ -37,14 +37,15 @@ assert('laboratory worklist excludes cancelled and payment-pending orders',
 assert('imaging worklist excludes payment-pending orders',
   imagingWorkspace.includes("io.status IN ('released', 'in_progress', 'completed')"));
 assert('laboratory operational workspace is restricted to administrators and lab technicians',
-  labWorkspace.includes("public.has_role(auth.uid(), 'admin')") &&
-  labWorkspace.includes("public.has_role(auth.uid(), 'lab_technician')") &&
-  !/public\.has_role\(auth\.uid\(\), '(?:practitioner|nurse|midwife|specialist_nurse|radiologist)'\)/.test(labWorkspace));
+  /public\.has_role\(auth\.uid\(\),\s*'admin'(?:::public\.app_role)?\)/.test(labWorkspace) &&
+  /public\.has_role\(auth\.uid\(\),\s*'lab_technician'(?:::public\.app_role)?\)/.test(labWorkspace) &&
+  !/public\.has_role\(auth\.uid\(\),\s*'(?:practitioner|nurse|midwife|specialist_nurse|radiologist)'(?:::public\.app_role)?\)/.test(labWorkspace));
 assert('imaging operational workspace is restricted to imaging staff and administrators',
-  imagingWorkspace.includes("public.has_role(auth.uid(), 'admin')") &&
-  imagingWorkspace.includes("public.has_role(auth.uid(), 'radiologist')") &&
-  imagingWorkspace.includes("public.has_role(auth.uid(), 'radiology_technician')") &&
-  !imagingWorkspace.includes("public.has_role(auth.uid(), 'practitioner')"));
+  /public\.has_role\(auth\.uid\(\),\s*'admin'(?:::public\.app_role)?\)/.test(imagingWorkspace) &&
+  /public\.has_role\(auth\.uid\(\),\s*'radiologist'(?:::public\.app_role)?\)/.test(imagingWorkspace) &&
+  /public\.has_role\(auth\.uid\(\),\s*'radiology_technician'(?:::public\.app_role)?\)/.test(imagingWorkspace) &&
+  !/public\.has_role\(auth\.uid\(\),\s*'practitioner'(?:::public\.app_role)?\)/.test(imagingWorkspace));
+
 assert('clinician lab report RPC returns approved results only',
   labReportRpc.includes("r.status = 'approved'") &&
   labReportRpc.includes("o.status = 'approved'") &&
