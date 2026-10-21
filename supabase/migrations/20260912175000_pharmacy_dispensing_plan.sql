@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS public.pharmacy_dispensing_plans (
 CREATE INDEX IF NOT EXISTS idx_pharmacy_plan_patient_status ON public.pharmacy_dispensing_plans(patient_id,status,created_at DESC);
 ALTER TABLE public.pharmacy_dispensing_plans ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "pharmacy plan staff access" ON public.pharmacy_dispensing_plans;
-CREATE POLICY "pharmacy plan staff access" ON public.pharmacy_dispensing_plans FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'));
+CREATE POLICY "pharmacy plan staff access" ON public.pharmacy_dispensing_plans FOR ALL TO authenticated USING (public.has_role(auth.uid(), '1554'::public.app_role) OR public.has_role(auth.uid(), '1593'::public.app_role) OR public.has_role(auth.uid(), '1637'::public.app_role) OR public.has_role(auth.uid(), '1681'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), '1735'::public.app_role) OR public.has_role(auth.uid(), '1774'::public.app_role) OR public.has_role(auth.uid(), '1818'::public.app_role) OR public.has_role(auth.uid(), '1862'::public.app_role));
 CREATE OR REPLACE FUNCTION public.prepare_pharmacy_dispensing(_prescription_id UUID,_inventory_id UUID,_quantity INTEGER,_notes TEXT DEFAULT NULL)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE p public.prescriptions; i public.pharmacy_inventory; plan_id UUID; order_id UUID; price NUMERIC;
 BEGIN
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF NOT (public.has_role(auth.uid(), '2249'::public.app_role) OR public.has_role(auth.uid(), '2288'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.prescriptions WHERE id=_prescription_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Prescription not found'; END IF;
  SELECT * INTO i FROM public.pharmacy_inventory WHERE id=_inventory_id;
@@ -47,7 +47,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id UUID)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE p public.pharmacy_dispensing_plans; i public.pharmacy_inventory;
 BEGIN
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF NOT (public.has_role(auth.uid(), '4118'::public.app_role) OR public.has_role(auth.uid(), '4157'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.pharmacy_dispensing_plans WHERE id=_plan_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Dispensing plan not found'; END IF;
  IF p.status <> 'unpaid' THEN RAISE EXCEPTION 'Dispensing plan is already processed'; END IF;
