@@ -9,7 +9,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); pf uuid; v_id uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'front_desk') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Appointment creation denied'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Appointment creation denied'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  v_id:=(public.create_appointment_workflow(_patient_id,_scheduled_at,_department,_reason)).id;
  RETURN pg_catalog.jsonb_build_object('appointment_id',v_id,'facility_id',pf);
@@ -27,7 +27,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_admission public.admissions%ROWTYPE; v_review public.inpatient_reviews; v_type text:=NULLIF(pg_catalog.btrim(coalesce(_review_type,'')),''); pf uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Inpatient review creation is not permitted'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Inpatient review creation is not permitted'; END IF;
  IF _admission_id IS NULL THEN RAISE EXCEPTION 'Admission is required'; END IF;
  IF v_type IS NULL THEN RAISE EXCEPTION 'Review type is required'; END IF;
  SELECT * INTO v_admission FROM public.admissions WHERE id=_admission_id FOR UPDATE;
@@ -51,7 +51,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_id uuid; pf uuid;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Maternity episode creation is not permitted'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Maternity episode creation is not permitted'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF _gravida IS NOT NULL AND _gravida<0 THEN RAISE EXCEPTION 'Gravida cannot be negative'; END IF;
  IF _para IS NOT NULL AND _para<0 THEN RAISE EXCEPTION 'Para cannot be negative'; END IF;
