@@ -132,7 +132,7 @@ AS $function$
 DECLARE v_patient jsonb; v_result jsonb;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  SELECT to_jsonb(p)-'national_id'-'ghana_card_number'-'passport_number'-'insurance_member_number' INTO v_patient FROM public.patients p WHERE p.id=_patient_id;
  IF v_patient IS NULL THEN RAISE EXCEPTION 'Patient record not found'; END IF;
@@ -177,7 +177,7 @@ CREATE OR REPLACE FUNCTION public.get_billing_window(_patient_id uuid, _at times
 AS $function$
 DECLARE v_patient public.patients; v_encounter uuid; v_invoice uuid; v_start timestamptz:=date_trunc('day',coalesce(_at,now())); v_end timestamptz:=date_trunc('day',coalesce(_at,now()))+interval '1 day'-interval '1 microsecond'; v_insured boolean:=false; v_insurer text; v_insurer_id uuid; v_credit numeric:=0; v_total numeric:=0; v_insurance numeric:=0; v_topup numeric:=0; v_items jsonb; v_account_id text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
  PERFORM public.assert_patient_facility_context(_patient_id);
  SELECT * INTO v_patient FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive';
  IF v_patient.id IS NULL THEN RAISE EXCEPTION 'Active patient not found'; END IF;
