@@ -16,7 +16,7 @@ RETURNS public.pharmacy_inventory
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_inventory;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN
     RAISE EXCEPTION 'Pharmacy role required';
   END IF;
   IF length(trim(COALESCE(_drug_name,''))) < 2 THEN RAISE EXCEPTION 'Drug name is required'; END IF;
