@@ -94,6 +94,14 @@ assert.ok(
   workflowReconciliation.indexOf('ADD COLUMN IF NOT EXISTS fulfillment_status') < workflowReconciliation.indexOf('CREATE INDEX IF NOT EXISTS service_orders_queue_idx'),
   'legacy service-order columns must be reconciled before queue index creation',
 );
+// Guard partial legacy schemas: missing audit tables are valid, and canonical
+// tariff aliases must satisfy installations where service_tariffs.category is NOT NULL.
+const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
+must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
+must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
+must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
+must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
