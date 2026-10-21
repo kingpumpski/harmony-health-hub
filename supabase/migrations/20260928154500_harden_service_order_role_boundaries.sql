@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.create_anesthetic_assessment(_patient_id uuid,
 DECLARE uid uuid:=auth.uid(); result public.anesthetic_assessments;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to create anesthetic assessments'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to create anesthetic assessments'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF NULLIF(pg_catalog.btrim(_asa_class),'') IS NULL THEN RAISE EXCEPTION 'ASA class is required'; END IF;
  IF pg_catalog.btrim(_asa_class) NOT IN ('I','II','III','IV','V','VI') THEN RAISE EXCEPTION 'Invalid ASA class'; END IF;
