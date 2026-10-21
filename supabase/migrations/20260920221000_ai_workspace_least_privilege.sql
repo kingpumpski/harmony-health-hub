@@ -7,7 +7,7 @@ AS $$
 DECLARE v_limit integer;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist') OR public.has_role(auth.uid(),'pharmacist')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'radiologist'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)
   ) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _diagnosis IS NULL OR btrim(_diagnosis) = '' THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
   v_limit := LEAST(GREATEST(COALESCE(_limit,20),1),50);
@@ -27,7 +27,7 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   SELECT EXISTS(SELECT 1 FROM public.patients p WHERE p.id=_patient_id AND p.user_id=auth.uid()) INTO v_is_owner;
   SELECT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'radiologist')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'radiologist'::public.app_role)
   ) INTO v_is_staff;
   IF NOT (v_is_owner OR v_is_staff) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
