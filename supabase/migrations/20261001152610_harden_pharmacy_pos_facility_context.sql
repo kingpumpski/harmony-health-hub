@@ -5,14 +5,14 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inv
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id uuid; patient_uuid uuid; uid uuid:=auth.uid();pf uuid;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  SELECT * INTO item FROM public.pharmacy_inventory WHERE id=_inventory_id FOR UPDATE;
  IF NOT FOUND OR NOT item.active OR item.stock_quantity<_quantity THEN RAISE EXCEPTION 'Insufficient or unavailable stock'; END IF;
  IF _patient_id IS NOT NULL THEN pf:=public.assert_patient_facility_context(_patient_id); patient_uuid:=_patient_id;
  ELSE
    pf:=public.current_user_facility_id();
-   IF pf IS NULL AND NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN RAISE EXCEPTION 'Active facility context is required for a walk-in sale'; END IF;
+   IF pf IS NULL AND NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN RAISE EXCEPTION 'Active facility context is required for a walk-in sale'; END IF;
    INSERT INTO public.patients(patient_code,first_name,last_name,status,created_by,facility_id) VALUES(NULL,'Walk-in','Pharmacy','active',uid,pf) RETURNING id INTO patient_uuid;
  END IF;
  INSERT INTO public.pharmacy_pos_sales(patient_id,medication,inventory_id,quantity,unit_price,created_by,facility_id)
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_pos_sale(_sale_id uuid)
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; so public.service_orders; uid uuid:=auth.uid();pf uuid;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
  SELECT * INTO result FROM public.pharmacy_pos_sales WHERE id=_sale_id FOR UPDATE; IF NOT FOUND OR result.status<>'awaiting_payment' THEN RAISE EXCEPTION 'POS sale is not awaiting payment'; END IF;
  pf:=public.assert_patient_facility_context(result.patient_id);
  IF result.facility_id IS NULL OR result.facility_id IS DISTINCT FROM pf THEN RAISE EXCEPTION 'POS sale facility attribution is unresolved or mismatched'; END IF;
