@@ -24,7 +24,7 @@ DECLARE
   v_gender_policy text := lower(NULLIF(pg_catalog.btrim(_gender_policy), ''));
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF v_facility_id IS NULL THEN
@@ -74,7 +74,7 @@ DECLARE
   v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF _ward_id IS NULL OR _facility_id IS NULL THEN
@@ -137,7 +137,7 @@ DECLARE
   v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   SELECT facility_id INTO v_facility_id FROM public.ward_units WHERE id=_ward_id FOR UPDATE;
@@ -185,7 +185,7 @@ DECLARE
   v_bed_number text := NULLIF(pg_catalog.btrim(_bed_number), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF _ward_id IS NULL OR v_bed_number IS NULL THEN
@@ -239,7 +239,7 @@ DECLARE
   v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF _facility_id IS NULL OR NOT EXISTS (
