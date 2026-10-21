@@ -139,6 +139,49 @@ BEGIN
   END IF;
 END $$;
 
+-- Reconcile legacy laboratory catalog columns before indexes and updated_at triggers.
+ALTER TABLE public.lab_test_catalog
+  ADD COLUMN IF NOT EXISTS specimen_type TEXT,
+  ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'laboratory',
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS interpretation_notes TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='specimen') THEN
+    EXECUTE 'UPDATE public.lab_test_catalog SET specimen_type = COALESCE(specimen_type, specimen) WHERE specimen_type IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='notes') THEN
+    EXECUTE 'UPDATE public.lab_test_catalog SET description = COALESCE(description, notes) WHERE description IS NULL';
+  END IF;
+END $;
+
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS code TEXT,
+  ADD COLUMN IF NOT EXISTS value_type TEXT NOT NULL DEFAULT 'numeric',
+  ADD COLUMN IF NOT EXISTS reference_low NUMERIC,
+  ADD COLUMN IF NOT EXISTS reference_high NUMERIC,
+  ADD COLUMN IF NOT EXISTS reference_text TEXT,
+  ADD COLUMN IF NOT EXISTS critical_low NUMERIC,
+  ADD COLUMN IF NOT EXISTS critical_high NUMERIC,
+  ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_low') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_low = COALESCE(reference_low, ref_low) WHERE reference_low IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_high') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_high = COALESCE(reference_high, ref_high) WHERE reference_high IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_text') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_text = COALESCE(reference_text, ref_text) WHERE reference_text IS NULL';
+  END IF;
+END $;
+
 -- Reconcile partially provisioned legacy catalog tables before indexing them.
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
 ALTER TABLE public.lab_test_parameters
@@ -265,6 +308,19 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Reconcile the existing Phase 1 inpatient review table before indexing it.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS assessment TEXT;
+
+UPDATE public.inpatient_reviews
+SET seen_at = COALESCE(seen_at, created_at, now())
+WHERE seen_at IS NULL;
+
+ALTER TABLE public.inpatient_reviews
+  ALTER COLUMN seen_at SET DEFAULT now(),
+  ALTER COLUMN seen_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
@@ -280,6 +336,18 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   old_record JSONB,
   new_record JSONB
 );
+
+-- Reconcile Phase 1's append-only audit contract with the expanded audit projection.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS action TEXT NOT NULL DEFAULT 'UPDATE',
+  ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+UPDATE public.patient_audit
+SET changed_by = COALESCE(changed_by, actor_user_id),
+    changed_at = COALESCE(changed_at, occurred_at, now()),
+    action = COALESCE(action, operation, 'UPDATE')
+WHERE changed_by IS NULL OR changed_at IS NULL OR action IS NULL;
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
