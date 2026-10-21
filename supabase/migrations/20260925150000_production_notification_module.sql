@@ -105,7 +105,7 @@ CREATE OR REPLACE FUNCTION public.ensure_notification_preferences(_user_id UUID)
 RETURNS public.user_notification_preferences LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r public.user_notification_preferences;
 BEGIN
-  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin')) THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin'::public.app_role)) THEN RAISE EXCEPTION 'Forbidden'; END IF;
   INSERT INTO public.user_notification_preferences(user_id) VALUES(_user_id) ON CONFLICT(user_id) DO NOTHING;
   SELECT * INTO r FROM public.user_notification_preferences WHERE user_id=_user_id; RETURN r;
 END; $$;
@@ -119,7 +119,7 @@ CREATE OR REPLACE FUNCTION public.enqueue_notification_v2(
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE qid UUID; idem TEXT := COALESCE(_idempotency_key, _event_name || ':' || _user_id::text || ':' || md5(_payload::text));
 BEGIN
-  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin')) THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF auth.uid() IS NULL OR (_user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin'::public.app_role)) THEN RAISE EXCEPTION 'Forbidden'; END IF;
   IF _facility_id IS NOT NULL AND NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
   IF _user_id IS NULL THEN RAISE EXCEPTION 'Notification recipient required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.notification_events WHERE event_name=_event_name AND enabled) THEN RAISE EXCEPTION 'Notification event is disabled or unknown'; END IF;
@@ -148,14 +148,14 @@ ALTER TABLE public.notification_delivery_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_feature_flags ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "notification preferences own read" ON public.user_notification_preferences FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE POLICY "notification preferences own update" ON public.user_notification_preferences FOR UPDATE TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin')) WITH CHECK(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE POLICY "notification preferences own insert" ON public.user_notification_preferences FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE POLICY "notification consent own read" ON public.notification_consent_audit FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
-CREATE POLICY "notification templates admin read" ON public.notification_templates FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin') OR active=true);
+CREATE POLICY "notification preferences own read" ON public.user_notification_preferences FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE POLICY "notification preferences own update" ON public.user_notification_preferences FOR UPDATE TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE POLICY "notification preferences own insert" ON public.user_notification_preferences FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE POLICY "notification consent own read" ON public.notification_consent_audit FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE POLICY "notification templates admin read" ON public.notification_templates FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'::public.app_role) OR active=true);
 CREATE POLICY "notification events authenticated read" ON public.notification_events FOR SELECT TO authenticated USING(true);
-CREATE POLICY "notification channels admin read" ON public.notification_channels FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
-CREATE POLICY "notification flags admin manage" ON public.notification_feature_flags FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin')) WITH CHECK(public.has_role(auth.uid(),'admin'));
+CREATE POLICY "notification channels admin read" ON public.notification_channels FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE POLICY "notification flags admin manage" ON public.notification_feature_flags FOR ALL TO authenticated USING(public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK(public.has_role(auth.uid(),'admin'::public.app_role));
 
 REVOKE ALL ON public.notification_audit FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.notification_delivery_logs FROM PUBLIC, anon, authenticated;

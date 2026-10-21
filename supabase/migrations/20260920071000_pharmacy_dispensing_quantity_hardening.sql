@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.find_pharmacy_alternatives(_medication text,_s
 RETURNS TABLE(id uuid,drug_name text,brand_name text,generic_name text,strength text,form text,supplier text,stock_quantity integer,unit_price numeric)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
 BEGIN
-  IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN
+  IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN
     RAISE EXCEPTION 'Pharmacy role required';
   END IF;
   RETURN QUERY

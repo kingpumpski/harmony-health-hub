@@ -14,7 +14,7 @@ DECLARE
   days_count INTEGER;
   uid UUID := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN
+  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
   IF _patient_id IS NULL OR _from IS NULL OR _to IS NULL OR _from > _to THEN

@@ -10,7 +10,7 @@ SET search_path TO 'public'
 AS $function$
 DECLARE uid UUID:=auth.uid(); ep UUID; es TEXT; id UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Theatre clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Theatre clinical role required'; END IF;
  IF _patient_id IS NULL OR NULLIF(btrim(_procedure_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and procedure are required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF _encounter_id IS NOT NULL THEN
@@ -18,8 +18,8 @@ BEGIN
    IF NOT FOUND OR ep<>_patient_id THEN RAISE EXCEPTION 'Encounter does not belong to patient'; END IF;
    IF es IN('completed','cancelled') THEN RAISE EXCEPTION 'Cannot create theatre case for a closed encounter'; END IF;
  END IF;
- IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner') THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
- IF _anesthetist_id IS NOT NULL AND NOT(public.has_role(_anesthetist_id,'practitioner')) THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
+ IF _surgeon_id IS NOT NULL AND NOT public.has_role(_surgeon_id,'practitioner'::public.app_role) THEN RAISE EXCEPTION 'Assigned surgeon must be a practitioner'; END IF;
+ IF _anesthetist_id IS NOT NULL AND NOT(public.has_role(_anesthetist_id,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Assigned anesthetist must be a practitioner'; END IF;
  INSERT INTO public.theatre_cases(patient_id,encounter_id,procedure_name,surgeon_id,anesthetist_id,scheduled_start,theatre_name,urgency,status,created_by)
  VALUES(_patient_id,_encounter_id,btrim(_procedure_name),_surgeon_id,_anesthetist_id,_scheduled_start,NULLIF(btrim(_theatre_name),''),COALESCE(NULLIF(btrim(_urgency),''),'elective'),'requested',uid)
  RETURNING id INTO id;
@@ -34,7 +34,7 @@ SET search_path TO 'public'
 AS $function$
 DECLARE uid UUID:=auth.uid(); c public.theatre_cases%ROWTYPE; es TEXT; allowed BOOLEAN:=false;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN RAISE EXCEPTION 'Invalid theatre status'; END IF;
  SELECT * INTO c FROM public.theatre_cases WHERE id=_case_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
@@ -59,7 +59,7 @@ SET search_path TO 'public'
 AS $function$
 DECLARE uid UUID:=auth.uid(); v_id UUID; v_patient UUID; v_status TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _patient_id IS NULL OR NULLIF(btrim(_blood_product),'') IS NULL OR NULLIF(btrim(_unit_identifier),'') IS NULL THEN RAISE EXCEPTION 'Patient, blood product and unit identifier are required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF _consent_confirmed IS NOT TRUE THEN RAISE EXCEPTION 'Documented transfusion consent must be confirmed before scheduling'; END IF;
@@ -82,7 +82,7 @@ SET search_path TO 'public'
 AS $function$
 DECLARE uid UUID:=auth.uid(); r public.transfusion_records%ROWTYPE; es TEXT; allowed BOOLEAN:=false;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('issued','running','completed','stopped','cancelled') THEN RAISE EXCEPTION 'Invalid transfusion status'; END IF;
  SELECT * INTO r FROM public.transfusion_records WHERE id=_record_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Transfusion record not found'; END IF;

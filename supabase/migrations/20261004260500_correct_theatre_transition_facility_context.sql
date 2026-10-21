@@ -13,8 +13,8 @@ DECLARE
  active_facility uuid;
 BEGIN
  IF uid IS NULL OR NOT(
-   public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'system_superuser')
-   OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')
+   public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'system_superuser'::public.app_role)
+   OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
  ) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN RAISE EXCEPTION 'Invalid theatre status'; END IF;
  SELECT * INTO c FROM public.theatre_cases WHERE id=_case_id FOR UPDATE;
@@ -25,7 +25,7 @@ BEGIN
  IF patient_facility IS NULL THEN RAISE EXCEPTION 'Patient facility attribution is unresolved'; END IF;
  IF c.facility_id IS NOT NULL AND c.facility_id IS DISTINCT FROM patient_facility THEN RAISE EXCEPTION 'Theatre case facility does not match patient facility'; END IF;
  active_facility:=public.current_user_facility_id();
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'system_superuser'))
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'system_superuser'::public.app_role))
     AND (active_facility IS NULL OR active_facility IS DISTINCT FROM patient_facility) THEN
    RAISE EXCEPTION 'Theatre case belongs to a different facility context';
  END IF;

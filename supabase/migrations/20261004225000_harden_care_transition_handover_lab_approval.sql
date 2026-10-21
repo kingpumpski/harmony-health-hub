@@ -3,7 +3,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $functio
 DECLARE v_id uuid; pf uuid; uid uuid:=auth.uid();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Care transition creation is not permitted'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF _transition_type NOT IN('discharge','transfer','follow_up') THEN RAISE EXCEPTION 'Invalid transition type'; END IF;
  IF _follow_up_required AND _follow_up_date IS NULL THEN RAISE EXCEPTION 'Follow-up date is required when follow-up is required'; END IF;
@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover(_patient_id uuid
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE uid uuid:=auth.uid(); id uuid; pf uuid;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
  IF NULLIF(pg_catalog.btrim(_clinical_summary),'') IS NULL THEN RAISE EXCEPTION 'Clinical summary is required'; END IF;
  IF _ward_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.ward_units WHERE id=_ward_id AND facility_id=pf) THEN RAISE EXCEPTION 'Ward not found in patient facility'; END IF;

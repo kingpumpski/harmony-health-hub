@@ -21,7 +21,7 @@ DECLARE
   v_gender_policy text := lower(NULLIF(pg_catalog.btrim(_gender_policy), ''));
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF _facility_id IS NULL OR NOT EXISTS (

@@ -13,13 +13,13 @@ DECLARE
   g public.service_orders%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'lab_technician')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
-    OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Laboratory clinical role required';
   END IF;
@@ -32,7 +32,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Laboratory order not found'; END IF;
   IF o.facility_id IS NULL THEN RAISE EXCEPTION 'Laboratory order facility attribution is unresolved'; END IF;
 
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
      AND (v_facility IS NULL OR o.facility_id IS DISTINCT FROM v_facility) THEN
     RAISE EXCEPTION 'Laboratory order belongs to a different facility context';
   END IF;

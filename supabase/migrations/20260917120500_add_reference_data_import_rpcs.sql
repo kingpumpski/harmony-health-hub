@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION public.import_stg_diagnoses(_standard_code TEXT,_sour
 RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_standard_id UUID; v_item JSONB; v_count INTEGER := 0;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required'; END IF;
   SELECT id INTO v_standard_id FROM public.diagnosis_standards WHERE code=_standard_code AND is_active ORDER BY created_at DESC LIMIT 1;
   IF v_standard_id IS NULL THEN
     INSERT INTO public.diagnosis_standards(code,name,jurisdiction,version,publisher,is_default,is_active)
@@ -24,7 +24,7 @@ CREATE OR REPLACE FUNCTION public.import_service_tariffs(_source_standard TEXT,_
 RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_item JSONB; v_count INTEGER := 0;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required'; END IF;
   FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(_rows,'[]'::jsonb)) LOOP
     INSERT INTO public.service_tariffs(service_code,service_name,department,unit,amount,active,source_standard,effective_from,effective_to,currency,metadata)
     VALUES (trim(v_item->>'service_code'),trim(v_item->>'service_name'),COALESCE(NULLIF(trim(v_item->>'department'),''),'General'),COALESCE(NULLIF(trim(v_item->>'unit'),''),'service'),COALESCE((v_item->>'amount')::numeric,0),COALESCE((v_item->>'active')::boolean,true),_source_standard,NULLIF(v_item->>'effective_from','')::date,NULLIF(v_item->>'effective_to','')::date,COALESCE(NULLIF(v_item->>'currency',''),'GHS'),COALESCE(v_item->'metadata','{}'::jsonb))

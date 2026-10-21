@@ -5,7 +5,7 @@ AS $$
 DECLARE v_row public.ai_protocols;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised'; END IF;
   IF _diagnosis IS NULL OR btrim(_diagnosis)='' THEN RAISE EXCEPTION 'Diagnosis is required'; END IF;
   IF _protocol_text IS NULL OR btrim(_protocol_text)='' THEN RAISE EXCEPTION 'Protocol text is required'; END IF;
   IF COALESCE(_case_count,0) < 3 THEN RAISE EXCEPTION 'At least 3 cases are required'; END IF;

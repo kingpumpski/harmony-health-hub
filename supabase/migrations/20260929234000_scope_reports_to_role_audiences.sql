@@ -10,8 +10,8 @@ UPDATE public.report_definitions SET audience_roles=ARRAY['admin'] WHERE cardina
 DROP POLICY IF EXISTS report_definitions_read ON public.report_definitions;
 CREATE POLICY report_definitions_read ON public.report_definitions FOR SELECT TO authenticated USING (
   is_active AND (
-    public.has_role((select auth.uid()),'admin')
-    OR public.has_role((select auth.uid()),'it_admin')
+    public.has_role((select auth.uid()),'admin'::public.app_role)
+    OR public.has_role((select auth.uid()),'it_admin'::public.app_role)
     OR cardinality(audience_roles)=0
     OR EXISTS (
       SELECT 1 FROM public.user_roles ur

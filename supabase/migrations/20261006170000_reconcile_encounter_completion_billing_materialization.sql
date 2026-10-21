@@ -109,7 +109,7 @@ begin
  v_patient_facility:=public.assert_patient_facility_context(v_enc.patient_id);
  if v_enc.facility_id is null then raise exception 'Encounter facility attribution is unresolved'; end if;
  if v_enc.facility_id is distinct from v_patient_facility then raise exception 'Encounter or patient belongs to a different facility context'; end if;
- if v_enc.practitioner_id<>v_uid and not public.has_role(v_uid,'admin') and not public.has_role(v_uid,'it_admin') and not public.has_role(v_uid,'system_superuser') then raise exception 'Only the encounter creator can submit this document'; end if;
+ if v_enc.practitioner_id<>v_uid and not public.has_role(v_uid,'admin'::public.app_role) and not public.has_role(v_uid,'it_admin'::public.app_role) and not public.has_role(v_uid,'system_superuser'::public.app_role) then raise exception 'Only the encounter creator can submit this document'; end if;
  if v_enc.status='completed' then raise exception 'Encounter is already submitted'; end if;
  select coalesce(require_principal_diagnosis_for_final,true) into v_require_principal from public.facility_configuration order by created_at asc limit 1;
  if v_require_principal and not exists(select 1 from public.diagnoses d where d.encounter_id=v_enc.id and d.is_principal=true) then raise exception 'Principal diagnosis required before final submission'; end if;

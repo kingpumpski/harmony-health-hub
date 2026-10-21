@@ -38,12 +38,12 @@ ALTER TABLE public.meal_menu_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS meal_menus_authenticated_read ON public.meal_menus;
 CREATE POLICY meal_menus_authenticated_read ON public.meal_menus
   FOR SELECT TO authenticated
-  USING (status = 'published' OR public.has_role((SELECT auth.uid()), 'admin') OR public.has_role((SELECT auth.uid()), 'canteen'));
+  USING (status = 'published' OR public.has_role((select auth.uid()),'admin'::public.app_role) OR public.has_role((select auth.uid()),'canteen'::public.app_role));
 
 DROP POLICY IF EXISTS meal_menu_items_authenticated_read ON public.meal_menu_items;
 CREATE POLICY meal_menu_items_authenticated_read ON public.meal_menu_items
   FOR SELECT TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.meal_menus m WHERE m.id = menu_id AND (m.status = 'published' OR public.has_role((SELECT auth.uid()), 'admin') OR public.has_role((SELECT auth.uid()), 'canteen'))));
+  USING (EXISTS (SELECT 1 FROM public.meal_menus m WHERE m.id = menu_id AND (m.status = 'published' OR public.has_role((select auth.uid()),'admin'::public.app_role) OR public.has_role((select auth.uid()),'canteen'::public.app_role))));
 
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.meal_menus FROM authenticated, anon;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.meal_menu_items FROM authenticated, anon;
@@ -174,6 +174,6 @@ REVOKE ALL ON FUNCTION public.broadcast_canteen_context_refresh() FROM PUBLIC, a
 DROP POLICY IF EXISTS canteen_operations_broadcast_read ON realtime.messages;
 CREATE POLICY canteen_operations_broadcast_read ON realtime.messages
   FOR SELECT TO authenticated
-  USING (topic = 'realtime:canteen:operations' AND (public.has_role((SELECT auth.uid()),'admin') OR public.has_role((SELECT auth.uid()),'canteen')));
+  USING (topic = 'realtime:canteen:operations' AND (public.has_role((select auth.uid()),'admin'::public.app_role) OR public.has_role((select auth.uid()),'canteen'::public.app_role)));
 
 COMMIT;

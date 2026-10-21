@@ -137,9 +137,9 @@ DECLARE
 BEGIN
   IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(v_user,'admin') OR public.has_role(v_user,'practitioner') OR
-    public.has_role(v_user,'nurse') OR public.has_role(v_user,'midwife') OR
-    public.has_role(v_user,'specialist_nurse')
+    public.has_role(v_user,'admin'::public.app_role) OR public.has_role(v_user,'practitioner'::public.app_role) OR
+    public.has_role(v_user,'nurse'::public.app_role) OR public.has_role(v_user,'midwife'::public.app_role) OR
+    public.has_role(v_user,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical access required';
   END IF;

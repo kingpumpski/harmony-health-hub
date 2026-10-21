@@ -24,7 +24,7 @@ begin
 
   v_department_key := lower(regexp_replace(v_department, '[[:space:]_-]+', ' ', 'g'));
 
-  if public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') then
+  if public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role) then
     null;
   elsif v_department_key in ('laboratory','lab','pathology') then
     if not exists (

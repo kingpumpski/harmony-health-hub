@@ -35,7 +35,7 @@ DECLARE
   v_facility uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid, 'admin') OR public.has_role(uid, 'nurse') OR public.has_role(uid, 'specialist_nurse') OR public.has_role(uid, 'midwife')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN
     RAISE EXCEPTION 'Nursing clinical role required';
   END IF;
 
@@ -45,7 +45,7 @@ BEGIN
   v_facility := public.current_user_facility_id();
   IF r.facility_id IS NOT NULL AND v_facility IS NOT NULL
      AND r.facility_id IS DISTINCT FROM v_facility
-     AND NOT public.has_role(uid, 'admin') THEN
+     AND NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Medication alert belongs to another facility';
   END IF;
 

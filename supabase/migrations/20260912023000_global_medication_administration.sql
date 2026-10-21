@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS public.medication_administrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Older installations may already have this table without the MAR scheduling column.
+ALTER TABLE public.medication_administrations
+  ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_mar_patient_time ON public.medication_administrations(patient_id, scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mar_status_time ON public.medication_administrations(status, scheduled_at);
 ALTER TABLE public.medication_administrations ENABLE ROW LEVEL SECURITY;

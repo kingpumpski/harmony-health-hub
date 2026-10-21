@@ -19,7 +19,7 @@ begin
   if v_department is null then return; end if;
   if _limit is null or _limit < 1 or _limit > 500 then raise exception 'Invalid queue limit'; end if;
 
-  if public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') then
+  if public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role) then
     null;
   else
     select ur.role into v_role

@@ -18,8 +18,8 @@ SET search_path = public
 AS $$
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR
-    public.has_role(auth.uid(),'it_admin')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'it_admin'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'IT support log access required';
   END IF;

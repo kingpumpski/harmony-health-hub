@@ -18,7 +18,7 @@ DECLARE
   v_claim_id UUID;
   v_existing UUID;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Accounts role required';
   END IF;
 

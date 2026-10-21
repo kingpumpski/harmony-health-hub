@@ -21,7 +21,8 @@ for (const file of files) {
 
 const diagnosis = fs.readFileSync(files[0], 'utf8').replace(/\s+/g, ' ').trim().toLowerCase();
 const diagnosisTest = diagnosis.indexOf('if public.hms_test_mode_enabled()');
-const diagnosisAdmin = diagnosis.indexOf("if not(public.has_role(uid,'admin') or public.has_role(uid,'it_admin'))");
+const diagnosisAdminMatch = diagnosis.match(/if not\(public\.has_role\(uid,'admin'(?:::public\.app_role)?\) or public\.has_role\(uid,'it_admin'(?:::public\.app_role)?\)\)/);
+const diagnosisAdmin = diagnosisAdminMatch ? diagnosis.indexOf(diagnosisAdminMatch[0]) : -1;
 assert(diagnosisTest >= 0 && diagnosisAdmin > diagnosisTest, 'diagnosis test-mode check must precede non-test privileged exception');
 
 for (const [file, fns] of [

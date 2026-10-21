@@ -19,7 +19,7 @@ DECLARE
   v_user UUID := auth.uid();
   v_facility public.healthcare_facilities;
 BEGIN
-  IF v_user IS NULL OR NOT public.has_role(v_user, 'admin') THEN
+  IF v_user IS NULL OR NOT public.has_role(v_user,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only administrators may create healthcare facilities';
   END IF;
 

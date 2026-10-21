@@ -6,7 +6,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE r public.pharmacy_inventory; uid uuid := auth.uid(); fid uuid := public.current_user_facility_id();
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid, 'admin') OR public.has_role(uid, 'system_superuser')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'system_superuser'::public.app_role)) THEN
     RAISE EXCEPTION 'System administrator authorization is required to assign legacy stock';
   END IF;
   IF fid IS NULL THEN RAISE EXCEPTION 'Select the verified destination facility before assigning legacy stock'; END IF;

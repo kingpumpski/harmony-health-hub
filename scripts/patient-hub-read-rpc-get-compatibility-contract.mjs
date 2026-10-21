@@ -17,7 +17,7 @@ for (const signature of [
   assert.ok(migration.includes(`alter function ${signature} stable`), `Missing STABLE volatility for ${signature}`);
 }
 assert.ok(migration.includes("notify pgrst, 'reload schema'"));
-assert.ok(systemSuperuserMigration.includes("public.has_role(uid,'system_superuser')"), 'clinical snapshot must authorize system_superuser troubleshooting access');
+assert.ok(/public\.has_role\(uid,\s*'system_superuser'(?:::public\.app_role)?\)/.test(systemSuperuserMigration), 'clinical snapshot must authorize system_superuser troubleshooting access');
 assert.ok(hub.includes("db.rpc('get_patient_appointments', { _patient_id: patientId, _limit: 100 })"));
 assert.ok(hub.includes("db.rpc('get_patient_hub_clinical_snapshot', { _patient_id: patientId })"));
 assert.ok(hub.includes("db.rpc('get_patient_admission_history', { _patient_id: patientId })"));

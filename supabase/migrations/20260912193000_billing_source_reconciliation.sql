@@ -11,7 +11,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE inv UUID; tariff NUMERIC; r RECORD; days_count INTEGER;
 BEGIN
-  IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+  IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   SELECT id INTO inv FROM public.invoices WHERE patient_id=_patient_id AND status IN('pending','partially_paid') ORDER BY created_at DESC LIMIT 1;
   IF inv IS NULL THEN INSERT INTO public.invoices(invoice_number,patient_id,total_amount,created_by) VALUES('INV-'||to_char(clock_timestamp(),'YYYYMMDDHH24MISSMS')||'-'||substr(gen_random_uuid()::text,1,6),_patient_id,0,auth.uid()) RETURNING id INTO inv; END IF;

@@ -190,7 +190,7 @@ DECLARE deleted_count INTEGER := 0;
 DECLARE affected_count INTEGER := 0;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF _user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin') THEN
+  IF _user_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Forbidden';
   END IF;
 
@@ -232,13 +232,13 @@ ALTER TABLE public.notification_provider_health ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_webhook_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "notification devices own read" ON public.notification_devices
-  FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+  FOR SELECT TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
 CREATE POLICY "notification devices own delete" ON public.notification_devices
-  FOR DELETE TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+  FOR DELETE TO authenticated USING(user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
 CREATE POLICY "notification provider health admin read" ON public.notification_provider_health
-  FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+  FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'::public.app_role));
 CREATE POLICY "notification webhook events admin read" ON public.notification_webhook_events
-  FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+  FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'::public.app_role));
 
 -- Provider enablement remains OFF until sandbox credentials and consent tests are completed.
 UPDATE public.notification_channels

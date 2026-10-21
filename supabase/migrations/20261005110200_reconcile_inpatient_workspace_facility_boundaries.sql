@@ -150,11 +150,11 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); legacy public.wards%ROWTYPE; v_name text; v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'system_superuser')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'system_superuser'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator, IT administrator or System Superuser role required';
   END IF;
   IF _facility_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.healthcare_facilities WHERE id=_facility_id AND is_active=true) THEN RAISE EXCEPTION 'Active facility is required'; END IF;
-  IF NOT public.has_role(uid,'system_superuser') AND NOT public.has_facility_access(uid,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
+  IF NOT public.has_role(uid,'system_superuser'::public.app_role) AND NOT public.has_facility_access(uid,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
   SELECT * INTO legacy FROM public.wards WHERE id=_legacy_ward_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Legacy ward not found'; END IF;
   IF EXISTS(SELECT 1 FROM public.ward_units WHERE lower(pg_catalog.btrim(code))=lower(pg_catalog.btrim(legacy.code))) THEN
@@ -179,12 +179,12 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'system_superuser')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'system_superuser'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator, IT administrator or System Superuser role required';
   END IF;
   IF _ward_id IS NULL OR _facility_id IS NULL THEN RAISE EXCEPTION 'Ward and facility are required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.healthcare_facilities WHERE id=_facility_id AND is_active=true) THEN RAISE EXCEPTION 'Active facility not found'; END IF;
-  IF NOT public.has_role(uid,'system_superuser') AND NOT public.has_facility_access(uid,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
+  IF NOT public.has_role(uid,'system_superuser'::public.app_role) AND NOT public.has_facility_access(uid,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.ward_units WHERE id=_ward_id) THEN RAISE EXCEPTION 'Ward not found'; END IF;
   IF EXISTS(SELECT 1 FROM public.ward_beds b WHERE b.ward_id=_ward_id AND b.facility_id IS NOT NULL AND b.facility_id<>_facility_id) THEN RAISE EXCEPTION 'Ward has beds assigned to another facility'; END IF;
   UPDATE public.ward_units SET facility_id=_facility_id,updated_at=pg_catalog.now() WHERE id=_ward_id RETURNING id INTO v_id;

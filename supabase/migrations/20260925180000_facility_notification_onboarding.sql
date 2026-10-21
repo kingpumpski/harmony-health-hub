@@ -61,8 +61,8 @@ USING (public.has_facility_access(auth.uid(), facility_id));
 
 CREATE POLICY "facility notification config admin manage"
 ON public.facility_notification_config FOR ALL TO authenticated
-USING (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'))
-WITH CHECK (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'));
+USING (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'::public.app_role))
+WITH CHECK (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'::public.app_role));
 
 CREATE POLICY "facility notification provider access"
 ON public.facility_notification_provider_connections FOR SELECT TO authenticated
@@ -70,8 +70,8 @@ USING (public.has_facility_access(auth.uid(), facility_id));
 
 CREATE POLICY "facility notification provider admin manage"
 ON public.facility_notification_provider_connections FOR ALL TO authenticated
-USING (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'))
-WITH CHECK (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'));
+USING (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'::public.app_role))
+WITH CHECK (public.has_facility_access(auth.uid(), facility_id) AND public.has_role(auth.uid(),'admin'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.initialize_facility_notification_onboarding(_facility_id UUID)
 RETURNS public.facility_notification_config
@@ -80,7 +80,7 @@ SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE v public.facility_notification_config;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only administrators may initialize notification onboarding';
   END IF;
   IF NOT public.has_facility_access(auth.uid(), _facility_id) THEN
@@ -115,7 +115,7 @@ SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only administrators may configure notification providers';
   END IF;
   IF NOT public.has_facility_access(auth.uid(), _facility_id) THEN
@@ -150,7 +150,7 @@ SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE v public.facility_notification_config;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only administrators may approve notification production readiness';
   END IF;
   IF NOT public.has_facility_access(auth.uid(), _facility_id) THEN

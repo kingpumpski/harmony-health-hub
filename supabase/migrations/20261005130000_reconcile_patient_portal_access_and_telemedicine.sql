@@ -34,11 +34,11 @@ declare
   v_staff boolean;
 begin
   if v_uid is null then raise exception 'Authentication required'; end if;
-  v_staff := public.has_role(v_uid,'admin') or public.has_role(v_uid,'system_superuser')
-    or public.has_role(v_uid,'it_admin') or public.has_role(v_uid,'practitioner')
-    or public.has_role(v_uid,'nurse') or public.has_role(v_uid,'midwife')
-    or public.has_role(v_uid,'specialist_nurse') or public.has_role(v_uid,'radiologist')
-    or public.has_role(v_uid,'radiology_technician') or public.has_role(v_uid,'front_desk');
+  v_staff := public.has_role(v_uid,'admin'::public.app_role) or public.has_role(v_uid,'system_superuser'::public.app_role)
+    or public.has_role(v_uid,'it_admin'::public.app_role) or public.has_role(v_uid,'practitioner'::public.app_role)
+    or public.has_role(v_uid,'nurse'::public.app_role) or public.has_role(v_uid,'midwife'::public.app_role)
+    or public.has_role(v_uid,'specialist_nurse'::public.app_role) or public.has_role(v_uid,'radiologist'::public.app_role)
+    or public.has_role(v_uid,'radiology_technician'::public.app_role) or public.has_role(v_uid,'front_desk'::public.app_role);
   if v_staff then
     if _patient_id is null then raise exception 'Patient is required'; end if;
     perform public.assert_patient_facility_read_context(_patient_id);
@@ -85,7 +85,7 @@ as $$
 declare v_uid uuid:=auth.uid(); v_facility uuid;
 begin
   if v_uid is null then raise exception 'Authentication required'; end if;
-  if not public.has_role(v_uid,'patient') then raise exception 'Patient telemedicine access is not permitted'; end if;
+  if not public.has_role(v_uid,'patient'::public.app_role) then raise exception 'Patient telemedicine access is not permitted'; end if;
   select p.facility_id into v_facility from public.patients p
   where p.user_id=v_uid or (p.user_id is null and lower(p.email)=lower((auth.jwt()->>'email')))
   order by (p.user_id=v_uid) desc,p.created_at desc limit 1;
@@ -109,7 +109,7 @@ set search_path = ''
 as $$
 declare v_uid uuid:=auth.uid(); v_patient uuid; v_facility uuid; v_id uuid;
 begin
-  if v_uid is null or not public.has_role(v_uid,'patient') then raise exception 'Patient telemedicine access is not permitted'; end if;
+  if v_uid is null or not public.has_role(v_uid,'patient'::public.app_role) then raise exception 'Patient telemedicine access is not permitted'; end if;
   select p.id,p.facility_id into v_patient,v_facility from public.patients p
   where p.user_id=v_uid or (p.user_id is null and lower(p.email)=lower((auth.jwt()->>'email')))
   order by (p.user_id=v_uid) desc,p.created_at desc limit 1;

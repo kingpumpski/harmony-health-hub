@@ -14,7 +14,7 @@ DECLARE
   v_payer text := NULLIF(btrim(_payer_name),'');
   v_facility uuid;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Insurance claims access required';
   END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);

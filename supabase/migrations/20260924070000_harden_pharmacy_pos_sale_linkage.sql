@@ -13,8 +13,8 @@ DECLARE
   uid uuid := auth.uid();
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'pharmacist')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'pharmacist'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Pharmacist role required';
   END IF;

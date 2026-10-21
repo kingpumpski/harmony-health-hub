@@ -15,8 +15,8 @@ AS $$
 DECLARE uid uuid := auth.uid(); result jsonb;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-   OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+   OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN
    RAISE EXCEPTION 'Clinical report access is not permitted';
  END IF;
  _limit := LEAST(GREATEST(COALESCE(_limit,100),1),300);
@@ -57,8 +57,8 @@ AS $$
 DECLARE uid uuid := auth.uid(); result jsonb;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-   OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+   OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN
    RAISE EXCEPTION 'Clinical report access is not permitted';
  END IF;
  _limit := LEAST(GREATEST(COALESCE(_limit,100),1),300);
@@ -99,8 +99,8 @@ AS $$
 DECLARE uid uuid:=auth.uid(); ok boolean;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-   OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+   OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised'; END IF;
  UPDATE public.imaging_orders io SET acknowledged_at=COALESCE(io.acknowledged_at,now()), acknowledged_by=COALESCE(io.acknowledged_by,uid)
  WHERE io.id=_result_id AND io.status='completed'
    AND EXISTS (SELECT 1 FROM public.patients p LEFT JOIN public.encounters e ON e.id=io.encounter_id
@@ -117,8 +117,8 @@ AS $$
 DECLARE uid uuid:=auth.uid(); ok boolean;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-   OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+   OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorised'; END IF;
  UPDATE public.lab_results r SET acknowledged_at=COALESCE(r.acknowledged_at,now()), acknowledged_by=COALESCE(r.acknowledged_by,uid)
  FROM public.lab_orders o
  WHERE r.id=_result_id AND r.lab_order_id=o.id AND r.status='approved' AND o.status='approved'

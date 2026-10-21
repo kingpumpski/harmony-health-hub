@@ -65,11 +65,11 @@ DECLARE
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(v_uid,'admin') OR
-    public.has_role(v_uid,'practitioner') OR
-    public.has_role(v_uid,'nurse') OR
-    public.has_role(v_uid,'midwife') OR
-    public.has_role(v_uid,'front_desk')
+    public.has_role(v_uid,'admin'::public.app_role) OR
+    public.has_role(v_uid,'practitioner'::public.app_role) OR
+    public.has_role(v_uid,'nurse'::public.app_role) OR
+    public.has_role(v_uid,'midwife'::public.app_role) OR
+    public.has_role(v_uid,'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Imaging order access required';
   END IF;

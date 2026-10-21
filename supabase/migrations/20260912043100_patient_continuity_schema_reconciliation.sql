@@ -1,6 +1,43 @@
 -- Reconcile the continuity aggregator with the canonical global HIMS column names.
 -- Emergency uses arrival_time; transfusion uses unit_identifier, started_at and completed_at.
 
+-- Older installations may already have a partial insurance_claims table.
+-- Reconcile the canonical payer field before the continuity function is parsed.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS amount_claimed NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS amount_approved NUMERIC,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $insurance_claim_payer_compatibility$
+DECLARE
+  legacy_column TEXT;
+BEGIN
+  FOREACH legacy_column IN ARRAY ARRAY['provider', 'insurance_provider', 'payer'] LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'insurance_claims'
+        AND column_name = legacy_column
+    ) THEN
+      EXECUTE format(
+        'UPDATE public.insurance_claims
+         SET payer_name = NULLIF(btrim(%I::text), '''')
+         WHERE (payer_name IS NULL OR btrim(payer_name) = '''')
+           AND %I IS NOT NULL',
+        legacy_column, legacy_column
+      );
+    END IF;
+  END LOOP;
+END;
+$insurance_claim_payer_compatibility$;
+
 CREATE OR REPLACE FUNCTION public.get_patient_care_continuity(_patient_id UUID)
 RETURNS JSONB
 LANGUAGE sql

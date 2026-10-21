@@ -4,7 +4,7 @@ RETURNS public.prescriptions LANGUAGE plpgsql SECURITY DEFINER SET search_path=p
 DECLARE result public.prescriptions; patient_id_value UUID; encounter_status TEXT;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
  SELECT patient_id,status INTO patient_id_value,encounter_status FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF patient_id_value IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=patient_id_value AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient does not exist or is inactive'; END IF;
@@ -21,7 +21,7 @@ RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=publi
 DECLARE result public.diagnoses; encounter_status TEXT;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to set principal diagnosis'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to set principal diagnosis'; END IF;
  SELECT status INTO encounter_status FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF encounter_status IS NULL THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  IF encounter_status IN('completed','cancelled') THEN RAISE EXCEPTION 'Completed or cancelled encounters are read-only'; END IF;
@@ -37,7 +37,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF NULLIF(btrim(_ward),'') IS NULL THEN RAISE EXCEPTION 'Ward is required'; END IF;
  INSERT INTO public.admissions(patient_id,ward,bed,reason,admitted_by,status,admitted_at)
@@ -51,7 +51,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Admission discharge is not permitted'; END IF;
+ IF NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Admission discharge is not permitted'; END IF;
  UPDATE public.admissions SET status='discharged',discharged_at=now(),discharge_summary=COALESCE(NULLIF(btrim(_summary),''),'Discharged from inpatient admission.')
  WHERE id=_admission_id AND status='admitted' AND EXISTS(SELECT 1 FROM public.patients p WHERE p.id=admissions.patient_id AND COALESCE(p.status,'active')<>'inactive')
  RETURNING id INTO v_id;

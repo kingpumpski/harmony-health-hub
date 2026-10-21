@@ -13,9 +13,9 @@ DECLARE
   encounter_patient_id uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'lab_technician')
-    OR public.has_role(uid,'practitioner')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Laboratory approval role required';
   END IF;
