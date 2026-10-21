@@ -3,12 +3,12 @@ CREATE OR REPLACE FUNCTION public.create_emergency_case(_patient_id UUID,_chief_
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); v_id UUID; v_assigned UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Emergency workflow role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Emergency workflow role required'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF NULLIF(trim(_chief_complaint),'') IS NULL THEN RAISE EXCEPTION 'Chief complaint is required'; END IF;
  IF _acuity NOT IN ('resuscitation','emergency','urgent','less_urgent','non_urgent') THEN RAISE EXCEPTION 'Invalid emergency acuity'; END IF;
  IF _arrival_mode NOT IN ('walk_in','ambulance','referral','other') THEN RAISE EXCEPTION 'Invalid arrival mode'; END IF;
- IF _assigned_officer IS NOT NULL AND _assigned_officer<>uid AND NOT public.has_role(uid,'admin') THEN RAISE EXCEPTION 'Only an administrator may assign another officer during creation'; END IF;
+ IF _assigned_officer IS NOT NULL AND _assigned_officer<>uid AND NOT public.has_role(uid,'admin'::public.app_role) THEN RAISE EXCEPTION 'Only an administrator may assign another officer during creation'; END IF;
  v_assigned:=COALESCE(_assigned_officer,uid);
  INSERT INTO public.emergency_cases(patient_id,arrival_mode,acuity,chief_complaint,assigned_officer,status)
  VALUES(_patient_id,_arrival_mode,_acuity,trim(_chief_complaint),v_assigned,'waiting') RETURNING id INTO v_id;
@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION public.create_theatre_case(_patient_id uuid,_procedur
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id uuid; v_patient uuid; v_status text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Not authorized to create theatre cases'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to create theatre cases'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF NULLIF(trim(_procedure_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and procedure are required'; END IF;
  IF _encounter_id IS NOT NULL THEN
@@ -37,7 +37,7 @@ CREATE OR REPLACE FUNCTION public.create_transfusion_record(_patient_id uuid,_bl
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id uuid; v_patient uuid; v_status text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Not authorized to create transfusion records'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to create transfusion records'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF NULLIF(trim(_blood_product),'') IS NULL THEN RAISE EXCEPTION 'Patient and blood product are required'; END IF;
  IF _consent_confirmed IS NOT TRUE THEN RAISE EXCEPTION 'Documented transfusion consent must be confirmed before scheduling'; END IF;
@@ -56,7 +56,7 @@ CREATE OR REPLACE FUNCTION public.assign_ward_bed(_bed_id UUID,_patient_id UUID,
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE b public.ward_beds%ROWTYPE; uid UUID:=auth.uid(); admission_patient UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  SELECT * INTO b FROM public.ward_beds WHERE id=_bed_id FOR UPDATE;
  IF b.id IS NULL THEN RAISE EXCEPTION 'Bed not found'; END IF;
