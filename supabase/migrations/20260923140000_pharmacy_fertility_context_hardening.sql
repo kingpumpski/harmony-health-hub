@@ -11,7 +11,7 @@ DECLARE
   encounter_status text;
   uid uuid := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
   IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
   SELECT * INTO p FROM public.prescriptions WHERE id=_prescription_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Prescription not found'; END IF;
@@ -46,7 +46,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_dispense(_plan_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE p public.pharmacy_dispensing_plans;i public.pharmacy_inventory;r public.prescriptions;so public.service_orders;encounter_status text;uid uuid:=auth.uid();
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
  SELECT * INTO p FROM public.pharmacy_dispensing_plans WHERE id=_plan_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Dispensing plan not found'; END IF;
  IF p.status<>'unpaid' THEN RAISE EXCEPTION 'Dispensing plan is already processed'; END IF;
@@ -76,7 +76,7 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inv
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id uuid; patient_uuid uuid; uid uuid:=auth.uid();
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'pharmacist') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
  IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  IF _patient_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  SELECT * INTO item FROM public.pharmacy_inventory WHERE id=_inventory_id FOR UPDATE;
@@ -96,7 +96,7 @@ RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_pat
 DECLARE v_cycle public.fertility_cycles; v_cycle_number integer; uid uuid:=auth.uid();
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF upper(trim(_cycle_type)) NOT IN('IVF','IUI','ICSI','FET') THEN RAISE EXCEPTION 'Unsupported fertility cycle type'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('fertility-cycle-number:'||_patient_id::text,0));
