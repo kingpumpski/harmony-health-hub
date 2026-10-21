@@ -67,6 +67,74 @@ ALTER TABLE public.lab_result_attachments
   ADD COLUMN IF NOT EXISTS uploaded_by uuid,
   ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
+-- Reconcile partially provisioned attachment tables before policies and RPCs
+-- reference canonical columns. Preserve legacy rows; unlinked rows remain unreadable.
+ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
+  ADD COLUMN IF NOT EXISTS lab_order_id uuid,
+  ADD COLUMN IF NOT EXISTS lab_result_id uuid,
+  ADD COLUMN IF NOT EXISTS facility_id uuid,
+  ADD COLUMN IF NOT EXISTS storage_path text,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS mime_type text,
+  ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
+  ADD COLUMN IF NOT EXISTS uploaded_by uuid,
+  ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+UPDATE public.lab_result_attachments
+SET id = gen_random_uuid()
+WHERE id IS NULL;
+
+WITH duplicate_ids AS (
+  SELECT ctid,
+         row_number() OVER (PARTITION BY id ORDER BY created_at NULLS LAST, ctid) AS duplicate_rank
+  FROM public.lab_result_attachments
+  WHERE id IS NOT NULL
+)
+UPDATE public.lab_result_attachments AS attachment
+SET id = gen_random_uuid()
+FROM duplicate_ids
+WHERE attachment.ctid = duplicate_ids.ctid
+  AND duplicate_ids.duplicate_rank > 1;
+
+UPDATE public.lab_result_attachments
+SET created_at = now()
+WHERE created_at IS NULL;
+
+ALTER TABLE public.lab_result_attachments
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ALTER COLUMN id SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx
+  ON public.lab_result_attachments(id);
+
+UPDATE public.lab_result_attachments AS attachment
+SET facility_id = lo.facility_id
+FROM public.lab_orders AS lo
+WHERE attachment.facility_id IS NULL
+  AND attachment.lab_order_id = lo.id;
+
+CREATE INDEX IF NOT EXISTS lab_result_attachments_order_facility_idx
+  ON public.lab_result_attachments(lab_order_id, facility_id);
+CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by
+  ON public.lab_result_attachments(uploaded_by);
+
+DO $attachment_path_uniqueness$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.lab_result_attachments
+    WHERE storage_path IS NOT NULL
+    GROUP BY storage_path HAVING count(*) > 1
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
+      ON public.lab_result_attachments(storage_path) WHERE storage_path IS NOT NULL';
+  ELSE
+    RAISE NOTICE 'Duplicate legacy attachment paths retained for review; ambiguous paths remain unreadable.';
+  END IF;
+END;
+$attachment_path_uniqueness$;
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
