@@ -23,9 +23,9 @@ BEGIN
   WHERE p.id = auth.uid();
 
   IF NOT (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(),'admin'::public.app_role)
     OR (
-      public.has_role(auth.uid(), 'lab_technician')
+      public.has_role(auth.uid(),'lab_technician'::public.app_role)
       AND (v_department IS NULL OR v_department = 'laboratory')
     )
   ) THEN
@@ -116,11 +116,11 @@ BEGIN
   FROM public.profiles p
   WHERE p.id = auth.uid();
 
-  v_radiologist := public.has_role(auth.uid(), 'radiologist');
-  v_technician := public.has_role(auth.uid(), 'radiology_technician');
+  v_radiologist := public.has_role(auth.uid(),'radiologist'::public.app_role);
+  v_technician := public.has_role(auth.uid(),'radiology_technician'::public.app_role);
 
   IF NOT (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(),'admin'::public.app_role)
     OR (v_radiologist AND (v_department IS NULL OR v_department = 'radiology'))
     OR (v_technician AND (v_department IS NULL OR v_department = 'radiology'))
   ) THEN
