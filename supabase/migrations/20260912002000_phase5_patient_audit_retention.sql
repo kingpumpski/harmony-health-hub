@@ -1,6 +1,6 @@
 -- Preserve patient audit history when a patient record is removed.
--- Support both the legacy patient_audit_log shape and the canonical patient_audit
--- table created by the patient-hub migration. Keep audit snapshots append-only.
+-- Support legacy patient_audit_log and canonical patient_audit installations.
+-- A missing audit table is not an error on partial legacy installations.
 DO $patient_audit_retention$
 BEGIN
   IF to_regclass('public.patient_audit_log') IS NOT NULL THEN
