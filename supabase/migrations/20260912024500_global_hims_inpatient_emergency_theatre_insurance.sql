@@ -166,6 +166,12 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile legacy claim tables created before the canonical timestamp column existed.
+-- This must precede indexes that order claims by creation time.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 
