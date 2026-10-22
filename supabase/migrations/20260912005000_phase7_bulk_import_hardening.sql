@@ -21,6 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
 ALTER TABLE public.bulk_import_jobs
   ADD COLUMN IF NOT EXISTS entity_type TEXT;
 
+-- Reconcile legacy bulk-import counters before indexes and RPCs use them.
+ALTER TABLE public.bulk_import_jobs
+  ADD COLUMN IF NOT EXISTS successful_rows integer NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
   ON public.bulk_import_jobs(entity_type, status, created_at DESC);
 
