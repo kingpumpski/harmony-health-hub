@@ -21,7 +21,9 @@ BEGIN
  RETURN v_count;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id uuid)
+-- Remove the legacy return-type variant before recreating the canonical RPC.
+DROP FUNCTION IF EXISTS public.seed_facility_reports(uuid);
+CREATE FUNCTION public.seed_facility_reports(_facility_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_user uuid:=auth.uid();
 BEGIN
