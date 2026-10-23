@@ -40,7 +40,8 @@ CREATE POLICY user_active_facilities_select_own
   FOR SELECT TO authenticated
   USING (
     user_id = (SELECT auth.uid())
-    OR (SELECT public.has_role((SELECT auth.uid()), 'system_superuser'::public.app_role))
+    OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role))
+    OR (SELECT public.has_role((SELECT auth.uid()), 'it_admin'::public.app_role))
   );
 
 -- Define the facility resolver before wrappers and later migrations depend on it.
