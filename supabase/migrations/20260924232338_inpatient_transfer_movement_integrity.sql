@@ -50,7 +50,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -293,7 +293,7 @@ BEGIN
     'destination', v_destination_label,
     'status', 'completed'
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transfer_patient_ward_bed_workflow(UUID,UUID,UUID,UUID,TEXT,TEXT) TO authenticated;
@@ -310,7 +310,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_admission_id UUID := _admission_id;
@@ -353,7 +353,7 @@ BEGIN
     NULL,
     NULL
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assign_ward_bed(UUID,UUID,UUID) TO authenticated;
@@ -370,7 +370,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_bed public.ward_beds%ROWTYPE;
@@ -425,7 +425,7 @@ BEGIN
     'released_patient_id', v_bed.patient_id,
     'released_admission_id', v_bed.admission_id
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.release_ward_bed(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.release_ward_bed(UUID,TEXT) TO authenticated;
@@ -442,7 +442,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -654,7 +654,7 @@ BEGIN
     'billing_handoff', 'pending',
     'notification_id', v_notification_id
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.discharge_admission_workflow(UUID,TEXT) TO authenticated;
@@ -677,7 +677,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_bed public.ward_beds%ROWTYPE;
@@ -723,7 +723,7 @@ BEGIN
     'bed_id', v_bed.id,
     'status', _status
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_ward_bed_status(UUID,TEXT,TEXT) TO authenticated;
@@ -739,7 +739,7 @@ RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_id UUID;
@@ -787,7 +787,7 @@ BEGIN
   RETURNING id INTO v_id;
 
   RETURN v_id;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_ward_bed(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_ward_bed(UUID,TEXT) TO authenticated;
@@ -807,7 +807,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_admission UUID;
@@ -946,7 +946,7 @@ BEGIN
     'bed_placement', NULL,
     'awaiting_bed', TRUE
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_admission_workflow(UUID,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_admission_workflow(UUID,TEXT,TEXT,TEXT) TO authenticated;
@@ -963,7 +963,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $function$
+AS $
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'practitioner'::public.app_role) OR public.has_role(auth.uid(), 'nurse'::public.app_role) OR public.has_role(auth.uid(), 'midwife'::public.app_role) OR public.has_role(auth.uid(), 'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
@@ -973,7 +973,7 @@ BEGIN
     _bed,
     _reason
   );
-END; $function$;
+END; $;
 
 DROP FUNCTION IF EXISTS public.create_patient_admission(UUID,TEXT,TEXT,UUID);
 
@@ -991,7 +991,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   v_enc public.encounters%ROWTYPE;
   v_admission UUID;
@@ -1191,7 +1191,7 @@ BEGIN
     'override',v_override,
     'status','admitted'
   );
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admit_encounter_workflow(UUID,TEXT,TEXT,BOOLEAN) TO authenticated;
@@ -1225,7 +1225,7 @@ RETURNS public.diagnoses
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   result public.diagnoses;
@@ -1288,7 +1288,7 @@ BEGIN
   RETURNING * INTO result;
 
   RETURN result;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.add_encounter_diagnosis(UUID,TEXT,TEXT) TO authenticated;
@@ -1299,7 +1299,7 @@ RETURNS public.diagnoses
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   result public.diagnoses;
@@ -1349,14 +1349,14 @@ BEGIN
   WHERE id = _encounter_id;
 
   RETURN result;
-END; $function$;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   encounter_status TEXT;
@@ -1390,7 +1390,7 @@ BEGIN
   END IF;
 
   DELETE FROM public.diagnoses WHERE id = _diagnosis_id;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.set_principal_diagnosis(UUID,UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_principal_diagnosis(UUID,UUID) TO authenticated;
@@ -1420,7 +1420,7 @@ RETURNS public.prescriptions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   result public.prescriptions;
@@ -1479,7 +1479,7 @@ BEGIN
   RETURNING * INTO result;
 
   RETURN result;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_encounter_prescription(UUID,TEXT,TEXT,TEXT,TEXT) TO authenticated;
@@ -1508,7 +1508,7 @@ RETURNS public.anesthetic_assessments
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   result public.anesthetic_assessments;
@@ -1554,7 +1554,7 @@ BEGIN
   ) RETURNING * INTO result;
 
   RETURN result;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_anesthetic_assessment(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,BOOLEAN) TO authenticated;
@@ -1570,7 +1570,7 @@ RETURNS public.vital_alerts
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   result public.vital_alerts;
@@ -1597,7 +1597,7 @@ BEGIN
   END IF;
 
   RETURN result;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.acknowledge_vital_alert(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.acknowledge_vital_alert(UUID) TO authenticated;
@@ -1619,7 +1619,7 @@ RETURNS public.ai_clinical_sessions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1633,14 +1633,14 @@ BEGIN
   VALUES (_patient_id,_specialist,'draft',_input_snapshot,COALESCE(_provenance,'{}'::jsonb),uid)
   RETURNING * INTO result;
   RETURN result;
-END; $function$;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.request_ai_clinical_analysis(_session_id UUID)
 RETURNS public.ai_clinical_sessions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1656,7 +1656,7 @@ BEGIN
   END IF;
   PERFORM public.record_ai_clinical_event(_session_id,'analysis_requested',pg_catalog.jsonb_build_object('requested_at',pg_catalog.now(),'specialist',result.specialist));
   RETURN result;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_ai_clinical_session(UUID,TEXT,JSONB,JSONB) TO authenticated;
@@ -1672,7 +1672,7 @@ RETURNS public.ai_report_requests
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE uid uuid := auth.uid(); v_report public.ai_report_requests; v_type text := lower(btrim(COALESCE(_report_type, 'medical_summary')));
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1682,7 +1682,7 @@ BEGIN
   IF v_type <> 'medical_summary' THEN RAISE EXCEPTION 'Unsupported report type'; END IF;
   INSERT INTO public.ai_report_requests(patient_id, requested_by, report_type, status) VALUES (_patient_id, uid, v_type, 'processing') RETURNING * INTO v_report;
   RETURN v_report;
-END; $function$;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.complete_ai_report_request(
   _request_id uuid, _content text DEFAULT NULL, _error text DEFAULT NULL
@@ -1691,7 +1691,7 @@ RETURNS public.ai_report_requests
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE uid uuid := auth.uid(); v_request public.ai_report_requests; v_content text := NULLIF(btrim(COALESCE(_content, '')), ''); v_error text := NULLIF(btrim(COALESCE(_error, '')), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1703,7 +1703,7 @@ BEGIN
   IF v_content IS NULL AND v_error IS NULL THEN RAISE EXCEPTION 'Report content or error is required'; END IF;
   UPDATE public.ai_report_requests SET status = CASE WHEN v_content IS NOT NULL THEN 'completed' ELSE 'failed' END, content = CASE WHEN v_content IS NOT NULL THEN v_content ELSE NULL END, error = CASE WHEN v_content IS NULL THEN v_error ELSE NULL END, completed_at = now() WHERE id = _request_id RETURNING * INTO v_request;
   RETURN v_request;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.ai_report_requests FROM authenticated, anon;
 GRANT SELECT ON public.ai_report_requests TO authenticated;
@@ -1727,7 +1727,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE uid uuid := auth.uid(); v_id uuid; v_type text := NULLIF(btrim(COALESCE(_document_type,'')), ''); v_name text := NULLIF(btrim(COALESCE(_file_name,'')), ''); v_path text := NULLIF(btrim(COALESCE(_storage_path,'')), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1740,7 +1740,7 @@ BEGIN
   VALUES (_patient_id,v_type,v_name,v_path,NULLIF(btrim(COALESCE(_mime_type,'')),''),_file_size,NULLIF(btrim(COALESCE(_notes,'')),''),uid)
   RETURNING id INTO v_id;
   RETURN jsonb_build_object('document_id',v_id,'patient_id',_patient_id,'storage_path',v_path);
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.patient_documents FROM authenticated, anon;
 GRANT SELECT ON public.patient_documents TO authenticated;
@@ -1749,14 +1749,14 @@ GRANT EXECUTE ON FUNCTION public.upload_patient_document_metadata(uuid,text,text
 
 -- Keep the legacy patient-hub entry point server-authoritative and compatible.
 CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id uuid, _document_type text, _file_url text, _notes text DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $
 DECLARE uid uuid := auth.uid(); v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (public.has_role(uid, 'admin'::public.app_role) OR public.has_role(uid, 'practitioner'::public.app_role) OR public.has_role(uid, 'nurse'::public.app_role) OR public.has_role(uid, 'midwife'::public.app_role) OR public.has_role(uid, 'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
   INSERT INTO public.patient_documents(patient_id,document_type,file_url,notes,uploaded_by) VALUES (_patient_id,_document_type,_file_url,_notes,uid) RETURNING id INTO v_id;
   RETURN jsonb_build_object('document_id',v_id);
-END; $function$;
+END; $;
 REVOKE ALL ON FUNCTION public.create_patient_document(uuid,text,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_patient_document(uuid,text,text,text) TO authenticated;
 
@@ -1775,7 +1775,7 @@ RETURNS public.inpatient_reviews
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid uuid := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -1827,7 +1827,7 @@ BEGIN
   RETURNING * INTO v_review;
 
   RETURN v_review;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.inpatient_reviews FROM authenticated, anon;
 GRANT SELECT ON public.inpatient_reviews TO authenticated;
@@ -1901,7 +1901,7 @@ RETURNS public.meal_plans
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid uuid := auth.uid();
   v_plan public.meal_plans;
@@ -1941,14 +1941,14 @@ BEGIN
   );
 
   RETURN v_plan;
-END; $function$;
+END; $;
 
 CREATE OR REPLACE FUNCTION public.mark_meal_order_delivered(_order_id uuid)
 RETURNS public.meal_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid uuid := auth.uid();
   v_order public.meal_orders;
@@ -1988,7 +1988,7 @@ BEGIN
   );
 
   RETURN v_order;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.meal_plans FROM authenticated, anon;
 GRANT SELECT ON public.meal_plans TO authenticated;
@@ -2003,7 +2003,7 @@ GRANT EXECUTE ON FUNCTION public.mark_meal_order_delivered(uuid) TO authenticate
 
 -- Patient registration and demographic maintenance are authoritative clinical-record mutations.
 CREATE OR REPLACE FUNCTION public.register_patient_workflow(_patient jsonb)
-RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $
 DECLARE uid uuid := auth.uid(); v_patient public.patients; v_id uuid; v_code text;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -2016,9 +2016,9 @@ BEGIN
  ON CONFLICT (id) DO NOTHING RETURNING * INTO v_patient;
  IF v_patient.id IS NULL THEN SELECT * INTO v_patient FROM public.patients WHERE id=v_id; IF v_patient.id IS NULL THEN RAISE EXCEPTION 'Patient registration could not be completed'; END IF; END IF;
  RETURN v_patient;
-END; $function$;
+END; $;
 CREATE OR REPLACE FUNCTION public.update_patient_workflow(_patient_id uuid,_changes jsonb)
-RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $
 DECLARE uid uuid := auth.uid(); v_patient public.patients;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -2028,7 +2028,7 @@ BEGIN
  SELECT * INTO v_patient FROM public.patients WHERE id=_patient_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Patient not found'; END IF;
  UPDATE public.patients SET patient_code=CASE WHEN _changes ? 'patient_code' THEN NULLIF(pg_catalog.btrim(_changes->>'patient_code'),'') ELSE patient_code END, first_name=CASE WHEN _changes ? 'first_name' THEN NULLIF(pg_catalog.btrim(_changes->>'first_name'),'') ELSE first_name END, last_name=CASE WHEN _changes ? 'last_name' THEN NULLIF(pg_catalog.btrim(_changes->>'last_name'),'') ELSE last_name END, date_of_birth=CASE WHEN _changes ? 'date_of_birth' THEN NULLIF(_changes->>'date_of_birth','')::date ELSE date_of_birth END, gender=CASE WHEN _changes ? 'gender' THEN NULLIF(_changes->>'gender','') ELSE gender END, email=CASE WHEN _changes ? 'email' THEN NULLIF(_changes->>'email','') ELSE email END, phone=CASE WHEN _changes ? 'phone' THEN NULLIF(_changes->>'phone','') ELSE phone END, address=CASE WHEN _changes ? 'address' THEN NULLIF(_changes->>'address','') ELSE address END, ghana_card_number=CASE WHEN _changes ? 'ghana_card_number' THEN NULLIF(_changes->>'ghana_card_number','') ELSE ghana_card_number END, insurance_provider=CASE WHEN _changes ? 'insurance_provider' THEN NULLIF(_changes->>'insurance_provider','') ELSE insurance_provider END, insurance_number=CASE WHEN _changes ? 'insurance_number' THEN NULLIF(_changes->>'insurance_number','') ELSE insurance_number END, emergency_contact_name=CASE WHEN _changes ? 'emergency_contact_name' THEN NULLIF(_changes->>'emergency_contact_name','') ELSE emergency_contact_name END, emergency_contact_phone=CASE WHEN _changes ? 'emergency_contact_phone' THEN NULLIF(_changes->>'emergency_contact_phone','') ELSE emergency_contact_phone END, emergency_contact_relation=CASE WHEN _changes ? 'emergency_contact_relation' THEN NULLIF(_changes->>'emergency_contact_relation','') ELSE emergency_contact_relation END, blood_group=CASE WHEN _changes ? 'blood_group' THEN NULLIF(_changes->>'blood_group','') ELSE blood_group END, allergies=CASE WHEN _changes ? 'allergies' THEN NULLIF(_changes->>'allergies','') ELSE allergies END, chronic_conditions=CASE WHEN _changes ? 'chronic_conditions' THEN NULLIF(_changes->>'chronic_conditions','') ELSE chronic_conditions END, status=CASE WHEN _changes ? 'status' THEN NULLIF(_changes->>'status','') ELSE status END, updated_at=now() WHERE id=_patient_id RETURNING * INTO v_patient;
  RETURN v_patient;
-END; $function$;
+END; $;
 REVOKE INSERT, UPDATE, DELETE ON public.patients FROM authenticated, anon;
 GRANT SELECT ON public.patients TO authenticated;
 REVOKE ALL ON FUNCTION public.register_patient_workflow(jsonb) FROM PUBLIC, anon;
@@ -2049,7 +2049,7 @@ RETURNS public.treatment_templates
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_template public.treatment_templates;
@@ -2099,7 +2099,7 @@ BEGIN
   );
 
   RETURN v_template;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.treatment_templates FROM authenticated, anon;
 GRANT SELECT ON public.treatment_templates TO authenticated;
@@ -2116,7 +2116,7 @@ RETURNS public.facility_configuration
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_config public.facility_configuration;
@@ -2176,7 +2176,7 @@ BEGIN
   );
 
   RETURN v_config;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.facility_configuration FROM authenticated, anon;
 GRANT SELECT ON public.facility_configuration TO authenticated;
@@ -2194,7 +2194,7 @@ RETURNS public.outside_lab_documents
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_document public.outside_lab_documents;
@@ -2237,7 +2237,7 @@ BEGIN
    RETURNING * INTO v_document;
 
   RETURN v_document;
-END; $function$;
+END; $;
 
 REVOKE ALL ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.complete_outside_lab_ai_analysis(UUID,TEXT) TO authenticated;
@@ -2255,7 +2255,7 @@ RETURNS public.icd_codes
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $function$
+AS $
 DECLARE
   uid UUID := auth.uid();
   v_code TEXT := pg_catalog.upper(pg_catalog.btrim(COALESCE(_code, '')));
@@ -2282,7 +2282,7 @@ BEGIN
   RETURNING * INTO v_row;
 
   RETURN v_row;
-END; $function$;
+END; $;
 
 REVOKE INSERT, UPDATE, DELETE ON public.icd_codes FROM authenticated, anon;
 GRANT SELECT ON public.icd_codes TO authenticated;
