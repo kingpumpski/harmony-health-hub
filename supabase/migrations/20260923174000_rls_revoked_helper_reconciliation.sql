@@ -81,7 +81,7 @@ CREATE POLICY mo_staff_delete ON public.meal_orders
   FOR DELETE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS mo_staff_insert ON public.meal_orders;
@@ -89,7 +89,7 @@ CREATE POLICY mo_staff_insert ON public.meal_orders
   FOR INSERT TO authenticated
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS mo_staff_update ON public.meal_orders;
@@ -97,11 +97,11 @@ CREATE POLICY mo_staff_update ON public.meal_orders
   FOR UPDATE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   )
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS mp_staff_delete ON public.meal_plans;
@@ -109,7 +109,7 @@ CREATE POLICY mp_staff_delete ON public.meal_plans
   FOR DELETE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS mp_staff_insert ON public.meal_plans;
@@ -117,7 +117,7 @@ CREATE POLICY mp_staff_insert ON public.meal_plans
   FOR INSERT TO authenticated
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS mp_staff_update ON public.meal_plans;
@@ -125,11 +125,11 @@ CREATE POLICY mp_staff_update ON public.meal_plans
   FOR UPDATE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   )
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('canteen')
+    OR public.has_role(auth.uid(), 'canteen'::public.app_role)
   );
 
 DROP POLICY IF EXISTS nq_staff_delete ON public.notification_queue;
@@ -182,7 +182,7 @@ CREATE POLICY staff_read_visit_authorizations ON public.patient_visit_authorizat
   USING (
     public.has_role(auth.uid(), 'admin'::public.app_role)
     OR public.has_role(auth.uid(), 'accountant'::public.app_role)
-    OR public.current_user_has_role('front_desk')
+    OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
     OR EXISTS (
       SELECT 1 FROM public.patients p
@@ -206,7 +206,7 @@ CREATE POLICY service_orders_staff_read ON public.service_orders
   USING (
     public.has_role(auth.uid(), 'admin'::public.app_role)
     OR public.has_role(auth.uid(), 'accountant'::public.app_role)
-    OR public.current_user_has_role('front_desk')
+    OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
   );
 
