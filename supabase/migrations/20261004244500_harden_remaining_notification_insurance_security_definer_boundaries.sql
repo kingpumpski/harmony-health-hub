@@ -2,7 +2,6 @@ ALTER FUNCTION public.claim_notification_queue(integer) SET search_path='';
 ALTER FUNCTION public.create_discharge_insurance_claim(uuid,text,text) SET search_path='';
 ALTER FUNCTION public.create_insurance_company(text,text,text,text,text,text,text) SET search_path='';
 ALTER FUNCTION public.create_insurance_service_tariff(uuid,text,text,numeric,numeric,numeric,date,date) SET search_path='';
-ALTER FUNCTION public.enqueue_external_notification_channels(uuid) SET search_path='';
 ALTER FUNCTION public.enqueue_notification_v2(text,uuid,jsonb,text,jsonb,text,timestamptz,text,uuid,text,text,uuid) SET search_path='';
 ALTER FUNCTION public.ensure_notification_preferences(uuid) SET search_path='';
 ALTER FUNCTION public.erase_notification_history(uuid) SET search_path='';
