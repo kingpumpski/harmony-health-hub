@@ -67,6 +67,18 @@ ALTER TABLE public.lab_result_attachments
   ADD COLUMN IF NOT EXISTS storage_path text,
   ADD COLUMN IF NOT EXISTS uploaded_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 
+-- Backfill facility ownership from the authoritative laboratory order.
+-- Orphaned rows are intentionally not assigned to an arbitrary facility; the NOT NULL
+-- constraint below makes unresolved legacy ownership a visible migration failure.
+UPDATE public.lab_result_attachments AS attachment
+SET facility_id = lo.facility_id
+FROM public.lab_orders AS lo
+WHERE attachment.facility_id IS NULL
+  AND attachment.lab_order_id = lo.id;
+
+ALTER TABLE public.lab_result_attachments
+  ALTER COLUMN facility_id SET NOT NULL;
+
 -- Repair legacy technical identifiers without fabricating clinical metadata.
 -- A non-UUID legacy id remains a hard failure and must be reconciled explicitly.
 UPDATE public.lab_result_attachments
