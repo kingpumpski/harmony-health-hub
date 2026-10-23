@@ -57,7 +57,7 @@ DECLARE
   v_name text := NULLIF(pg_catalog.btrim(_name), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF v_code IS NULL OR v_name IS NULL THEN RAISE EXCEPTION 'Insurance company code and name are required'; END IF;
@@ -101,7 +101,7 @@ DECLARE
   v_name text := NULLIF(pg_catalog.btrim(_name), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     RAISE EXCEPTION 'Administrator or IT administrator role required';
   END IF;
   IF _id IS NULL OR v_code IS NULL OR v_name IS NULL THEN RAISE EXCEPTION 'Company, code and name are required'; END IF;
@@ -135,7 +135,7 @@ CREATE POLICY insurance_companies_admin_it_read
   ON public.insurance_companies
   FOR SELECT
   TO authenticated
-  USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin'));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role));
 
 REVOKE ALL ON FUNCTION public.create_insurance_company(text,text,text,text,text,text,text) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.update_insurance_company(uuid,text,text,text,text,text,text,text,boolean) FROM PUBLIC,anon;
