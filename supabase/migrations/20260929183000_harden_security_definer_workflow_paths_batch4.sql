@@ -13,4 +13,3 @@ alter function public.create_transfusion_record(uuid, text, text, text, boolean,
 alter function public.create_walk_in_billable_service(uuid, text, numeric, text) set search_path = pg_catalog, public;
 alter function public.create_workflow_notification(text, uuid, text, text, text, text, text, uuid, uuid, jsonb) set search_path = pg_catalog, public;
 alter function public.end_video_session(uuid) set search_path = pg_catalog, public;
-alter function public.enqueue_external_notification_channels(uuid) set search_path = pg_catalog, public;
