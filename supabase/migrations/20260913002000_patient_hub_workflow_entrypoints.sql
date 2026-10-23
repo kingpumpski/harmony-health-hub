@@ -1,7 +1,7 @@
 -- Canonical secure entry points used by Patient Hub. These wrappers keep the hub
 -- from bypassing the module-specific lifecycle controls while preserving its convenience.
 CREATE OR REPLACE FUNCTION public.create_patient_appointment(_patient_id UUID, _scheduled_at TIMESTAMPTZ, _department TEXT DEFAULT NULL, _reason TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id UUID;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Appointment creation is not permitted'; END IF;
@@ -10,7 +10,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.record_patient_vitals(_patient_id UUID, _temperature NUMERIC DEFAULT NULL, _pulse NUMERIC DEFAULT NULL, _systolic NUMERIC DEFAULT NULL, _diastolic NUMERIC DEFAULT NULL, _respiratory_rate NUMERIC DEFAULT NULL, _oxygen_saturation NUMERIC DEFAULT NULL, _weight_kg NUMERIC DEFAULT NULL, _height_cm NUMERIC DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id UUID;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Vital recording is not permitted'; END IF;
@@ -19,7 +19,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.create_patient_lab_order(_patient_id UUID, _test_name TEXT, _clinical_notes TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id UUID;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Laboratory order creation is not permitted'; END IF;
@@ -28,7 +28,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id UUID, _document_type TEXT, _file_url TEXT, _notes TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id UUID;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Document creation is not permitted'; END IF;
@@ -37,7 +37,7 @@ BEGIN
 END; $function$;
 
 CREATE OR REPLACE FUNCTION public.create_patient_admission(_patient_id UUID, _reason TEXT, _ward TEXT DEFAULT NULL, _bed_id UUID DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id UUID;
 BEGIN
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
