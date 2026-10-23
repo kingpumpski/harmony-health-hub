@@ -5,8 +5,8 @@ DROP POLICY IF EXISTS billing_overrides_staff_read ON public.billing_overrides;
 CREATE POLICY billing_overrides_staff_read
 ON public.billing_overrides FOR SELECT TO authenticated
 USING (
-  public.has_role(auth.uid(),'admin')
-  OR public.has_role(auth.uid(),'accountant')
+  public.has_role(auth.uid(), 'admin'::public.app_role)
+  OR public.has_role(auth.uid(), 'accountant'::public.app_role)
   OR public.is_clinical_staff(auth.uid())
 );
 REVOKE ALL ON public.billing_overrides FROM anon;
