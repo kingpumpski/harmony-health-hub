@@ -45,6 +45,9 @@ jobs:
     name: Clean database migration replay
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: supabase/setup-cli@v1
