@@ -42,9 +42,10 @@ CREATE POLICY "admins write lab tests"
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
--- Views must respect the querying user's permissions
-ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
-ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+-- These legacy views are optional in clean installations. When present, they must
+-- execute with the querying user's permissions rather than the view owner's.
+ALTER VIEW IF EXISTS public.v_patient_diagnosis_full SET (security_invoker = true);
+ALTER VIEW IF EXISTS public.v_ai_clinical_decision SET (security_invoker = true);
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;
