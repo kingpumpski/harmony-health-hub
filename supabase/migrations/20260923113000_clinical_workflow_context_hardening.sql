@@ -1,7 +1,7 @@
 -- Patient-context and lifecycle hardening for remaining clinical SECURITY DEFINER workflows.
 
 CREATE OR REPLACE FUNCTION public.add_encounter_diagnosis(_encounter_id UUID,_diagnosis TEXT,_icd_code TEXT DEFAULT NULL)
-RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $function$
+RETURNS public.diagnoses LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE v_status text; v_result public.diagnoses;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
