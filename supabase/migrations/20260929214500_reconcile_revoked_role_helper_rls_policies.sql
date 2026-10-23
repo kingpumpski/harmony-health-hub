@@ -1,3 +1,27 @@
+-- Restore the current-user-only clinical helper before RLS policies reference it.
+-- Unlike is_clinical_staff(uuid), this function cannot probe another user's roles.
+CREATE OR REPLACE FUNCTION public.current_user_is_clinical_staff()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT (SELECT auth.uid()) IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM public.user_roles AS ur
+      WHERE ur.user_id = (SELECT auth.uid())
+        AND ur.role::text IN (
+          'admin','practitioner','nurse','midwife','specialist_nurse',
+          'lab_technician','pharmacist','radiologist','front_desk','canteen'
+        )
+    );
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_is_clinical_staff() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.current_user_is_clinical_staff() TO authenticated;
+
 ALTER POLICY clinical_reference_admin_insert ON public.clinical_reference_values WITH CHECK ((select public.current_user_has_role('admin'::public.app_role)));
 ALTER POLICY clinical_reference_admin_update ON public.clinical_reference_values USING ((select public.current_user_has_role('admin'::public.app_role))) WITH CHECK ((select public.current_user_has_role('admin'::public.app_role)));
 ALTER POLICY clinical_reference_read ON public.clinical_reference_values USING (is_active = true OR (select public.current_user_has_role('admin'::public.app_role)));
