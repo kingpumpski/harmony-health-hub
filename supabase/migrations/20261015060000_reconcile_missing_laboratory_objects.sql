@@ -104,6 +104,26 @@ ALTER TABLE public.lab_result_attachments
 CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx
   ON public.lab_result_attachments(id);
 
+-- Enforce unique object paths when the legacy data is unambiguous. Do not silently
+-- delete or rewrite duplicate object references: the RPC below fails closed for them.
+DO $attachment_path_uniqueness$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.lab_result_attachments
+    WHERE storage_path IS NOT NULL
+    GROUP BY storage_path
+    HAVING count(*) > 1
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx
+      ON public.lab_result_attachments(storage_path)
+      WHERE storage_path IS NOT NULL';
+  ELSE
+    RAISE NOTICE 'Duplicate legacy attachment storage paths detected; ambiguous paths will remain inaccessible until reconciled';
+  END IF;
+END
+$attachment_path_uniqueness$;
+
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
 GRANT SELECT, INSERT ON TABLE public.lab_result_attachments TO authenticated;
@@ -318,6 +338,13 @@ BEGIN
       ON p.id = lo.patient_id
       AND p.facility_id = lo.facility_id
     WHERE a.facility_id = v_facility
+      AND a.storage_path IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.lab_result_attachments duplicate
+        WHERE duplicate.storage_path = a.storage_path
+          AND duplicate.id <> a.id
+      )
       AND a.lab_order_id = ANY(coalesce(_lab_order_ids, ARRAY[]::uuid[]))
       AND EXISTS (
         SELECT 1
