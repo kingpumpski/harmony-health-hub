@@ -21,8 +21,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.current_user_has_role(public.app_role[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role[]) TO authenticated;
 
-DO $
-DECLARE p record; v_qual text; v_check text;
+DO $$DECLARE p record; v_qual text; v_check text;
 BEGIN
   FOR p IN
     SELECT schemaname,tablename,policyname,cmd,qual,with_check
