@@ -30,13 +30,13 @@ BEGIN
 
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[[:space:]]*\\([^,]*auth\\.uid\\(\\)[^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\\)',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[[:space:]]*\\([^,]*auth\\.uid\\(\\)[^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\\)',
       'current_user_has_facility_access(\1)',
       'gi'
     );
