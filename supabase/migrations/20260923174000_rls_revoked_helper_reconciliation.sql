@@ -35,8 +35,8 @@ DROP POLICY IF EXISTS billing_overrides_staff_read ON public.billing_overrides;
 CREATE POLICY billing_overrides_staff_read ON public.billing_overrides
   FOR SELECT TO authenticated
   USING (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
   );
 
@@ -44,7 +44,7 @@ DROP POLICY IF EXISTS document_versions_staff_read ON public.document_versions;
 CREATE POLICY document_versions_staff_read ON public.document_versions
   FOR SELECT TO authenticated
   USING (
-    public.current_user_has_role('admin')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
     OR changed_by=(SELECT auth.uid())
     OR public.is_clinical_staff(auth.uid())
   );
@@ -137,7 +137,7 @@ CREATE POLICY nq_staff_delete ON public.notification_queue
   FOR DELETE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS nq_staff_insert ON public.notification_queue;
@@ -145,7 +145,7 @@ CREATE POLICY nq_staff_insert ON public.notification_queue
   FOR INSERT TO authenticated
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS nq_staff_read ON public.notification_queue;
@@ -153,7 +153,7 @@ CREATE POLICY nq_staff_read ON public.notification_queue
   FOR SELECT TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS nq_staff_update ON public.notification_queue;
@@ -161,11 +161,11 @@ CREATE POLICY nq_staff_update ON public.notification_queue
   FOR UPDATE TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   )
   WITH CHECK (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS staff_read_patient_audit ON public.patient_audit_log;
@@ -173,15 +173,15 @@ CREATE POLICY staff_read_patient_audit ON public.patient_audit_log
   FOR SELECT TO authenticated
   USING (
     public.is_clinical_staff(auth.uid())
-    OR public.current_user_has_role('admin')
+    OR public.has_role(auth.uid(), 'admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS staff_read_visit_authorizations ON public.patient_visit_authorizations;
 CREATE POLICY staff_read_visit_authorizations ON public.patient_visit_authorizations
   FOR SELECT TO authenticated
   USING (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
     OR public.current_user_has_role('front_desk')
     OR public.is_clinical_staff(auth.uid())
     OR EXISTS (
@@ -195,8 +195,8 @@ DROP POLICY IF EXISTS staff_read_service_order_events ON public.service_order_ev
 CREATE POLICY staff_read_service_order_events ON public.service_order_events
   FOR SELECT TO authenticated
   USING (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
     OR public.is_clinical_staff(auth.uid())
   );
 
@@ -204,8 +204,8 @@ DROP POLICY IF EXISTS service_orders_staff_read ON public.service_orders;
 CREATE POLICY service_orders_staff_read ON public.service_orders
   FOR SELECT TO authenticated
   USING (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
     OR public.current_user_has_role('front_desk')
     OR public.is_clinical_staff(auth.uid())
   );
