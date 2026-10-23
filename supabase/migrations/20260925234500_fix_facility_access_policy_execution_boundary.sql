@@ -47,20 +47,36 @@ BEGIN
     END IF;
 
     IF p.cmd = 'INSERT' THEN
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
-        p.policyname, p.schemaname, p.tablename, v_check
-      );
+      IF v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_check
+        );
+      END IF;
     ELSIF p.cmd = 'DELETE' OR p.cmd = 'SELECT' THEN
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I USING (%s)',
-        p.policyname, p.schemaname, p.tablename, v_qual
-      );
+      IF v_has_qual THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual
+        );
+      END IF;
     ELSE
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I USING (%s) WITH CHECK (%s)',
-        p.policyname, p.schemaname, p.tablename, v_qual, v_check
-      );
+      IF v_has_qual AND v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s) WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual, v_check
+        );
+      ELSIF v_has_qual THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual
+        );
+      ELSIF v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_check
+        );
+      END IF;
     END IF;
   END LOOP;
 END;
