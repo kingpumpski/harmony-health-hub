@@ -23,6 +23,50 @@ BEGIN
 END;
 $function$;
 
+-- Define the facility resolver before wrappers and later migrations depend on it.
+-- The canonical facility-control-plane migration reasserts this implementation.
+CREATE OR REPLACE FUNCTION public.current_user_facility_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT COALESCE(
+    (
+      SELECT uaf.facility_id
+      FROM public.user_active_facilities AS uaf
+      JOIN public.facility_memberships AS fm
+        ON fm.user_id = uaf.user_id
+       AND fm.facility_id = uaf.facility_id
+       AND fm.is_active = true
+      WHERE uaf.user_id = (SELECT auth.uid())
+        AND EXISTS (
+          SELECT 1
+          FROM public.healthcare_facilities AS hf
+          WHERE hf.id = uaf.facility_id
+            AND hf.is_active = true
+        )
+      LIMIT 1
+    ),
+    (
+      SELECT fm.facility_id
+      FROM public.facility_memberships AS fm
+      JOIN public.healthcare_facilities AS hf
+        ON hf.id = fm.facility_id
+       AND hf.is_active = true
+      WHERE fm.user_id = (SELECT auth.uid())
+        AND fm.is_active = true
+      GROUP BY fm.facility_id
+      HAVING count(*) = 1
+      ORDER BY fm.facility_id
+      LIMIT 1
+    )
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_facility_id() FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.get_current_facility_context()
 RETURNS TABLE(
   facility_id uuid,
