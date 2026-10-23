@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
 -- Reconcile legacy attachment tables created before order/result lineage was standardized.
 -- CREATE TABLE IF NOT EXISTS does not add these fields to an existing table.
 ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
   ADD COLUMN IF NOT EXISTS lab_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS lab_result_id uuid,
   ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
