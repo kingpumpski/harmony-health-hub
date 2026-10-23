@@ -23,6 +23,26 @@ BEGIN
 END;
 $function$;
 
+-- The active-facility relation is required by the resolver and by later
+-- facility-governance migrations, but was absent from clean migration replay.
+CREATE TABLE IF NOT EXISTS public.user_active_facilities (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_active_facilities ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS user_active_facilities_select_own
+  ON public.user_active_facilities;
+CREATE POLICY user_active_facilities_select_own
+  ON public.user_active_facilities
+  FOR SELECT TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    OR (SELECT public.has_role((SELECT auth.uid()), 'system_superuser'::public.app_role))
+  );
+
 -- Define the facility resolver before wrappers and later migrations depend on it.
 -- The canonical facility-control-plane migration reasserts this implementation.
 CREATE OR REPLACE FUNCTION public.current_user_facility_id()
