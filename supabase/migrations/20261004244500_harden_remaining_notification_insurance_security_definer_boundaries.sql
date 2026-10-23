@@ -14,6 +14,5 @@ ALTER FUNCTION public.update_insurance_company(uuid,text,text,text,text,text,tex
 ALTER FUNCTION public.update_insurance_service_tariff(uuid,numeric,numeric,numeric,date,date,boolean) SET search_path='';
 ALTER FUNCTION public.verify_facility_notification_provider(uuid,text,text,boolean,text) SET search_path='';
 REVOKE ALL ON FUNCTION public.claim_notification_queue(integer) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.enqueue_external_notification_channels(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_notification_queue(integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.enqueue_external_notification_channels(uuid) TO service_role;
