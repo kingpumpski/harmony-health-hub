@@ -1,22 +1,22 @@
 -- Pin remaining direct clinical/billing write wrappers to facility-scoped execution.
-CREATE OR REPLACE FUNCTION public.create_walk_in_billable_service(_patient_id uuid,_service_code text,_quantity integer DEFAULT 1,_notes text DEFAULT NULL)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
+CREATE OR REPLACE FUNCTION public.create_walk_in_billable_service(_patient_id uuid,_service_code text,_quantity numeric DEFAULT 1,_notes text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE t public.service_tariffs%ROWTYPE; o uuid; inv uuid; item uuid; pf uuid;
 BEGIN
  IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife')) THEN RAISE EXCEPTION 'Billing access required'; END IF;
  pf:=public.assert_patient_facility_context(_patient_id);
- IF _quantity IS NULL OR _quantity<1 THEN RAISE EXCEPTION 'Quantity must be at least one'; END IF;
+ IF _quantity IS NULL OR _quantity<=0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
  SELECT * INTO t FROM public.service_tariffs WHERE service_code=_service_code AND active=true AND facility_id=pf LIMIT 1;
  IF t.id IS NULL THEN RAISE EXCEPTION 'Active service tariff not found'; END IF;
  SELECT i.id INTO inv FROM public.invoices i WHERE i.patient_id=_patient_id AND i.facility_id=pf AND i.status NOT IN ('paid','cancelled') ORDER BY i.created_at DESC LIMIT 1;
  IF inv IS NULL THEN INSERT INTO public.invoices(patient_id,facility_id,total_amount,paid_amount,status,created_by) VALUES(_patient_id,pf,0,0,'pending',auth.uid()) RETURNING id INTO inv; END IF;
  INSERT INTO public.invoice_items(invoice_id,facility_id,description,quantity,unit_price,amount,category,department,source_type,source_id,paid_amount) VALUES(inv,pf,t.service_name,_quantity,t.amount,t.amount*_quantity,'procedure',t.department,'walk_in',gen_random_uuid(),0) RETURNING id INTO item;
  INSERT INTO public.service_orders(patient_id,facility_id,department,service_name,amount,status,notes,requested_by,order_type,service_code,quantity,unit_price,payment_required,created_by,invoice_id,invoice_item_id) VALUES(_patient_id,pf,t.department,t.service_name,t.amount*_quantity,'pending_payment_approval',_notes,auth.uid(),'walk_in',t.service_code,_quantity,t.amount,true,auth.uid(),inv,item) RETURNING id INTO o;
- UPDATE public.invoice_items SET service_order_id=o,source_id=o WHERE id=item; RETURN o;
+ UPDATE public.invoice_items SET service_order_id=o,source_id=o WHERE id=item; RETURN jsonb_build_object('service_order_id',o,'amount',t.amount*_quantity,'status','pending_payment_approval');
 END;$function$;
-REVOKE ALL ON FUNCTION public.create_walk_in_billable_service(uuid,text,integer,text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.create_walk_in_billable_service(uuid,text,integer,text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.create_walk_in_billable_service(uuid,text,integer,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.create_walk_in_billable_service(uuid,text,numeric,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_walk_in_billable_service(uuid,text,numeric,text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.create_walk_in_billable_service(uuid,text,numeric,text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.record_triage_assessment_offline(_id uuid,_patient_id uuid,_systolic integer DEFAULT NULL,_diastolic integer DEFAULT NULL,_heart_rate integer DEFAULT NULL,_temperature numeric DEFAULT NULL,_respiratory_rate integer DEFAULT NULL,_oxygen_saturation numeric DEFAULT NULL,_weight_kg numeric DEFAULT NULL,_height_m numeric DEFAULT NULL,_pain_score integer DEFAULT NULL,_consciousness text DEFAULT NULL,_presenting_complaint text DEFAULT NULL,_clinical_notes text DEFAULT NULL,_priority text DEFAULT 'routine')
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
