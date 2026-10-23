@@ -13,5 +13,4 @@ ALTER FUNCTION public.notify_due_medications() SET search_path = pg_catalog, pub
 ALTER FUNCTION public.notify_insurance_claim_lifecycle() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.record_system_audit(text,text,text,uuid,text,jsonb) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.service_order_event_trigger() SET search_path = pg_catalog, public;
-ALTER FUNCTION public.set_ward_facility_context() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.validate_service_order_encounter() SET search_path = pg_catalog, public;
