@@ -15,4 +15,4 @@ ALTER FUNCTION public.update_insurance_service_tariff(uuid,numeric,numeric,numer
 ALTER FUNCTION public.verify_facility_notification_provider(uuid,text,text,boolean,text) SET search_path='';
 REVOKE ALL ON FUNCTION public.claim_notification_queue(integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_notification_queue(integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.enqueue_external_notification_channels(uuid) TO service_role;
+-- No grant: enqueue_external_notification_channels(uuid) is not defined in this schema.
