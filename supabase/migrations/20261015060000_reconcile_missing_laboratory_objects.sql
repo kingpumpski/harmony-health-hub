@@ -59,12 +59,38 @@ CREATE TABLE IF NOT EXISTS public.lab_result_attachments (
 -- Reconcile legacy attachment tables created before order/result lineage was standardized.
 -- CREATE TABLE IF NOT EXISTS does not add these fields to an existing table.
 ALTER TABLE public.lab_result_attachments
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS file_size_bytes bigint,
   ADD COLUMN IF NOT EXISTS lab_order_id uuid REFERENCES public.lab_orders(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS lab_result_id uuid,
   ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS storage_path text,
   ADD COLUMN IF NOT EXISTS uploaded_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+-- Repair legacy technical identifiers without fabricating clinical metadata.
+-- A non-UUID legacy id remains a hard failure and must be reconciled explicitly.
+UPDATE public.lab_result_attachments
+SET id = gen_random_uuid()
+WHERE id IS NULL;
+
+WITH duplicate_ids AS (
+  SELECT ctid,
+         row_number() OVER (PARTITION BY id ORDER BY ctid) AS duplicate_rank
+  FROM public.lab_result_attachments
+  WHERE id IS NOT NULL
+)
+UPDATE public.lab_result_attachments AS attachment
+SET id = gen_random_uuid()
+FROM duplicate_ids
+WHERE attachment.ctid = duplicate_ids.ctid
+  AND duplicate_ids.duplicate_rank > 1;
+
+ALTER TABLE public.lab_result_attachments
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ALTER COLUMN id SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx
+  ON public.lab_result_attachments(id);
 
 ALTER TABLE public.lab_result_attachments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.lab_result_attachments FROM PUBLIC, anon;
