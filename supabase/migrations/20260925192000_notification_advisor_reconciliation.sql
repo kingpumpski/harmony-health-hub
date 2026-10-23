@@ -15,20 +15,10 @@ CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_update
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_logs_user_id
   ON public.notification_delivery_logs(user_id);
 
--- Keep client-visible notification RLS policies from re-evaluating auth state per row.
-DROP POLICY IF EXISTS "users manage own notification channel preferences" ON public.notification_channel_preferences;
-CREATE POLICY "users manage own notification channel preferences"
-  ON public.notification_channel_preferences
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
-
-DROP POLICY IF EXISTS "users manage own push subscriptions" ON public.notification_push_subscriptions;
-CREATE POLICY "users manage own push subscriptions"
-  ON public.notification_push_subscriptions
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
+-- This schema uses public.user_notification_preferences and
+-- public.notification_delivery_logs; legacy notification_channel_preferences and
+-- notification_push_subscriptions tables are not part of the clean-install schema.
+-- Avoid applying policies to nonexistent legacy relations.
 
 -- Facility notification configuration is read by the Settings control plane.
 -- IT administrators have the same facility-scoped operational read/write access as admins,
