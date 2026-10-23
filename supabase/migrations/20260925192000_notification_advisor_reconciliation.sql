@@ -12,8 +12,8 @@ CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_create
   ON public.facility_notification_provider_connections(created_by);
 CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_updated_by
   ON public.facility_notification_provider_connections(updated_by);
-CREATE INDEX IF NOT EXISTS idx_notification_deliveries_user_id
-  ON public.notification_deliveries(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_logs_user_id
+  ON public.notification_delivery_logs(user_id);
 
 -- Keep client-visible notification RLS policies from re-evaluating auth state per row.
 DROP POLICY IF EXISTS "users manage own notification channel preferences" ON public.notification_channel_preferences;
@@ -81,5 +81,5 @@ CREATE POLICY "facility notification provider admin manage"
       OR (select public.has_role((select auth.uid()),'it_admin'::public.app_role)))
   );
 
-COMMENT ON TABLE public.notification_deliveries IS
+COMMENT ON TABLE public.notification_delivery_logs IS
   'Service/provider delivery evidence. RLS is enabled with no client policies intentionally; provider workers and trusted service-role processes access delivery records. Do not add broad authenticated access.';
