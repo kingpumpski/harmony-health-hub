@@ -16,7 +16,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.remove_encounter_diagnosis(_diagnosis_id UUID)
-RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_encounter uuid; v_status text;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -29,7 +29,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.complete_encounter_workflow(_encounter_id UUID)
-RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS public.encounters LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.encounters;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -43,7 +43,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_patient_referral_workflow(_patient_id UUID,_destination TEXT,_specialty TEXT DEFAULT NULL,_reason TEXT DEFAULT NULL,_urgency TEXT DEFAULT 'routine',_clinical_summary TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -57,7 +57,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_care_transition_workflow(_patient_id UUID,_transition_type TEXT,_destination TEXT DEFAULT NULL,_summary TEXT DEFAULT NULL,_medications_reconciled BOOLEAN DEFAULT false,_follow_up_required BOOLEAN DEFAULT false,_follow_up_date DATE DEFAULT NULL,_instructions TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -71,7 +71,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_fertility_cycle_workflow(_patient_id UUID,_partner_name TEXT DEFAULT NULL,_cycle_type TEXT DEFAULT 'IVF',_start_date DATE DEFAULT CURRENT_DATE,_protocol TEXT DEFAULT NULL)
-RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_cycle public.fertility_cycles; v_cycle_number integer;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -85,7 +85,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.record_fertility_monitoring_workflow(_cycle_id UUID,_visit_date DATE,_cycle_day INTEGER DEFAULT NULL,_estradiol NUMERIC DEFAULT NULL,_lh NUMERIC DEFAULT NULL,_fsh NUMERIC DEFAULT NULL,_progesterone NUMERIC DEFAULT NULL,_follicle_count_left INTEGER DEFAULT NULL,_follicle_count_right INTEGER DEFAULT NULL,_endometrial_thickness NUMERIC DEFAULT NULL,_medication_adjustments TEXT DEFAULT NULL)
-RETURNS public.fertility_monitoring LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS public.fertility_monitoring LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_row public.fertility_monitoring; v_patient uuid; v_status text;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -105,7 +105,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.transition_fertility_cycle_workflow(_cycle_id UUID,_status TEXT,_outcome TEXT DEFAULT NULL)
-RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_cycle public.fertility_cycles; v_patient uuid;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -120,7 +120,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_dental_record(_patient_id UUID,_examination TEXT,_treatment_plan TEXT,_procedures_performed TEXT)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE _id uuid;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -131,7 +131,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_procedure_note(_patient_id UUID,_procedure_name TEXT,_template_used TEXT,_indication TEXT,_technique TEXT,_findings TEXT,_complications TEXT,_post_op_plan TEXT,_charge_amount NUMERIC,_service_order_id UUID)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); sid public.service_orders%ROWTYPE; id UUID;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
@@ -150,7 +150,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id uuid,_inventory_id uuid,_quantity integer)
-RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id uuid; patient_uuid uuid;
 BEGIN
  IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
