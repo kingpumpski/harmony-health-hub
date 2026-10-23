@@ -10,7 +10,7 @@ alter function public.create_service_order(uuid, uuid, text, text, numeric, uuid
 alter function public.create_staff_shift_assignment(uuid, text, text, timestamptz, timestamptz) set search_path = pg_catalog, public;
 alter function public.create_theatre_case(uuid, text, timestamptz, text, text, uuid, uuid, uuid) set search_path = pg_catalog, public;
 alter function public.create_transfusion_record(uuid, text, text, text, boolean, uuid) set search_path = pg_catalog, public;
-alter function public.create_walk_in_billable_service(uuid, text, integer, text) set search_path = pg_catalog, public;
+alter function public.create_walk_in_billable_service(uuid, text, numeric, text) set search_path = pg_catalog, public;
 alter function public.create_workflow_notification(text, uuid, text, text, text, text, text, uuid, uuid, jsonb) set search_path = pg_catalog, public;
 alter function public.end_video_session(uuid) set search_path = pg_catalog, public;
 alter function public.enqueue_external_notification_channels(uuid) set search_path = pg_catalog, public;
