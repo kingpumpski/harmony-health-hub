@@ -50,7 +50,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -310,7 +310,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_admission_id UUID := _admission_id;
@@ -370,7 +370,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_bed public.ward_beds%ROWTYPE;
@@ -442,7 +442,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -677,7 +677,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_bed public.ward_beds%ROWTYPE;
@@ -739,7 +739,7 @@ RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_id UUID;
@@ -807,7 +807,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_admission UUID;
@@ -963,7 +963,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $$
+AS $function$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
@@ -991,7 +991,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   v_enc public.encounters%ROWTYPE;
   v_admission UUID;
@@ -1225,7 +1225,7 @@ RETURNS public.diagnoses
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   result public.diagnoses;
@@ -1299,7 +1299,7 @@ RETURNS public.diagnoses
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   result public.diagnoses;
@@ -1356,7 +1356,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   encounter_status TEXT;
@@ -1420,7 +1420,7 @@ RETURNS public.prescriptions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   result public.prescriptions;
@@ -1508,7 +1508,7 @@ RETURNS public.anesthetic_assessments
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   result public.anesthetic_assessments;
@@ -1570,7 +1570,7 @@ RETURNS public.vital_alerts
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   result public.vital_alerts;
@@ -1619,7 +1619,7 @@ RETURNS public.ai_clinical_sessions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1640,7 +1640,7 @@ RETURNS public.ai_clinical_sessions
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE uid UUID := auth.uid(); result public.ai_clinical_sessions;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1672,7 +1672,7 @@ RETURNS public.ai_report_requests
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE uid uuid := auth.uid(); v_report public.ai_report_requests; v_type text := lower(btrim(COALESCE(_report_type, 'medical_summary')));
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1691,7 +1691,7 @@ RETURNS public.ai_report_requests
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE uid uuid := auth.uid(); v_request public.ai_report_requests; v_content text := NULLIF(btrim(COALESCE(_content, '')), ''); v_error text := NULLIF(btrim(COALESCE(_error, '')), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1727,7 +1727,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE uid uuid := auth.uid(); v_id uuid; v_type text := NULLIF(btrim(COALESCE(_document_type,'')), ''); v_name text := NULLIF(btrim(COALESCE(_file_name,'')), ''); v_path text := NULLIF(btrim(COALESCE(_storage_path,'')), '');
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1749,7 +1749,7 @@ GRANT EXECUTE ON FUNCTION public.upload_patient_document_metadata(uuid,text,text
 
 -- Keep the legacy patient-hub entry point server-authoritative and compatible.
 CREATE OR REPLACE FUNCTION public.create_patient_document(_patient_id uuid, _document_type text, _file_url text, _notes text DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
 DECLARE uid uuid := auth.uid(); v_id uuid;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -1775,7 +1775,7 @@ RETURNS public.inpatient_reviews
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_admission public.admissions%ROWTYPE;
@@ -1901,7 +1901,7 @@ RETURNS public.meal_plans
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_plan public.meal_plans;
@@ -1948,7 +1948,7 @@ RETURNS public.meal_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid uuid := auth.uid();
   v_order public.meal_orders;
@@ -2003,7 +2003,7 @@ GRANT EXECUTE ON FUNCTION public.mark_meal_order_delivered(uuid) TO authenticate
 
 -- Patient registration and demographic maintenance are authoritative clinical-record mutations.
 CREATE OR REPLACE FUNCTION public.register_patient_workflow(_patient jsonb)
-RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
 DECLARE uid uuid := auth.uid(); v_patient public.patients; v_id uuid; v_code text;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -2018,7 +2018,7 @@ BEGIN
  RETURN v_patient;
 END; $function$;
 CREATE OR REPLACE FUNCTION public.update_patient_workflow(_patient_id uuid,_changes jsonb)
-RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $$
+RETURNS public.patients LANGUAGE plpgsql SECURITY DEFINER SET search_path TO pg_catalog, public AS $function$
 DECLARE uid uuid := auth.uid(); v_patient public.patients;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -2049,7 +2049,7 @@ RETURNS public.treatment_templates
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_template public.treatment_templates;
@@ -2116,7 +2116,7 @@ RETURNS public.facility_configuration
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_config public.facility_configuration;
@@ -2194,7 +2194,7 @@ RETURNS public.outside_lab_documents
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_document public.outside_lab_documents;
@@ -2255,7 +2255,7 @@ RETURNS public.icd_codes
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO pg_catalog, public
-AS $$
+AS $function$
 DECLARE
   uid UUID := auth.uid();
   v_code TEXT := pg_catalog.upper(pg_catalog.btrim(COALESCE(_code, '')));
