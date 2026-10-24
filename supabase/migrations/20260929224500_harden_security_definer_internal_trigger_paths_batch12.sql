@@ -1,8 +1,6 @@
 -- Batch 12: harden internal/trigger SECURITY DEFINER paths. No EXECUTE grants or workflow semantics changed.
-ALTER FUNCTION public.audit_operational_row_change() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.audit_patient_change() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.audit_patient_changes() SET search_path = pg_catalog, public;
-ALTER FUNCTION public.fanout_notification_after_insert() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.generate_patient_code() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.handle_new_user() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.has_active_patient_visit_coverage(uuid) SET search_path = pg_catalog, public;
