@@ -23,6 +23,71 @@ BEGIN
 END;
 $function$;
 
+-- The active-facility relation is required by the resolver and by later
+-- facility-governance migrations, but was absent from clean migration replay.
+CREATE TABLE IF NOT EXISTS public.user_active_facilities (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_active_facilities ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS user_active_facilities_select_own
+  ON public.user_active_facilities;
+CREATE POLICY user_active_facilities_select_own
+  ON public.user_active_facilities
+  FOR SELECT TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::public.app_role))
+    OR (SELECT public.has_role((SELECT auth.uid()), 'it_admin'::public.app_role))
+  );
+
+-- Define the facility resolver before wrappers and later migrations depend on it.
+-- The canonical facility-control-plane migration reasserts this implementation.
+CREATE OR REPLACE FUNCTION public.current_user_facility_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT COALESCE(
+    (
+      SELECT uaf.facility_id
+      FROM public.user_active_facilities AS uaf
+      JOIN public.facility_memberships AS fm
+        ON fm.user_id = uaf.user_id
+       AND fm.facility_id = uaf.facility_id
+       AND fm.is_active = true
+      WHERE uaf.user_id = (SELECT auth.uid())
+        AND EXISTS (
+          SELECT 1
+          FROM public.healthcare_facilities AS hf
+          WHERE hf.id = uaf.facility_id
+            AND hf.is_active = true
+        )
+      LIMIT 1
+    ),
+    (
+      SELECT fm.facility_id
+      FROM public.facility_memberships AS fm
+      JOIN public.healthcare_facilities AS hf
+        ON hf.id = fm.facility_id
+       AND hf.is_active = true
+      WHERE fm.user_id = (SELECT auth.uid())
+        AND fm.is_active = true
+      GROUP BY fm.facility_id
+      HAVING count(*) = 1
+      ORDER BY fm.facility_id
+      LIMIT 1
+    )
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_facility_id() FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.get_current_facility_context()
 RETURNS TABLE(
   facility_id uuid,

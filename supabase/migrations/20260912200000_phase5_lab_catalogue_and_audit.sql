@@ -31,9 +31,11 @@ ALTER TABLE public.lab_results
 
 ALTER TABLE public.lab_test_catalogue ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "authenticated read active lab catalogue" ON public.lab_test_catalogue;
-CREATE POLICY "authenticated read active lab catalogue" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (active = true OR public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "lab catalogue staff read" ON public.lab_test_catalogue;
+CREATE POLICY "lab catalogue staff read" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "admins manage lab catalogue" ON public.lab_test_catalogue;
-CREATE POLICY "admins manage lab catalogue" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "lab catalogue admin write" ON public.lab_test_catalogue;
+CREATE POLICY "lab catalogue admin write" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician'));
 DROP TRIGGER IF EXISTS t_lab_catalogue_updated ON public.lab_test_catalogue;
 CREATE TRIGGER t_lab_catalogue_updated BEFORE UPDATE ON public.lab_test_catalogue FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 

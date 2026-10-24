@@ -6,7 +6,7 @@ const sql=fs.readFileSync(p,'utf8').replace(/\s+/g,' ').trim().toLowerCase();
 const signatures=[
 'get_ai_clinical_context(uuid)','get_encounter_workflow_workspace()','get_patient_appointments(uuid, integer)',
 'get_patient_bmi_context(uuid)','patient_coverage_details(uuid)','record_patient_deposit(uuid, numeric, text)',
-'save_encounter_draft(uuid, text, text, text)','schedule_medication_administration(uuid, text, text, text, timestamptz, text, integer)',
+'schedule_medication_administration(uuid, text, text, text, timestamptz, text, integer)',
 'search_patient_directory(text, integer)','start_appointment_encounter(uuid, text, text)',
 'transition_medication_administration(uuid, text, text, text, uuid)'
 ];

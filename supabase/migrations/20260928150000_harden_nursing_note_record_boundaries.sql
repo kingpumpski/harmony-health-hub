@@ -1,3 +1,37 @@
+-- The nursing-note table is required by the RPC and later facility/index
+-- migrations, but was missing from the clean migration chain. Keep this
+-- compatibility creation idempotent for environments where it already exists.
+CREATE TABLE IF NOT EXISTS public.nursing_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  facility_id uuid REFERENCES public.healthcare_facilities(id) ON DELETE RESTRICT,
+  patient_id uuid NOT NULL REFERENCES public.patients(id) ON DELETE RESTRICT,
+  encounter_id uuid REFERENCES public.encounters(id) ON DELETE RESTRICT,
+  admission_id uuid REFERENCES public.admissions(id) ON DELETE RESTRICT,
+  author_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  note_type text NOT NULL DEFAULT 'progress',
+  note_text text NOT NULL,
+  assessment text,
+  intervention text,
+  evaluation text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT nursing_notes_encounter_or_admission_required
+    CHECK (encounter_id IS NOT NULL OR admission_id IS NOT NULL)
+);
+
+ALTER TABLE public.nursing_notes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS nursing_notes_read_current_facility
+  ON public.nursing_notes;
+CREATE POLICY nursing_notes_read_current_facility
+  ON public.nursing_notes
+  FOR SELECT
+  TO authenticated
+  USING (
+    facility_id IS NOT NULL
+    AND facility_id = (SELECT public.current_user_facility_id())
+  );
+
 -- Harden nursing-note creation so authenticated clinical writers cannot
 -- attach a note to an unrelated encounter or admission.
 CREATE OR REPLACE FUNCTION public.create_nursing_note(

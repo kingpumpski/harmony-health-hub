@@ -16,11 +16,9 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND (
-        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
-        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*[(]'
+        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*[(]'
       )
-      AND coalesce(qual, '') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check, '') !~* 'current_user_has_facility_access';
   LOOP
     -- These policies all evaluate the current authenticated session. Replace
     -- only the auth.uid()-bound two-argument helper calls with the one-argument
@@ -30,13 +28,13 @@ BEGIN
 
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[[:space:]]*[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[[:space:]]*[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
@@ -49,20 +47,36 @@ BEGIN
     END IF;
 
     IF p.cmd = 'INSERT' THEN
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
-        p.policyname, p.schemaname, p.tablename, v_check
-      );
+      IF v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_check
+        );
+      END IF;
     ELSIF p.cmd = 'DELETE' OR p.cmd = 'SELECT' THEN
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I USING (%s)',
-        p.policyname, p.schemaname, p.tablename, v_qual
-      );
+      IF v_has_qual THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual
+        );
+      END IF;
     ELSE
-      EXECUTE format(
-        'ALTER POLICY %I ON %I.%I USING (%s) WITH CHECK (%s)',
-        p.policyname, p.schemaname, p.tablename, v_qual, v_check
-      );
+      IF v_has_qual AND v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s) WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual, v_check
+        );
+      ELSIF v_has_qual THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I USING (%s)',
+          p.policyname, p.schemaname, p.tablename, v_qual
+        );
+      ELSIF v_has_check THEN
+        EXECUTE format(
+          'ALTER POLICY %I ON %I.%I WITH CHECK (%s)',
+          p.policyname, p.schemaname, p.tablename, v_check
+        );
+      END IF;
     END IF;
   END LOOP;
 END;
@@ -80,11 +94,9 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND (
-        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
-        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+        coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*[(]'
+        OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*[(]'
       )
-      AND coalesce(qual, '') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check, '') !~* 'current_user_has_facility_access'
   ) THEN
     RAISE EXCEPTION 'Direct has_facility_access calls remain in authenticated RLS policies';
   END IF;

@@ -75,5 +75,5 @@ CREATE POLICY "notification webhook events admin read" ON public.notification_we
   USING ((select public.has_role((select auth.uid()),'admin'::public.app_role)));
 
 -- Preserve the service-only delivery evidence boundary; no authenticated policy is added.
-COMMENT ON TABLE public.notification_deliveries IS
+COMMENT ON TABLE public.notification_delivery_logs IS
   'Service/provider delivery evidence. RLS is enabled with no client policies intentionally; provider workers and trusted service-role processes access delivery records. Do not add broad authenticated access.';

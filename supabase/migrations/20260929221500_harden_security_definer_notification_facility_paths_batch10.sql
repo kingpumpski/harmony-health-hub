@@ -14,8 +14,6 @@ ALTER FUNCTION public.register_notification_device(text,text,text,text) SET sear
 ALTER FUNCTION public.revoke_notification_device(text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.seed_facility_reports(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.set_facility_routing_mode(text) SET search_path = pg_catalog, public;
-ALTER FUNCTION public.set_my_active_facility(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.sync_overdue_report_submissions(uuid,date,date) SET search_path = pg_catalog, public;
-ALTER FUNCTION public.upsert_my_staff_signature(text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.upsert_report_submission_tracking(uuid,uuid,date,date,date,jsonb) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.verify_facility_notification_provider(uuid,text,text,boolean,text) SET search_path = pg_catalog, public;

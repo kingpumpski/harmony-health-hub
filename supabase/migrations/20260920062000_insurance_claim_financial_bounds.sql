@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS public.insurance_claims
+) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE
@@ -62,7 +62,7 @@ BEGIN
     )
   );
 
-  RETURN c;
+  RETURN to_jsonb(c);
 END;
 $$;
 

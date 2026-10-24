@@ -11,11 +11,15 @@ const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name
 const migration = files.find((name) => name === "20260929200000_secure_default_function_execute_privileges.sql");
 assert.ok(migration, "secure default function execution migration must exist");
 const migrationSource = fs.readFileSync(path.join(migrationsDir, migration), "utf8");
-const migrationStatements = migrationSource
-  .split(";")
-  .map((statement) => statement.trim())
-  .filter(Boolean);
-assert.equal(migrationStatements.length, 6, "secure default migration must contain exactly six default-privilege statements");
+const postgresDefaultStatements = migrationSource.match(
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public\s+REVOKE EXECUTE ON FUNCTIONS FROM (?:PUBLIC|anon|authenticated);/gi,
+) ?? [];
+assert.equal(postgresDefaultStatements.length, 3, "postgres-owned public functions must have three explicit default EXECUTE revokes");
+assert.match(
+  migrationSource,
+  /pg_catalog\.pg_has_role\(current_user,\s*'supabase_admin',\s*'MEMBER'\)/i,
+  "supabase_admin defaults must only be altered when the migration runner has role membership",
+);
 assert.equal(
   (migrationSource.match(/REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/g) ?? []).length,
   1,

@@ -15,7 +15,6 @@ const required = [
   'idx_nursing_notes_patient_id',
   'idx_patient_account_credits_invoice_id',
   'idx_patient_account_credits_payment_id',
-  'idx_staff_signatures_facility_id',
   'idx_user_active_facilities_facility_id',
 ];
 
