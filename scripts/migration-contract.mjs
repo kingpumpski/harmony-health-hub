@@ -117,23 +117,29 @@ const queueNotNull = queueSchemaMigration.indexOf('ALTER COLUMN queued_at SET NO
 const queueIndex = queueSchemaMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
 assert.ok(queueColumn >= 0 && queueBackfill > queueColumn && queueNotNull > queueBackfill && queueIndex > queueNotNull,
   'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
+const earlyAuditMigration = read('supabase/migrations/20260912001500_restore_patient_audit_log_prerequisite.sql');
+assert.ok(earlyAuditMigration.includes('CREATE TABLE IF NOT EXISTS public.patient_audit_log') &&
+  earlyAuditMigration.includes('CREATE OR REPLACE FUNCTION public.audit_patient_changes()') &&
+  earlyAuditMigration.includes("SET search_path = ''") &&
+  earlyAuditMigration.includes('CREATE TRIGGER t_patient_audit_changes'),
+  'patient_audit_log must exist with its trigger before retention hardening runs');
 const labAuditMigration = read('supabase/migrations/20260912200000_phase5_lab_catalogue_and_audit.sql');
 assert.ok(!labAuditMigration.includes('CREATE TABLE IF NOT EXISTS public.patient_audit_log') &&
   !labAuditMigration.includes('CREATE OR REPLACE FUNCTION public.audit_patient_changes()') &&
-  labAuditMigration.includes('DROP TRIGGER IF EXISTS t_patient_audit_changes'),
-  'phase-5 lab catalogue migration must not create a duplicate patient audit store or trigger');
-const legacyAuditConsolidation = read('supabase/migrations/20261024092000_consolidate_legacy_patient_audit_log.sql');
-assert.ok(legacyAuditConsolidation.includes('INSERT INTO public.patient_audit') &&
-  !legacyAuditConsolidation.includes('INSERT INTO public.patient_audit_log') &&
-  legacyAuditConsolidation.includes('ON CONFLICT (id) DO NOTHING') &&
-  legacyAuditConsolidation.includes('REVOKE ALL ON TABLE public.patient_audit_log'),
-  'legacy patient audit rows must be preserved and the old store made read-disabled');
+  labAuditMigration.includes('CREATE INDEX IF NOT EXISTS idx_patient_audit_patient_time') &&
+  labAuditMigration.includes('ALTER TABLE public.patient_audit_log ENABLE ROW LEVEL SECURITY'),
+  'phase-5 lab catalogue migration must apply audit indexes/policies only after the prerequisite table exists');
 const patientAuditMigration = read('supabase/migrations/20260912011000_phase8_patient_audit_trigger_hardening.sql');
-assert.ok(!patientAuditMigration.includes('public.patient_audit_log') &&
-  patientAuditMigration.includes('public.audit_patient_change()') &&
-  patientAuditMigration.includes('ALTER FUNCTION public.audit_patient_change() SET search_path =') &&
-  patientAuditMigration.includes('public.patient_audit'),
-  'patient audit hardening must use the canonical patient_audit table and pinned trigger function');
+assert.ok(patientAuditMigration.includes('public.audit_patient_changes()') &&
+  patientAuditMigration.includes('INSERT INTO public.patient_audit_log') &&
+  patientAuditMigration.includes("SET search_path = ''") &&
+  patientAuditMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.patient_audit_log'),
+  'patient audit hardening must keep the application-facing patient_audit_log trigger SECURITY DEFINER and pinned');
+const auditForwardMigration = read('supabase/migrations/20261024090000_harden_canonical_patient_audit.sql');
+assert.ok(auditForwardMigration.includes('public.audit_patient_changes()') &&
+  auditForwardMigration.includes('public.patient_audit_log') &&
+  auditForwardMigration.includes("SET search_path = ''"),
+  'forward audit hardening must protect the existing patient audit log without replacing its data contract');
 const marMigration = read('supabase/migrations/20260912023000_global_medication_administration.sql');
 const marScheduledColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ');
 const marNameColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS medication_name TEXT');
