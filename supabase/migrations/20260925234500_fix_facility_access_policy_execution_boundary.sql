@@ -15,6 +15,18 @@ BEGIN
     RAISE EXCEPTION 'Required current_user_has_facility_access(uuid) authorization wrapper is missing';
   END IF;
 
+  -- Pin the wrapper before rewriting policies. Its body uses schema-qualified
+  -- objects, so an empty search_path is safe and prevents shadow-object attacks.
+  EXECUTE $cmd$ALTER FUNCTION public.current_user_has_facility_access(uuid) SET search_path = ''$cmd$;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid = to_regprocedure('public.current_user_has_facility_access(uuid)')
+      AND p.prosecdef
+      AND p.proconfig @> ARRAY['search_path=""']
+  ) THEN
+    RAISE EXCEPTION 'current_user_has_facility_access(uuid) must be SECURITY DEFINER with an empty pinned search_path';
+  END IF;
+
   -- This known policy should not depend on PostgreSQL's pg_policies deparse
   -- form for the auth.uid() subquery (which can omit the synthetic AS uid).
   IF EXISTS (
