@@ -133,6 +133,10 @@ assert.ok(marScheduledColumn >= 0 && marNameColumn >= 0 && marStatusColumn >= 0 
   marMigration.includes("'not_given'") &&
   marMigration.indexOf('ADD CONSTRAINT medication_administrations_status_check') < marIndex,
   'legacy medication administration columns and supported status values must be reconciled before MAR scheduling indexes');
+const enterpriseRoleMigration = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
+assert.ok(!enterpriseRoleMigration.includes('public.has_role(auth.uid(), ARRAY') &&
+  !enterpriseRoleMigration.includes('public.has_role(uid, ARRAY'),
+  'enterprise policies must use the supported scalar has_role(uuid, app_role) contract');
 const facilityPolicyMigration = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
 assert.ok(facilityPolicyMigration.includes("ALTER FUNCTION public.current_user_has_facility_access(uuid) SET search_path = ''") &&
   facilityPolicyMigration.includes('p.prosecdef') &&
