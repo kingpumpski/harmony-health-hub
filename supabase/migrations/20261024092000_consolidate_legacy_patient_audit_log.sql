@@ -31,6 +31,7 @@ BEGIN
          OR c.operation IS DISTINCT FROM l.action
          OR c.old_record IS DISTINCT FROM l.old_record
          OR c.new_record IS DISTINCT FROM l.new_record
+         OR c.changed_fields IS DISTINCT FROM COALESCE(to_jsonb(l.changed_fields), '[]'::jsonb)
          OR c.occurred_at IS DISTINCT FROM l.changed_at
     ) THEN
       RAISE EXCEPTION 'Patient audit IDs conflict across legacy and canonical stores; refusing to overwrite either audit record';
