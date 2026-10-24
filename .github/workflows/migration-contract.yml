@@ -8,6 +8,7 @@ on:
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
       - '.github/workflows/migration-contract.yml'
+      - 'AGENTS.md'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
