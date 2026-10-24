@@ -125,3 +125,58 @@ For non-trivial fixes, report:
 - Remaining risks, blocked/unverified checks, and next action.
 
 Be factual, concise, and evidence-based. "Fixed" means the root cause was corrected and the relevant verification passed—not merely that code was edited.
+
+
+## 11. Continuous development and blocker management
+
+This repository must continue to make safe progress even when an unrelated integration, preview deployment, external service, or optional CI job is unavailable.
+
+- Start each task by reading this file and the relevant module, schema, security, workflow, and test documentation. Inspect the current branch, working tree/PR diff, latest commit, and latest relevant CI run before editing.
+- Keep the requested feature or repair as the primary task. If an unrelated blocker appears, record its symptom, root-cause evidence, impact, attempts, and next action; continue independent work when it is safe and technically sound.
+- Do not build on a known-broken database/API contract, bypass authorization, or claim dependent functionality is verified while its dependency is unavailable.
+- Separate code defects from credentials, external-service outages, rate limits, deployment-provider failures, and GitHub permission limitations. Do not repeatedly rerun a deterministic failure without changing the cause.
+- Never disable tests, security checks, type-checking, linting, migration contracts, RLS, or other mandatory safeguards merely to obtain a green result. Never conceal failures by renaming checks, suppressing errors, or fabricating successful outcomes.
+- Track unresolved blockers in the task/PR or issue notes. State which checks were run, passed, failed, skipped, cancelled, or could not be run. Revisit blockers that affect the current task, security, data integrity, merge readiness, or release readiness.
+- At task completion, report the actual files changed, verification commands and observed results, commit/PR reference, latest relevant CI commit SHA, and outstanding risks. Do not claim a deployment, branch-protection change, test, or remote verification succeeded unless the result was observed.
+
+## 12. CI/CD policy: quality checks are mandatory; Vercel is advisory
+
+GitHub Pages is the designated build-validation and testing target for this project. Vercel preview/deployment is optional and must not block pull-request merging when all mandatory quality requirements pass.
+
+- Inspect the real workflows and emitted status-check contexts before changing CI. Do not assume a workflow or job exists merely because an example or historical note names it.
+- Keep mandatory quality and security checks enabled. The current `.github/workflows/quality.yml` workflow has one sequential `quality` job containing the project quality checks; preserve its existing job ID unless a deliberate migration of the required branch-protection context is planned and verified.
+- The Pages deployment workflow is push-to-`main`/manual and therefore is not, by itself, pull-request validation. The quality workflow must validate the production build and GitHub Pages artifact on pull requests before the merge gate passes.
+- Vercel status checks are informational only. Never add a Vercel, preview, or optional deployment check to the required merge checks. Do not remove a genuine required quality or security check to work around a deployment failure.
+- If a Vercel workflow is added in future, gate deployment on the presence of all required credentials (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`, or the project's documented equivalents). Inspect secrets only inside a step environment; never print or persist values. Emit only a boolean availability output, skip deployment safely when credentials are missing, and do not expose secrets to untrusted fork pull-request code.
+- Distinguish a missing-credentials skip from a deployment that was attempted and failed. A skipped optional deployment may be advisory/pass for merge-gate purposes; an attempted deployment failure must remain visible and diagnosable, but must not fail the mandatory quality gate solely because Vercel is optional.
+- Do not assume GitHub's handling of skipped required jobs is consistent across all workflow/ruleset configurations. Do not make an optional job required. Verify the exact required-check names and their workflow source whenever repository permissions allow.
+- If GitHub branch protection or ruleset APIs are inaccessible, state that the remote settings remain unverified and provide the exact action for a repository administrator. Do not claim that branch protection was changed based on a local workflow edit.
+
+## 13. Stable merge gate and failure semantics
+
+- The merge gate must represent all mandatory quality requirements, not deployment availability. Keep the existing `quality` job as the stable gate unless there is a verified reason to migrate the required status context.
+- Mandatory checks include the project's lint, type-check, contract/security/regression tests, production build, and GitHub Pages artifact validation. Database/migration checks remain mandatory under their existing workflow triggers and must not be silently replaced by the frontend quality job.
+- If the workflow is later split into parallel jobs, introduce a final fan-in gate only if it explicitly evaluates every mandatory dependency result. It must run after failures/skips are available, fail on any mandatory failure or cancellation, and fail on an unexpected skip. Permit skips only for jobs that are explicitly optional or demonstrably inapplicable under documented conditions.
+- Never treat every `skipped` result as success. Never let an empty/incomplete dependency list or missing check become a green gate.
+- Test both positive and negative gate behaviour when workflow changes warrant it: all required checks pass; a mandatory check fails; a mandatory check is cancelled; a mandatory check is unexpectedly skipped; and the optional Vercel deployment is skipped or fails independently.
+- A check is verified only when its run is completed for the commit being reported. An older green run does not validate a newer commit.
+
+## 14. PR validation and workflow changes
+
+- The pull-request quality workflow must run on the intended PR target branch and validate the built Pages artifact without requiring a deployment secret or actually deploying to Pages.
+- Keep production deployment credentials and write permissions out of ordinary pull-request validation. Use least-privilege workflow permissions.
+- When changing a workflow, verify YAML structure, referenced scripts and package scripts, job IDs/needs relationships, conditions, triggers, permissions, concurrency, and the intended branch/event coverage.
+- Validate the same SPA route preparation and artifact integrity that the Pages deployment uses, where those scripts are compatible with pull-request CI.
+- Document the policy in this file and any existing contributor/deployment documentation where needed. Avoid maintaining contradictory copies of the policy.
+- Repository settings (branch protection, rulesets, GitHub Pages configuration, and Vercel integration settings) are separate from tracked files. Change them only with appropriate authorization and verify the resulting remote configuration.
+
+## 15. Definition of done for CI/CD repairs
+
+A CI/CD repair is complete only when:
+- The root cause is addressed in the correct workflow/configuration layer.
+- Mandatory quality, migration, and security controls remain intact.
+- Optional deployment failures cannot accidentally block the quality gate.
+- GitHub Pages build/artifact validation runs on pull requests as intended.
+- The relevant workflow/configuration checks and regression tests actually pass, or unverified checks are explicitly listed.
+- The exact commit and latest relevant run are identified.
+- Any branch-protection/ruleset/provider changes that could not be verified are recorded as outstanding administrator actions.
