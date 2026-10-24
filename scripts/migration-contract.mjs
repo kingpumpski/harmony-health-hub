@@ -123,6 +123,14 @@ assert.ok(!patientAuditMigration.includes('public.patient_audit_log') &&
   patientAuditMigration.includes('ALTER FUNCTION public.audit_patient_change() SET search_path =') &&
   patientAuditMigration.includes('public.patient_audit'),
   'patient audit hardening must use the canonical patient_audit table and pinned trigger function');
+const marMigration = read('supabase/migrations/20260912023000_global_medication_administration.sql');
+const marScheduledColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ');
+const marNameColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS medication_name TEXT');
+const marStatusColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS status TEXT');
+const marIndex = marMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_mar_patient_time');
+assert.ok(marScheduledColumn >= 0 && marNameColumn >= 0 && marStatusColumn >= 0 &&
+  marIndex > marScheduledColumn && marIndex > marNameColumn && marIndex > marStatusColumn,
+  'legacy medication administration columns must be reconciled before MAR scheduling indexes');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
