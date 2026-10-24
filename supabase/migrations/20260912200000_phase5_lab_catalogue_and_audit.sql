@@ -37,11 +37,9 @@ CREATE POLICY "admins manage lab catalogue" ON public.lab_test_catalogue FOR ALL
 DROP TRIGGER IF EXISTS t_lab_catalogue_updated ON public.lab_test_catalogue;
 CREATE TRIGGER t_lab_catalogue_updated BEFORE UPDATE ON public.lab_test_catalogue FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
--- Patient auditing is already provided by public.audit_patient_change() and
--- the canonical public.patient_audit table from Phase 1. Do not create a second
--- patient_audit_log store or install a second patient trigger.
-DROP TRIGGER IF EXISTS t_patient_audit_changes ON public.patients;
-DROP FUNCTION IF EXISTS public.audit_patient_changes();
+-- patient_audit_log and its SECURITY DEFINER trigger are restored by
+-- 20260912001500_restore_patient_audit_log_prerequisite.sql. Keep table policies
+-- and indexes in this migration, after the table exists.
 
 
 INSERT INTO public.lab_test_catalogue (test_code, test_name, category, specimen_type, unit, reference_text, default_charge) VALUES
