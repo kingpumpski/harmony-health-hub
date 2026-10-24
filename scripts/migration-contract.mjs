@@ -123,7 +123,8 @@ assert.ok(!labAuditMigration.includes('CREATE TABLE IF NOT EXISTS public.patient
   labAuditMigration.includes('DROP TRIGGER IF EXISTS t_patient_audit_changes'),
   'phase-5 lab catalogue migration must not create a duplicate patient audit store or trigger');
 const legacyAuditConsolidation = read('supabase/migrations/20261024092000_consolidate_legacy_patient_audit_log.sql');
-assert.ok(legacyAuditConsolidation.includes('INSERT INTO public.patient_audit\\n      (id, patient_id') &&
+assert.ok(legacyAuditConsolidation.includes('INSERT INTO public.patient_audit') &&
+  !legacyAuditConsolidation.includes('INSERT INTO public.patient_audit_log') &&
   legacyAuditConsolidation.includes('ON CONFLICT (id) DO NOTHING') &&
   legacyAuditConsolidation.includes('REVOKE ALL ON TABLE public.patient_audit_log'),
   'legacy patient audit rows must be preserved and the old store made read-disabled');
