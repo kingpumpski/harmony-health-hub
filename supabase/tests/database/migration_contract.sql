@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(29);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -33,5 +33,10 @@ select ok(
   ),
   'patient audit trigger is security definer with an empty pinned search_path'
 );
+select has_column('public','medication_administrations','medication_name','legacy MAR medication name is reconciled');
+select has_column('public','medication_administrations','scheduled_at','legacy MAR scheduling timestamp is reconciled');
+select has_column('public','medication_administrations','status','legacy MAR status is reconciled');
+select has_column('public','medication_administrations','updated_at','legacy MAR updated timestamp is reconciled');
+select has_index('public','medication_administrations','idx_mar_patient_time','MAR patient scheduling index exists');
 select * from finish();
 rollback;
