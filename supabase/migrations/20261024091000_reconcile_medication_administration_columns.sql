@@ -47,6 +47,27 @@ ALTER TABLE public.medication_administrations
   ALTER COLUMN updated_at SET DEFAULT now(),
   ALTER COLUMN updated_at SET NOT NULL;
 
+-- Later clinical workflows support not_given as a documented administration outcome.
+-- Rebuild the named check without rewriting any existing status values.
+ALTER TABLE public.medication_administrations
+  DROP CONSTRAINT IF EXISTS medication_administrations_status_check;
+ALTER TABLE public.medication_administrations
+  ADD CONSTRAINT medication_administrations_status_check
+  CHECK (status IN ('scheduled','administered','held','refused','omitted','not_given','cancelled')) NOT VALID;
+
+DO $mar_status_validation$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.medication_administrations
+    WHERE status NOT IN ('scheduled','administered','held','refused','omitted','not_given','cancelled')
+       OR status IS NULL
+  ) THEN
+    ALTER TABLE public.medication_administrations
+      VALIDATE CONSTRAINT medication_administrations_status_check;
+  END IF;
+END
+$mar_status_validation$;
+
 CREATE INDEX IF NOT EXISTS idx_mar_patient_time
   ON public.medication_administrations(patient_id, scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mar_status_time
