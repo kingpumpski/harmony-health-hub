@@ -117,6 +117,16 @@ const queueNotNull = queueSchemaMigration.indexOf('ALTER COLUMN queued_at SET NO
 const queueIndex = queueSchemaMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
 assert.ok(queueColumn >= 0 && queueBackfill > queueColumn && queueNotNull > queueBackfill && queueIndex > queueNotNull,
   'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
+const labAuditMigration = read('supabase/migrations/20260912200000_phase5_lab_catalogue_and_audit.sql');
+assert.ok(!labAuditMigration.includes('CREATE TABLE IF NOT EXISTS public.patient_audit_log') &&
+  !labAuditMigration.includes('CREATE OR REPLACE FUNCTION public.audit_patient_changes()') &&
+  labAuditMigration.includes('DROP TRIGGER IF EXISTS t_patient_audit_changes'),
+  'phase-5 lab catalogue migration must not create a duplicate patient audit store or trigger');
+const legacyAuditConsolidation = read('supabase/migrations/20261024092000_consolidate_legacy_patient_audit_log.sql');
+assert.ok(legacyAuditConsolidation.includes('INSERT INTO public.patient_audit') &&
+  legacyAuditConsolidation.includes('ON CONFLICT (id) DO NOTHING') &&
+  legacyAuditConsolidation.includes('REVOKE ALL ON TABLE public.patient_audit_log'),
+  'legacy patient audit rows must be preserved and the old store made read-disabled');
 const patientAuditMigration = read('supabase/migrations/20260912011000_phase8_patient_audit_trigger_hardening.sql');
 assert.ok(!patientAuditMigration.includes('public.patient_audit_log') &&
   patientAuditMigration.includes('public.audit_patient_change()') &&
