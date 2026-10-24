@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -22,5 +22,16 @@ select ok(exists(select 1 from pg_policies where schemaname='public' and tablena
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and with_check ilike '%service_orders%'),'attachment writes require service-order lineage');
 select has_column('public','department_queues','queued_at','legacy department queue timestamp exists before queue RPCs use it');
 select has_index('public','department_queues','idx_department_queues_work','department queue work index exists after timestamp reconciliation');
+select has_table('public','patient_audit','canonical patient audit table exists');
+select ok(
+  EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    WHERE p.oid = 'public.audit_patient_change()'::regprocedure
+      AND p.prosecdef
+      AND p.proconfig @> ARRAY['search_path=""']
+  ),
+  'patient audit trigger is security definer with an empty pinned search_path'
+);
 select * from finish();
 rollback;
