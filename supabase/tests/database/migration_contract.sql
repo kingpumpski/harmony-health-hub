@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(22);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -20,5 +20,7 @@ select ok(has_function_privilege('authenticated','public.get_lab_result_attachme
 select ok((select relrowsecurity from pg_class where oid='public.lab_result_attachments'::regclass),'attachment metadata has RLS enabled');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and qual ilike '%current_user_facility_id%'),'attachment policies retain facility scope');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and with_check ilike '%service_orders%'),'attachment writes require service-order lineage');
+select has_column('public','department_queues','queued_at','legacy department queue timestamp exists before queue RPCs use it');
+select has_index('public','department_queues','idx_department_queues_work','department queue work index exists after timestamp reconciliation');
 select * from finish();
 rollback;
