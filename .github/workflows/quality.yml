@@ -197,3 +197,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Prepare GitHub Pages SPA route entrypoints
+        run: node scripts/prepare-github-pages-spa.mjs
+
+      - name: Verify GitHub Pages artifact integrity
+        run: npm run test:github-pages-artifact-integrity
