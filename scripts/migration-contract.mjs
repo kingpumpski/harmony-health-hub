@@ -154,6 +154,19 @@ const enterpriseRoleMigration = read('supabase/migrations/20260912024500_global_
 assert.ok(!enterpriseRoleMigration.includes('public.has_role(auth.uid(), ARRAY') &&
   !enterpriseRoleMigration.includes('public.has_role(uid, ARRAY'),
   'enterprise policies must use the supported scalar has_role(uuid, app_role) contract');
+const theatreMigration = read('supabase/migrations/20260912024501_global_hims_inpatient_emergency_theatre_insurance.sql');
+const theatreScheduledColumn = theatreMigration.indexOf('ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ');
+const theatreIndex = theatreMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status)');
+assert.ok(theatreScheduledColumn >= 0 && theatreIndex > theatreScheduledColumn &&
+  theatreMigration.includes('ADD COLUMN IF NOT EXISTS theatre_name TEXT') &&
+  theatreMigration.includes('ADD COLUMN IF NOT EXISTS anesthetist_id UUID') &&
+  theatreMigration.includes("'requested','approved','scheduled'"),
+  'legacy theatre columns and lifecycle status values must be reconciled before schedule indexes');
+const theatreForwardMigration = read('supabase/migrations/20261024092000_reconcile_theatre_case_columns.sql');
+assert.ok(theatreForwardMigration.includes('ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ') &&
+  theatreForwardMigration.includes('scheduled_start = COALESCE(scheduled_start, scheduled_at)') &&
+  theatreForwardMigration.includes('CREATE INDEX IF NOT EXISTS idx_theatre_schedule'),
+  'forward theatre repair must preserve legacy schedule timestamps and restore indexes');
 const facilityPolicyMigration = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
 assert.ok(facilityPolicyMigration.includes("ALTER FUNCTION public.current_user_has_facility_access(uuid) SET search_path = ''") &&
   facilityPolicyMigration.includes('p.prosecdef') &&
