@@ -56,6 +56,9 @@ jobs:
       - name: Operational contract checks
         run: npm run test:contracts
 
+      - name: HR/payroll query-to-schema contract
+        run: npm run test:hr-payroll
+
       - name: Laboratory attachment schema and RPC contract
         run: npm run test:laboratory-attachments-schema
 
