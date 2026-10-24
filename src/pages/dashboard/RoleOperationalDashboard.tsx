@@ -64,9 +64,16 @@ export default function RoleOperationalDashboard({ role, title, subtitle, action
   }
 
   const data = query.data;
+  const isFinancialRole = role === 'accountant';
+  const activityRows = data.activities
+    .filter((activity) => isFinancialRole || !/payment|invoice|revenue|cash collected|billing|claim amount|outstanding debt/i.test(`${activity.title} ${activity.detail ?? ''}`))
+    .sort((a, b) => (Date.parse(b.createdAt ?? '') || 0) - (Date.parse(a.createdAt ?? '') || 0))
+    .slice(0, 5);
+  const visibleActions = actions.slice(0, 6);
+  const hasScheduleKpi = topKpis.some((metric) => /appointment|schedule/i.test(metric.label));
   const activityPanel = <Panel title={`Recent ${role === 'lab_technician' ? 'Lab' : role === 'pharmacist' ? 'Pharmacy' : role === 'accountant' ? 'Billing' : role === 'nurse' ? 'Nursing' : 'Clinical'} Activity`}>
-    {data.activities.length ? <ul className="divide-y divide-border">
-      {data.activities.map((activity) => <li key={activity.id} className="py-3 first:pt-0 last:pb-0">
+    {activityRows.length ? <ul className="divide-y divide-border">
+      {activityRows.map((activity) => <li key={activity.id} className="py-3 first:pt-0 last:pb-0">
         {activity.href ? <Link to={activity.href} className="font-medium hover:text-primary">{activity.title}</Link> : <p className="font-medium">{activity.title}</p>}
         {activity.detail && <p className="mt-0.5 text-xs text-muted-foreground">{activity.detail}</p>}
         {activity.createdAt && <p className="mt-1 text-[11px] text-muted-foreground">{displayTime(activity.createdAt)}</p>}
@@ -75,12 +82,12 @@ export default function RoleOperationalDashboard({ role, title, subtitle, action
   </Panel>;
   const actionPanel = <Panel title="Quick Actions">
     <div className="grid gap-2">
-      {actions.map(({ label, href, icon: Icon }) => <Link key={href} to={href} className="btn-secondary inline-flex items-center justify-start gap-2">
+      {visibleActions.map(({ label, href, icon: Icon }) => <Link key={href} to={href} className="btn-secondary inline-flex items-center justify-start gap-2">
         <Icon className="h-4 w-4" aria-hidden="true" />{label}
       </Link>)}
     </div>
   </Panel>;
-  const schedulePanel = data.upcoming.length > 0 ? <Panel title="My Schedule">
+  const schedulePanel = data.upcoming.length > 0 && !hasScheduleKpi ? <Panel title="My Schedule">
     <ul className="space-y-3">
       {data.upcoming.map((item) => <li key={item.id}>
         <Link to={item.href ?? '/appointments'} className="text-sm font-medium hover:text-primary">{item.title}</Link>
@@ -89,7 +96,7 @@ export default function RoleOperationalDashboard({ role, title, subtitle, action
     </ul>
   </Panel> : null;
   const bottom = data.alerts.length > 0 ? <div className="grid gap-3 sm:grid-cols-2">
-    {data.alerts.map((alert) => <Link key={alert.id} to={alert.href ?? '/notifications'} className={`flex items-start gap-3 rounded-xl border p-4 shadow-sm ${alert.severity === 'critical' ? 'border-critical/30 bg-critical/5' : 'border-warning/30 bg-warning/5'}`}>
+    {data.alerts.slice(0, 5).map((alert) => <Link key={alert.id} to={alert.href ?? '/notifications'} className={`flex items-start gap-3 rounded-xl border p-4 shadow-sm ${alert.severity === 'critical' ? 'border-critical/30 bg-critical/5' : 'border-warning/30 bg-warning/5'}`}>
       <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${alert.severity === 'critical' ? 'text-critical' : 'text-warning'}`} aria-hidden="true" />
       <span><span className="block text-sm font-semibold">{alert.title}</span>{alert.detail && <span className="mt-1 block text-xs text-muted-foreground">{alert.detail}</span>}</span>
     </Link>)}
@@ -98,8 +105,8 @@ export default function RoleOperationalDashboard({ role, title, subtitle, action
   return <DashboardLayout
     headerTitle={title}
     headerSubtitle={subtitle}
-    kpiCards={topKpis}
-    secondaryKpiCards={secondaryKpis}
+    kpiCards={topKpis.slice(0, 4)}
+    secondaryKpiCards={secondaryKpis.slice(0, 4)}
     mainContent={activityPanel}
     sideContent={<>{actionPanel}{schedulePanel}</>}
     bottomContent={bottom}
