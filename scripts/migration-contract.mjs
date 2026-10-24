@@ -129,8 +129,10 @@ const marNameColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS medication_
 const marStatusColumn = marMigration.indexOf('ADD COLUMN IF NOT EXISTS status TEXT');
 const marIndex = marMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_mar_patient_time');
 assert.ok(marScheduledColumn >= 0 && marNameColumn >= 0 && marStatusColumn >= 0 &&
-  marIndex > marScheduledColumn && marIndex > marNameColumn && marIndex > marStatusColumn,
-  'legacy medication administration columns must be reconciled before MAR scheduling indexes');
+  marIndex > marScheduledColumn && marIndex > marNameColumn && marIndex > marStatusColumn &&
+  marMigration.includes("'not_given'") &&
+  marMigration.indexOf('ADD CONSTRAINT medication_administrations_status_check') < marIndex,
+  'legacy medication administration columns and supported status values must be reconciled before MAR scheduling indexes');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
