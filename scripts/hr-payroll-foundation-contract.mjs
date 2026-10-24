@@ -26,6 +26,32 @@ for (const needle of [
   if (!migration.toLowerCase().includes(needle)) throw new Error('Missing HR/payroll security control: ' + needle);
 }
 
+const employeeFieldsMatch = hr.match(/const employeeFields = '([^']+)'/);
+if (!employeeFieldsMatch) throw new Error('HR employee list must declare its selected database fields in one contract.');
+const employeeFields = employeeFieldsMatch[1].split(',').map((field) => field.trim());
+const canonicalEmployeeFields = [
+  'id', 'employee_number', 'first_name', 'last_name', 'email', 'phone',
+  'department', 'job_title', 'employment_type', 'employment_status',
+  'base_salary', 'pay_frequency', 'start_date', 'archived_at',
+];
+for (const column of canonicalEmployeeFields) {
+  if (!employeeFields.includes(column)) {
+    throw new Error('HR employee list is missing required field: ' + column);
+  }
+  if (!hrPayrollDatabaseContract.includes(`'hr_employees','${column}'`)) {
+    throw new Error('HR database contract does not verify selected column: ' + column);
+  }
+  if (!(migration + '\n' + recordManagementMigration).toLowerCase().includes(column)) {
+    throw new Error('HR schema migrations do not declare selected column: ' + column);
+  }
+}
+if (!hr.includes(".order('last_name')") || !hr.includes(".order('first_name')")) {
+  throw new Error('HR employee list ordering must use columns verified by the schema contract.');
+}
+if (!hr.includes("archived_by: archiving ? user.id : null")) {
+  throw new Error('HR archive writes must preserve actor attribution through archived_by.');
+}
+
 for (const needle of ["'/hr':'hr'", "'/payroll':'payroll'", "'hr'", "'payroll'"]) {
   if (!permissions.includes(needle)) throw new Error('Missing permission: ' + needle);
 }
@@ -57,7 +83,7 @@ for (const needle of [
   'hr_employees_deny_hard_delete',
   'payroll_periods_deny_hard_delete',
   'payroll_items_deny_hard_delete',
-  "and e.archived_at is null",
+  'and e.archived_at is null',
   "if v_status <> 'draft' then",
 ]) {
   if (!recordManagementMigration.toLowerCase().includes(needle)) {
@@ -86,4 +112,4 @@ if (!clinicalReferences.includes(".update(payload)") || !clinicalReferences.incl
   throw new Error('Clinical reference master data is missing create/update workflows.');
 }
 
-console.log('HR/payroll foundation contract passed.');
+console.log('HR/payroll foundation and employee query schema contract passed.');
