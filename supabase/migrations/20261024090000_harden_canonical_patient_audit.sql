@@ -3,10 +3,10 @@
 DO $patient_audit_hardening$
 BEGIN
   IF to_regprocedure('public.audit_patient_change()') IS NOT NULL THEN
-    ALTER FUNCTION public.audit_patient_change() SET search_path = '';
+    EXECUTE $cmd$ALTER FUNCTION public.audit_patient_change() SET search_path = ''$cmd$;
   END IF;
   IF to_regclass('public.patient_audit') IS NOT NULL THEN
-    REVOKE INSERT, UPDATE, DELETE ON public.patient_audit FROM authenticated, anon;
+    EXECUTE 'REVOKE INSERT, UPDATE, DELETE ON public.patient_audit FROM authenticated, anon';
   END IF;
 END
 $patient_audit_hardening$;
