@@ -79,13 +79,62 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Reconcile pre-existing emergency_cases tables before indexing newer triage fields.
--- CREATE TABLE IF NOT EXISTS does not add columns to a legacy table.
+-- Reconcile legacy emergency_cases before indexing the canonical triage fields.
+-- The earlier enterprise migration used arrival_at/triage_priority. Preserve their
+-- recorded chronology and translate known legacy priority values instead of
+-- silently assigning every historical case the new default acuity.
 ALTER TABLE public.emergency_cases
-  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent';
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT;
 
 DO $migration$
+DECLARE
+  v_has_arrival_at BOOLEAN;
+  v_has_created_at BOOLEAN;
+  v_has_triage_priority BOOLEAN;
 BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'arrival_at'
+  ) INTO v_has_arrival_at;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'created_at'
+  ) INTO v_has_created_at;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'triage_priority'
+  ) INTO v_has_triage_priority;
+
+  IF v_has_arrival_at THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = arrival_at WHERE arrival_time IS NULL';
+  END IF;
+  IF v_has_created_at THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = created_at WHERE arrival_time IS NULL';
+  END IF;
+  UPDATE public.emergency_cases SET arrival_time = now() WHERE arrival_time IS NULL;
+  ALTER TABLE public.emergency_cases ALTER COLUMN arrival_time SET DEFAULT now();
+  ALTER TABLE public.emergency_cases ALTER COLUMN arrival_time SET NOT NULL;
+
+  IF v_has_triage_priority THEN
+    EXECUTE $backfill$
+      UPDATE public.emergency_cases
+      SET acuity = CASE lower(trim(triage_priority))
+        WHEN 'critical' THEN 'emergency'
+        WHEN 'urgent' THEN 'urgent'
+        WHEN 'moderate' THEN 'less_urgent'
+        WHEN 'routine' THEN 'non_urgent'
+        ELSE COALESCE(acuity, 'urgent')
+      END
+      WHERE acuity IS NULL
+         OR (acuity = 'urgent' AND lower(trim(triage_priority)) <> 'urgent')
+    $backfill$;
+  END IF;
+
+  UPDATE public.emergency_cases SET acuity = 'urgent' WHERE acuity IS NULL;
+  ALTER TABLE public.emergency_cases ALTER COLUMN acuity SET DEFAULT 'urgent';
+  ALTER TABLE public.emergency_cases ALTER COLUMN acuity SET NOT NULL;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conrelid = 'public.emergency_cases'::regclass
