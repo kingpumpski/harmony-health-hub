@@ -117,6 +117,12 @@ const queueNotNull = queueSchemaMigration.indexOf('ALTER COLUMN queued_at SET NO
 const queueIndex = queueSchemaMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
 assert.ok(queueColumn >= 0 && queueBackfill > queueColumn && queueNotNull > queueBackfill && queueIndex > queueNotNull,
   'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
+const patientAuditMigration = read('supabase/migrations/20260912011000_phase8_patient_audit_trigger_hardening.sql');
+assert.ok(!patientAuditMigration.includes('public.patient_audit_log') &&
+  patientAuditMigration.includes('public.audit_patient_change()') &&
+  patientAuditMigration.includes('ALTER FUNCTION public.audit_patient_change() SET search_path =') &&
+  patientAuditMigration.includes('public.patient_audit'),
+  'patient audit hardening must use the canonical patient_audit table and pinned trigger function');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
