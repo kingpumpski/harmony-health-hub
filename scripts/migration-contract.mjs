@@ -111,7 +111,12 @@ for (const {name} of migrations) {
   migrationVersions.set(version, name);
 }
 const queueSchemaMigration = read('supabase/migrations/20260911233000_phase2_service_order_payment_gating.sql');
-must(queueSchemaMigration, /ADD COLUMN IF NOT EXISTS queued_at[\\s\\S]*?UPDATE public\\.department_queues[\\s\\S]*?COALESCE\\(queued_at,\\s*created_at,\\s*now\\(\\)\\)[\\s\\S]*?ALTER COLUMN queued_at SET NOT NULL[\\s\\S]*?CREATE INDEX IF NOT EXISTS idx_department_queues_work/i, 'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
+const queueColumn = queueSchemaMigration.indexOf('ADD COLUMN IF NOT EXISTS queued_at');
+const queueBackfill = queueSchemaMigration.indexOf('COALESCE(queued_at, created_at, now())');
+const queueNotNull = queueSchemaMigration.indexOf('ALTER COLUMN queued_at SET NOT NULL');
+const queueIndex = queueSchemaMigration.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
+assert.ok(queueColumn >= 0 && queueBackfill > queueColumn && queueNotNull > queueBackfill && queueIndex > queueNotNull,
+  'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
