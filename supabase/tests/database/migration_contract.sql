@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(33);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -58,13 +58,22 @@ select ok(
   'public RLS policies use the session-scoped facility authorization wrapper'
 );
 select ok(
-  to_regclass('public.patient_audit_log') IS NULL
-  AND NOT EXISTS (
+  to_regclass('public.patient_audit_log') IS NOT NULL
+  AND EXISTS (
     SELECT 1 FROM pg_trigger
     WHERE tgname = 't_patient_audit_changes'
       AND NOT tgisinternal
   ),
-  'clean replay has one active patient audit store and no duplicate trigger'
+  'patient audit log table and trigger exist for the Patient Audit screen'
+);
+select ok(
+  EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid = 'public.audit_patient_changes()'::regprocedure
+      AND p.prosecdef
+      AND p.proconfig @> ARRAY['search_path=""']
+  ),
+  'patient audit log trigger is security definer with an empty pinned search_path'
 );
 select * from finish();
 rollback;
