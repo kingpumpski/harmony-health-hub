@@ -136,7 +136,7 @@ CREATE OR REPLACE FUNCTION public.set_facility_notification_provider(
   _metadata JSONB DEFAULT '{}'::jsonb
 )
 RETURNS public.facility_notification_provider_connections
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
   IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin')) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
@@ -163,7 +163,7 @@ CREATE OR REPLACE FUNCTION public.verify_facility_notification_provider(
   _facility_id UUID,_channel TEXT,_environment TEXT DEFAULT 'sandbox',_verified BOOLEAN DEFAULT true,_error TEXT DEFAULT NULL
 )
 RETURNS public.facility_notification_provider_connections
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
   IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin')) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN

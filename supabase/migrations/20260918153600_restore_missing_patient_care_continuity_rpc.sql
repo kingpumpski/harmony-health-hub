@@ -1,7 +1,10 @@
 -- Runtime reconciliation: restore the patient care continuity RPC when a production
 -- migration was skipped or applied out of order. Keep the API contract server-side
 -- and expose it only to authenticated clients.
-CREATE OR REPLACE FUNCTION public.get_patient_care_continuity(_patient_id UUID)
+-- A legacy installation may have the same signature returning JSON instead of JSONB.
+-- PostgreSQL cannot replace a function when its return type differs.
+DROP FUNCTION IF EXISTS public.get_patient_care_continuity(UUID);
+CREATE FUNCTION public.get_patient_care_continuity(_patient_id UUID)
 RETURNS JSONB
 LANGUAGE sql
 STABLE

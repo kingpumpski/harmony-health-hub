@@ -1,6 +1,17 @@
 -- Server-authoritative pharmacy dispensing/POS lifecycle.
 -- Preparation creates a payment-gated service order; stock is committed only at confirmed dispensing.
 
+-- Normalize legacy inventory schema before SQL functions reference the active flag.
+ALTER TABLE public.pharmacy_inventory
+  ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true;
+
+
+-- Compatibility for legacy pharmacy_inventory schemas created before active-state tracking.
+-- Defaults existing rows to active while preserving facility/RLS authorization boundaries.
+ALTER TABLE public.pharmacy_inventory
+  ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
+
+
 CREATE OR REPLACE FUNCTION public.find_pharmacy_alternatives(_medication text,_strength text DEFAULT NULL)
 RETURNS TABLE(id uuid,drug_name text,brand_name text,generic_name text,strength text,form text,supplier text,stock_quantity integer,unit_price numeric)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$

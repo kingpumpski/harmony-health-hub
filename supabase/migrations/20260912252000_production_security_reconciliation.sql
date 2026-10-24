@@ -2,7 +2,12 @@
 -- Keeps notification mutations user-scoped, narrows longitudinal clinical access,
 -- and expands immutable audit coverage without changing existing workflow RPCs.
 
-CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id UUID)
+-- Earlier migration defines this RPC with RETURNS VOID. PostgreSQL cannot change
+-- a function's return type with CREATE OR REPLACE, so drop the exact signature
+-- before recreating it. Client callers use this RPC for its side effect only.
+DROP FUNCTION IF EXISTS public.mark_notification_read(UUID);
+
+CREATE FUNCTION public.mark_notification_read(_notification_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER

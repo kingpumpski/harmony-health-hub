@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.validate_service_order_encounter()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_encounter public.encounters;
@@ -53,7 +53,7 @@ CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = pg_catalog, public
 AS $function$
 DECLARE
   v_uid uuid := auth.uid();
@@ -146,7 +146,7 @@ CREATE FUNCTION public.release_service_order(
 RETURNS public.service_orders
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_order public.service_orders;
