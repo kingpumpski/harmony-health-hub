@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(40);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -75,5 +75,21 @@ select ok(
   ),
   'patient audit log trigger is security definer with an empty pinned search_path'
 );
+select has_column('public','theatre_cases','theatre_name','legacy theatre name is reconciled');
+select has_column('public','theatre_cases','anesthetist_id','application-facing anesthetist field is reconciled');
+select has_column('public','theatre_cases','scheduled_start','application-facing theatre schedule is reconciled');
+select has_column('public','theatre_cases','urgency','theatre urgency field is reconciled');
+select has_column('public','theatre_cases','encounter_id','theatre encounter link is reconciled');
+select ok(
+  EXISTS (
+    SELECT 1 FROM pg_constraint c
+    WHERE c.conrelid = 'public.theatre_cases'::regclass
+      AND c.conname = 'theatre_cases_status_check'
+      AND position('requested' in pg_get_constraintdef(c.oid)) > 0
+      AND position('scheduled' in pg_get_constraintdef(c.oid)) > 0
+  ),
+  'theatre status constraint supports legacy and current lifecycle states'
+);
+select has_index('public','theatre_cases','idx_theatre_schedule','theatre schedule index exists');
 select * from finish();
 rollback;
