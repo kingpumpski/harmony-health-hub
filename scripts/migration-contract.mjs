@@ -133,6 +133,12 @@ assert.ok(marScheduledColumn >= 0 && marNameColumn >= 0 && marStatusColumn >= 0 
   marMigration.includes("'not_given'") &&
   marMigration.indexOf('ADD CONSTRAINT medication_administrations_status_check') < marIndex,
   'legacy medication administration columns and supported status values must be reconciled before MAR scheduling indexes');
+const facilityPolicyMigration = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
+assert.ok(facilityPolicyMigration.includes("ALTER FUNCTION public.current_user_has_facility_access(uuid) SET search_path = ''") &&
+  facilityPolicyMigration.includes('p.prosecdef') &&
+  facilityPolicyMigration.includes("ARRAY['search_path=\"\"']") &&
+  facilityPolicyMigration.includes('healthcare_facilities_access'),
+  'facility policy migration must verify and pin the security-definer wrapper before rewriting policies');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
