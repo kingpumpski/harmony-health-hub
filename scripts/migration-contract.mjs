@@ -102,6 +102,16 @@ must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff ups
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 // Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
+// Supabase migration versions are unique identifiers, not just filename labels.
+const migrationVersions = new Map();
+for (const {name} of migrations) {
+  const version = name.slice(0, 14);
+  const existing = migrationVersions.get(version);
+  assert.equal(existing, undefined, 'duplicate migration version ' + version + ': ' + existing + ' and ' + name);
+  migrationVersions.set(version, name);
+}
+const queueSchemaMigration = read('supabase/migrations/20260911233000_phase2_service_order_payment_gating.sql');
+must(queueSchemaMigration, /ADD COLUMN IF NOT EXISTS queued_at[\\s\\S]*?UPDATE public\\.department_queues[\\s\\S]*?COALESCE\\(queued_at,\\s*created_at,\\s*now\\(\\)\\)[\\s\\S]*?ALTER COLUMN queued_at SET NOT NULL[\\s\\S]*?CREATE INDEX IF NOT EXISTS idx_department_queues_work/i, 'legacy department queues must reconcile queued_at and preserve created_at before creating the work index');
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const workflow = read('.github/workflows/migration-contract.yml');
