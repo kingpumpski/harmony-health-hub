@@ -38,7 +38,7 @@ for (const column of canonicalEmployeeFields) {
   if (!employeeFields.includes(column)) {
     throw new Error('HR employee list is missing required field: ' + column);
   }
-  if (!hrPayrollDatabaseContract.includes(`'hr_employees','${column}'`)) {
+  if (!hrPayrollDatabaseContract.replace(/\\s+/g, '').includes(`'hr_employees','${column}'`)) {
     throw new Error('HR database contract does not verify selected column: ' + column);
   }
   if (!(migration + '\n' + recordManagementMigration).toLowerCase().includes(column)) {
