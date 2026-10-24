@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(31);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -46,6 +46,16 @@ select ok(
       AND position('not_given' in pg_get_constraintdef(c.oid)) > 0
   ),
   'MAR status constraint supports not_given outcomes'
+);
+select ok(
+  NOT EXISTS (
+    SELECT 1
+    FROM pg_policies p
+    WHERE p.schemaname = 'public'
+      AND (COALESCE(p.qual, '') || ' ' || COALESCE(p.with_check, ''))
+          ~* '(^|[^a-zA-Z0-9_])has_facility_access[[:space:]]*\\('
+  ),
+  'public RLS policies use the session-scoped facility authorization wrapper'
 );
 select * from finish();
 rollback;
