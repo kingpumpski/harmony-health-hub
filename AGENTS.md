@@ -76,7 +76,7 @@ Fix the originating layer. Cache refresh is not a substitute for a schema repair
 - Do not weaken, skip, or delete checks to obtain a green status. If a check is conditionally skipped, explain why and ensure required branches still enforce it.
 - Avoid duplicate fixes drifting across related PRs. When the same defect affects multiple branches, apply a consistent evidence-backed repair and verify each branch independently.
 - After changes, verify the commit SHA and latest workflow result. A successful older run does not validate a newer commit.
-- Treat Vercel preview/deployment checks as non-blocking when GitHub Pages is the project’s designated testing/hosting path, unless repository branch protection explicitly marks that exact check as required. A Vercel failure alone is not a product-quality failure.
+- Treat Vercel preview/deployment checks as advisory and non-blocking because GitHub Pages is the project’s designated testing/hosting path. If existing branch protection or a ruleset requires a Vercel check, flag this as configuration drift and request an authorized administrator to remove only that optional requirement; do not remove genuine quality or security gates. A Vercel failure alone is not a product-quality failure.
 - Do not merge pull requests unless explicitly asked.
 
 ## 7. Feature development without recurring regressions
