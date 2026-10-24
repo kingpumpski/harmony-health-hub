@@ -177,7 +177,7 @@ CREATE POLICY "insurance clinical accounts" ON public.insurance_cases FOR ALL TO
 CREATE OR REPLACE FUNCTION public.update_insurance_case(_id UUID, _eligibility TEXT, _authorization TEXT, _claim_status TEXT, _claim_amount NUMERIC, _approved_amount NUMERIC, _rejection_reason TEXT)
 RETURNS public.insurance_cases LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), ARRAY['admin','accountant','front_desk']::public.app_role[]) THEN RAISE EXCEPTION 'Not authorized'; END IF;
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'accountant'::public.app_role) OR public.has_role(auth.uid(), 'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized'; END IF;
   IF _eligibility NOT IN ('unknown','eligible','ineligible','pending','expired') THEN RAISE EXCEPTION 'Invalid eligibility status'; END IF;
   IF _claim_status NOT IN ('not_submitted','draft','submitted','under_review','approved','partially_approved','rejected','paid','appealed') THEN RAISE EXCEPTION 'Invalid claim status'; END IF;
   UPDATE public.insurance_cases SET eligibility_status=_eligibility, eligibility_checked_at=CASE WHEN _eligibility <> 'unknown' THEN now() ELSE eligibility_checked_at END, authorization_number=_authorization, claim_status=_claim_status, claim_amount=GREATEST(COALESCE(_claim_amount,0),0), approved_amount=GREATEST(COALESCE(_approved_amount,0),0), rejection_reason=_rejection_reason, checked_by=auth.uid(), updated_at=now() WHERE id=_id;
