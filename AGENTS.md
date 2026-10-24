@@ -48,6 +48,8 @@ Apply the same method to all modules and all HTTP 4xx/5xx database requests.
 - Test both clean replay and relevant supported upgrade/legacy paths where fixtures and tooling exist. State clearly when a legacy path is not tested.
 - Compare live catalog facts with repository contracts where access is authorized; static grep or parsing is not proof of runtime schema correctness.
 
+For recurring migration/schema/contract failures, also follow [the Migration and Contract Repair Playbook](docs/REPAIR_PLAYBOOK_MIGRATION_AND_CONTRACTS.md). The playbook is mandatory for the five tracked failure classes: incorrect relationship columns, missing prerequisite schemas, facility-access policy rewrites, operational contract assertions, and transient image-pull failures. Do not skip the playbook's evidence and clean-replay requirements.
+
 ## 4. Security and sensitive health/financial data
 
 - Preserve RLS, least-privilege grants, authentication/authorization checks, facility/tenant isolation, and patient/order/result/billing lineage.

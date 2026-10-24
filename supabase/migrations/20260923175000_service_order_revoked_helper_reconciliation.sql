@@ -19,10 +19,10 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF _source NOT IN ('appointment','accounts') THEN RAISE EXCEPTION 'Invalid activation source'; END IF;
   IF NOT (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
-    OR public.current_user_has_role('front_desk')
-    OR public.current_user_is_clinical_staff()
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+    OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
+    OR public.is_clinical_staff(auth.uid())
   ) THEN
     RAISE EXCEPTION 'Only authorised staff can activate visit coverage';
   END IF;
@@ -86,9 +86,9 @@ DECLARE v_order public.service_orders;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('front_desk')
-    OR public.current_user_is_clinical_staff()
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
+    OR public.is_clinical_staff(auth.uid())
   ) THEN
     RAISE EXCEPTION 'Service order creation denied';
   END IF;
@@ -139,9 +139,9 @@ AS $$
 DECLARE v_order public.service_orders;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
-    OR public.current_user_is_clinical_staff()
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+    OR public.is_clinical_staff(auth.uid())
   ) THEN
     RAISE EXCEPTION 'Authorised staff required';
   END IF;
@@ -175,7 +175,7 @@ SET search_path=public
 AS $$
 DECLARE v_order public.service_orders;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.current_user_is_clinical_staff() THEN
+  IF auth.uid() IS NULL OR NOT public.is_clinical_staff(auth.uid()) THEN
     RAISE EXCEPTION 'Clinical staff required';
   END IF;
 
@@ -220,7 +220,7 @@ SET search_path=public
 AS $$
 DECLARE v_order public.service_orders;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.current_user_is_clinical_staff() THEN
+  IF auth.uid() IS NULL OR NOT public.is_clinical_staff(auth.uid()) THEN
     RAISE EXCEPTION 'Clinical staff required';
   END IF;
 
@@ -283,9 +283,9 @@ BEGIN
     RAISE EXCEPTION 'Invalid queue limit';
   END IF;
   IF NOT (
-    public.current_user_has_role('admin')
-    OR public.current_user_has_role('accountant')
-    OR public.current_user_is_clinical_staff()
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+    OR public.is_clinical_staff(auth.uid())
   ) THEN
     RAISE EXCEPTION 'Department queue access denied';
   END IF;
@@ -293,7 +293,7 @@ BEGIN
     SELECT 1 FROM public.profiles p
     WHERE p.id=auth.uid()
       AND lower(COALESCE(p.department,''))=lower(v_department)
-  ) AND NOT public.current_user_has_role('admin') THEN
+  ) AND NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Department queue access denied for this department';
   END IF;
 

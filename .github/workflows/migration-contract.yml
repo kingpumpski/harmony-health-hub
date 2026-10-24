@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          for attempt in 1 2 3 4; do
+          for attempt in 1 2 3 4 5; do
             if supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
             fi
@@ -63,9 +63,9 @@ jobs:
               echo "Supabase startup reached a deterministic migration/schema error; stopping retries so the SQL failure stays visible."
               exit 1
             fi
-            if [ "$attempt" -lt 4 ]; then
-              delay=$((attempt * 20))
-              echo "Supabase image pull/start failed (attempt $attempt/4); retrying in ${delay}s."
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 30))
+              echo "Supabase image pull/start failed (attempt $attempt/5); retrying in ${delay}s (bounded transient registry/startup retry)."
               sleep "$delay"
             fi
           done

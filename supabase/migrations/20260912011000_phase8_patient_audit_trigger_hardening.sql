@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.audit_patient_changes()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   old_json JSONB;
@@ -44,4 +44,4 @@ BEGIN
 END;
 $$;
 
-REVOKE INSERT, UPDATE, DELETE ON public.patient_audit_log FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.patient_audit_log FROM authenticated, anon;

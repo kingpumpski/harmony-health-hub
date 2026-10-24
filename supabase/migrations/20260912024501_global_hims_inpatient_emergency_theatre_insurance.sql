@@ -79,6 +79,74 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile legacy emergency_cases before indexing the canonical triage fields.
+-- The earlier enterprise migration used arrival_at/triage_priority. Preserve their
+-- recorded chronology and translate known legacy priority values instead of
+-- silently assigning every historical case the new default acuity.
+ALTER TABLE public.emergency_cases
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT;
+
+DO $migration$
+DECLARE
+  v_has_arrival_at BOOLEAN;
+  v_has_created_at BOOLEAN;
+  v_has_triage_priority BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'arrival_at'
+  ) INTO v_has_arrival_at;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'created_at'
+  ) INTO v_has_created_at;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'emergency_cases' AND column_name = 'triage_priority'
+  ) INTO v_has_triage_priority;
+
+  IF v_has_arrival_at THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = arrival_at WHERE arrival_time IS NULL';
+  END IF;
+  IF v_has_created_at THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = created_at WHERE arrival_time IS NULL';
+  END IF;
+  UPDATE public.emergency_cases SET arrival_time = now() WHERE arrival_time IS NULL;
+  ALTER TABLE public.emergency_cases ALTER COLUMN arrival_time SET DEFAULT now();
+  ALTER TABLE public.emergency_cases ALTER COLUMN arrival_time SET NOT NULL;
+
+  IF v_has_triage_priority THEN
+    EXECUTE $backfill$
+      UPDATE public.emergency_cases
+      SET acuity = CASE lower(trim(triage_priority))
+        WHEN 'critical' THEN 'emergency'
+        WHEN 'urgent' THEN 'urgent'
+        WHEN 'moderate' THEN 'less_urgent'
+        WHEN 'routine' THEN 'non_urgent'
+        ELSE COALESCE(acuity, 'urgent')
+      END
+      WHERE acuity IS NULL
+         OR (acuity = 'urgent' AND lower(trim(triage_priority)) <> 'urgent')
+    $backfill$;
+  END IF;
+
+  UPDATE public.emergency_cases SET acuity = 'urgent' WHERE acuity IS NULL;
+  ALTER TABLE public.emergency_cases ALTER COLUMN acuity SET DEFAULT 'urgent';
+  ALTER TABLE public.emergency_cases ALTER COLUMN acuity SET NOT NULL;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.emergency_cases'::regclass
+      AND conname = 'emergency_cases_acuity_check'
+  ) THEN
+    ALTER TABLE public.emergency_cases
+      ADD CONSTRAINT emergency_cases_acuity_check
+      CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+  END IF;
+END
+$migration$;
+
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
@@ -100,6 +168,69 @@ CREATE TABLE IF NOT EXISTS public.theatre_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile the legacy theatre_cases table created by the preceding enterprise migration.
+-- Keep old column names for compatibility while backfilling the application-facing fields.
+ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS theatre_name TEXT,
+  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS urgency TEXT NOT NULL DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS encounter_id UUID REFERENCES public.encounters(id) ON DELETE SET NULL;
+
+DO $theatre_column_backfill$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='theatre'
+  ) THEN
+    EXECUTE 'UPDATE public.theatre_cases SET theatre_name = COALESCE(theatre_name, theatre)';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='anaesthetist_id'
+  ) THEN
+    EXECUTE 'UPDATE public.theatre_cases SET anesthetist_id = COALESCE(anesthetist_id, anaesthetist_id)';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='scheduled_at'
+  ) THEN
+    EXECUTE 'UPDATE public.theatre_cases SET scheduled_start = COALESCE(scheduled_start, scheduled_at)';
+  END IF;
+END
+$theatre_column_backfill$;
+
+-- Preserve legacy status values while enabling the newer lifecycle states.
+ALTER TABLE public.theatre_cases
+  DROP CONSTRAINT IF EXISTS theatre_cases_status_check;
+ALTER TABLE public.theatre_cases
+  ADD CONSTRAINT theatre_cases_status_check
+  CHECK (status IN ('planned','cleared','requested','approved','scheduled','in_progress','completed','cancelled','postponed')) NOT VALID;
+
+ALTER TABLE public.theatre_cases
+  DROP CONSTRAINT IF EXISTS theatre_cases_urgency_check;
+ALTER TABLE public.theatre_cases
+  ADD CONSTRAINT theatre_cases_urgency_check
+  CHECK (urgency IN ('emergency','urgent','elective')) NOT VALID;
+
+DO $theatre_constraint_validation$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.theatre_cases
+    WHERE status NOT IN ('planned','cleared','requested','approved','scheduled','in_progress','completed','cancelled','postponed')
+       OR status IS NULL
+  ) THEN
+    ALTER TABLE public.theatre_cases VALIDATE CONSTRAINT theatre_cases_status_check;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.theatre_cases
+    WHERE urgency NOT IN ('emergency','urgent','elective') OR urgency IS NULL
+  ) THEN
+    ALTER TABLE public.theatre_cases VALIDATE CONSTRAINT theatre_cases_urgency_check;
+  END IF;
+END
+$theatre_constraint_validation$;
+
 CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status);
 CREATE INDEX IF NOT EXISTS idx_theatre_patient ON public.theatre_cases(patient_id, scheduled_start DESC);
 
@@ -147,6 +278,12 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile legacy claim tables created before the canonical timestamp column existed.
+-- This must precede indexes that order claims by creation time.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 

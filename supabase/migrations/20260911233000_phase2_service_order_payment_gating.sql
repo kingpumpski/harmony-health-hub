@@ -95,6 +95,20 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Legacy installations already have department_queues, so CREATE TABLE IF NOT EXISTS
+-- above does not add queued_at to them. Backfill from the original queue timestamp
+-- before enforcing the index; do not replace historical queue times with now().
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ;
+
+UPDATE public.department_queues
+SET queued_at = COALESCE(queued_at, created_at, now())
+WHERE queued_at IS NULL;
+
+ALTER TABLE public.department_queues
+  ALTER COLUMN queued_at SET DEFAULT now(),
+  ALTER COLUMN queued_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 
