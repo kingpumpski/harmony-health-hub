@@ -79,6 +79,25 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Reconcile pre-existing emergency_cases tables before indexing newer triage fields.
+-- CREATE TABLE IF NOT EXISTS does not add columns to a legacy table.
+ALTER TABLE public.emergency_cases
+  ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent';
+
+DO $migration$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.emergency_cases'::regclass
+      AND conname = 'emergency_cases_acuity_check'
+  ) THEN
+    ALTER TABLE public.emergency_cases
+      ADD CONSTRAINT emergency_cases_acuity_check
+      CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+  END IF;
+END
+$migration$;
+
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
@@ -147,6 +166,12 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile legacy claim tables created before the canonical timestamp column existed.
+-- This must precede indexes that order claims by creation time.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 
