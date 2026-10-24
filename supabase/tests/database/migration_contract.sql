@@ -53,7 +53,7 @@ select ok(
     FROM pg_policies p
     WHERE p.schemaname = 'public'
       AND (COALESCE(p.qual, '') || ' ' || COALESCE(p.with_check, ''))
-          ~* '(^|[^a-zA-Z0-9_])has_facility_access[[:space:]]*\\('
+          ~* '(^|[^a-zA-Z0-9_])has_facility_access[[:space:]]*\('
   ),
   'public RLS policies use the session-scoped facility authorization wrapper'
 );
