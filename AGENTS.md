@@ -106,7 +106,11 @@ A static contract passing does not prove a clean replay; a clean replay does not
 
 The project has had recurring migration-order, schema-contract, function-signature, generated-type, and workflow issues. Previous work referenced PR #421 (`ci/future-proof-migration-contracts`) and PR #427 (`fix/prescription-payment-migration-schema-drift`). Re-check their current heads and workflow results before relying on any historical status.
 
-Previous notes reported unavailable cloud database connectivity and duplicate migration versions. Treat those as historical warnings to re-verify, not as proof of current state. Do not renumber applied migrations blindly or claim live-schema verification without current evidence.
+Read-only verification performed on 2026-10-24 confirmed that the connected Supabase project's `public.hr_employees` table has the HR list's other selected columns but does **not** currently have `archived_at` or `archived_by`. The remote migration ledger also does not contain `20261015080000_add_hr_payroll_record_management`. The HR page selects `archived_at`, so the missing column is a strong, directly supported explanation for its PostgREST HTTP 400; capture the response body before claiming this is the complete error diagnosis. The repository already contains the migration that adds these columns and the record-management controls. Do not manually alter the live database as part of this repair; reconcile the migration ledger and use the authorized deployment process after clean replay and contracts pass.
+
+The current clean-replay failure was confirmed in `20260930013529_remove_abandoned_clinical_facility_reconciliation.sql`: an unconditional `REVOKE` targeted `public.reconcile_clinical_facility_record(text,uuid,uuid,text)` before `DROP FUNCTION IF EXISTS`, but the function was absent at that point in replay. The redundant revoke was removed; verify subsequent replay results rather than assuming this was the last migration defect.
+
+Previous notes reported duplicate migration versions. Treat older notes as historical warnings to re-verify, not as proof of current state. Do not renumber applied migrations blindly or claim live-schema verification without current evidence.
 
 ## 10. Required completion report
 
