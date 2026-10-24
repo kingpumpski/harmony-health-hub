@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(22);
 
 select has_column(
   'public',
@@ -15,6 +15,20 @@ select has_column(
   'archived_by',
   'employee archival must record the responsible user'
 );
+
+select has_column('public','hr_employees','id','HR list query id column exists');
+select has_column('public','hr_employees','employee_number','HR list query employee number column exists');
+select has_column('public','hr_employees','first_name','HR list query first name column exists');
+select has_column('public','hr_employees','last_name','HR list query last name column exists');
+select has_column('public','hr_employees','email','HR list query email column exists');
+select has_column('public','hr_employees','phone','HR list query phone column exists');
+select has_column('public','hr_employees','department','HR list query department column exists');
+select has_column('public','hr_employees','job_title','HR list query job title column exists');
+select has_column('public','hr_employees','employment_type','HR list query employment type column exists');
+select has_column('public','hr_employees','employment_status','HR list query employment status column exists');
+select has_column('public','hr_employees','base_salary','HR list query base salary column exists');
+select has_column('public','hr_employees','pay_frequency','HR list query pay frequency column exists');
+select has_column('public','hr_employees','start_date','HR list query start date column exists');
 
 select ok(
   exists (
