@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(30);
 select has_table('public','lab_test_groups','laboratory panels table exists');
 select has_table('public','lab_test_group_items','panel membership table exists');
 select has_table('public','lab_result_attachments','attachment metadata table exists');
@@ -38,5 +38,14 @@ select has_column('public','medication_administrations','scheduled_at','legacy M
 select has_column('public','medication_administrations','status','legacy MAR status is reconciled');
 select has_column('public','medication_administrations','updated_at','legacy MAR updated timestamp is reconciled');
 select has_index('public','medication_administrations','idx_mar_patient_time','MAR patient scheduling index exists');
+select ok(
+  EXISTS (
+    SELECT 1 FROM pg_constraint c
+    WHERE c.conrelid = 'public.medication_administrations'::regclass
+      AND c.conname = 'medication_administrations_status_check'
+      AND position('not_given' in pg_get_constraintdef(c.oid)) > 0
+  ),
+  'MAR status constraint supports not_given outcomes'
+);
 select * from finish();
 rollback;
