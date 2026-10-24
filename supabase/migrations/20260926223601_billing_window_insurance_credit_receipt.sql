@@ -56,15 +56,15 @@ DROP POLICY IF EXISTS insurance_service_tariffs_admin_read ON public.insurance_s
 CREATE POLICY insurance_service_tariffs_admin_read
   ON public.insurance_service_tariffs FOR SELECT TO authenticated
   USING (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
   );
 
 DROP POLICY IF EXISTS insurance_service_tariffs_admin_write ON public.insurance_service_tariffs;
 CREATE POLICY insurance_service_tariffs_admin_write
   ON public.insurance_service_tariffs FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(),'admin'))
-  WITH CHECK (public.has_role(auth.uid(),'admin'));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 REVOKE ALL ON public.patient_account_credits FROM anon, authenticated;
 REVOKE ALL ON public.insurance_service_tariffs FROM anon;
@@ -84,9 +84,9 @@ DECLARE
   v public.patient_account_credits;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
@@ -124,9 +124,9 @@ DECLARE
   v_count integer;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
@@ -181,9 +181,9 @@ DECLARE
   v_account_id text;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;

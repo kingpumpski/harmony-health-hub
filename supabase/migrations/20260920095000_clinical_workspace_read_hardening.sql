@@ -8,10 +8,10 @@ AS $$
 DECLARE result jsonb;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician') OR
-    public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR
-    public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR
-    public.has_role(auth.uid(),'radiologist')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'lab_technician'::public.app_role) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'radiologist'::public.app_role)
   ) THEN RAISE EXCEPTION 'Laboratory role required'; END IF;
   _limit := LEAST(GREATEST(COALESCE(_limit,200),1),500);
   SELECT jsonb_build_object(
@@ -39,7 +39,7 @@ AS $$
 DECLARE result jsonb;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
   _limit := LEAST(GREATEST(COALESCE(_limit,200),1),500);
   SELECT jsonb_build_object(
@@ -77,8 +77,8 @@ AS $$
 DECLARE result jsonb;
 BEGIN
   IF auth.uid() IS NULL OR NOT (
-    public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'radiologist') OR
-    public.has_role(auth.uid(),'radiology_technician') OR public.has_role(auth.uid(),'practitioner')
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'radiologist'::public.app_role) OR
+    public.has_role(auth.uid(),'radiology_technician'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)
   ) THEN RAISE EXCEPTION 'Imaging role required'; END IF;
   _limit := LEAST(GREATEST(COALESCE(_limit,200),1),500);
   SELECT jsonb_build_object(

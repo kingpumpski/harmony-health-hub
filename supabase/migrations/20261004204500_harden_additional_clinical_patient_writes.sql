@@ -19,9 +19,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
   IF upper(pg_catalog.btrim(_cycle_type)) NOT IN ('IVF','IUI','ICSI','FET')
@@ -62,10 +62,10 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')
-    OR public.has_role(uid,'canteen')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
+    OR public.has_role(uid,'canteen'::public.app_role)
   ) THEN RAISE EXCEPTION 'Meal plan creation is not permitted'; END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
   IF v_type IS NULL THEN RAISE EXCEPTION 'Meal plan type is required'; END IF;
@@ -103,8 +103,8 @@ DECLARE
   v_facility uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Not authorized to create nursing care plans';
   END IF;
@@ -150,9 +150,9 @@ DECLARE
   v_facility uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Not authorized to record triage'; END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
   IF v_priority NOT IN ('critical','urgent','moderate','routine')
@@ -212,9 +212,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'pharmacist')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)
   ) THEN RAISE EXCEPTION 'Clinical medication role required'; END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
   IF NULLIF(pg_catalog.btrim(_medication_name),'') IS NULL

@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.transition_emergency_case(_case_id UUID,_statu
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); c public.emergency_cases%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('waiting','triage','treatment','observation','admitted','discharged','referred','left_without_being_seen','cancelled') THEN RAISE EXCEPTION 'Invalid emergency status'; END IF;
  SELECT * INTO c FROM public.emergency_cases WHERE id=_case_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Emergency case not found'; END IF;
@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION public.transition_theatre_case(_case_id UUID,_status 
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); c public.theatre_cases%ROWTYPE; es TEXT; allowed BOOLEAN:=false;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN RAISE EXCEPTION 'Invalid theatre status'; END IF;
  SELECT * INTO c FROM public.theatre_cases WHERE id=_case_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
@@ -44,7 +44,7 @@ CREATE OR REPLACE FUNCTION public.record_transfusion_event(_record_id UUID,_stat
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); r public.transfusion_records%ROWTYPE; es TEXT; allowed BOOLEAN:=false;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN('issued','running','completed','stopped','cancelled') THEN RAISE EXCEPTION 'Invalid transfusion status'; END IF;
  SELECT * INTO r FROM public.transfusion_records WHERE id=_record_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Transfusion record not found'; END IF;

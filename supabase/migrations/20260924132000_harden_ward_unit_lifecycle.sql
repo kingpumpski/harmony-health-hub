@@ -28,7 +28,7 @@ DECLARE
   v_specialty text := NULLIF(btrim(_specialty), '');
   v_gender_policy text := lower(NULLIF(btrim(_gender_policy), ''));
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator role required';
   END IF;
 
@@ -78,7 +78,7 @@ DECLARE
   v_current_active boolean;
   v_id uuid;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator role required';
   END IF;
 
@@ -149,7 +149,7 @@ AS $$
 DECLARE
   v_id uuid;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin') THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Administrator role required';
   END IF;
 

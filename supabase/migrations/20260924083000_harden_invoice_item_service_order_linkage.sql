@@ -20,7 +20,7 @@ DECLARE
   v_method text := lower(trim(coalesce(_method,'')));
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
   IF _item_ids IS NULL OR cardinality(_item_ids)=0 THEN RAISE EXCEPTION 'Select at least one unpaid item'; END IF;

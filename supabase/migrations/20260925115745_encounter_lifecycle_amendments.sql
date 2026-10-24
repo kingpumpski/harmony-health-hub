@@ -52,9 +52,9 @@ as $function$
 declare uid uuid := auth.uid(); result public.prescriptions; v_encounter public.encounters%rowtype;
 begin
   if uid is null then raise exception 'Authentication required'; end if;
-  if not (public.has_role(uid,'admin') or public.has_role(uid,'practitioner')
-    or public.has_role(uid,'nurse') or public.has_role(uid,'midwife')
-    or public.has_role(uid,'specialist_nurse')) then
+  if not (public.has_role(uid,'admin'::public.app_role) or public.has_role(uid,'practitioner'::public.app_role)
+    or public.has_role(uid,'nurse'::public.app_role) or public.has_role(uid,'midwife'::public.app_role)
+    or public.has_role(uid,'specialist_nurse'::public.app_role)) then
     raise exception 'Not authorized to prescribe';
   end if;
   select * into v_encounter from public.encounters where id=_encounter_id for update;
@@ -160,8 +160,8 @@ begin
     join public.permissions p on p.permission_key=rp.permission_key
     where ur.user_id=uid and p.permission_key='encounters_amend' and p.is_active=true
   ) into v_has_permission;
-  if v_enc.practitioner_id<>uid and not public.has_role(uid,'admin')
-     and not public.has_role(uid,'it_admin') and not v_has_permission then
+  if v_enc.practitioner_id<>uid and not public.has_role(uid,'admin'::public.app_role)
+     and not public.has_role(uid,'it_admin'::public.app_role) and not v_has_permission then
     raise exception 'You are not authorized to amend this encounter';
   end if;
   if v_enc.status<>'completed' then raise exception 'Only finalized encounters can be amended'; end if;
@@ -203,8 +203,8 @@ declare
   v_order record; v_ward_name text; uid uuid:=auth.uid();
 begin
   if uid is null then raise exception 'Authentication required'; end if;
-  if not (public.has_role(uid,'admin') or public.has_role(uid,'practitioner') or public.has_role(uid,'nurse')
-    or public.has_role(uid,'midwife') or public.has_role(uid,'specialist_nurse')) then
+  if not (public.has_role(uid,'admin'::public.app_role) or public.has_role(uid,'practitioner'::public.app_role) or public.has_role(uid,'nurse'::public.app_role)
+    or public.has_role(uid,'midwife'::public.app_role) or public.has_role(uid,'specialist_nurse'::public.app_role)) then
     raise exception 'Admission is not permitted for this role';
   end if;
   select * into v_enc from public.encounters where id=_encounter_id for update;

@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.schedule_patient_referral_workflow(_referral_i
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); r public.patient_referrals%ROWTYPE; existing UUID; aid UUID; dept TEXT;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Referral scheduling is not permitted'; END IF;
  SELECT * INTO r FROM public.patient_referrals WHERE id=_referral_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Referral not found'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=r.patient_id) THEN RAISE EXCEPTION 'Referral patient not found'; END IF;
@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover(
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); id UUID;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF NULLIF(btrim(_clinical_summary),'') IS NULL THEN RAISE EXCEPTION 'Clinical summary is required'; END IF;
  IF _ward_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.ward_units WHERE id=_ward_id) THEN RAISE EXCEPTION 'Ward not found'; END IF;
@@ -41,7 +41,7 @@ CREATE OR REPLACE FUNCTION public.acknowledge_nursing_handover(_handover_id UUID
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID:=auth.uid(); h public.nursing_shift_handovers%ROWTYPE;
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  SELECT * INTO h FROM public.nursing_shift_handovers WHERE id=_handover_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Handover not found'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=h.patient_id) THEN RAISE EXCEPTION 'Handover patient not found'; END IF;

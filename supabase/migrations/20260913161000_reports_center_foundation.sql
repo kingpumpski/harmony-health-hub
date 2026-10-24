@@ -215,31 +215,31 @@ AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.facility_memberships fm
     WHERE fm.user_id = _user_id AND fm.facility_id = _facility_id AND fm.is_active = TRUE
-  ) OR public.has_role(_user_id, 'admin')
+  ) OR public.has_role(_user_id,'admin'::public.app_role)
 $$;
 
 DROP POLICY IF EXISTS report_categories_read_authenticated ON public.report_categories;
 CREATE POLICY report_categories_read_authenticated ON public.report_categories FOR SELECT TO authenticated USING (TRUE);
 DROP POLICY IF EXISTS report_definitions_read_authenticated ON public.report_definitions;
-CREATE POLICY report_definitions_read_authenticated ON public.report_definitions FOR SELECT TO authenticated USING (is_active = TRUE OR public.has_role((select auth.uid()), 'admin'));
+CREATE POLICY report_definitions_read_authenticated ON public.report_definitions FOR SELECT TO authenticated USING (is_active = TRUE OR public.has_role((select auth.uid()),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS healthcare_facilities_access ON public.healthcare_facilities;
 CREATE POLICY healthcare_facilities_access ON public.healthcare_facilities FOR SELECT TO authenticated
 USING (public.has_facility_access((select auth.uid()), id));
 CREATE POLICY healthcare_facilities_admin_write ON public.healthcare_facilities FOR ALL TO authenticated
-USING (public.has_role((select auth.uid()), 'admin')) WITH CHECK (public.has_role((select auth.uid()), 'admin'));
+USING (public.has_role((select auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((select auth.uid()),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS facility_memberships_self_or_admin ON public.facility_memberships;
 CREATE POLICY facility_memberships_self_or_admin ON public.facility_memberships FOR SELECT TO authenticated
-USING (user_id = (select auth.uid()) OR public.has_role((select auth.uid()), 'admin'));
+USING (user_id = (select auth.uid()) OR public.has_role((select auth.uid()),'admin'::public.app_role));
 CREATE POLICY facility_memberships_admin_write ON public.facility_memberships FOR ALL TO authenticated
-USING (public.has_role((select auth.uid()), 'admin')) WITH CHECK (public.has_role((select auth.uid()), 'admin'));
+USING (public.has_role((select auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((select auth.uid()),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS facility_report_config_access ON public.facility_report_config;
 CREATE POLICY facility_report_config_access ON public.facility_report_config FOR SELECT TO authenticated
 USING (public.has_facility_access((select auth.uid()), facility_id));
 CREATE POLICY facility_report_config_admin_write ON public.facility_report_config FOR ALL TO authenticated
-USING (public.has_role((select auth.uid()), 'admin')) WITH CHECK (public.has_role((select auth.uid()), 'admin'));
+USING (public.has_role((select auth.uid()),'admin'::public.app_role)) WITH CHECK (public.has_role((select auth.uid()),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS report_generation_runs_access ON public.report_generation_runs;
 CREATE POLICY report_generation_runs_access ON public.report_generation_runs FOR SELECT TO authenticated

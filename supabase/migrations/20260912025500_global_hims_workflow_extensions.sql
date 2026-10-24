@@ -5,7 +5,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); h public.nursing_shift_handovers%ROWTYPE;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'midwife')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
  SELECT * INTO h FROM public.nursing_shift_handovers WHERE id=_handover_id FOR UPDATE;
  IF h.id IS NULL THEN RAISE EXCEPTION 'Handover not found'; END IF;
  UPDATE public.nursing_shift_handovers SET incoming_officer=uid, acknowledged_at=now() WHERE id=_handover_id;
@@ -18,7 +18,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); c public.theatre_cases%ROWTYPE;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _status NOT IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN RAISE EXCEPTION 'Invalid theatre status'; END IF;
  SELECT * INTO c FROM public.theatre_cases WHERE id=_case_id FOR UPDATE;
  IF c.id IS NULL THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
@@ -32,7 +32,7 @@ RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); c public.insurance_claims%ROWTYPE; prev TEXT;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
+ IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
  IF _status NOT IN ('draft','submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided') THEN RAISE EXCEPTION 'Invalid claim status'; END IF;
  SELECT * INTO c FROM public.insurance_claims WHERE id=_claim_id FOR UPDATE;
  IF c.id IS NULL THEN RAISE EXCEPTION 'Insurance claim not found'; END IF;

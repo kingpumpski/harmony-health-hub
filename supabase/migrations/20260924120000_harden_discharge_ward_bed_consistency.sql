@@ -18,10 +18,10 @@ DECLARE
   v_bed_id uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin')
-    OR public.has_role(uid,'practitioner')
-    OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Admission discharge is not permitted';
   END IF;

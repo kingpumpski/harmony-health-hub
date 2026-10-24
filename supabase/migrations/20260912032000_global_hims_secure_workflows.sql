@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION public.create_nursing_care_plan(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Not authorized to create nursing care plans';
   END IF;
   INSERT INTO public.nursing_care_plans(patient_id, encounter_id, admission_id, problem, goal, interventions, priority, created_by)
@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION public.create_theatre_case(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Not authorized to create theatre cases';
   END IF;
   INSERT INTO public.theatre_cases(patient_id,encounter_id,procedure_name,surgeon_id,anesthetist_id,scheduled_start,theatre_name,urgency,status,created_by)
@@ -53,7 +53,7 @@ CREATE OR REPLACE FUNCTION public.create_transfusion_record(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Not authorized to create transfusion records';
   END IF;
   INSERT INTO public.transfusion_records(patient_id,encounter_id,blood_product,unit_identifier,blood_group,consent_confirmed,status)
@@ -71,7 +71,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.medication_administrations;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN
     RAISE EXCEPTION 'Not authorized to administer medication';
   END IF;
   IF _status NOT IN ('administered','held','refused','omitted','cancelled') THEN RAISE EXCEPTION 'Invalid medication status'; END IF;

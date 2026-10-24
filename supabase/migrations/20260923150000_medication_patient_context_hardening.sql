@@ -8,7 +8,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
  IF _patient_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id AND COALESCE(status,'active')<>'inactive') THEN RAISE EXCEPTION 'Patient not found or inactive'; END IF;
  IF length(trim(COALESCE(_medication_name,'')))<2 THEN RAISE EXCEPTION 'Medication name is required'; END IF;
  IF _scheduled_at IS NOT NULL AND _scheduled_at < now()-interval '24 hours' THEN RAISE EXCEPTION 'Medication schedule is outside the permitted window'; END IF;
@@ -20,6 +20,9 @@ BEGIN
 END;
 $$;
 
+-- The lifecycle contract changes its return type across historical revisions; PostgreSQL requires dropping the old signature first.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
@@ -28,7 +31,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations; p public.prescriptions%ROWTYPE; uid UUID:=auth.uid();
 BEGIN
- IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
+ IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
  IF _status NOT IN('administered','held','refused','omitted','not_given','cancelled') THEN RAISE EXCEPTION 'Unsupported medication administration status'; END IF;
  SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Medication administration record not found'; END IF;

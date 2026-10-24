@@ -12,7 +12,7 @@ DECLARE
   c public.theatre_cases%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Clinical role required';
   END IF;
   IF _status NOT IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN
@@ -42,7 +42,7 @@ DECLARE
   c public.insurance_claims%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
   IF _to_status NOT IN ('submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided') THEN
     RAISE EXCEPTION 'Invalid claim status';
   END IF;
@@ -67,7 +67,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); h public.nursing_shift_handovers%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   SELECT * INTO h FROM public.nursing_shift_handovers WHERE id=_handover_id FOR UPDATE;
   IF h.id IS NULL THEN RAISE EXCEPTION 'Handover not found'; END IF;
   IF h.acknowledged_at IS NOT NULL THEN RETURN jsonb_build_object('handover_id',_handover_id,'acknowledged_at',h.acknowledged_at); END IF;

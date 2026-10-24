@@ -7,7 +7,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); h public.nursing_shift_handovers%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   SELECT * INTO h FROM public.nursing_shift_handovers WHERE id=_handover_id FOR UPDATE;
   IF h.id IS NULL THEN RAISE EXCEPTION 'Handover not found'; END IF;
   IF h.acknowledged_at IS NOT NULL THEN RETURN jsonb_build_object('handover_id',_handover_id,'acknowledged_at',h.acknowledged_at); END IF;
@@ -22,7 +22,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); c public.theatre_cases%ROWTYPE;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
   IF _status NOT IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed') THEN RAISE EXCEPTION 'Invalid theatre status'; END IF;
   SELECT * INTO c FROM public.theatre_cases WHERE id=_case_id FOR UPDATE;
   IF c.id IS NULL THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
@@ -37,12 +37,15 @@ GRANT EXECUTE ON FUNCTION public.transition_theatre_case(UUID,TEXT,TEXT) TO auth
 
 -- Claims UI uses _status; retain a single canonical transition contract.
 DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,TEXT);
+-- Earlier workflow migration declared this same six-argument signature as JSON;
+-- drop the exact overload before replacing its return contract with JSONB.
+DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT);
 CREATE OR REPLACE FUNCTION public.transition_insurance_claim(_claim_id UUID, _status TEXT, _amount_approved NUMERIC DEFAULT NULL, _amount_paid NUMERIC DEFAULT NULL, _rejection_reason TEXT DEFAULT NULL, _notes TEXT DEFAULT NULL)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE c public.insurance_claims%ROWTYPE; uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
   IF _status NOT IN ('submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided') THEN RAISE EXCEPTION 'Invalid claim status'; END IF;
   SELECT * INTO c FROM public.insurance_claims WHERE id=_claim_id FOR UPDATE;
   IF c.id IS NULL THEN RAISE EXCEPTION 'Claim not found'; END IF;
@@ -72,16 +75,16 @@ REVOKE INSERT, UPDATE, DELETE ON public.insurance_claim_events FROM authenticate
 -- The transition RPCs own operational mutations; clinical staff retain read access.
 DROP POLICY IF EXISTS "transfusion clinical access" ON public.transfusion_records;
 CREATE POLICY "transfusion clinical access" ON public.transfusion_records FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role));
 CREATE POLICY "transfusion clinical insert" ON public.transfusion_records FOR INSERT TO authenticated
-WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'specialist_nurse'));
+WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role));
 
 -- MAR writes should identify the administering actor only at administration time.
 DROP POLICY IF EXISTS "mar clinical access" ON public.medication_administrations;
 CREATE POLICY "mar clinical read" ON public.medication_administrations FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role));
 CREATE POLICY "mar clinical insert" ON public.medication_administrations FOR INSERT TO authenticated
-WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist'));
+WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role));
 CREATE POLICY "mar clinical update" ON public.medication_administrations FOR UPDATE TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'pharmacist'))
-WITH CHECK (administered_by IS NULL OR administered_by=auth.uid() OR public.has_role(auth.uid(),'admin'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role))
+WITH CHECK (administered_by IS NULL OR administered_by=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));

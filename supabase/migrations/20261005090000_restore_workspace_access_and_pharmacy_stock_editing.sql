@@ -79,7 +79,7 @@ RETURNS public.pharmacy_inventory LANGUAGE plpgsql SECURITY DEFINER SET search_p
 AS $function$
 DECLARE r public.pharmacy_inventory; v_uid uuid:=auth.uid(); v_facility uuid:=public.current_user_facility_id();
 BEGIN
- IF v_uid IS NULL OR NOT (public.has_role(v_uid,'admin') OR public.has_role(v_uid,'it_admin') OR public.has_role(v_uid,'system_superuser') OR public.has_role(v_uid,'pharmacist') OR public.current_user_has_catalogue_create_permission('create_items')) THEN RAISE EXCEPTION 'Pharmacy inventory management permission required'; END IF;
+ IF v_uid IS NULL OR NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role) OR public.has_role(v_uid,'pharmacist'::public.app_role) OR public.current_user_has_catalogue_create_permission('create_items')) THEN RAISE EXCEPTION 'Pharmacy inventory management permission required'; END IF;
  IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility before updating stock'; END IF;
  IF _item_id IS NULL THEN RAISE EXCEPTION 'Inventory item is required'; END IF;
  IF pg_catalog.length(pg_catalog.btrim(coalesce(_drug_name,'')))<2 THEN RAISE EXCEPTION 'Drug name must contain at least two characters'; END IF;

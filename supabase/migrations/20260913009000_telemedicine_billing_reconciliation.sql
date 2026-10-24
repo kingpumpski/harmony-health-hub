@@ -24,7 +24,7 @@ DECLARE
   v_order_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN
     RAISE EXCEPTION 'Telemedicine scheduling requires a practitioner role';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
@@ -105,7 +105,7 @@ AS $$
 DECLARE v_order_status TEXT;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Payment confirmation requires an accounts or front-desk role';
   END IF;
 
@@ -135,7 +135,7 @@ SET search_path = public
 AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN
     RAISE EXCEPTION 'Telemedicine access requires a practitioner role';
   END IF;
 
@@ -172,7 +172,7 @@ AS $$
 DECLARE v_order_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN
     RAISE EXCEPTION 'Telemedicine access requires a practitioner role';
   END IF;
 

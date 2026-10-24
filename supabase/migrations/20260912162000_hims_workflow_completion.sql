@@ -34,8 +34,7 @@ CREATE TABLE IF NOT EXISTS public.facility_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS facility_settings_singleton_idx
-  ON public.facility_settings ((true));
+-- Do not impose a global singleton: facilities may have independent settings.
 
 INSERT INTO public.facility_settings (facility_name)
 SELECT 'Harmony Health Hub'
@@ -76,6 +75,132 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (test_id, code)
 );
+
+-- Reconcile partially provisioned legacy facility settings before workflows use them.
+ALTER TABLE public.facility_settings
+  ADD COLUMN IF NOT EXISTS country_code CHAR(2) NOT NULL DEFAULT 'GH',
+  ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'GHS',
+  ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Accra',
+  ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined',
+  ADD COLUMN IF NOT EXISTS enable_patient_portal BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS enable_ai_decision_support BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30,
+  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
+
+-- Reconcile partially provisioned legacy service-order tables before indexing them.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing legacy table.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'general',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS release_reason TEXT,
+  ADD COLUMN IF NOT EXISTS released_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked',
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine';
+
+-- Normalize recognized legacy routing values without changing facility identity.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'facility_settings' AND column_name = 'routing_mode'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.facility_settings
+      SET payment_routing_mode = CASE
+        WHEN routing_mode IN ('pay_before_each_step','pay_before_every_step','strict') THEN 'pay_before_every_step'
+        ELSE 'streamlined'
+      END
+      WHERE payment_routing_mode = 'streamlined'
+    $sql$;
+  END IF;
+END $$;
+
+-- Preserve the legacy lifecycle when canonical fulfillment state is introduced.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'service_orders' AND column_name = 'status'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.service_orders
+      SET fulfillment_status = CASE
+        WHEN lower(COALESCE(status::text, '')) IN ('released','in_progress','completed','cancelled')
+          THEN lower(status::text)
+        ELSE fulfillment_status
+      END
+      WHERE fulfillment_status = 'blocked'
+        AND lower(COALESCE(status::text, '')) IN ('released','in_progress','completed','cancelled')
+    $sql$;
+  END IF;
+END $$;
+
+-- Reconcile legacy laboratory catalog columns before indexes and updated_at triggers.
+ALTER TABLE public.lab_test_catalog
+  ADD COLUMN IF NOT EXISTS specimen_type TEXT,
+  ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'laboratory',
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS interpretation_notes TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='specimen') THEN
+    EXECUTE 'UPDATE public.lab_test_catalog SET specimen_type = COALESCE(specimen_type, specimen) WHERE specimen_type IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_catalog' AND column_name='notes') THEN
+    EXECUTE 'UPDATE public.lab_test_catalog SET description = COALESCE(description, notes) WHERE description IS NULL';
+  END IF;
+  EXECUTE $sql$UPDATE public.lab_test_catalog SET code = 'legacy-' || id::text WHERE code IS NULL OR btrim(code) = ''$sql$;
+  EXECUTE $sql$WITH duplicates AS (SELECT id, row_number() OVER (PARTITION BY code ORDER BY id) AS rn FROM public.lab_test_catalog) UPDATE public.lab_test_catalog t SET code = 'legacy-' || t.id::text FROM duplicates d WHERE d.id = t.id AND d.rn > 1$sql$;
+END $$;
+
+ALTER TABLE public.lab_test_catalog ALTER COLUMN code SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_catalog_code_compat_idx
+  ON public.lab_test_catalog (code);
+
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS code TEXT,
+  ADD COLUMN IF NOT EXISTS value_type TEXT NOT NULL DEFAULT 'numeric',
+  ADD COLUMN IF NOT EXISTS reference_low NUMERIC,
+  ADD COLUMN IF NOT EXISTS reference_high NUMERIC,
+  ADD COLUMN IF NOT EXISTS reference_text TEXT,
+  ADD COLUMN IF NOT EXISTS critical_low NUMERIC,
+  ADD COLUMN IF NOT EXISTS critical_high NUMERIC,
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_low') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_low = COALESCE(reference_low, ref_low) WHERE reference_low IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_high') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_high = COALESCE(reference_high, ref_high) WHERE reference_high IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='ref_text') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET reference_text = COALESCE(reference_text, ref_text) WHERE reference_text IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lab_test_parameters' AND column_name='display_order') THEN
+    EXECUTE 'UPDATE public.lab_test_parameters SET sort_order = display_order WHERE sort_order = 0 AND display_order IS NOT NULL';
+  END IF;
+  EXECUTE $sql$UPDATE public.lab_test_parameters SET code = 'legacy-' || id::text WHERE code IS NULL OR btrim(code) = ''$sql$;
+  EXECUTE $sql$WITH duplicates AS (SELECT id, row_number() OVER (PARTITION BY test_id, code ORDER BY id) AS rn FROM public.lab_test_parameters) UPDATE public.lab_test_parameters t SET code = 'legacy-' || t.id::text FROM duplicates d WHERE d.id = t.id AND d.rn > 1$sql$;
+END $$;
+
+ALTER TABLE public.lab_test_parameters ALTER COLUMN code SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS lab_test_parameters_test_code_compat_idx
+  ON public.lab_test_parameters (test_id, code);
+
+-- Reconcile partially provisioned legacy catalog tables before indexing them.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS lab_test_catalog_active_idx
   ON public.lab_test_catalog (active, category, name);
@@ -198,6 +323,34 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Reconcile the existing Phase 1 inpatient review table before indexing it.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS assessment TEXT;
+
+UPDATE public.inpatient_reviews ir
+SET patient_id = COALESCE(ir.patient_id, a.patient_id)
+FROM public.admissions a
+WHERE a.id = ir.admission_id
+  AND ir.patient_id IS NULL;
+
+UPDATE public.inpatient_reviews
+SET seen_at = COALESCE(seen_at, created_at, now())
+WHERE seen_at IS NULL;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.inpatient_reviews WHERE patient_id IS NULL) THEN
+    RAISE EXCEPTION 'Cannot reconcile inpatient_reviews: some rows have no matching admission patient';
+  END IF;
+END $$;
+
+ALTER TABLE public.inpatient_reviews
+  ALTER COLUMN patient_id SET NOT NULL,
+  ALTER COLUMN seen_at SET DEFAULT now(),
+  ALTER COLUMN seen_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
@@ -213,6 +366,25 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   old_record JSONB,
   new_record JSONB
 );
+
+-- Reconcile Phase 1's append-only audit contract with the expanded audit projection.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS action TEXT NOT NULL DEFAULT 'UPDATE',
+  ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='actor_user_id') THEN
+    EXECUTE 'UPDATE public.patient_audit SET changed_by = COALESCE(changed_by, actor_user_id) WHERE changed_by IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='occurred_at') THEN
+    EXECUTE 'UPDATE public.patient_audit SET changed_at = COALESCE(changed_at, occurred_at, now()) WHERE changed_at IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='patient_audit' AND column_name='operation') THEN
+    EXECUTE 'UPDATE public.patient_audit SET action = operation WHERE action = ''UPDATE'' AND operation IS NOT NULL';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
@@ -285,43 +457,43 @@ ALTER TABLE public.patient_audit ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS facility_settings_staff_read ON public.facility_settings;
 CREATE POLICY facility_settings_staff_read
 ON public.facility_settings FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(), 'admin') OR public.is_clinical_staff(auth.uid()));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.is_clinical_staff(auth.uid()));
 
 DROP POLICY IF EXISTS facility_settings_admin_write ON public.facility_settings;
 CREATE POLICY facility_settings_admin_write
 ON public.facility_settings FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_catalog_staff_read ON public.lab_test_catalog;
 CREATE POLICY lab_catalog_staff_read
 ON public.lab_test_catalog FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_catalog_admin_write ON public.lab_test_catalog;
 CREATE POLICY lab_catalog_admin_write
 ON public.lab_test_catalog FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_parameters_staff_read ON public.lab_test_parameters;
 CREATE POLICY lab_parameters_staff_read
 ON public.lab_test_parameters FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS lab_parameters_admin_write ON public.lab_test_parameters;
 CREATE POLICY lab_parameters_admin_write
 ON public.lab_test_parameters FOR ALL TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS service_orders_staff_read ON public.service_orders;
 CREATE POLICY service_orders_staff_read
 ON public.service_orders FOR SELECT TO authenticated
 USING (
   public.is_clinical_staff(auth.uid())
-  OR public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR patient_id IN (SELECT id FROM public.patients WHERE user_id = auth.uid())
 );
 
@@ -330,39 +502,39 @@ CREATE POLICY service_orders_staff_insert
 ON public.service_orders FOR INSERT TO authenticated
 WITH CHECK (
   public.is_clinical_staff(auth.uid())
-  OR public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  OR public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
 );
 
 DROP POLICY IF EXISTS service_orders_release ON public.service_orders;
 CREATE POLICY service_orders_release
 ON public.service_orders FOR UPDATE TO authenticated
 USING (
-  public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR public.is_clinical_staff(auth.uid())
 )
 WITH CHECK (
-  public.has_role(auth.uid(), 'accountant')
-  OR public.has_role(auth.uid(), 'admin')
+  public.has_role(auth.uid(), 'accountant'::public.app_role)
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
   OR public.is_clinical_staff(auth.uid())
 );
 
 DROP POLICY IF EXISTS inpatient_reviews_staff_read ON public.inpatient_reviews;
 CREATE POLICY inpatient_reviews_staff_read
 ON public.inpatient_reviews FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS inpatient_reviews_staff_write ON public.inpatient_reviews;
 CREATE POLICY inpatient_reviews_staff_write
 ON public.inpatient_reviews FOR ALL TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 DROP POLICY IF EXISTS patient_audit_staff_read ON public.patient_audit;
 CREATE POLICY patient_audit_staff_read
 ON public.patient_audit FOR SELECT TO authenticated
-USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'));
+USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- Audit rows are written only by the SECURITY DEFINER trigger; no direct client insert policy.
 

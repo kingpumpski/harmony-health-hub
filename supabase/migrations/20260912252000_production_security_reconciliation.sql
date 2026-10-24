@@ -2,6 +2,9 @@
 -- Keeps notification mutations user-scoped, narrows longitudinal clinical access,
 -- and expands immutable audit coverage without changing existing workflow RPCs.
 
+-- The previous notification migration returned VOID; PostgreSQL requires dropping the signature before changing its return type.
+DROP FUNCTION IF EXISTS public.mark_notification_read(UUID);
+
 CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -27,10 +30,10 @@ BEGIN
         AND (
           public.has_role(auth.uid(), recipient_role)
           OR (recipient_role = 'clinical' AND (
-            public.has_role(auth.uid(),'practitioner') OR
-            public.has_role(auth.uid(),'nurse') OR
-            public.has_role(auth.uid(),'midwife') OR
-            public.has_role(auth.uid(),'specialist_nurse')
+            public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+            public.has_role(auth.uid(),'nurse'::public.app_role) OR
+            public.has_role(auth.uid(),'midwife'::public.app_role) OR
+            public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
           ))
         )
       )
@@ -66,10 +69,10 @@ BEGIN
         AND (
           public.has_role(auth.uid(), recipient_role)
           OR (recipient_role = 'clinical' AND (
-            public.has_role(auth.uid(),'practitioner') OR
-            public.has_role(auth.uid(),'nurse') OR
-            public.has_role(auth.uid(),'midwife') OR
-            public.has_role(auth.uid(),'specialist_nurse')
+            public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+            public.has_role(auth.uid(),'nurse'::public.app_role) OR
+            public.has_role(auth.uid(),'midwife'::public.app_role) OR
+            public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
           ))
         )
       )
@@ -103,13 +106,13 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid,'admin') OR
-    public.has_role(uid,'practitioner') OR
-    public.has_role(uid,'nurse') OR
-    public.has_role(uid,'midwife') OR
-    public.has_role(uid,'specialist_nurse') OR
-    public.has_role(uid,'pharmacist') OR
-    public.has_role(uid,'lab_technician')
+    public.has_role(uid,'admin'::public.app_role) OR
+    public.has_role(uid,'practitioner'::public.app_role) OR
+    public.has_role(uid,'nurse'::public.app_role) OR
+    public.has_role(uid,'midwife'::public.app_role) OR
+    public.has_role(uid,'specialist_nurse'::public.app_role) OR
+    public.has_role(uid,'pharmacist'::public.app_role) OR
+    public.has_role(uid,'lab_technician'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical continuity access denied';
   END IF;

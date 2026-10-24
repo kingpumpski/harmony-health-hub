@@ -38,7 +38,7 @@ BEGIN
     RETURN patient_facility;
   END IF;
 
-  IF public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') THEN
+  IF public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) THEN
     RETURN patient_facility;
   END IF;
 

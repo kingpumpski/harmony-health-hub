@@ -36,7 +36,7 @@ BEGIN
 
   IF existing_department IS NULL THEN RAISE EXCEPTION 'Service not found'; END IF;
 
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) THEN
     IF NOT public.current_user_has_catalogue_create_permission('create_services') THEN
       RAISE EXCEPTION 'Service configuration privilege required';
     END IF;

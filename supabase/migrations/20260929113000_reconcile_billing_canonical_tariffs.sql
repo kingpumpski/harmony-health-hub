@@ -34,7 +34,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog',
 AS $function$
 DECLARE v_patient public.patients; v_encounter uuid; v_invoice uuid; v_start timestamptz:=date_trunc('day',coalesce(_at,now())); v_end timestamptz:=date_trunc('day',coalesce(_at,now()))+interval '1 day'-interval '1 microsecond'; v_insured boolean:=false; v_insurer text; v_insurer_id uuid; v_credit numeric:=0; v_total numeric:=0; v_insurance numeric:=0; v_topup numeric:=0; v_items jsonb; v_account_id text;
 BEGIN
- IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+ IF auth.uid() IS NULL OR NOT(public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
  SELECT * INTO v_patient FROM public.patients WHERE id=_patient_id AND coalesce(status,'active')<>'inactive'; IF v_patient.id IS NULL THEN RAISE EXCEPTION 'Active patient not found'; END IF;
  SELECT e.id INTO v_encounter FROM public.encounters e WHERE e.patient_id=_patient_id AND e.created_at<=v_end AND (e.completed_at IS NULL OR e.completed_at>=v_start) ORDER BY coalesce(e.started_at,e.created_at) DESC LIMIT 1;
  v_insured:=NULLIF(trim(v_patient.insurance_provider),'') IS NOT NULL AND NULLIF(trim(v_patient.insurance_number),'') IS NOT NULL AND (v_patient.insurance_expiry IS NULL OR v_patient.insurance_expiry>=_at::date);

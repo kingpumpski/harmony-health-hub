@@ -4,7 +4,7 @@ RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_pat
 DECLARE v_cycle public.fertility_cycles; v_cycle_number INTEGER;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
  IF upper(trim(_cycle_type)) NOT IN ('IVF','IUI','ICSI','FET') THEN RAISE EXCEPTION 'Unsupported fertility cycle type'; END IF;
  SELECT COALESCE(MAX(cycle_number),0)+1 INTO v_cycle_number FROM public.fertility_cycles WHERE patient_id=_patient_id;
@@ -16,7 +16,7 @@ RETURNS public.fertility_monitoring LANGUAGE plpgsql SECURITY DEFINER SET search
 DECLARE v_row public.fertility_monitoring;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.fertility_cycles WHERE id=_cycle_id) THEN RAISE EXCEPTION 'Fertility cycle not found'; END IF;
  IF _visit_date IS NULL THEN RAISE EXCEPTION 'Visit date is required'; END IF;
  IF _cycle_day IS NOT NULL AND _cycle_day<1 THEN RAISE EXCEPTION 'Cycle day must be positive'; END IF;
@@ -28,7 +28,7 @@ RETURNS public.fertility_cycles LANGUAGE plpgsql SECURITY DEFINER SET search_pat
 DECLARE v_cycle public.fertility_cycles;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
+ IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Insufficient role for fertility workflow'; END IF;
  IF lower(trim(_status)) NOT IN ('active','completed','cancelled','successful','unsuccessful') THEN RAISE EXCEPTION 'Unsupported fertility cycle status'; END IF;
  UPDATE public.fertility_cycles SET status=lower(trim(_status)),outcome=NULLIF(trim(_outcome),''),updated_at=now() WHERE id=_cycle_id RETURNING * INTO v_cycle;
  IF NOT FOUND THEN RAISE EXCEPTION 'Fertility cycle not found'; END IF;

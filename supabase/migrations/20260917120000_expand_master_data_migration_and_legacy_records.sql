@@ -69,13 +69,13 @@ ALTER TABLE public.data_migration_rows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.legacy_clinical_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "admins manage migration batches" ON public.data_migration_batches;
-CREATE POLICY "admins manage migration batches" ON public.data_migration_batches FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage migration batches" ON public.data_migration_batches FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 DROP POLICY IF EXISTS "admins manage migration rows" ON public.data_migration_rows;
-CREATE POLICY "admins manage migration rows" ON public.data_migration_rows FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage migration rows" ON public.data_migration_rows FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 DROP POLICY IF EXISTS "clinical read legacy records" ON public.legacy_clinical_records;
-CREATE POLICY "clinical read legacy records" ON public.legacy_clinical_records FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse'));
+CREATE POLICY "clinical read legacy records" ON public.legacy_clinical_records FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role));
 DROP POLICY IF EXISTS "admins manage legacy records" ON public.legacy_clinical_records;
-CREATE POLICY "admins manage legacy records" ON public.legacy_clinical_records FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage legacy records" ON public.legacy_clinical_records FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 ALTER TABLE public.service_tariffs ADD COLUMN IF NOT EXISTS source_standard TEXT;
 ALTER TABLE public.service_tariffs ADD COLUMN IF NOT EXISTS effective_from DATE;
@@ -105,13 +105,13 @@ ALTER TABLE public.system_master_data ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "authenticated read master data" ON public.system_master_data;
 CREATE POLICY "authenticated read master data" ON public.system_master_data FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "admins manage master data" ON public.system_master_data;
-CREATE POLICY "admins manage master data" ON public.system_master_data FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage master data" ON public.system_master_data FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.create_data_migration_batch(_entity_type TEXT,_source_system TEXT,_source_version TEXT DEFAULT NULL,_file_name TEXT DEFAULT NULL,_source_format TEXT DEFAULT 'csv',_total_rows INTEGER DEFAULT 0)
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required'; END IF;
   INSERT INTO public.data_migration_batches(entity_type,source_system,source_version,file_name,source_format,total_rows,created_by)
   VALUES (_entity_type,_source_system,_source_version,_file_name,_source_format,COALESCE(_total_rows,0),auth.uid()) RETURNING id INTO v_id;
   RETURN v_id;
@@ -123,7 +123,7 @@ CREATE OR REPLACE FUNCTION public.stage_data_migration_rows(_batch_id UUID,_rows
 RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_count INTEGER := 0; v_item JSONB; v_row INTEGER := 0;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.data_migration_batches WHERE id=_batch_id) THEN RAISE EXCEPTION 'Migration batch not found'; END IF;
   FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(_rows,'[]'::jsonb)) LOOP
     v_row := v_row + 1;

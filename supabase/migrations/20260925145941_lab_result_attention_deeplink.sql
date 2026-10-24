@@ -15,9 +15,9 @@ declare
   o public.lab_orders%rowtype;
 begin
   if uid is null or not (
-    public.has_role(uid,'admin')
-    or public.has_role(uid,'lab_technician')
-    or public.has_role(uid,'practitioner')
+    public.has_role(uid,'admin'::public.app_role)
+    or public.has_role(uid,'lab_technician'::public.app_role)
+    or public.has_role(uid,'practitioner'::public.app_role)
   ) then
     raise exception 'Laboratory approval role required';
   end if;

@@ -1,6 +1,6 @@
 -- Restore repository parity for insurance claim facility attribution.
 CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(_patient_id uuid, _payer_name text DEFAULT NULL::text, _member_number text DEFAULT NULL::text, _amount_claimed numeric DEFAULT 0, _invoice_id uuid DEFAULT NULL::uuid)
-RETURNS public.insurance_claims
+RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -14,7 +14,7 @@ DECLARE
   v_payer text := NULLIF(btrim(_payer_name),'');
   v_facility uuid;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Insurance claims access required';
   END IF;
   v_facility := public.assert_patient_facility_context(_patient_id);
@@ -43,7 +43,7 @@ BEGIN
   VALUES(v_invoice,_patient_id,v_facility,v_payer,NULLIF(btrim(_member_number),''),v_payer,NULLIF(btrim(_member_number),''),v_company,_amount_claimed,NULL,0,'draft',NULL,now())
   RETURNING * INTO v_claim;
   PERFORM public.record_system_audit('insurance_claim_draft_created','insurance','insurance_claim',v_claim.id,'info',jsonb_build_object('patient_id',_patient_id,'invoice_id',v_invoice,'facility_id',v_facility,'amount_claimed',_amount_claimed));
-  RETURN v_claim;
+  RETURN v_claim.id;
 END;
 $function$;
 

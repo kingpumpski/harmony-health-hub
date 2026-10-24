@@ -25,21 +25,21 @@ BEGIN
   END IF;
 
   is_clinical :=
-    public.has_role(auth.uid(), 'admin') OR
-    public.has_role(auth.uid(), 'practitioner') OR
-    public.has_role(auth.uid(), 'nurse') OR
-    public.has_role(auth.uid(), 'midwife') OR
-    public.has_role(auth.uid(), 'specialist_nurse') OR
-    public.has_role(auth.uid(), 'pharmacist') OR
-    public.has_role(auth.uid(), 'lab_technician');
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR
+    public.has_role(auth.uid(),'pharmacist'::public.app_role) OR
+    public.has_role(auth.uid(),'lab_technician'::public.app_role);
 
   is_billing :=
-    public.has_role(auth.uid(), 'admin') OR
-    public.has_role(auth.uid(), 'accountant');
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'accountant'::public.app_role);
 
   is_front_desk :=
-    public.has_role(auth.uid(), 'admin') OR
-    public.has_role(auth.uid(), 'front_desk');
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    public.has_role(auth.uid(),'front_desk'::public.app_role);
 
   SELECT jsonb_build_object(
     'patient', to_jsonb(p),

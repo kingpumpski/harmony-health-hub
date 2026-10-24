@@ -60,14 +60,14 @@ CREATE TABLE IF NOT EXISTS public.pharmacy_pos_sales (
 ALTER TABLE public.pharmacy_pos_sales ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "pharmacy pos staff access" ON public.pharmacy_pos_sales;
 CREATE POLICY "pharmacy pos staff access" ON public.pharmacy_pos_sales FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'accountant'))
-  WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk') OR public.has_role(auth.uid(),'accountant'));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.create_pharmacy_pos_sale(_patient_id UUID, _inventory_id UUID, _quantity INTEGER)
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory; order_id UUID; patient_uuid UUID;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy or front desk role required'; END IF;
   IF _quantity IS NULL OR _quantity <= 0 THEN RAISE EXCEPTION 'Quantity must be greater than zero'; END IF;
   SELECT * INTO item FROM public.pharmacy_inventory WHERE id = _inventory_id FOR UPDATE;
   IF NOT FOUND OR item.stock_quantity < _quantity THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
@@ -90,7 +90,7 @@ CREATE OR REPLACE FUNCTION public.confirm_pharmacy_pos_sale(_sale_id UUID)
 RETURNS public.pharmacy_pos_sales LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_pos_sales; item public.pharmacy_inventory;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacist role required'; END IF;
   SELECT * INTO result FROM public.pharmacy_pos_sales WHERE id=_sale_id FOR UPDATE;
   IF NOT FOUND OR result.status <> 'awaiting_payment' THEN RAISE EXCEPTION 'POS sale is not awaiting payment'; END IF;
   IF result.service_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.service_orders WHERE id=result.service_order_id AND status IN ('released','in_progress')) THEN RAISE EXCEPTION 'Payment has not been received or the order is not released'; END IF;
@@ -111,7 +111,7 @@ CREATE OR REPLACE FUNCTION public.create_pharmacy_inventory_item(
 RETURNS public.pharmacy_inventory LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result public.pharmacy_inventory;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
   IF length(trim(COALESCE(_drug_name,''))) < 2 THEN RAISE EXCEPTION 'Drug name is required'; END IF;
   IF COALESCE(_stock_quantity,0) < 0 OR COALESCE(_reorder_level,0) < 0 OR COALESCE(_unit_price,0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
   INSERT INTO public.pharmacy_inventory(drug_name,brand_name,generic_name,strength,form,supplier,batch_number,expiry_date,stock_quantity,reorder_level,unit_price)

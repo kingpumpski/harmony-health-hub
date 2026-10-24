@@ -31,9 +31,9 @@ ALTER TABLE public.lab_results
 
 ALTER TABLE public.lab_test_catalogue ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "authenticated read active lab catalogue" ON public.lab_test_catalogue;
-CREATE POLICY "authenticated read active lab catalogue" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (active = true OR public.has_role(auth.uid(),'admin'));
+CREATE POLICY "authenticated read active lab catalogue" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (active = true OR public.has_role(auth.uid(),'admin'::public.app_role));
 DROP POLICY IF EXISTS "admins manage lab catalogue" ON public.lab_test_catalogue;
-CREATE POLICY "admins manage lab catalogue" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage lab catalogue" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 DROP TRIGGER IF EXISTS t_lab_catalogue_updated ON public.lab_test_catalogue;
 CREATE TRIGGER t_lab_catalogue_updated BEFORE UPDATE ON public.lab_test_catalogue FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
@@ -50,9 +50,9 @@ CREATE TABLE IF NOT EXISTS public.patient_audit_log (
 CREATE INDEX IF NOT EXISTS idx_patient_audit_patient_time ON public.patient_audit_log(patient_id, changed_at DESC);
 ALTER TABLE public.patient_audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "staff read patient audit" ON public.patient_audit_log;
-CREATE POLICY "staff read patient audit" ON public.patient_audit_log FOR SELECT TO authenticated USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'admin'));
+CREATE POLICY "staff read patient audit" ON public.patient_audit_log FOR SELECT TO authenticated USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'admin'::public.app_role));
 DROP POLICY IF EXISTS "admins manage patient audit" ON public.patient_audit_log;
-CREATE POLICY "admins manage patient audit" ON public.patient_audit_log FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admins manage patient audit" ON public.patient_audit_log FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.audit_patient_changes()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$

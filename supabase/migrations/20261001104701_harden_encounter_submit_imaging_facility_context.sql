@@ -30,8 +30,8 @@ BEGIN
     RAISE EXCEPTION 'Encounter or patient belongs to a different facility context';
   END IF;
   IF v_enc.practitioner_id<>v_uid
-     AND NOT public.has_role(v_uid,'admin')
-     AND NOT public.has_role(v_uid,'it_admin') THEN
+     AND NOT public.has_role(v_uid,'admin'::public.app_role)
+     AND NOT public.has_role(v_uid,'it_admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only the encounter creator can submit this document';
   END IF;
   IF v_enc.status='completed' THEN RAISE EXCEPTION 'Encounter is already submitted'; END IF;

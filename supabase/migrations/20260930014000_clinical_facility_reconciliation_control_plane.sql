@@ -58,7 +58,7 @@ as $$ select x.* from (
  union all select 'imaging_orders',i.id,i.patient_id,i.created_at,jsonb_build_object('modality',i.modality,'study_name',i.study_name,'status',i.status,'encounter_id',i.encounter_id) from public.imaging_orders i where i.facility_id is null
  union all select 'prescriptions',rx.id,rx.patient_id,rx.created_at,jsonb_build_object('medication',coalesce(rx.medication_name,rx.medication),'status',rx.status,'encounter_id',rx.encounter_id) from public.prescriptions rx where rx.facility_id is null
  union all select 'diagnoses',d.id,d.patient_id,d.created_at,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code,'encounter_id',d.encounter_id) from public.diagnoses d where d.facility_id is null
-) x where public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500)); $$;
+) x where public.has_role(auth.uid(),'admin'::public.app_role) or public.has_role(auth.uid(),'it_admin'::public.app_role) order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500)); $$;
 revoke all on function public.list_unresolved_clinical_facility_records(integer) from public,anon;
 grant execute on function public.list_unresolved_clinical_facility_records(integer) to authenticated;
 
@@ -66,7 +66,7 @@ create or replace function public.reconcile_clinical_facility_record(_entity_typ
 returns jsonb language plpgsql security definer set search_path=''
 as $$ declare v_actor uuid:=auth.uid(); v_source uuid; v_patient uuid; v_parent uuid; v_ref uuid; v_exists boolean:=false; v_metadata jsonb:='{}'::jsonb;
 begin
- if v_actor is null or not(public.has_role(v_actor,'admin') or public.has_role(v_actor,'it_admin')) then raise exception 'Only administrators can reconcile clinical facility attribution'; end if;
+ if v_actor is null or not(public.has_role(v_actor,'admin'::public.app_role) or public.has_role(v_actor,'it_admin'::public.app_role)) then raise exception 'Only administrators can reconcile clinical facility attribution'; end if;
  if _target_facility_id is null or nullif(btrim(_reason),'') is null then raise exception 'Target facility and reconciliation reason are required'; end if;
  if not exists(select 1 from public.healthcare_facilities f where f.id=_target_facility_id and f.is_active) then raise exception 'Target facility is not active'; end if;
  perform set_config('hms.facility_reconciliation','on',true);

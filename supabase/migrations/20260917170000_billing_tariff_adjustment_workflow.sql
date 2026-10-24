@@ -21,8 +21,8 @@ ALTER TABLE public.invoice_item_payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "invoice item payments staff access" ON public.invoice_item_payments;
 CREATE POLICY "invoice item payments staff access" ON public.invoice_item_payments
 FOR ALL TO authenticated
-USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'))
-WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role));
 
 CREATE TABLE IF NOT EXISTS public.billing_tariff_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,7 +48,7 @@ ALTER TABLE public.billing_tariff_adjustments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "billing tariff adjustments staff read" ON public.billing_tariff_adjustments;
 CREATE POLICY "billing tariff adjustments staff read"
   ON public.billing_tariff_adjustments FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant'));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.get_missing_billing_tariffs(_patient_id UUID DEFAULT NULL)
 RETURNS TABLE(
@@ -68,7 +68,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
 
@@ -107,7 +107,7 @@ DECLARE
   old_price NUMERIC;
   new_amount NUMERIC;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Only Accounts or administrators may adjust billing tariffs';
   END IF;
   IF _adjusted_unit_price IS NULL OR _adjusted_unit_price < 0 THEN

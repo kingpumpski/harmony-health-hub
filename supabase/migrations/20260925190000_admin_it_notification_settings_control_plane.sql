@@ -139,7 +139,7 @@ RETURNS public.facility_notification_provider_connections
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin')) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role)) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Notification provider configuration requires administrator or IT administrator facility access';
   END IF;
   IF _secret_reference IS NOT NULL AND length(_secret_reference) > 255 THEN RAISE EXCEPTION 'Secret reference is too long'; END IF;
@@ -166,7 +166,7 @@ RETURNS public.facility_notification_provider_connections
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin')) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role)) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Notification provider verification requires administrator or IT administrator facility access';
   END IF;
   UPDATE public.facility_notification_provider_connections

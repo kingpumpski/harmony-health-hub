@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.stage_data_migration_rows(_batch_id uuid, _row
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_count integer:=0; v_item jsonb; v_row integer:=0; v_batch public.data_migration_batches%ROWTYPE; v_user uuid:=auth.uid();
 BEGIN
- IF v_user IS NULL OR NOT public.has_role(v_user,'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+ IF v_user IS NULL OR NOT public.has_role(v_user,'admin'::public.app_role) THEN RAISE EXCEPTION 'Administrator access required'; END IF;
  SELECT * INTO v_batch FROM public.data_migration_batches WHERE id=_batch_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Migration batch not found'; END IF;
  IF v_batch.created_by IS DISTINCT FROM v_user THEN RAISE EXCEPTION 'Only the batch creator may stage rows'; END IF;
@@ -21,11 +21,13 @@ BEGIN
  RETURN v_count;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id uuid)
+-- Remove the legacy return-type variant before recreating the canonical RPC.
+DROP FUNCTION IF EXISTS public.seed_facility_reports(uuid);
+CREATE FUNCTION public.seed_facility_reports(_facility_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_user uuid:=auth.uid();
 BEGIN
- IF v_user IS NULL OR NOT public.has_role(v_user,'admin') THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF;
+ IF v_user IS NULL OR NOT public.has_role(v_user,'admin'::public.app_role) THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF;
  IF _facility_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.healthcare_facilities hf WHERE hf.id=_facility_id) THEN RAISE EXCEPTION 'Facility not found'; END IF;
  IF NOT public.has_facility_access(v_user,_facility_id) THEN RAISE EXCEPTION 'Facility access required'; END IF;
  INSERT INTO public.facility_report_config(facility_id,report_id,is_enabled,submission_deadline_day)

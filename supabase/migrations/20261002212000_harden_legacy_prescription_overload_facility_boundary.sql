@@ -5,7 +5,7 @@ AS $function$
 DECLARE uid uuid:=auth.uid(); v_encounter public.encounters%ROWTYPE; v_patient_facility uuid; result public.prescriptions;
 BEGIN
  IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
- IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
+ IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Not authorized to prescribe'; END IF;
  SELECT * INTO v_encounter FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Encounter does not exist'; END IF;
  SELECT facility_id INTO v_patient_facility FROM public.patients WHERE id=v_encounter.patient_id FOR SHARE;
@@ -13,7 +13,7 @@ BEGIN
  IF public.hms_test_mode_enabled() THEN
   IF v_encounter.facility_id IS DISTINCT FROM public.hms_test_facility_id() OR v_patient_facility IS DISTINCT FROM public.hms_test_facility_id() THEN RAISE EXCEPTION 'Test mode permits prescriptions only within TEST-0001'; END IF;
  ELSE
-  IF NOT(public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')) AND (public.current_user_facility_id() IS NULL OR v_encounter.facility_id IS DISTINCT FROM public.current_user_facility_id() OR v_patient_facility IS DISTINCT FROM public.current_user_facility_id()) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
+  IF NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)) AND (public.current_user_facility_id() IS NULL OR v_encounter.facility_id IS DISTINCT FROM public.current_user_facility_id() OR v_patient_facility IS DISTINCT FROM public.current_user_facility_id()) THEN RAISE EXCEPTION 'Encounter belongs to a different facility context'; END IF;
  END IF;
  IF v_encounter.status IN('completed','cancelled') THEN RAISE EXCEPTION 'Completed or cancelled encounters are read-only'; END IF;
  IF NULLIF(pg_catalog.btrim(_medication),'') IS NULL THEN RAISE EXCEPTION 'Medication is required'; END IF;

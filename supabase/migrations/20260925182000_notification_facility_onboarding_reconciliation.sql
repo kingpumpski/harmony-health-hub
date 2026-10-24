@@ -111,17 +111,17 @@ CREATE POLICY "facility notification config scoped read"
 
 CREATE POLICY "facility notification config admin update"
   ON public.facility_notification_config FOR UPDATE TO authenticated
-  USING (public.has_role(auth.uid(),'admin') AND public.has_facility_access(auth.uid(),facility_id))
-  WITH CHECK (public.has_role(auth.uid(),'admin') AND public.has_facility_access(auth.uid(),facility_id));
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.has_facility_access(auth.uid(),facility_id))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.has_facility_access(auth.uid(),facility_id));
 
 CREATE POLICY "facility notification provider admin read"
   ON public.facility_notification_provider_connections FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(),'admin') AND public.has_facility_access(auth.uid(),facility_id));
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.has_facility_access(auth.uid(),facility_id));
 
 CREATE POLICY "facility notification provider admin update"
   ON public.facility_notification_provider_connections FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(),'admin') AND public.has_facility_access(auth.uid(),facility_id))
-  WITH CHECK (public.has_role(auth.uid(),'admin') AND public.has_facility_access(auth.uid(),facility_id));
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.has_facility_access(auth.uid(),facility_id))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) AND public.has_facility_access(auth.uid(),facility_id));
 
 REVOKE ALL ON public.facility_notification_provider_connections FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.facility_notification_provider_connections TO authenticated;
@@ -131,7 +131,7 @@ RETURNS public.facility_notification_config
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_config;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Facility notification onboarding requires administrator facility access';
   END IF;
   INSERT INTO public.facility_notification_config(facility_id,created_by,updated_by)
@@ -150,7 +150,7 @@ RETURNS public.facility_notification_provider_connections
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Facility notification provider configuration requires administrator facility access';
   END IF;
   IF _secret_reference IS NOT NULL AND length(_secret_reference) > 255 THEN RAISE EXCEPTION 'Secret reference is too long'; END IF;
@@ -173,7 +173,7 @@ RETURNS public.facility_notification_provider_connections
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_provider_connections;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Facility notification provider verification requires administrator facility access';
   END IF;
   UPDATE public.facility_notification_provider_connections
@@ -204,7 +204,7 @@ RETURNS public.facility_notification_config
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.facility_notification_config;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) OR NOT public.has_facility_access(auth.uid(),_facility_id) THEN
     RAISE EXCEPTION 'Facility notification production readiness requires administrator facility access';
   END IF;
   IF NOT EXISTS(
@@ -246,7 +246,7 @@ RETURNS public.healthcare_facilities
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v public.healthcare_facilities;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Only administrators may create healthcare facilities'; END IF;
+  IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN RAISE EXCEPTION 'Only administrators may create healthcare facilities'; END IF;
   IF NULLIF(trim(_name),'') IS NULL THEN RAISE EXCEPTION 'Facility name is required'; END IF;
   INSERT INTO public.healthcare_facilities(name,facility_code,facility_type,district,region,dhims2_uid,created_by)
   VALUES(trim(_name),NULLIF(trim(_facility_code),''),_facility_type,NULLIF(trim(_district),''),NULLIF(trim(_region),''),NULLIF(trim(_dhims2_uid),''),auth.uid())

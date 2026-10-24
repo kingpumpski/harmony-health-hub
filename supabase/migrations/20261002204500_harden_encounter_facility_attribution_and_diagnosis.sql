@@ -13,9 +13,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Not authorized to establish encounter facility context'; END IF;
 
   SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
@@ -37,7 +37,7 @@ BEGIN
   ELSE
     v_facility := public.current_user_facility_id();
     IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility before continuing clinical documentation'; END IF;
-    IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'it_admin'))
+    IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role))
        AND v_patient_facility IS DISTINCT FROM v_facility THEN
       RAISE EXCEPTION 'Patient belongs to a different facility context';
     END IF;
@@ -70,9 +70,9 @@ DECLARE
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (
-    public.has_role(uid,'admin') OR public.has_role(uid,'it_admin')
-    OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse')
-    OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'it_admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN RAISE EXCEPTION 'Not authorized to add diagnoses'; END IF;
 
   v_enc := public.ensure_encounter_facility_attribution(_encounter_id);

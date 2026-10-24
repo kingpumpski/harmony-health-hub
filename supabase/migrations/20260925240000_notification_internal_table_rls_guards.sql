@@ -8,7 +8,6 @@ declare
   t text;
 begin
   foreach t in array array[
-    'notification_deliveries',
     'scheduled_notifications',
     'notification_audit',
     'notification_delivery_logs',

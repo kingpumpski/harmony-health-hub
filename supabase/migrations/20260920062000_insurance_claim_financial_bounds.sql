@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS public.insurance_claims
+) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE
@@ -14,7 +14,7 @@ DECLARE
   v_approved NUMERIC;
   v_paid NUMERIC;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Accounts role required';
   END IF;
 
@@ -62,7 +62,13 @@ BEGIN
     )
   );
 
-  RETURN c;
+  RETURN jsonb_build_object(
+    'claim_id', c.id,
+    'amount_claimed', c.amount_claimed,
+    'amount_approved', c.amount_approved,
+    'amount_paid', c.amount_paid,
+    'status', c.status
+  );
 END;
 $$;
 

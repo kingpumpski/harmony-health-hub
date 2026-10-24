@@ -14,9 +14,9 @@ DECLARE
   v_has_item_link BOOLEAN := false;
 BEGIN
   IF NOT (
-    public.has_role(auth.uid(),'admin')
-    OR public.has_role(auth.uid(),'accountant')
-    OR public.has_role(auth.uid(),'front_desk')
+    public.has_role(auth.uid(),'admin'::public.app_role)
+    OR public.has_role(auth.uid(),'accountant'::public.app_role)
+    OR public.has_role(auth.uid(),'front_desk'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Only authorized billing staff can release a service order';
   END IF;

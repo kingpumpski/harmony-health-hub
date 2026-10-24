@@ -8,7 +8,7 @@ begin
  if uid is null then raise exception 'Authentication required'; end if;
  if _patient_id is null then raise exception 'Patient is required'; end if;
  perform public.assert_patient_facility_context(_patient_id);
- if not exists(select 1 from public.patients p where p.id=_patient_id and (p.user_id=uid or (p.user_id is null and v_email is not null and lower(p.email)=v_email) or public.has_role(uid,'admin') or public.has_role(uid,'it_admin') or public.has_role(uid,'practitioner') or public.has_role(uid,'nurse') or public.has_role(uid,'midwife') or public.has_role(uid,'specialist_nurse') or public.has_role(uid,'radiologist'))) then raise exception 'Not authorised to request this patient report'; end if;
+ if not exists(select 1 from public.patients p where p.id=_patient_id and (p.user_id=uid or (p.user_id is null and v_email is not null and lower(p.email)=v_email) or public.has_role(uid,'admin'::public.app_role) or public.has_role(uid,'it_admin'::public.app_role) or public.has_role(uid,'practitioner'::public.app_role) or public.has_role(uid,'nurse'::public.app_role) or public.has_role(uid,'midwife'::public.app_role) or public.has_role(uid,'specialist_nurse'::public.app_role) or public.has_role(uid,'radiologist'::public.app_role))) then raise exception 'Not authorised to request this patient report'; end if;
  if v_type<>'medical_summary' then raise exception 'Unsupported report type'; end if;
  insert into public.ai_report_requests(patient_id,requested_by,report_type,status) values(_patient_id,uid,v_type,'processing') returning * into v_report;
  return v_report;

@@ -10,11 +10,11 @@ DECLARE
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
  IF NOT (
-   public.has_role(auth.uid(),'admin') OR
-   public.has_role(auth.uid(),'practitioner') OR
-   public.has_role(auth.uid(),'nurse') OR
-   public.has_role(auth.uid(),'midwife') OR
-   public.has_role(auth.uid(),'specialist_nurse')
+   public.has_role(auth.uid(),'admin'::public.app_role) OR
+   public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+   public.has_role(auth.uid(),'nurse'::public.app_role) OR
+   public.has_role(auth.uid(),'midwife'::public.app_role) OR
+   public.has_role(auth.uid(),'specialist_nurse'::public.app_role)
  ) THEN RAISE EXCEPTION 'Not authorised'; END IF;
 
  SELECT to_jsonb(p) - 'national_id' - 'ghana_card_number' - 'passport_number' - 'insurance_member_number'

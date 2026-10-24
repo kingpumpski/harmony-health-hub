@@ -25,15 +25,15 @@ begin
   if uid is null then raise exception 'Authentication required'; end if;
 
   v_is_privileged_admin :=
-    public.has_role(uid,'admin')
-    or public.has_role(uid,'it_admin')
-    or public.has_role(uid,'system_superuser');
+    public.has_role(uid,'admin'::public.app_role)
+    or public.has_role(uid,'it_admin'::public.app_role)
+    or public.has_role(uid,'system_superuser'::public.app_role);
 
-  v_is_front_desk := public.has_role(uid,'front_desk');
+  v_is_front_desk := public.has_role(uid,'front_desk'::public.app_role);
   v_is_clinical :=
-    public.has_role(uid,'nurse')
-    or public.has_role(uid,'practitioner')
-    or public.has_role(uid,'midwife');
+    public.has_role(uid,'nurse'::public.app_role)
+    or public.has_role(uid,'practitioner'::public.app_role)
+    or public.has_role(uid,'midwife'::public.app_role);
 
   if not (v_is_privileged_admin or v_is_front_desk or v_is_clinical) then
     raise exception 'Patient update is not permitted';

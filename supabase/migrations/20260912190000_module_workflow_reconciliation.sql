@@ -35,7 +35,7 @@ DECLARE
   r RECORD;
   days_count INTEGER;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Billing access denied';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN
@@ -135,7 +135,7 @@ DECLARE
   order_id UUID;
   patient UUID;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant') OR public.has_role(auth.uid(),'front_desk')) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Billing access denied'; END IF;
   IF _item_ids IS NULL OR cardinality(_item_ids)=0 THEN RAISE EXCEPTION 'Select at least one unpaid item'; END IF;
   SELECT patient_id INTO patient FROM public.invoices WHERE id=_invoice_id FOR UPDATE;
   IF patient IS NULL THEN RAISE EXCEPTION 'Invoice not found'; END IF;
@@ -191,7 +191,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.pharmacy_inventory;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist')) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role)) THEN RAISE EXCEPTION 'Pharmacy role required'; END IF;
   IF length(trim(COALESCE(_drug_name,''))) < 2 THEN RAISE EXCEPTION 'Drug name is required'; END IF;
   IF COALESCE(_stock_quantity,0) < 0 OR COALESCE(_reorder_level,0) < 0 OR COALESCE(_unit_price,0) < 0 THEN RAISE EXCEPTION 'Inventory values cannot be negative'; END IF;
   INSERT INTO public.pharmacy_inventory(drug_name,strength,stock_quantity,reorder_level,unit_price)
@@ -230,10 +230,10 @@ CREATE INDEX IF NOT EXISTS idx_staff_shift_on_duty ON public.staff_shift_assignm
 ALTER TABLE public.staff_shift_assignments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "staff read own shift assignments" ON public.staff_shift_assignments;
 CREATE POLICY "staff read own shift assignments" ON public.staff_shift_assignments FOR SELECT TO authenticated
-USING (user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+USING (user_id=auth.uid() OR public.has_role(auth.uid(),'admin'::public.app_role));
 DROP POLICY IF EXISTS "admin manage shift assignments" ON public.staff_shift_assignments;
 CREATE POLICY "admin manage shift assignments" ON public.staff_shift_assignments FOR ALL TO authenticated
-USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 CREATE TABLE IF NOT EXISTS public.medication_due_notification_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS public.medication_due_notification_log (
 );
 ALTER TABLE public.medication_due_notification_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "medication reminder log admin read" ON public.medication_due_notification_log;
-CREATE POLICY "medication reminder log admin read" ON public.medication_due_notification_log FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin') OR recipient_user_id=auth.uid());
+CREATE POLICY "medication reminder log admin read" ON public.medication_due_notification_log FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'admin'::public.app_role) OR recipient_user_id=auth.uid());
 
 CREATE OR REPLACE FUNCTION public.schedule_medication_administration(
   _patient_id UUID,
@@ -261,7 +261,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   IF length(trim(COALESCE(_medication_name,''))) < 2 THEN RAISE EXCEPTION 'Medication name is required'; END IF;
   INSERT INTO public.medication_administrations(patient_id,medication_name,dose,route,scheduled_at,notes,due_window_minutes)
@@ -277,7 +277,7 @@ RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE n INTEGER;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
   UPDATE public.medication_administrations
   SET locked_at=now(),lock_reason='Administration window elapsed without a documented outcome',updated_at=now()
   WHERE status='scheduled' AND scheduled_at IS NOT NULL AND locked_at IS NULL
@@ -286,6 +286,9 @@ BEGIN
   RETURN n;
 END;
 $$;
+
+-- The lifecycle contract changes its return type across historical revisions; PostgreSQL requires dropping the old signature first.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
 
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,
@@ -299,7 +302,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   IF _status NOT IN ('administered','held','refused','omitted','cancelled') THEN RAISE EXCEPTION 'Invalid medication status'; END IF;
   SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Medication administration record not found'; END IF;
@@ -317,13 +320,16 @@ BEGIN
 END;
 $$;
 
+-- The historical MAR lifecycle revisions use incompatible return types for this signature.
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(UUID,TEXT);
+
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS public.medication_administrations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'practitioner')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
   IF length(trim(COALESCE(_reason,''))) < 5 THEN RAISE EXCEPTION 'A professional reopening explanation is required'; END IF;
   UPDATE public.medication_administrations
   SET locked_at=NULL,lock_reason=NULL,reopened_at=now(),reopen_reason=trim(_reason),updated_at=now()
@@ -340,7 +346,7 @@ RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r RECORD; n INTEGER:=0; bucket TEXT;
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   FOR r IN
     SELECT m.*,p.first_name,p.last_name
     FROM public.medication_administrations m

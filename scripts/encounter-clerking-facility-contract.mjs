@@ -12,7 +12,7 @@ for (const needle of [
   'security definer',
   "set search_path = ''",
   'auth.uid()',
-  "public.has_role(uid, 'practitioner')",
+  "public.has_role(uid,'practitioner'::public.app_role)",
   'public.hms_test_mode_enabled()',
   'public.hms_test_facility_id()',
   'public.current_user_facility_id()',
@@ -25,9 +25,8 @@ for (const needle of [
 }
 
 const testIndex = migration.indexOf('if public.hms_test_mode_enabled()');
-const privilegedExceptionIndex = migration.indexOf(
-  "if public.has_role(uid, 'admin') or public.has_role(uid, 'it_admin') then"
-);
+const privilegedExceptionMatch = migration.match(/if public\.has_role\(uid,\s*'admin'(?:::public\.app_role)?\) or public\.has_role\(uid,\s*'it_admin'(?:::public\.app_role)?\) then/);
+const privilegedExceptionIndex = privilegedExceptionMatch ? migration.indexOf(privilegedExceptionMatch[0]) : -1;
 if (testIndex < 0 || privilegedExceptionIndex < 0 || testIndex > privilegedExceptionIndex) {
   throw new Error('Clerking must evaluate test-mode isolation before privileged-role exception');
 }

@@ -30,12 +30,12 @@ CREATE POLICY "patient_documents_staff_select"
   FOR SELECT
   TO authenticated
   USING (
-    public.has_role(auth.uid(), 'admin')
-    OR public.has_role(auth.uid(), 'practitioner')
-    OR public.has_role(auth.uid(), 'nurse')
-    OR public.has_role(auth.uid(), 'midwife')
-    OR public.has_role(auth.uid(), 'front_desk')
-    OR public.has_role(auth.uid(), 'accountant')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
+    OR public.has_role(auth.uid(), 'nurse'::public.app_role)
+    OR public.has_role(auth.uid(), 'midwife'::public.app_role)
+    OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
+    OR public.has_role(auth.uid(), 'accountant'::public.app_role)
   );
 
 DROP POLICY IF EXISTS "patient_documents_staff_insert" ON public.patient_documents;
@@ -46,11 +46,11 @@ CREATE POLICY "patient_documents_staff_insert"
   WITH CHECK (
     uploaded_by = auth.uid()
     AND (
-      public.has_role(auth.uid(), 'admin')
-      OR public.has_role(auth.uid(), 'practitioner')
-      OR public.has_role(auth.uid(), 'nurse')
-      OR public.has_role(auth.uid(), 'midwife')
-      OR public.has_role(auth.uid(), 'front_desk')
+      public.has_role(auth.uid(), 'admin'::public.app_role)
+      OR public.has_role(auth.uid(), 'practitioner'::public.app_role)
+      OR public.has_role(auth.uid(), 'nurse'::public.app_role)
+      OR public.has_role(auth.uid(), 'midwife'::public.app_role)
+      OR public.has_role(auth.uid(), 'front_desk'::public.app_role)
     )
   );
 
@@ -60,11 +60,11 @@ CREATE POLICY "patient_documents_staff_update"
   FOR UPDATE
   TO authenticated
   USING (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
     OR uploaded_by = auth.uid()
   )
   WITH CHECK (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(), 'admin'::public.app_role)
     OR uploaded_by = auth.uid()
   );
 
@@ -73,7 +73,7 @@ CREATE POLICY "patient_documents_admin_delete"
   ON public.patient_documents
   FOR DELETE
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 CREATE OR REPLACE FUNCTION public.set_patient_documents_updated_at()
 RETURNS TRIGGER

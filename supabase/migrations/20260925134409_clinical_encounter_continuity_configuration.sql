@@ -165,7 +165,7 @@ begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   select * into v_enc from public.encounters where id=_encounter_id for update;
   if v_enc.id is null then raise exception 'Encounter not found'; end if;
-  if v_enc.practitioner_id<>auth.uid() and not public.has_role(auth.uid(),'admin') then raise exception 'Only the encounter creator can submit this document'; end if;
+  if v_enc.practitioner_id<>auth.uid() and not public.has_role(auth.uid(),'admin'::public.app_role) then raise exception 'Only the encounter creator can submit this document'; end if;
   if v_enc.status='completed' then raise exception 'Encounter is already submitted'; end if;
 
   select coalesce(require_principal_diagnosis_for_final,true) into v_require_principal

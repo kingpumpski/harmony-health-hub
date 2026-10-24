@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.release_service_order(_service_order_id UUID,_
 RETURNS public.service_orders LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_order public.service_orders; v_paid NUMERIC(12,2):=0; v_override BOOLEAN:=false; v_has_item_link BOOLEAN:=false; uid UUID:=auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'front_desk')) THEN RAISE EXCEPTION 'Only authorized billing staff can release a service order'; END IF;
+  IF uid IS NULL OR NOT(public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN RAISE EXCEPTION 'Only authorized billing staff can release a service order'; END IF;
   SELECT * INTO v_order FROM public.service_orders WHERE id=_service_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Service order not found'; END IF;
   IF v_order.status<>'pending_payment_approval' THEN RETURN v_order; END IF;

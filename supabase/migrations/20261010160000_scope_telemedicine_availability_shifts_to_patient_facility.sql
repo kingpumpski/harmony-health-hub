@@ -32,7 +32,7 @@ DECLARE
   v_at timestamptz := coalesce(_scheduled_at, now() + interval '1 day');
   v_has_shift_data boolean;
 BEGIN
-  IF v_uid IS NULL OR NOT public.has_role(v_uid, 'patient') THEN
+  IF v_uid IS NULL OR NOT public.has_role(v_uid,'patient'::public.app_role) THEN
     RAISE EXCEPTION 'Patient telemedicine access is not permitted';
   END IF;
   IF v_at <= now() THEN

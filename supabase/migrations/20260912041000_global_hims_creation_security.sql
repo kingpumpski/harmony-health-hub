@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.create_emergency_case(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); v_id UUID; v_officer UUID;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'front_desk')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role) OR public.has_role(uid,'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Emergency workflow role required';
   END IF;
   IF _patient_id IS NULL THEN RAISE EXCEPTION 'Patient is required'; END IF;
@@ -19,7 +19,7 @@ BEGIN
   IF _acuity NOT IN ('resuscitation','emergency','urgent','less_urgent','non_urgent') THEN RAISE EXCEPTION 'Invalid emergency acuity'; END IF;
   IF _arrival_mode NOT IN ('walk_in','ambulance','referral','other') THEN RAISE EXCEPTION 'Invalid arrival mode'; END IF;
   v_officer := CASE WHEN _assigned_officer = uid THEN uid ELSE NULL END;
-  IF _assigned_officer IS NOT NULL AND _assigned_officer <> uid AND NOT public.has_role(uid,'admin') THEN
+  IF _assigned_officer IS NOT NULL AND _assigned_officer <> uid AND NOT public.has_role(uid,'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Users may only assign emergency cases to themselves';
   END IF;
   INSERT INTO public.emergency_cases(patient_id,chief_complaint,acuity,arrival_mode,assigned_officer,status)
@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); v_id UUID; v_invoice_patient UUID; v_existing UUID;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant') OR public.has_role(uid,'practitioner')) THEN
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)) THEN
     RAISE EXCEPTION 'Claims role required';
   END IF;
   IF _patient_id IS NULL OR NULLIF(trim(_payer_name),'') IS NULL THEN RAISE EXCEPTION 'Patient and payer are required'; END IF;
@@ -67,7 +67,7 @@ CREATE OR REPLACE FUNCTION public.assign_ward_bed(_bed_id UUID, _patient_id UUID
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE b public.ward_beds%ROWTYPE; uid UUID := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Nursing role required'; END IF;
   IF _patient_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.patients WHERE id=_patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;
   SELECT * INTO b FROM public.ward_beds WHERE id=_bed_id FOR UPDATE;
   IF b.id IS NULL THEN RAISE EXCEPTION 'Bed not found'; END IF;
@@ -88,10 +88,10 @@ CREATE OR REPLACE FUNCTION public.create_theatre_case(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); v_id UUID; v_surgeon UUID;
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role) OR public.has_role(uid,'nurse'::public.app_role) OR public.has_role(uid,'specialist_nurse'::public.app_role)) THEN RAISE EXCEPTION 'Clinical role required'; END IF;
   IF _patient_id IS NULL OR NULLIF(trim(_procedure_name),'') IS NULL OR _scheduled_start IS NULL THEN RAISE EXCEPTION 'Patient, procedure and scheduled start are required'; END IF;
   IF _urgency NOT IN ('emergency','urgent','elective') THEN RAISE EXCEPTION 'Invalid urgency'; END IF;
-  IF _surgeon_id IS NOT NULL AND _surgeon_id <> uid AND NOT public.has_role(uid,'admin') THEN RAISE EXCEPTION 'Users may only assign themselves as surgeon'; END IF;
+  IF _surgeon_id IS NOT NULL AND _surgeon_id <> uid AND NOT public.has_role(uid,'admin'::public.app_role) THEN RAISE EXCEPTION 'Users may only assign themselves as surgeon'; END IF;
   v_surgeon := COALESCE(_surgeon_id,uid);
   INSERT INTO public.theatre_cases(patient_id,procedure_name,scheduled_start,theatre_name,urgency,surgeon_id,created_by,status)
   VALUES (_patient_id,trim(_procedure_name),_scheduled_start,NULLIF(trim(_theatre_name),''),_urgency,v_surgeon,uid,'scheduled') RETURNING id INTO v_id;
@@ -103,7 +103,7 @@ CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anes
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid();
 BEGIN
-  IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Clinical administrator role required'; END IF;
+  IF uid IS NULL OR NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'practitioner'::public.app_role)) THEN RAISE EXCEPTION 'Clinical administrator role required'; END IF;
   IF _anesthetist_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles WHERE id=_anesthetist_id AND specialization IS NOT NULL AND specialization ILIKE '%anesth%') THEN RAISE EXCEPTION 'Selected officer is not recorded as an anesthetist'; END IF;
   UPDATE public.theatre_cases SET anesthetist_id=_anesthetist_id WHERE id=_case_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Theatre case not found'; END IF;

@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.transition_insurance_claim_canonical(
   _amount_paid NUMERIC DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL
-) RETURNS JSON
+) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE
   c public.insurance_claims%ROWTYPE;
@@ -16,7 +16,7 @@ DECLARE
   v_from TEXT;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN
+  IF NOT (public.has_role(uid,'admin'::public.app_role) OR public.has_role(uid,'accountant'::public.app_role)) THEN
     RAISE EXCEPTION 'Accounts role required';
   END IF;
   IF _status NOT IN ('submitted','acknowledged','under_review','approved','partially_approved','rejected','paid','resubmission_required','voided') THEN

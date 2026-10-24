@@ -15,21 +15,21 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
 
   can_view :=
-    public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'practitioner') OR
-    public.has_role(auth.uid(), 'nurse') OR public.has_role(auth.uid(), 'midwife') OR
-    public.has_role(auth.uid(), 'specialist_nurse') OR public.has_role(auth.uid(), 'pharmacist') OR
-    public.has_role(auth.uid(), 'lab_technician') OR public.has_role(auth.uid(), 'accountant') OR
-    public.has_role(auth.uid(), 'front_desk');
+    public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR
+    public.has_role(auth.uid(),'lab_technician'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role) OR
+    public.has_role(auth.uid(),'front_desk'::public.app_role);
 
   IF NOT can_view THEN RAISE EXCEPTION 'Patient Hub access is not permitted for this role'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN RAISE EXCEPTION 'Patient does not exist'; END IF;
 
-  is_clinical := public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'practitioner') OR
-    public.has_role(auth.uid(), 'nurse') OR public.has_role(auth.uid(), 'midwife') OR
-    public.has_role(auth.uid(), 'specialist_nurse') OR public.has_role(auth.uid(), 'pharmacist') OR
-    public.has_role(auth.uid(), 'lab_technician');
-  is_billing := public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'accountant');
-  is_front_desk := public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'front_desk');
+  is_clinical := public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR
+    public.has_role(auth.uid(),'specialist_nurse'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR
+    public.has_role(auth.uid(),'lab_technician'::public.app_role);
+  is_billing := public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'accountant'::public.app_role);
+  is_front_desk := public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role);
 
   SELECT jsonb_build_object(
     'patient', CASE

@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION public.create_nursing_shift_handover(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Nursing role required';
   END IF;
   IF NULLIF(trim(_clinical_summary),'') IS NULL THEN RAISE EXCEPTION 'Clinical summary is required'; END IF;

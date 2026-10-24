@@ -8,7 +8,7 @@ SET search_path=public
 AS $$
 DECLARE result jsonb;
 BEGIN
-  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'pharmacist') OR public.has_role(auth.uid(),'front_desk')) THEN
+  IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'pharmacist'::public.app_role) OR public.has_role(auth.uid(),'front_desk'::public.app_role)) THEN
     RAISE EXCEPTION 'Pharmacy role required';
   END IF;
   _limit := LEAST(GREATEST(COALESCE(_limit,200),1),500);

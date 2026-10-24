@@ -104,8 +104,8 @@ DECLARE
   v_catalogue_id uuid;
 BEGIN
   IF v_uid IS NULL OR NOT (
-    public.has_role(v_uid, 'admin') OR public.has_role(v_uid, 'it_admin')
-    OR public.has_role(v_uid, 'system_superuser') OR public.has_role(v_uid, 'pharmacist')
+    public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role) OR public.has_role(v_uid,'pharmacist'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items')
   ) THEN RAISE EXCEPTION 'Pharmacy inventory management permission required'; END IF;
   IF v_facility IS NULL THEN RAISE EXCEPTION 'Select an active facility before adding medication to the store'; END IF;
@@ -201,11 +201,11 @@ DECLARE
   v_catalogue_manager boolean; v_clinical_pharmacy boolean;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  v_admin := public.has_role(v_uid, 'admin');
-  v_superuser := public.has_role(v_uid, 'system_superuser');
-  v_pharmacist := public.has_role(v_uid, 'pharmacist');
-  v_front_desk := public.has_role(v_uid, 'front_desk');
-  v_catalogue_manager := public.has_role(v_uid, 'it_admin') OR public.has_role(v_uid, 'system_superuser')
+  v_admin := public.has_role(v_uid,'admin'::public.app_role);
+  v_superuser := public.has_role(v_uid,'system_superuser'::public.app_role);
+  v_pharmacist := public.has_role(v_uid,'pharmacist'::public.app_role);
+  v_front_desk := public.has_role(v_uid,'front_desk'::public.app_role);
+  v_catalogue_manager := public.has_role(v_uid,'it_admin'::public.app_role) OR public.has_role(v_uid,'system_superuser'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items');
   v_clinical_pharmacy := v_admin OR v_pharmacist;
   SELECT NULLIF(pg_catalog.lower(pg_catalog.btrim(p.department)), '') INTO v_department
@@ -351,8 +351,8 @@ RETURNS public.pharmacy_inventory LANGUAGE plpgsql SECURITY DEFINER SET search_p
 AS $function$
 DECLARE r public.pharmacy_inventory; v_uid uuid := auth.uid(); v_facility uuid := public.current_user_facility_id();
 BEGIN
-  IF v_uid IS NULL OR NOT (public.has_role(v_uid, 'admin') OR public.has_role(v_uid, 'it_admin')
-    OR public.has_role(v_uid, 'system_superuser') OR public.has_role(v_uid, 'pharmacist')
+  IF v_uid IS NULL OR NOT (public.has_role(v_uid,'admin'::public.app_role) OR public.has_role(v_uid,'it_admin'::public.app_role)
+    OR public.has_role(v_uid,'system_superuser'::public.app_role) OR public.has_role(v_uid,'pharmacist'::public.app_role)
     OR public.current_user_has_catalogue_create_permission('create_items')) THEN
     RAISE EXCEPTION 'Pharmacy inventory management permission required';
   END IF;

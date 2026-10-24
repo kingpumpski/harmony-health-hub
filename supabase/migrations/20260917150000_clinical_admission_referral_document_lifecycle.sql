@@ -36,7 +36,7 @@ DROP POLICY IF EXISTS "document versions staff read" ON public.document_versions
 CREATE POLICY "document versions staff read" ON public.document_versions
   FOR SELECT TO authenticated
   USING (
-    public.has_role(auth.uid(),'admin')
+    public.has_role(auth.uid(),'admin'::public.app_role)
     OR changed_by = auth.uid()
     OR public.is_clinical_staff(auth.uid())
   );
@@ -62,7 +62,7 @@ BEGIN
   ELSE
     RAISE EXCEPTION 'Unsupported document type';
   END IF;
-  IF v_owner <> auth.uid() AND NOT public.has_role(auth.uid(),'admin') THEN
+  IF v_owner <> auth.uid() AND NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only the document creator can reopen this document';
   END IF;
   IF v_status <> 'completed' THEN
@@ -99,7 +99,7 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
   IF v_enc.id IS NULL THEN RAISE EXCEPTION 'Encounter not found'; END IF;
-  IF v_enc.practitioner_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin') THEN
+  IF v_enc.practitioner_id <> auth.uid() AND NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN
     RAISE EXCEPTION 'Only the encounter creator can submit this document';
   END IF;
   IF v_enc.status = 'completed' THEN RAISE EXCEPTION 'Encounter is already submitted'; END IF;
@@ -145,7 +145,7 @@ DECLARE
   v_override BOOLEAN := FALSE;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'practitioner'::public.app_role) OR public.has_role(auth.uid(),'nurse'::public.app_role) OR public.has_role(auth.uid(),'midwife'::public.app_role) OR public.has_role(auth.uid(),'specialist_nurse'::public.app_role)) THEN
     RAISE EXCEPTION 'Admission is not permitted for this role';
   END IF;
   SELECT * INTO v_enc FROM public.encounters WHERE id=_encounter_id FOR UPDATE;
@@ -189,14 +189,14 @@ RETURNS TABLE(
   referral_id UUID, patient_id UUID, patient_name TEXT, telephone TEXT,
   specialty TEXT, appointment_date TIMESTAMPTZ, referred_at TIMESTAMPTZ, status TEXT
 )
-LANGUAGE sql SECURITY DEFINER STABLE SET search_path='' AS $
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path='' AS $$
   SELECT r.id,r.patient_id,concat(p.first_name,' ',p.last_name),p.phone,r.specialty,
          r.appointment_date,r.created_at,r.status
   FROM public.patient_referrals r
   JOIN public.patients p ON p.id=r.patient_id
   WHERE r.status IN ('requested','accepted','scheduled')
     AND r.specialty IS NOT NULL
-    AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'it_admin') OR public.is_clinical_staff(auth.uid()))
+    AND (public.has_role(auth.uid(),'admin'::public.app_role) OR public.has_role(auth.uid(),'it_admin'::public.app_role) OR public.is_clinical_staff(auth.uid()))
   ORDER BY r.appointment_date NULLS LAST,r.created_at ASC;
 $$;
 REVOKE ALL ON FUNCTION public.get_pending_specialist_referrals() FROM PUBLIC;

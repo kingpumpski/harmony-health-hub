@@ -23,9 +23,9 @@ BEGIN
   WHERE p.id = auth.uid();
 
   IF NOT (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(),'admin'::public.app_role)
     OR (
-      public.has_role(auth.uid(), 'lab_technician')
+      public.has_role(auth.uid(),'lab_technician'::public.app_role)
       AND (v_department IS NULL OR v_department = 'laboratory')
     )
   ) THEN
@@ -116,11 +116,11 @@ BEGIN
   FROM public.profiles p
   WHERE p.id = auth.uid();
 
-  v_radiologist := public.has_role(auth.uid(), 'radiologist');
-  v_technician := public.has_role(auth.uid(), 'radiology_technician');
+  v_radiologist := public.has_role(auth.uid(),'radiologist'::public.app_role);
+  v_technician := public.has_role(auth.uid(),'radiology_technician'::public.app_role);
 
   IF NOT (
-    public.has_role(auth.uid(), 'admin')
+    public.has_role(auth.uid(),'admin'::public.app_role)
     OR (v_radiologist AND (v_department IS NULL OR v_department = 'radiology'))
     OR (v_technician AND (v_department IS NULL OR v_department = 'radiology'))
   ) THEN
@@ -187,11 +187,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'practitioner')
-    OR public.has_role(uid, 'nurse')
-    OR public.has_role(uid, 'midwife')
-    OR public.has_role(uid, 'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical report access is not permitted';
   END IF;
@@ -279,11 +279,11 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'practitioner')
-    OR public.has_role(uid, 'nurse')
-    OR public.has_role(uid, 'midwife')
-    OR public.has_role(uid, 'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'practitioner'::public.app_role)
+    OR public.has_role(uid,'nurse'::public.app_role)
+    OR public.has_role(uid,'midwife'::public.app_role)
+    OR public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical report access is not permitted';
   END IF;
@@ -382,9 +382,9 @@ DECLARE
   es text;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'radiologist')
-    OR public.has_role(uid, 'radiology_technician')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'radiologist'::public.app_role)
+    OR public.has_role(uid,'radiology_technician'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Radiology operational role required';
   END IF;
@@ -454,8 +454,8 @@ DECLARE
   es text;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'radiologist')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'radiologist'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Radiologist approval role required';
   END IF;
@@ -546,8 +546,8 @@ DECLARE
   encounter_patient_id uuid;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid, 'admin')
-    OR public.has_role(uid, 'lab_technician')
+    public.has_role(uid,'admin'::public.app_role)
+    OR public.has_role(uid,'lab_technician'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Laboratory approval role required';
   END IF;

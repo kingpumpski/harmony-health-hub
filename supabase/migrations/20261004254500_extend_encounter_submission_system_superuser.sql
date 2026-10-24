@@ -36,9 +36,9 @@ begin
   end if;
 
   if v_enc.practitioner_id <> v_uid
-     and not public.has_role(v_uid,'admin')
-     and not public.has_role(v_uid,'it_admin')
-     and not public.has_role(v_uid,'system_superuser') then
+     and not public.has_role(v_uid,'admin'::public.app_role)
+     and not public.has_role(v_uid,'it_admin'::public.app_role)
+     and not public.has_role(v_uid,'system_superuser'::public.app_role) then
     raise exception 'Only the encounter creator can submit this document';
   end if;
 

@@ -51,22 +51,22 @@ DECLARE
   r public.transfusion_records%ROWTYPE;
 BEGIN
   IF uid IS NULL OR NOT (
-    public.has_role(uid,'admin') OR
-    public.has_role(uid,'practitioner') OR
-    public.has_role(uid,'nurse') OR
-    public.has_role(uid,'midwife') OR
-    public.has_role(uid,'specialist_nurse')
+    public.has_role(uid,'admin'::public.app_role) OR
+    public.has_role(uid,'practitioner'::public.app_role) OR
+    public.has_role(uid,'nurse'::public.app_role) OR
+    public.has_role(uid,'midwife'::public.app_role) OR
+    public.has_role(uid,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Clinical role required';
   END IF;
   IF _witnessed_by IS NULL THEN RAISE EXCEPTION 'Independent witness is required'; END IF;
   IF _witnessed_by = uid THEN RAISE EXCEPTION 'The administering actor cannot self-witness a transfusion'; END IF;
   IF NOT (
-    public.has_role(_witnessed_by,'admin') OR
-    public.has_role(_witnessed_by,'practitioner') OR
-    public.has_role(_witnessed_by,'nurse') OR
-    public.has_role(_witnessed_by,'midwife') OR
-    public.has_role(_witnessed_by,'specialist_nurse')
+    public.has_role(_witnessed_by,'admin'::public.app_role) OR
+    public.has_role(_witnessed_by,'practitioner'::public.app_role) OR
+    public.has_role(_witnessed_by,'nurse'::public.app_role) OR
+    public.has_role(_witnessed_by,'midwife'::public.app_role) OR
+    public.has_role(_witnessed_by,'specialist_nurse'::public.app_role)
   ) THEN
     RAISE EXCEPTION 'Witness must hold an authorized clinical role';
   END IF;

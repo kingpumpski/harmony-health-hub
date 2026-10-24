@@ -11,13 +11,13 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   SELECT NULLIF(lower(trim(p.department)),'') INTO v_department FROM public.profiles p WHERE p.id=auth.uid();
   IF NOT (
-    public.has_role(auth.uid(),'admin') OR
-    (public.has_role(auth.uid(),'lab_technician') AND (v_department IS NULL OR v_department='laboratory')) OR
-    public.has_role(auth.uid(),'practitioner') OR
-    (public.has_role(auth.uid(),'nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
-    (public.has_role(auth.uid(),'midwife') AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
-    (public.has_role(auth.uid(),'specialist_nurse') AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
-    (public.has_role(auth.uid(),'radiologist') AND (v_department IS NULL OR v_department='radiology'))
+    public.has_role(auth.uid(),'admin'::public.app_role) OR
+    (public.has_role(auth.uid(),'lab_technician'::public.app_role) AND (v_department IS NULL OR v_department='laboratory')) OR
+    public.has_role(auth.uid(),'practitioner'::public.app_role) OR
+    (public.has_role(auth.uid(),'nurse'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
+    (public.has_role(auth.uid(),'midwife'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
+    (public.has_role(auth.uid(),'specialist_nurse'::public.app_role) AND (v_department IS NULL OR v_department IN ('laboratory','clinical'))) OR
+    (public.has_role(auth.uid(),'radiologist'::public.app_role) AND (v_department IS NULL OR v_department='radiology'))
   ) THEN RAISE EXCEPTION 'Laboratory workspace access is not permitted'; END IF;
   _limit := LEAST(GREATEST(COALESCE(_limit,200),1),500);
   SELECT jsonb_build_object(
