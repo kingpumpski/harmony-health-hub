@@ -41,6 +41,13 @@ CREATE TRIGGER t_lab_catalogue_updated BEFORE UPDATE ON public.lab_test_catalogu
 -- 20260912001500_restore_patient_audit_log_prerequisite.sql. Keep table policies
 -- and indexes in this migration, after the table exists.
 
+CREATE INDEX IF NOT EXISTS idx_patient_audit_patient_time ON public.patient_audit_log(patient_id, changed_at DESC);
+ALTER TABLE public.patient_audit_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "staff read patient audit" ON public.patient_audit_log;
+CREATE POLICY "staff read patient audit" ON public.patient_audit_log FOR SELECT TO authenticated USING (public.is_clinical_staff(auth.uid()) OR public.has_role(auth.uid(),'specialist_nurse') OR public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "admins manage patient audit" ON public.patient_audit_log;
+CREATE POLICY "admins manage patient audit" ON public.patient_audit_log FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+
 
 INSERT INTO public.lab_test_catalogue (test_code, test_name, category, specimen_type, unit, reference_text, default_charge) VALUES
 ('FBC', 'Full Blood Count', 'Hematology', 'EDTA blood', NULL, 'Use laboratory validated adult/pediatric ranges', 0),
