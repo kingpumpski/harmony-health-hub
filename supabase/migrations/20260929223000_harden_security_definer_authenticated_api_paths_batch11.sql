@@ -1,5 +1,4 @@
 -- Batch 11: harden authenticated SECURITY DEFINER API paths. Search-path only.
-ALTER FUNCTION public.find_legacy_patient_candidates(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.find_pharmacy_alternatives(text,text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.get_ai_case_memory_for_diagnosis(text,integer) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.get_ai_report_requests(uuid,integer) SET search_path = pg_catalog, public;
@@ -11,12 +10,10 @@ ALTER FUNCTION public.get_legacy_patient_candidates(uuid) SET search_path = pg_c
 ALTER FUNCTION public.get_missing_billing_tariffs(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.get_my_permissions() SET search_path = pg_catalog, public;
 ALTER FUNCTION public.get_pending_specialist_referrals() SET search_path = pg_catalog, public;
-ALTER FUNCTION public.get_staff_signature_for_report(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.get_workflow_notifications(integer) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.notification_feature_enabled(text,uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.promote_legacy_migration_batch(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.reconcile_legacy_migration_row(uuid,uuid,numeric,text) SET search_path = pg_catalog, public;
-ALTER FUNCTION public.reconcile_legacy_record_patient(uuid,uuid,text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.record_ai_clinical_event(uuid,text,jsonb) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.reopen_own_document(text,uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.replace_role_permissions(app_role,text[]) SET search_path = pg_catalog, public;
@@ -25,6 +22,4 @@ ALTER FUNCTION public.set_facility_notification_provider(uuid,text,text,text,tex
 ALTER FUNCTION public.set_staff_shift_assignment_active(uuid,boolean) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.stage_data_migration_rows(uuid,jsonb) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.transition_ai_protocol(uuid,text) SET search_path = pg_catalog, public;
-ALTER FUNCTION public.validate_diagnosis_import_batch(uuid) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.validate_legacy_migration_batch(uuid) SET search_path = pg_catalog, public;
-ALTER FUNCTION public.validate_legacy_record(uuid) SET search_path = pg_catalog, public;
