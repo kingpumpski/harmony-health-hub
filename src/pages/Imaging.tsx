@@ -25,7 +25,7 @@ export default function Imaging() {
   const [amount, setAmount] = useState(0);
   const [reports, setReports] = useState<Record<string, { report: string; impression: string }>>({});
   const [loading, setLoading] = useState(false);
-  const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
+  const previousIds = useRef<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeModality, setActiveModality] = useState('all');
@@ -50,8 +50,8 @@ export default function Imaging() {
       }
       const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
       const nextOrders = workspace.orders ?? [];
-      if (announce && previousIds.size > 0 && nextOrders.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
-      setPreviousIds(new Set(nextOrders.map((order) => order.id)));
+      if (announce && previousIds.current.size > 0 && nextOrders.some((order) => !previousIds.current.has(order.id))) playWorkflowSound('info');
+      previousIds.current = new Set(nextOrders.map((order) => order.id));
       setPatients(workspace.patients ?? []);
       setOrders(nextOrders);
       setLastUpdated(new Date());
@@ -68,7 +68,7 @@ export default function Imaging() {
       loadInFlight.current = false;
       setLoading(false);
     }
-  }, [user?.id, previousIds]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
