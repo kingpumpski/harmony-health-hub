@@ -2,7 +2,7 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, Plus,  Building2, Link2 } from 'lucide-react';
+import { BedDouble, Plus, Building2, Link2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -59,6 +59,7 @@ export default function WardBedBoard() {
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [ward, setWard] = useState({ name: '', code: '', specialty: '', gender_policy: 'mixed', facility_id: '' });
+  const [createWardOpen, setCreateWardOpen] = useState(false);
   const [assignment, setAssignment] = useState<Record<string, string>>({});
   const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
   const [facilityChoice, setFacilityChoice] = useState<Record<string, string>>({});
@@ -150,6 +151,7 @@ export default function WardBedBoard() {
     } as never));
     if (!succeeded) return;
     setWard({ name: '', code: '', specialty: '', gender_policy: 'mixed', facility_id: ward.facility_id });
+    setCreateWardOpen(false);
     toast({ title: 'Ward created', description: 'The ward is now part of the canonical ward configuration.' });
     notifyMasterDataChanged('wards');
     void load();
@@ -242,16 +244,17 @@ export default function WardBedBoard() {
               <h2 className="font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" />Ward configuration</h2>
               <p className="text-xs text-muted-foreground">Admin, IT Admin and System Superuser control the structural ward/bed catalogue. Clinical users operate configured capacity without creating structural records.</p>
             </div>
-            <span className="rounded-full bg-muted px-3 py-1 text-xs">Admin / IT Admin / System Superuser</span>
+            <div className="flex items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">Admin / IT Admin / System Superuser</span><button type="button" onClick={() => setCreateWardOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />New ward</button></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          {createWardOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="create-ward-title"><section className="card-medical w-full max-w-4xl p-5 shadow-xl"><div className="mb-4 flex items-center justify-between"><h3 id="create-ward-title" className="font-semibold">Create ward</h3><button type="button" className="btn-ghost" aria-label="Close ward form" onClick={() => setCreateWardOpen(false)}><X className="h-4 w-4" /></button></div><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <label className="text-xs">Ward name<input aria-label="Ward name" placeholder="Ward name" value={ward.name} onChange={(e) => setWard({ ...ward, name: e.target.value })} className="input-medical mt-1 w-full" /></label>
             <label className="text-xs">Code<input aria-label="Ward code" placeholder="Code" value={ward.code} onChange={(e) => setWard({ ...ward, code: e.target.value })} className="input-medical mt-1 w-full" /></label>
             <label className="text-xs">Specialty<input aria-label="Ward specialty" placeholder="Specialty" value={ward.specialty} onChange={(e) => setWard({ ...ward, specialty: e.target.value })} className="input-medical mt-1 w-full" /></label>
             <label className="text-xs">Gender policy<select aria-label="Ward gender policy" value={ward.gender_policy} onChange={(e) => setWard({ ...ward, gender_policy: e.target.value })} className="input-medical mt-1 w-full"><option value="mixed">Mixed</option><option value="male">Male</option><option value="female">Female</option></select></label>
             <label className="text-xs">Facility<select aria-label="Ward facility" value={ward.facility_id} onChange={(e) => setWard({ ...ward, facility_id: e.target.value })} className="input-medical mt-1 w-full"><option value="">Select facility…</option>{facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}{facility.facility_code ? ` · ${facility.facility_code}` : ''}</option>)}</select></label>
             <button type="button" disabled={busy || !ward.facility_id} onClick={() => void createWard()} className="btn-primary self-end disabled:opacity-50"><Plus className="inline w-4 h-4 mr-1" />Create ward</button>
-          </div>
+          <div className="lg:col-span-6 flex justify-end"><button type="button" className="btn-secondary" disabled={busy} onClick={() => setCreateWardOpen(false)}>Cancel</button></div>
+          </div></section></div>}
         </section>
           )}
         </>
@@ -262,7 +265,7 @@ export default function WardBedBoard() {
       empty={wards.length === 0}
       emptyIcon={BedDouble}
       emptyTitle="No wards configured"
-      emptyDescription={canManage ? 'Create a ward above to begin configuring inpatient capacity.' : 'No ward configuration is available for your facility.'}
+      emptyDescription={canManage ? 'Use New ward to configure inpatient capacity.' : 'No ward configuration is available for your facility.'}
     >
       <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
         {wards.map((w) => {
