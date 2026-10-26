@@ -110,7 +110,7 @@ BEGIN
     auth.uid(),
     now()
   )
-  ON CONFLICT (service_order_id) DO UPDATE
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO UPDATE
     SET patient_id = EXCLUDED.patient_id,
         department = EXCLUDED.department,
         related_entity_id = EXCLUDED.related_entity_id,
@@ -200,7 +200,7 @@ BEGIN
     now(),
     'queued'
   )
-  ON CONFLICT (service_order_id) DO UPDATE
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO UPDATE
     SET payment_satisfied = true,
         status = CASE WHEN public.department_queues.status = 'cancelled' THEN 'queued' ELSE public.department_queues.status END,
         updated_at = now();
