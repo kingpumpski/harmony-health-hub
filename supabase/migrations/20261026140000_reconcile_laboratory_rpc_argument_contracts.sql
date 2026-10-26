@@ -1,29 +1,42 @@
 BEGIN;
 
--- Align the live laboratory panel and attachment RPC signatures with the deployed client.
--- Existing production tables predate the newer panel contract; reconcile additively.
+-- Normalize both canonical and legacy laboratory panel table layouts without losing data.
 ALTER TABLE public.lab_test_groups
+  ADD COLUMN IF NOT EXISTS group_name text,
+  ADD COLUMN IF NOT EXISTS name text,
   ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS group_code text,
   ADD COLUMN IF NOT EXISTS default_charge numeric NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES auth.users(id);
 
-ALTER TABLE public.lab_test_group_items
-  ADD COLUMN IF NOT EXISTS display_order integer,
-  ADD COLUMN IF NOT EXISTS test_id uuid REFERENCES public.lab_test_catalogue(id) ON DELETE RESTRICT;
-
 UPDATE public.lab_test_groups
-SET group_code = upper(regexp_replace(name, '[^A-Za-z0-9]+', '-', 'g'))
-WHERE group_code IS NULL OR btrim(group_code) = '';
+SET group_name = COALESCE(NULLIF(group_name, ''), NULLIF(name, ''), 'Legacy laboratory panel'),
+    name = COALESCE(NULLIF(name, ''), NULLIF(group_name, ''), 'Legacy laboratory panel'),
+    group_code = COALESCE(NULLIF(group_code, ''), upper(regexp_replace(COALESCE(name, group_name), '[^A-Za-z0-9]+', '-', 'g')))
+WHERE group_name IS NULL OR name IS NULL OR group_code IS NULL OR btrim(group_code) = '';
+
+ALTER TABLE public.lab_test_group_items
+  ADD COLUMN IF NOT EXISTS group_id uuid,
+  ADD COLUMN IF NOT EXISTS test_id uuid,
+  ADD COLUMN IF NOT EXISTS display_order integer,
+  ADD COLUMN IF NOT EXISTS lab_test_group_id uuid,
+  ADD COLUMN IF NOT EXISTS test_catalogue_id uuid,
+  ADD COLUMN IF NOT EXISTS sort_order integer,
+  ADD COLUMN IF NOT EXISTS required boolean NOT NULL DEFAULT true;
 
 UPDATE public.lab_test_group_items
-SET display_order = COALESCE(sort_order, 0),
-    test_id = COALESCE(test_id, test_catalogue_id)
-WHERE display_order IS NULL OR test_id IS NULL;
+SET group_id = COALESCE(group_id, lab_test_group_id),
+    lab_test_group_id = COALESCE(lab_test_group_id, group_id),
+    test_id = COALESCE(test_id, test_catalogue_id),
+    test_catalogue_id = COALESCE(test_catalogue_id, test_id),
+    display_order = COALESCE(display_order, sort_order, 0),
+    sort_order = COALESCE(sort_order, display_order, 0)
+WHERE group_id IS NULL OR lab_test_group_id IS NULL OR test_id IS NULL
+   OR test_catalogue_id IS NULL OR display_order IS NULL OR sort_order IS NULL;
 
 CREATE INDEX IF NOT EXISTS lab_test_groups_facility_active_idx
-  ON public.lab_test_groups(facility_id, is_active, name);
+  ON public.lab_test_groups(facility_id, is_active, group_name);
 CREATE UNIQUE INDEX IF NOT EXISTS lab_test_groups_facility_code_uidx
   ON public.lab_test_groups(facility_id, lower(group_code))
   WHERE facility_id IS NOT NULL AND group_code IS NOT NULL;
@@ -57,7 +70,7 @@ BEGIN
   SELECT COALESCE(jsonb_agg(
     jsonb_build_object(
       'id', g.id,
-      'group_name', g.name,
+      'group_name', COALESCE(g.group_name, g.name),
       'group_code', g.group_code,
       'description', g.description,
       'default_charge', g.default_charge,
@@ -74,10 +87,10 @@ BEGIN
         ) ORDER BY COALESCE(i.display_order, i.sort_order, 0))
         FROM public.lab_test_group_items i
         JOIN public.lab_test_catalogue c ON c.id = COALESCE(i.test_id, i.test_catalogue_id)
-        WHERE i.lab_test_group_id = g.id
+        WHERE COALESCE(i.group_id, i.lab_test_group_id) = g.id
           AND (_include_inactive OR c.active)
       ), '[]'::jsonb)
-    ) ORDER BY g.name
+    ) ORDER BY COALESCE(g.group_name, g.name)
   ), '[]'::jsonb)
   INTO result
   FROM public.lab_test_groups g
@@ -127,13 +140,14 @@ BEGIN
   ) THEN RAISE EXCEPTION 'Every panel test must exist and be active'; END IF;
 
   IF _group_id IS NULL THEN
-    INSERT INTO public.lab_test_groups(name, description, facility_id, group_code, default_charge, is_active, created_by)
-    VALUES (btrim(_group_name), NULLIF(btrim(COALESCE(_description, '')), ''), v_facility,
-            upper(btrim(_group_code)), _default_charge, _is_active, uid)
+    INSERT INTO public.lab_test_groups(group_name, name, description, facility_id, group_code, default_charge, is_active, created_by)
+    VALUES (btrim(_group_name), btrim(_group_name), NULLIF(btrim(COALESCE(_description, '')), ''),
+            v_facility, upper(btrim(_group_code)), _default_charge, _is_active, uid)
     RETURNING id INTO v_group_id;
   ELSE
     UPDATE public.lab_test_groups
-    SET name = btrim(_group_name),
+    SET group_name = btrim(_group_name),
+        name = btrim(_group_name),
         description = NULLIF(btrim(COALESCE(_description, '')), ''),
         group_code = upper(btrim(_group_code)),
         default_charge = _default_charge,
@@ -143,12 +157,14 @@ BEGIN
     WHERE id = _group_id AND facility_id = v_facility
     RETURNING id INTO v_group_id;
     IF v_group_id IS NULL THEN RAISE EXCEPTION 'Panel not found in the active facility'; END IF;
-    DELETE FROM public.lab_test_group_items WHERE lab_test_group_id = v_group_id;
+    DELETE FROM public.lab_test_group_items WHERE COALESCE(group_id, lab_test_group_id) = v_group_id;
   END IF;
 
   FOREACH v_test_id IN ARRAY _test_ids LOOP
-    INSERT INTO public.lab_test_group_items(lab_test_group_id, test_catalogue_id, sort_order, required, display_order, test_id)
-    VALUES (v_group_id, v_test_id, v_order, true, v_order, v_test_id);
+    INSERT INTO public.lab_test_group_items(
+      group_id, test_id, display_order, lab_test_group_id, test_catalogue_id, sort_order, required
+    )
+    VALUES (v_group_id, v_test_id, v_order, v_group_id, v_test_id, v_order, true);
     v_order := v_order + 1;
   END LOOP;
   RETURN jsonb_build_object('id', v_group_id, 'saved', true);
@@ -179,12 +195,8 @@ BEGIN
   END IF;
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'id', a.id,
-    'lab_order_id', a.lab_order_id,
-    'storage_path', a.storage_path,
-    'file_name', a.file_name,
-    'mime_type', a.mime_type,
-    'created_at', a.created_at
+    'id', a.id, 'lab_order_id', a.lab_order_id, 'storage_path', a.storage_path,
+    'file_name', a.file_name, 'mime_type', a.mime_type, 'created_at', a.created_at
   ) ORDER BY a.created_at DESC), '[]'::jsonb)
   INTO result
   FROM (
