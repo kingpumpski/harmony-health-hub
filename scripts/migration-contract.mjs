@@ -4,6 +4,13 @@ import path from 'node:path';
 const root = process.cwd();
 const dir = path.join(root, 'supabase', 'migrations');
 const files = fs.readdirSync(dir).filter((n) => /^\d{14}_.+\.sql$/.test(n)).sort();
+const versions = new Map();
+for (const name of files) {
+  const version = name.slice(0, 14);
+  const previous = versions.get(version);
+  assert.equal(previous, undefined, `Duplicate Supabase migration version ${version}: ${previous ?? ''} and ${name}`);
+  versions.set(version, name);
+}
 const migrations = files.map((name) => ({name, source: fs.readFileSync(path.join(dir,name),'utf8')}));
 const all = migrations.map((m) => m.source).join('\n');
 const read = (p) => fs.readFileSync(path.join(root,p),'utf8');
