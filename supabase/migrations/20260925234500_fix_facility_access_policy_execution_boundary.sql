@@ -37,15 +37,15 @@ BEGIN
     ELSE
       v_qual := regexp_replace(
         v_qual,
-        'has_facility_access\(\s*\(*\s*SELECT\s+auth\.uid\(\)\s*(AS\s+uid\s*)?\)*\s*,\s*((?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*)(?:\s*\.\s*(?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*))*)\s*\)',
-        'public.current_user_has_facility_access(\2)',
+        'has_facility_access\(\s*\(*\s*(?:SELECT\s+auth\.uid\(\)\s*(?:AS\s+uid\s*)?|auth\.uid\(\))\)*\s*,\s*((?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*)(?:\s*\.\s*(?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*))*)\s*\)',
+        'public.current_user_has_facility_access(\1)',
         'gi'
       );
     END IF;
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(*\s*SELECT\s+auth\.uid\(\)\s*(AS\s+uid\s*)?\)*\s*,\s*((?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*)(?:\s*\.\s*(?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*))*)\s*\)',
-      'public.current_user_has_facility_access(\2)',
+      'has_facility_access\(\s*\(*\s*(?:SELECT\s+auth\.uid\(\)\s*(?:AS\s+uid\s*)?|auth\.uid\(\))\)*\s*,\s*((?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*)(?:\s*\.\s*(?:"[A-Za-z_][A-Za-z0-9_$]*"|[A-Za-z_][A-Za-z0-9_$]*))*)\s*\)',
+      'public.current_user_has_facility_access(\1)',
       'gi'
     );
 
