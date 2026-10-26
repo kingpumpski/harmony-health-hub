@@ -90,9 +90,25 @@ CREATE POLICY "admins write lab tests"
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
--- Views must respect the querying user's permissions
-ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
-ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+-- Optional legacy views must respect the querying user's permissions when
+-- present. These views are not created by the current migration history, so
+-- guard by catalog kind instead of making clean replay depend on them.
+DO $
+DECLARE
+  v_name text;
+BEGIN
+  FOREACH v_name IN ARRAY ARRAY['v_patient_diagnosis_full','v_ai_clinical_decision'] LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = v_name AND c.relkind = 'v'
+    ) THEN
+      EXECUTE format('ALTER VIEW public.%I SET (security_invoker = true)', v_name);
+    END IF;
+  END LOOP;
+END;
+$;
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;
