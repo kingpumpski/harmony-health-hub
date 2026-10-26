@@ -1,3 +1,16 @@
+-- This migration applies RLS to AI diagnosis suggestions, so establish the
+-- canonical table before applying grants and policies. The table is also
+-- represented in src/integrations/supabase/types.ts.
+create table if not exists public.ai_diagnosis_suggestions (
+  id uuid primary key default gen_random_uuid(),
+  encounter_id uuid references public.encounters(id),
+  suggested_icd text references public.icd_codes(code),
+  reasoning text,
+  model_version text,
+  accepted boolean default false,
+  created_at timestamptz default now()
+);
+
 -- Lock down reference/internal tables
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
