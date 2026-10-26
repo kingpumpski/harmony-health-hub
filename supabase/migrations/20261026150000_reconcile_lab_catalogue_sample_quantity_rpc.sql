@@ -3,9 +3,22 @@ BEGIN;
 -- Legacy installations created sample_quantity as numeric. The current UI accepts
 -- quantities with units (for example "5 ml"), so reconcile it to text without
 -- discarding existing numeric values.
-ALTER TABLE public.lab_test_catalogue
-  ALTER COLUMN sample_quantity TYPE text
-  USING sample_quantity::text;
+DO $sample_quantity_type$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'lab_test_catalogue'
+      AND column_name = 'sample_quantity'
+      AND data_type <> 'text'
+  ) THEN
+    ALTER TABLE public.lab_test_catalogue
+      ALTER COLUMN sample_quantity TYPE text
+      USING sample_quantity::text;
+  END IF;
+END;
+$sample_quantity_type$;
 
 -- Keep the legacy client RPC name and exact argument names used by PostgREST.
 CREATE OR REPLACE FUNCTION public.create_lab_test_catalogue_item_with_sample_quantity(
