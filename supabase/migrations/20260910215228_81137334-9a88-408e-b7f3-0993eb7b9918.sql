@@ -46,7 +46,7 @@ CREATE POLICY "admins write lab tests"
 -- Optional legacy views must respect the querying user's permissions when
 -- present. These views are not created by the current migration history, so
 -- guard by catalog kind instead of making clean replay depend on them.
-DO $
+DO $view_guard$
 DECLARE
   v_name text;
 BEGIN
@@ -61,7 +61,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$;
+$view_guard$;
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;
