@@ -12,10 +12,12 @@ type Patient = { id: string; patient_code: string; first_name: string; last_name
 const statuses = ['planned', 'issued', 'running', 'completed', 'stopped', 'cancelled'];
 
 export default function TransfusionBoard() {
-  const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [busy, setBusy] = useState(false); const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false });
   const [createOpen, setCreateOpen] = useState(false);
   const load = useCallback(async () => {
+    setLoading(true);
+    try {
     const [workspace, p] = await Promise.all([
       getOperationalWorkspace('transfusion', 150),
       searchPatientDirectory('', 500),
@@ -23,6 +25,7 @@ export default function TransfusionBoard() {
     const r = { data: (workspace.data as any)?.records ?? [], error: workspace.error };
     if (p.error || r.error) toast({ title: 'Unable to load transfusions', description: (p.error || r.error)?.message, variant: 'destructive' });
     setPatients((p.data ?? []) as Patient[]); setRows((r.data ?? []) as Row[]);
+    } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   const create = async (event: FormEvent) => {
