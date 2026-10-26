@@ -60,6 +60,9 @@ export default function WardBedBoard() {
   const [loadError, setLoadError] = useState('');
   const [ward, setWard] = useState({ name: '', code: '', specialty: '', gender_policy: 'mixed', facility_id: '' });
   const [createWardOpen, setCreateWardOpen] = useState(false);
+  const [bedEditorOpen, setBedEditorOpen] = useState(false);
+  const [bedWardId, setBedWardId] = useState('');
+  const [bedNumber, setBedNumber] = useState('');
   const [assignment, setAssignment] = useState<Record<string, string>>({});
   const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
   const [facilityChoice, setFacilityChoice] = useState<Record<string, string>>({});
@@ -171,11 +174,19 @@ export default function WardBedBoard() {
     void load();
   };
 
-  const addBed = async (wardId: string) => {
-    const number = window.prompt('Bed number');
-    if (!number?.trim()) return;
-    const succeeded = await withBusy('Bed creation failed', () => supabase.rpc('create_ward_bed', { _ward_id: wardId, _bed_number: number.trim() } as never));
+  const openBedEditor = (wardId: string) => {
+    setBedWardId(wardId);
+    setBedNumber('');
+    setBedEditorOpen(true);
+  };
+
+  const addBed = async () => {
+    if (!bedWardId || !bedNumber.trim()) return;
+    const succeeded = await withBusy('Bed creation failed', () => supabase.rpc('create_ward_bed', { _ward_id: bedWardId, _bed_number: bedNumber.trim() } as never));
     if (!succeeded) return;
+    setBedEditorOpen(false);
+    setBedWardId('');
+    setBedNumber('');
     toast({ title: 'Bed added', description: 'The bed is now stored against the ward and facility.' });
     notifyMasterDataChanged('beds');
     void load();
@@ -246,6 +257,7 @@ export default function WardBedBoard() {
             </div>
             <div className="flex items-center gap-2"><span className="rounded-full bg-muted px-3 py-1 text-xs">Admin / IT Admin / System Superuser</span><button type="button" onClick={() => setCreateWardOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />New ward</button></div>
           </div>
+          {bedEditorOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="create-bed-title"><form onSubmit={(event) => { event.preventDefault(); void addBed(); }} className="card-medical w-full max-w-md space-y-4 rounded-2xl p-5 shadow-xl"><div className="flex items-center justify-between gap-3"><div><h3 id="create-bed-title" className="font-semibold">Add bed</h3><p className="mt-1 text-xs text-muted-foreground">Add a bed to {wards.find((item) => item.id === bedWardId)?.name ?? 'the selected ward'}.</p></div><button type="button" className="btn-ghost" aria-label="Close add bed form" onClick={() => setBedEditorOpen(false)}><X className="h-4 w-4" /></button></div><label className="block space-y-1 text-sm"><span className="font-medium">Bed number or identifier</span><input autoFocus required value={bedNumber} onChange={(event) => setBedNumber(event.target.value)} placeholder="e.g. A-01" className="input-medical w-full" /></label><div className="flex justify-end gap-2"><button type="button" className="btn-secondary" disabled={busy} onClick={() => setBedEditorOpen(false)}>Cancel</button><button type="submit" className="btn-primary" disabled={busy || !bedNumber.trim()}>{busy ? 'Saving…' : 'Add bed'}</button></div></form></div>}
           {createWardOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="create-ward-title"><section className="card-medical w-full max-w-4xl p-5 shadow-xl"><div className="mb-4 flex items-center justify-between"><h3 id="create-ward-title" className="font-semibold">Create ward</h3><button type="button" className="btn-ghost" aria-label="Close ward form" onClick={() => setCreateWardOpen(false)}><X className="h-4 w-4" /></button></div><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <label className="text-xs">Ward name<input aria-label="Ward name" placeholder="Ward name" value={ward.name} onChange={(e) => setWard({ ...ward, name: e.target.value })} className="input-medical mt-1 w-full" /></label>
             <label className="text-xs">Code<input aria-label="Ward code" placeholder="Code" value={ward.code} onChange={(e) => setWard({ ...ward, code: e.target.value })} className="input-medical mt-1 w-full" /></label>
@@ -293,7 +305,7 @@ export default function WardBedBoard() {
                 </div>
               )}
 
-              {canManage && !legacyUnscoped && <button type="button" disabled={busy} onClick={() => void addBed(w.id)} className="btn-secondary mb-3 text-xs disabled:opacity-50">Add bed</button>}
+              {canManage && !legacyUnscoped && <button type="button" disabled={busy} onClick={() => openBedEditor(w.id)} className="btn-secondary mb-3 text-xs disabled:opacity-50">Add bed</button>}
               <div className="space-y-2">
                 {wardBeds.length === 0 ? <p className="text-sm text-muted-foreground">No beds configured.</p> : wardBeds.map((b) => (
                   <div key={b.id} className="rounded-xl border border-border p-3">
