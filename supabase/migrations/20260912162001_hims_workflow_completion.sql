@@ -46,6 +46,15 @@ ALTER TABLE public.facility_settings
   ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30,
   ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
 
+-- Translate legacy routing values into the canonical trigger contract.
+UPDATE public.facility_settings
+SET payment_routing_mode = CASE
+  WHEN COALESCE(to_jsonb(public.facility_settings)->>'routing_mode','') = 'pay_before_each_step'
+    OR COALESCE(to_jsonb(public.facility_settings)->>'payment_flow','') = 'strict'
+    THEN 'pay_before_every_step'
+  ELSE 'streamlined'
+END;
+
 CREATE UNIQUE INDEX IF NOT EXISTS facility_settings_singleton_idx
   ON public.facility_settings ((true));
 
