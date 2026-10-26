@@ -7,7 +7,7 @@ ALTER TABLE public.medication_administrations
   ADD COLUMN IF NOT EXISTS status TEXT,
   ADD COLUMN IF NOT EXISTS reason TEXT,
   ADD COLUMN IF NOT EXISTS witnessed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- Preserve the actual legacy drug name. Do not substitute a made-up label if
 -- both modern and legacy name fields are empty.
@@ -58,6 +58,14 @@ $medication_status_reconcile$;
 UPDATE public.medication_administrations
 SET updated_at = created_at
 WHERE updated_at IS NULL AND created_at IS NOT NULL;
+
+DO $medication_updated_at_reconcile$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.medication_administrations WHERE updated_at IS NULL) THEN
+    RAISE EXCEPTION 'Medication administration history contains rows without a verifiable update timestamp; reconcile from trusted source data before proceeding.';
+  END IF;
+END
+$medication_updated_at_reconcile$;
 
 ALTER TABLE public.medication_administrations
   ALTER COLUMN medication_name SET NOT NULL,
