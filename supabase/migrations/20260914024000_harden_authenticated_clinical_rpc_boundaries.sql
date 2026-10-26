@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION public.create_imaging_order_with_payment_gate(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path = ''
 AS $function$
 DECLARE
   v_uid uuid := auth.uid();
