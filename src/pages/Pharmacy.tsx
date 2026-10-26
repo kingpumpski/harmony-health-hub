@@ -107,9 +107,16 @@ export default function Pharmacy() {
   useEffect(() => {
     void load();
     const refreshTimer = window.setInterval(() => void load(), 30000);
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // A BFCache restore suspends page timers and can leave stale network state.
+      // Refresh pharmacy data immediately instead of waiting for the next interval.
+      if (event.persisted) void load();
+    };
+    window.addEventListener('pageshow', handlePageShow);
     return () => {
       workspaceLoadGeneration.current += 1;
       window.clearInterval(refreshTimer);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, [load]);
 
