@@ -13,10 +13,12 @@ type Officer = { id: string; full_name: string | null; specialization: string | 
 const statuses = ['requested', 'approved', 'scheduled', 'in_progress', 'completed', 'postponed', 'cancelled'];
 
 export default function TheatreBoard() {
-  const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [officers, setOfficers] = useState<Officer[]>([]); const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [officers, setOfficers] = useState<Officer[]>([]); const [busy, setBusy] = useState(false); const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' });
   const [createOpen, setCreateOpen] = useState(false);
   const load = useCallback(async () => {
+    setLoading(true);
+    try {
     const [workspace, p] = await Promise.all([
       getOperationalWorkspace('theatre', 150),
       searchPatientDirectory('', 500),
@@ -26,6 +28,7 @@ export default function TheatreBoard() {
     const o = { data: workspaceData.profiles ?? [], error: workspace.error };
     if (p.error || r.error || o.error) toast({ title: 'Unable to load theatre board', description: (p.error || r.error || o.error)?.message, variant: 'destructive' });
     setPatients((p.data ?? []) as Patient[]); setRows((r.data ?? []) as Row[]); setOfficers((o.data ?? []) as Officer[]);
+    } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   const createCase = async (event: FormEvent) => {
