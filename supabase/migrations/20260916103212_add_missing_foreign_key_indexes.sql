@@ -92,3 +92,36 @@ create index if not exists idx_fk_treatment_templates_created_by on public.treat
 create index if not exists idx_fk_vital_alerts_acknowledged_by on public.vital_alerts (acknowledged_by);
 create index if not exists idx_fk_vital_alerts_patient_id on public.vital_alerts (patient_id);
 create index if not exists idx_fk_ward_beds_patient_id on public.ward_beds (patient_id);
+
+-- These indexes originated from a production catalog export, but their legacy
+-- tables are not part of the canonical migration history or generated schema.
+-- Preserve the indexes on installations that still have the tables, without
+-- making a clean install depend on obsolete/optional relations.
+DO $$
+BEGIN
+  IF to_regclass('public.diagnosis_import_batches') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='diagnosis_import_batches' AND column_name='approved_by') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_approved_by ON public.diagnosis_import_batches (approved_by)';
+  END IF;
+  IF to_regclass('public.diagnosis_import_batches') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='diagnosis_import_batches' AND column_name='created_by') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_batches_created_by ON public.diagnosis_import_batches (created_by)';
+  END IF;
+  IF to_regclass('public.diagnosis_import_rows') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='diagnosis_import_rows' AND column_name='icd10_code_id') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_import_rows_icd10_code_id ON public.diagnosis_import_rows (icd10_code_id)';
+  END IF;
+  IF to_regclass('public.diagnosis_standard_mappings') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='diagnosis_standard_mappings' AND column_name='reviewed_by') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_diagnosis_standard_mappings_reviewed_by ON public.diagnosis_standard_mappings (reviewed_by)';
+  END IF;
+  IF to_regclass('public.facility_diagnosis_standards') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='facility_diagnosis_standards' AND column_name='standard_id') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_facility_diagnosis_standards_standard_id ON public.facility_diagnosis_standards (standard_id)';
+  END IF;
+  IF to_regclass('public.stg_diagnoses') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='stg_diagnoses' AND column_name='icd10_code_id') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_fk_stg_diagnoses_icd10_code_id ON public.stg_diagnoses (icd10_code_id)';
+  END IF;
+END;
+$$;
