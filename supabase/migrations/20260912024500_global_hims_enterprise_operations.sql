@@ -155,24 +155,6 @@ ALTER TABLE public.transfusion_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.insurance_cases ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "clinical operations read" ON public.wards;
--- Policies need to test a set of roles without introducing a
--- nonexistent has_role(uuid, app_role[]) overload or exposing arbitrary-user
--- role queries through a SECURITY DEFINER function.
-CREATE OR REPLACE FUNCTION public.has_any_role(_roles public.app_role[])
-RETURNS BOOLEAN
-LANGUAGE SQL STABLE SECURITY DEFINER
-SET search_path = ''
-AS $has_any_role$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = auth.uid()
-      AND role = ANY(_roles)
-  );
-$has_any_role$;
-
-REVOKE EXECUTE ON FUNCTION public.has_any_role(public.app_role[]) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.has_any_role(public.app_role[]) TO authenticated;
-
 CREATE POLICY "clinical operations read" ON public.wards FOR SELECT TO authenticated USING (public.has_any_role(ARRAY['admin','practitioner','nurse','midwife','specialist_nurse','front_desk']::public.app_role[]));
 DROP POLICY IF EXISTS "clinical operations read beds" ON public.beds;
 CREATE POLICY "clinical operations read beds" ON public.beds FOR SELECT TO authenticated USING (public.has_any_role(ARRAY['admin','practitioner','nurse','midwife','specialist_nurse','front_desk']::public.app_role[]));
