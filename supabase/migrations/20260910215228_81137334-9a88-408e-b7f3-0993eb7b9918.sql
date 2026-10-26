@@ -1,6 +1,41 @@
--- This migration applies RLS to AI diagnosis suggestions, so establish the
--- canonical table before applying grants and policies. The table is also
--- represented in src/integrations/supabase/types.ts.
+-- Restore canonical reference/internal schemas before this migration applies
+-- grants, indexes, RLS, or policies to them. Definitions follow generated
+-- Supabase database types and downstream FK/index contracts.
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  action text,
+  table_name text,
+  record_id text,
+  old_data jsonb,
+  new_data jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.sync_queue (
+  id uuid primary key default gen_random_uuid(),
+  payload jsonb,
+  synced boolean default false,
+  table_name text
+);
+
+create table if not exists public.lab_tests (
+  id uuid primary key default gen_random_uuid(),
+  loinc_code text,
+  normal_range text,
+  specimen text,
+  test_name text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.ai_symptom_icd_map (
+  id uuid primary key default gen_random_uuid(),
+  confidence numeric,
+  created_at timestamptz default now(),
+  icd_code text references public.icd_codes(code),
+  symptom text not null
+);
+
 create table if not exists public.ai_diagnosis_suggestions (
   id uuid primary key default gen_random_uuid(),
   encounter_id uuid references public.encounters(id),
