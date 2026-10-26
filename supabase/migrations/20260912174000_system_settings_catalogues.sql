@@ -21,8 +21,16 @@ CREATE POLICY "service tariffs staff read" ON public.service_tariffs FOR SELECT 
 DROP POLICY IF EXISTS "service tariffs admin write" ON public.service_tariffs;
 CREATE POLICY "service tariffs admin write" ON public.service_tariffs FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
 
-ALTER TABLE public.lab_test_catalogue ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "lab catalogue staff read" ON public.lab_test_catalogue;
-CREATE POLICY "lab catalogue staff read" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (true);
-DROP POLICY IF EXISTS "lab catalogue admin write" ON public.lab_test_catalogue;
-CREATE POLICY "lab catalogue admin write" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician'));
+-- The canonical laboratory catalogue is created by a later migration on clean installs.
+-- Apply these compatibility policies only when a legacy installation already has the table.
+DO $lab_catalogue_policy_compat$
+BEGIN
+  IF to_regclass('public.lab_test_catalogue') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.lab_test_catalogue ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'DROP POLICY IF EXISTS "lab catalogue staff read" ON public.lab_test_catalogue';
+    EXECUTE 'CREATE POLICY "lab catalogue staff read" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (true)';
+    EXECUTE 'DROP POLICY IF EXISTS "lab catalogue admin write" ON public.lab_test_catalogue';
+    EXECUTE 'CREATE POLICY "lab catalogue admin write" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),''admin'') OR public.has_role(auth.uid(),''lab_technician'')) WITH CHECK (public.has_role(auth.uid(),''admin'') OR public.has_role(auth.uid(),''lab_technician''))';
+  END IF;
+END;
+$lab_catalogue_policy_compat$;
