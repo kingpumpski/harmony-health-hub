@@ -34,6 +34,9 @@ BEGIN
     IF p.tablename = 'healthcare_facilities'
        AND p.policyname = 'healthcare_facilities_access' THEN
       v_qual := 'public.current_user_has_facility_access(id)';
+      IF p.with_check IS NOT NULL THEN
+        v_check := 'public.current_user_has_facility_access(id)';
+      END IF;
     ELSE
       v_qual := regexp_replace(
         v_qual,
