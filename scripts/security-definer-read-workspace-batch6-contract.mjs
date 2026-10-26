@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260929203000_harden_security_definer_read_workspace_paths_batch6.sql');
+const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260929203001_harden_security_definer_read_workspace_paths_batch6.sql');
 const sql = fs.readFileSync(migrationPath, 'utf8').replace(/\s+/g, ' ').trim();
 
 const signatures = [
