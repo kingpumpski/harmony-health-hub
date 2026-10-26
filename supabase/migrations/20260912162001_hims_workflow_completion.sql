@@ -278,6 +278,11 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   new_record JSONB
 );
 
+-- Legacy installations may already have patient_audit without changed_at.
+-- Keep historical timestamps unknown when absent; the default applies only to new rows.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
 
