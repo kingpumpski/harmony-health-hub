@@ -94,3 +94,10 @@ create policy "clinical staff manage ai diagnosis suggestions"
   using (public.is_clinical_staff(auth.uid()))
   with check (public.is_clinical_staff(auth.uid()));
 
+
+-- Reassert the execution boundary after historical hardening migrations:
+-- the low-level helper stays internal, while the one-argument wrapper must be
+-- executable by authenticated users because RLS policy expressions call it.
+revoke execute on function public.has_facility_access(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.current_user_has_facility_access(uuid) from public, anon;
+grant execute on function public.current_user_has_facility_access(uuid) to authenticated;
