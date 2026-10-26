@@ -7,7 +7,7 @@ const checks = [
   ['src/pages/TheatreBoard.tsx', /const \[createOpen, setCreateOpen\] = useState\(false\)/, /createOpen \? <div[^]*role="dialog"/],
   ['src/pages/TransfusionBoard.tsx', /const \[createOpen, setCreateOpen\] = useState\(false\)/, /createOpen \? <div[^]*role="dialog"/],
   ['src/pages/AdmissionManagement.tsx', /const \[createOpen, setCreateOpen\] = useState\(false\)/, /createOpen && <div[^]*role="dialog"/],
-  ['src/pages/MedicationAdministration.tsx', /const \[createOpen, setCreateOpen\] = useState\(false\)/, /createOpen&&<div[^]*role="dialog"/],
+  ['src/pages/MedicationAdministration.tsx', /const\s*\[createOpen,\s*setCreateOpen\]\s*=\s*useState\(false\)/, /createOpen&&<div[^]*role="dialog"/],
   ['src/pages/OutsideLabUploads.tsx', /const \[uploadOpen, setUploadOpen\] = useState\(false\)/, /uploadOpen && <div[^]*role="dialog"/],
   ['src/pages/TreatmentTemplates.tsx', /const \[createOpen, setCreateOpen\] = useState\(false\)/, /createOpen && <div[^]*role="dialog"/],
   ['src/pages/WardBedBoard.tsx', /const \[createWardOpen, setCreateWardOpen\] = useState\(false\)/, /createWardOpen && <div[^]*role="dialog"/],
