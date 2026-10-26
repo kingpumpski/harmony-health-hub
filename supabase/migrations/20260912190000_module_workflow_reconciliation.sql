@@ -318,7 +318,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
@@ -331,7 +331,7 @@ BEGIN
   RETURNING * INTO r;
   IF NOT FOUND THEN RAISE EXCEPTION 'Locked medication slot not found'; END IF;
   PERFORM public.record_system_audit('medication_slot_reopened','clinical','medication_administrations',r.id,'warning',jsonb_build_object('patient_id',r.patient_id,'reason',_reason,'actor_id',auth.uid()));
-  RETURN r;
+  RETURN to_jsonb(r);
 END;
 $$;
 
