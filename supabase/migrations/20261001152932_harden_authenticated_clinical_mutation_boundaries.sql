@@ -328,6 +328,10 @@ BEGIN
 END;
 $function$;
 
+-- The hardened contract intentionally changes the return type to boolean.
+-- PostgreSQL cannot change a function return type with CREATE OR REPLACE.
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(uuid,text);
+
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id uuid,_reason text)
 RETURNS boolean
 LANGUAGE plpgsql
