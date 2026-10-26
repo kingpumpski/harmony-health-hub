@@ -60,6 +60,7 @@ function StaffBilling() {
   const [walkInSearch, setWalkInSearch] = useState('');
   const [createServiceName, setCreateServiceName] = useState('');
   const [walkInQty, setWalkInQty] = useState(1);
+  const [additionalServiceOpen, setAdditionalServiceOpen] = useState(false);
   const [inpatientCount, setInpatientCount] = useState<number | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [generateSearch, setGenerateSearch] = useState('');
@@ -205,7 +206,7 @@ function StaffBilling() {
     if (!patientId || !walkInCode) return toast.error('Select the patient and service.');
     const { error } = await db.rpc('create_walk_in_billable_service', { _patient_id: patientId, _service_code: walkInCode, _quantity: walkInQty, _notes: 'Billing office walk-in service' });
     if (error) { playWorkflowSound('critical'); return toast.error(error.message); }
-    playWorkflowSound('success'); toast.success('Walk-in service added to the patient account.'); setWalkInCode(''); setWalkInSearch(''); setWalkInQty(1); await loadBillable();
+    playWorkflowSound('success'); toast.success('Walk-in service added to the patient account.'); setWalkInCode(''); setWalkInSearch(''); setWalkInQty(1); setAdditionalServiceOpen(false); await loadBillable();
   };
 
   const paySelected = async () => {
@@ -335,7 +336,7 @@ function StaffBilling() {
             <p className="mt-5 text-sm italic border-t border-border pt-4">({amountInWords(billingWindow.patient_type === 'Insured' ? billingWindow.top_up_total : billingWindow.total_amount)}) being payment of medical bill</p>
           </section>
 
-          {patientId && <section className="card-medical p-5 print:hidden"><div className="flex items-center gap-2 mb-3"><Plus className="w-4 h-4 text-primary" /><div><h2 className="font-semibold">Additional service</h2><p className="text-xs text-muted-foreground">Add a tariffed service without leaving the patient billing window.</p></div></div><div className="grid gap-2 md:grid-cols-[1fr_1fr_110px_auto] items-end"><input value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} className="input-medical" placeholder="Search service or code" /><select value={walkInCode} onChange={(e) => setWalkInCode(e.target.value)} className="input-medical"><option value="">Select service tariff…</option>{filteredTariffs.map((t) => <option key={t.id} value={t.service_code}>{t.service_name} · {money(Number(t.amount))}</option>)}</select><input type="number" min={1} value={walkInQty} onChange={(e) => setWalkInQty(Number(e.target.value))} className="input-medical" aria-label="Service quantity" /><button type="button" onClick={() => void addWalkIn()} className="btn-primary">Add</button></div>{canCreateServices && walkInSearch.trim() && filteredTariffs.length === 0 && <button type="button" onClick={() => setCreateServiceName(walkInSearch.trim())} className="btn-secondary mt-2">Add {walkInSearch.trim()} to catalogue</button>}</section>}
+          {patientId && <section className="print:hidden"><div className="flex justify-end"><button type="button" onClick={() => setAdditionalServiceOpen((open) => !open)} className="btn-secondary inline-flex items-center gap-2"><Plus className="w-4 h-4" />{additionalServiceOpen ? "Close additional service" : "Add additional service"}</button></div>{additionalServiceOpen && <div className="card-medical mt-3 p-5"><div className="mb-3 flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /><div><h2 className="font-semibold">Additional service</h2><p className="text-xs text-muted-foreground">Add a tariffed service without leaving the patient billing window.</p></div></div><div className="grid gap-2 md:grid-cols-[1fr_1fr_110px_auto] items-end"><input value={walkInSearch} onChange={(e) => setWalkInSearch(e.target.value)} className="input-medical" placeholder="Search service or code" /><select value={walkInCode} onChange={(e) => setWalkInCode(e.target.value)} className="input-medical"><option value="">Select service tariff…</option>{filteredTariffs.map((t) => <option key={t.id} value={t.service_code}>{t.service_name} · {money(Number(t.amount))}</option>)}</select><input type="number" min={1} value={walkInQty} onChange={(e) => setWalkInQty(Number(e.target.value))} className="input-medical" aria-label="Service quantity" /><button type="button" onClick={() => void addWalkIn()} className="btn-primary">Add</button></div>{canCreateServices && walkInSearch.trim() && filteredTariffs.length === 0 && <button type="button" onClick={() => setCreateServiceName(walkInSearch.trim())} className="btn-secondary mt-2">Add {walkInSearch.trim()} to catalogue</button>}</div>}</section>}
 
           <p className="text-xs text-muted-foreground print:hidden">Invoice: {billingWindow.account_id} · Encounter: {billingWindow.encounter_id ?? 'not linked'} · Operator: {user?.email ?? 'authenticated user'}</p>
         </div>}
