@@ -118,6 +118,11 @@ ALTER TABLE public.emergency_cases
   ALTER COLUMN acuity SET DEFAULT 'urgent',
   ALTER COLUMN acuity SET NOT NULL;
 ALTER TABLE public.emergency_cases
+  DROP CONSTRAINT IF EXISTS emergency_cases_acuity_check;
+ALTER TABLE public.emergency_cases
+  ADD CONSTRAINT emergency_cases_acuity_check
+  CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent'));
+ALTER TABLE public.emergency_cases
   DROP CONSTRAINT IF EXISTS emergency_cases_status_check;
 ALTER TABLE public.emergency_cases
   ADD CONSTRAINT emergency_cases_status_check
@@ -171,6 +176,11 @@ ALTER TABLE public.theatre_cases
   ALTER COLUMN scheduled_start SET NOT NULL,
   ALTER COLUMN urgency SET DEFAULT 'elective',
   ALTER COLUMN urgency SET NOT NULL;
+ALTER TABLE public.theatre_cases
+  DROP CONSTRAINT IF EXISTS theatre_cases_urgency_check;
+ALTER TABLE public.theatre_cases
+  ADD CONSTRAINT theatre_cases_urgency_check
+  CHECK (urgency IN ('emergency','urgent','elective'));
 ALTER TABLE public.theatre_cases
   ADD CONSTRAINT theatre_cases_status_check
   CHECK (status IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed'));
