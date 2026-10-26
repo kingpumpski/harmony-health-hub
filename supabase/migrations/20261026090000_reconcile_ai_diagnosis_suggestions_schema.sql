@@ -129,3 +129,18 @@ SET service_name=EXCLUDED.service_name,
     active=true,
     metadata=EXCLUDED.metadata,
     updated_at=now();
+-- Reassert the caller-scoped multi-role helper for installations that have
+-- already recorded the historical role bootstrap migration.
+CREATE OR REPLACE FUNCTION public.has_any_role(_roles public.app_role[])
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER
+SET search_path = ''
+AS $has_any_role$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+      AND role = ANY(_roles)
+  );
+$has_any_role$;
+REVOKE EXECUTE ON FUNCTION public.has_any_role(public.app_role[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_any_role(public.app_role[]) TO authenticated;
