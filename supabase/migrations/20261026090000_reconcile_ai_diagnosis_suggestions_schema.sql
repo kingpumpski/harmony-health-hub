@@ -102,3 +102,10 @@ create policy "clinical staff manage ai diagnosis suggestions"
 revoke execute on function public.has_facility_access(uuid, uuid) from public, anon, authenticated;
 revoke execute on function public.current_user_has_facility_access(uuid) from public, anon;
 grant execute on function public.current_user_has_facility_access(uuid) to authenticated;
+
+-- Reassert hardened execution context for clinical order creation on databases
+-- where the historical function definitions were already applied.
+alter function public.create_imaging_order_with_payment_gate(uuid, uuid, text, text, text, text, text, numeric)
+  set search_path = '';
+alter function public.create_lab_order_with_payment_gate(uuid, text, text, text, text, numeric)
+  set search_path = '';
