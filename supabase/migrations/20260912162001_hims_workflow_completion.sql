@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS public.facility_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Reconcile the legacy facility_settings table; CREATE TABLE IF NOT EXISTS alone
+-- does not add columns required by newer workflow code.
+ALTER TABLE public.facility_settings
+  ADD COLUMN IF NOT EXISTS country_code CHAR(2) NOT NULL DEFAULT 'GH',
+  ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'GHS',
+  ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Accra',
+  ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined',
+  ADD COLUMN IF NOT EXISTS enable_patient_portal BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS enable_ai_decision_support BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30,
+  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS facility_settings_singleton_idx
   ON public.facility_settings ((true));
 
@@ -111,6 +123,39 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile the older payment-gated service_orders table before indexes and
+-- state-machine triggers reference the newer clinical workflow columns.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS encounter_id UUID REFERENCES public.encounters(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'legacy',
+  ADD COLUMN IF NOT EXISTS service_name TEXT NOT NULL DEFAULT 'Legacy service order',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (payment_status IN ('pending','approved','overridden','rejected','waived')),
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'
+    CHECK (fulfillment_status IN ('blocked','released','in_progress','completed','cancelled')),
+  ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine'
+    CHECK (priority IN ('routine','urgent','stat')),
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+-- Preserve the legacy lifecycle when mapping rows into the canonical fulfillment state.
+UPDATE public.service_orders
+SET fulfillment_status = CASE
+  WHEN status = 'completed' THEN 'completed'
+  WHEN status = 'cancelled' THEN 'cancelled'
+  WHEN status IN ('released','in_progress') THEN status
+  ELSE 'blocked'
+END
+WHERE fulfillment_status = 'blocked' OR fulfillment_status IS NULL;
+
+UPDATE public.service_orders
+SET payment_status = CASE
+  WHEN status IN ('released','in_progress','completed') THEN 'approved'
+  ELSE COALESCE(payment_status,'pending')
+END
+WHERE payment_status IS NULL OR payment_status = 'pending';
 
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
