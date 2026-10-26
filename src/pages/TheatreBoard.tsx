@@ -66,7 +66,7 @@ export default function TheatreBoard() {
           <label className="space-y-1 text-sm"><span className="font-medium">Scheduled start</span><input aria-label="Scheduled start" required type="datetime-local" value={form.scheduledStart} onChange={(e) => setForm({ ...form, scheduledStart: e.target.value })} className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Theatre</span><input aria-label="Theatre name" value={form.theatreName} onChange={(e) => setForm({ ...form, theatreName: e.target.value })} placeholder="Theatre" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Urgency</span><select aria-label="Theatre case urgency" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="input-medical w-full"><option value="elective">Elective</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
-          <button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Schedule case"}</button>
+          <button type="button" onClick={() => setCreateOpen(false)} disabled={busy} className="btn-secondary disabled:opacity-50">Cancel</button><button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Schedule case"}</button>
         </form></section></div> : null
       }
       listTitle="Theatre case worklist"
@@ -74,7 +74,7 @@ export default function TheatreBoard() {
       listMeta={`${rows.length} case${rows.length === 1 ? "" : "s"}`}
       empty={!rows.length}
       emptyTitle="No theatre cases found"
-      emptyDescription="Schedule a theatre case above to begin the surgical workflow."
+      emptyDescription="Use “Schedule case” to add a theatre case when needed."
     >
       {rows.map((r) => { const a = officer(r.anesthetist_id); return (
         <article key={r.id} className="px-5 py-4 transition-colors hover:bg-muted/30">
