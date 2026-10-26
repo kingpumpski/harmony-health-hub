@@ -64,6 +64,7 @@ CREATE POLICY "admins read audit logs"
 
 ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.sync_queue TO service_role;
+GRANT SELECT ON public.sync_queue TO authenticated;
 CREATE POLICY "admins read sync queue"
   ON public.sync_queue FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
