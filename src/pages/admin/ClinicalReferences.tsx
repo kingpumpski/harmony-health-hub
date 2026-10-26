@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExternalLink, RefreshCw, Save } from 'lucide-react';
+import { ExternalLink, RefreshCw, Save, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +22,7 @@ export default function ClinicalReferences() {
   const [draft, setDraft] = useState<Partial<ClinicalReference>>(blank);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,11 +43,13 @@ export default function ClinicalReferences() {
   const edit = (reference: ClinicalReference) => {
     setSelected(reference);
     setDraft(reference);
+    setEditorOpen(true);
   };
 
   const startNew = () => {
     setSelected(null);
     setDraft({ ...blank, last_reviewed_at: new Date().toISOString().slice(0, 10) });
+    setEditorOpen(true);
   };
 
   const save = async () => {
@@ -83,6 +86,7 @@ export default function ClinicalReferences() {
     await load();
     setSelected(null);
     setDraft(blank);
+    setEditorOpen(false);
   };
 
   if (user?.role !== 'admin') {
@@ -95,11 +99,11 @@ export default function ClinicalReferences() {
         <h1 className="text-2xl font-heading font-bold">Clinical Reference Values</h1>
         <p className="mt-1 text-sm text-muted-foreground">Source-controlled clinical helper text used by patient-facing vital-sign forms.</p>
       </header>
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[1fr]">
         <section className="card-medical overflow-hidden">
           <div className="flex items-center justify-between border-b p-4">
             <div><h2 className="font-semibold">Reference catalogue</h2><p className="text-xs text-muted-foreground">{references.length} active record{references.length === 1 ? '' : 's'}</p></div>
-            <div className="flex gap-2"><button type="button" onClick={() => void load()} className="btn-secondary" title="Refresh"><RefreshCw className="h-4 w-4" /></button><button type="button" onClick={startNew} className="btn-primary">Add reference</button></div>
+            <div className="flex gap-2"><button type="button" onClick={() => void load()} className="btn-secondary" title="Refresh"><RefreshCw className="h-4 w-4" /></button><button type="button" onClick={startNew} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />Add reference</button></div>
           </div>
           {loading ? <div className="p-5 text-sm text-muted-foreground">Loading references…</div> : (
             <div className="divide-y">
@@ -111,8 +115,8 @@ export default function ClinicalReferences() {
             </div>
           )}
         </section>
-        <section className="card-medical p-5">
-          <div className="mb-4"><h2 className="font-semibold">{selected ? 'Edit reference' : 'Add reference'}</h2><p className="text-xs text-muted-foreground">All clinical references must remain attributable and reviewable.</p></div>
+        {editorOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="clinical-reference-editor-title"><section className="card-medical w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-3"><div><h2 id="clinical-reference-editor-title" className="font-semibold">{selected ? "Edit reference" : "Add reference"}</h2><p className="text-xs text-muted-foreground">All clinical references must remain attributable and reviewable.</p></div><button type="button" className="btn-ghost" aria-label="Close reference editor" onClick={() => setEditorOpen(false)}><X className="h-4 w-4" /></button></div>
           <div className="space-y-3">
             {[
               ['parameter','Parameter'],
@@ -131,9 +135,9 @@ export default function ClinicalReferences() {
             <label className="block space-y-1 text-sm"><span className="font-medium">Last reviewed</span><input type="date" value={draft.last_reviewed_at ? new Date(draft.last_reviewed_at).toISOString().slice(0,10) : ''} onChange={e=>setDraft(current=>({...current,last_reviewed_at:e.target.value}))} className="input-medical w-full" /></label>
             {selected && <div className="rounded-xl border border-muted p-3 text-xs text-muted-foreground"><p>Review due: {new Date(selected.review_due_at).toLocaleDateString()}</p><p className="mt-1">A review flag is shown here to administrators only.</p></div>}
             {draft.source_url && <a href={draft.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs underline"><ExternalLink className="h-3 w-3" />Open source</a>}
-            <button type="button" onClick={() => void save()} disabled={saving} className="btn-primary inline-flex items-center gap-2"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save reference'}</button>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditorOpen(false)} className="btn-secondary" disabled={saving}>Cancel</button><button type="button" onClick={() => void save()} disabled={saving} className="btn-primary inline-flex items-center gap-2"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save reference'}</button></div>
           </div>
-        </section>
+        </section></div>}
       </div>
     </div>
   );
