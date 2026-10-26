@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS public.lab_test_parameters (
   UNIQUE (test_id, code)
 );
 
+-- Older deployments may already have this table without the newer ordering column.
+-- CREATE TABLE IF NOT EXISTS does not reconcile columns on an existing table.
+ALTER TABLE public.lab_test_parameters
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS lab_test_catalog_active_idx
   ON public.lab_test_catalog (active, category, name);
 CREATE INDEX IF NOT EXISTS lab_test_parameters_test_idx
