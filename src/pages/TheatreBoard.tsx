@@ -1,7 +1,7 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { CalendarClock} from 'lucide-react';
+import { CalendarClock, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
@@ -15,6 +15,7 @@ const statuses = ['requested', 'approved', 'scheduled', 'in_progress', 'complete
 export default function TheatreBoard() {
   const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [officers, setOfficers] = useState<Officer[]>([]); const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' });
+  const [createOpen, setCreateOpen] = useState(false);
   const load = useCallback(async () => {
     const [workspace, p] = await Promise.all([
       getOperationalWorkspace('theatre', 150),
@@ -31,7 +32,7 @@ export default function TheatreBoard() {
     event.preventDefault(); if (!form.patientId || !form.procedureName.trim() || !form.scheduledStart) { toast({ title: 'Patient, procedure and scheduled start are required', variant: 'destructive' }); return; }
     setBusy(true); const { error } = await (supabase as any).rpc('create_theatre_case', { _patient_id: form.patientId, _procedure_name: form.procedureName.trim(), _scheduled_start: new Date(form.scheduledStart).toISOString(), _theatre_name: form.theatreName.trim() || null, _urgency: form.urgency, _surgeon_id: null, _anesthetist_id: null, _encounter_id: null }); setBusy(false);
     if (error) { toast({ title: 'Theatre case creation failed', description: error.message, variant: 'destructive' }); return; }
-    setForm({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' }); toast({ title: 'Theatre case registered' }); void load();
+    setForm({ patientId: '', procedureName: '', scheduledStart: '', theatreName: '', urgency: 'elective' }); setCreateOpen(false); toast({ title: 'Theatre case registered' }); void load();
   };
   const transition = async (id: string, status: string) => {
     setBusy(true); const { error } = await (supabase as any).rpc('transition_theatre_case', { _case_id: id, _status: status, _cancellation_reason: status === 'cancelled' || status === 'postponed' ? 'Status changed from theatre board' : null }); setBusy(false);
@@ -50,7 +51,7 @@ export default function TheatreBoard() {
       eyebrow="Surgical services"
       title="Theatre"
       description="Theatre intake, scheduling, anesthetist assignment and controlled clinical transitions."
-      actions={<RefreshButton onClick={() => void load()} loading={loading} />}
+      actions={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setCreateOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />Schedule case</button><RefreshButton onClick={() => void load()} loading={loading} /></div>}
       counters={[
         { label: "Active cases", value: rows.filter((r) => !["completed","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
         { label: "Scheduled", value: rows.filter((r) => r.status === "scheduled").length, tone: "text-info", surface: "bg-info/5" },
@@ -58,6 +59,7 @@ export default function TheatreBoard() {
         { label: "Urgent", value: rows.filter((r) => ["urgent","emergency"].includes(r.urgency)).length, tone: "text-warning", surface: "bg-warning/5" },
       ]}
       beforeList={
+        createOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-record-title"><section className="w-full max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6"><header className="mb-4 flex items-start justify-between gap-3"><div><h2 id="create-record-title" className="text-lg font-semibold">Schedule theatre case</h2><p className="mt-1 text-sm text-muted-foreground">Complete the required details and save to add this record.</p></div><button type="button" onClick={() => setCreateOpen(false)} className="btn-ghost" aria-label="Close create form"><X className="h-4 w-4" /></button></header>
         <form onSubmit={createCase} className="card-medical p-5 sm:p-6 grid gap-4 lg:grid-cols-[1.3fr_1.5fr_1.2fr_1fr_1fr_auto]">
           <label className="space-y-1 text-sm"><span className="font-medium">Patient</span><select aria-label="Patient for theatre case" required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="input-medical w-full"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Procedure</span><input aria-label="Procedure name" required value={form.procedureName} onChange={(e) => setForm({ ...form, procedureName: e.target.value })} placeholder="Procedure" className="input-medical w-full" /></label>
@@ -65,7 +67,7 @@ export default function TheatreBoard() {
           <label className="space-y-1 text-sm"><span className="font-medium">Theatre</span><input aria-label="Theatre name" value={form.theatreName} onChange={(e) => setForm({ ...form, theatreName: e.target.value })} placeholder="Theatre" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Urgency</span><select aria-label="Theatre case urgency" value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="input-medical w-full"><option value="elective">Elective</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
           <button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Schedule case"}</button>
-        </form>
+        </form></section></div> : null
       }
       listTitle="Theatre case worklist"
       listDescription="Review scheduled procedures, clinical urgency and anaesthesia assignment."
