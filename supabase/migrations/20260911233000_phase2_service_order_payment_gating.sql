@@ -318,7 +318,7 @@ BEGIN
 
   INSERT INTO public.department_queues(service_order_id, department)
   VALUES (v_order.id, v_order.department)
-  ON CONFLICT (service_order_id) DO NOTHING;
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO NOTHING;
 
   RETURN v_order;
 END;
@@ -341,7 +341,7 @@ BEGIN
 
   INSERT INTO public.billing_overrides(service_order_id, reason, approved_by)
   VALUES (_service_order_id, trim(_reason), auth.uid())
-  ON CONFLICT (service_order_id) DO UPDATE
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO UPDATE
     SET reason = EXCLUDED.reason,
         approved_by = EXCLUDED.approved_by,
         approved_at = now()
