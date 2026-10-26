@@ -1,7 +1,7 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Droplets} from 'lucide-react';
+import { AlertTriangle, Droplets, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { searchPatientDirectory } from '@/lib/patientDirectory';
@@ -14,6 +14,7 @@ const statuses = ['planned', 'issued', 'running', 'completed', 'stopped', 'cance
 export default function TransfusionBoard() {
   const [rows, setRows] = useState<Row[]>([]); const [patients, setPatients] = useState<Patient[]>([]); const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false });
+  const [createOpen, setCreateOpen] = useState(false);
   const load = useCallback(async () => {
     const [workspace, p] = await Promise.all([
       getOperationalWorkspace('transfusion', 150),
@@ -30,7 +31,7 @@ export default function TransfusionBoard() {
     if (!form.consentConfirmed) { toast({ title: 'Confirm documented transfusion consent before scheduling', variant: 'destructive' }); return; }
     setBusy(true); const { error } = await (supabase as any).rpc('create_transfusion_record', { _patient_id: form.patientId, _blood_product: form.bloodProduct.trim(), _unit_identifier: form.unitIdentifier.trim(), _blood_group: form.bloodGroup.trim() || null, _consent_confirmed: true }); setBusy(false);
     if (error) { toast({ title: 'Transfusion record failed', description: error.message, variant: 'destructive' }); return; }
-    setForm({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false }); toast({ title: 'Transfusion record created' }); void load();
+    setForm({ patientId: '', bloodProduct: '', unitIdentifier: '', bloodGroup: '', consentConfirmed: false }); setCreateOpen(false); toast({ title: 'Transfusion record created' }); void load();
   };
   const transition = async (id: string, status: string) => {
     setBusy(true); const { error } = await (supabase as any).rpc('record_transfusion_event', { _record_id: id, _status: status, _reaction_observed: false, _reaction_notes: null }); setBusy(false);
@@ -48,7 +49,7 @@ export default function TransfusionBoard() {
       eyebrow="Transfusion services"
       title="Transfusion"
       description="Consent-gated transfusion intake, documented lifecycle and reaction reporting. Compatibility is never inferred."
-      actions={<RefreshButton onClick={() => void load()} loading={loading} />}
+      actions={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setCreateOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />Schedule transfusion</button><RefreshButton onClick={() => void load()} loading={loading} /></div>}
       counters={[
         { label: "Active records", value: rows.filter((r) => !["completed","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
         { label: "Planned", value: rows.filter((r) => r.status === "planned").length, tone: "text-info", surface: "bg-info/5" },
@@ -56,13 +57,14 @@ export default function TransfusionBoard() {
         { label: "Reactions", value: rows.filter((r) => r.reaction_observed).length, tone: "text-critical", surface: "bg-critical/5" },
       ]}
       beforeList={
+        createOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-record-title"><section className="w-full max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6"><header className="mb-4 flex items-start justify-between gap-3"><div><h2 id="create-record-title" className="text-lg font-semibold">Schedule transfusion</h2><p className="mt-1 text-sm text-muted-foreground">Complete the required details and save to add this record.</p></div><button type="button" onClick={() => setCreateOpen(false)} className="btn-ghost" aria-label="Close create form"><X className="h-4 w-4" /></button></header>
         <form onSubmit={create} className="card-medical p-5 sm:p-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <label className="space-y-1 text-sm"><span className="font-medium">Patient</span><select required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="input-medical w-full"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Blood product</span><input required value={form.bloodProduct} onChange={(e) => setForm({ ...form, bloodProduct: e.target.value })} placeholder="Blood product" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Unit identifier</span><input required value={form.unitIdentifier} onChange={(e) => setForm({ ...form, unitIdentifier: e.target.value })} placeholder="Unit identifier" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Recorded blood group</span><input value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })} placeholder="Recorded blood group" className="input-medical w-full" /></label>
           <div className="flex flex-wrap items-end gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.consentConfirmed} onChange={(e) => setForm({ ...form, consentConfirmed: e.target.checked })} /> Consent confirmed</label><button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">{busy ? "Saving…" : "Schedule"}</button></div>
-        </form>
+        </form></section></div> : null
       }
       listTitle="Transfusion worklist"
       listDescription="Monitor lifecycle status and document reactions without inferring compatibility."
