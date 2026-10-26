@@ -57,6 +57,7 @@ create policy "admins read audit logs" on public.audit_logs
 
 alter table public.sync_queue enable row level security;
 grant all on public.sync_queue to service_role;
+grant select on public.sync_queue to authenticated;
 drop policy if exists "admins read sync queue" on public.sync_queue;
 create policy "admins read sync queue" on public.sync_queue
   for select to authenticated using (public.has_role(auth.uid(), 'admin'));
