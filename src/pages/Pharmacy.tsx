@@ -49,6 +49,7 @@ export default function Pharmacy() {
   const [posQuantity, setPosQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [createMedicationName, setCreateMedicationName] = useState('');
+  const [inventoryFormOpen, setInventoryFormOpen] = useState(false);
   const [editingInventoryId, setEditingInventoryId] = useState<string | null>(null);
   const [inventoryForm, setInventoryForm] = useState({ drug_name: '', brand_name: '', generic_name: '', category: 'Uncategorized', strength: '', form: '', supplier: '', batch_number: '', expiry_date: '', barcode: '', stock_quantity: 0, reorder_level: 0, unit_price: 0, nhis_patient_price: 0, nhis_claim_amount: 0 });
   const previousActive = useRef(0);
@@ -132,10 +133,12 @@ export default function Pharmacy() {
   const dispense = async (plan: Plan) => { const { error } = await db.rpc('confirm_pharmacy_dispense', { _plan_id: plan.id }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success(`${plan.medication_name} dispensed.`); void load(); };
   const createPosSale = async (event: React.FormEvent) => { event.preventDefault(); if (!posItem || posQuantity < 1) return toast.error('Select a product and quantity.'); const { error } = await db.rpc('create_pharmacy_pos_sale', { _patient_id: posPatient || null, _inventory_id: posItem, _quantity: posQuantity }); if (error) { playWorkflowSound('error'); return toast.error(error.message); } playWorkflowSound('success'); toast.success('Walk-in sale created and sent for payment release.'); setPosItem(''); setPosPatient(''); setPosQuantity(1); void load(); };
   const resetInventoryForm = () => {
+    setInventoryFormOpen(false);
     setEditingInventoryId(null);
     setInventoryForm({ drug_name: '', brand_name: '', generic_name: '', category: 'Uncategorized', strength: '', form: '', supplier: '', batch_number: '', expiry_date: '', barcode: '', stock_quantity: 0, reorder_level: 0, unit_price: 0, nhis_patient_price: 0, nhis_claim_amount: 0 });
   };
   const editInventoryItem = (item: InventoryItem) => {
+    setInventoryFormOpen(true);
     setEditingInventoryId(item.id);
     setTab('inventory');
     setInventoryForm({
@@ -356,7 +359,8 @@ export default function Pharmacy() {
           {tab === 'inventory' && (
             <div>
               <div className="border-b border-border p-5">
-                {canCreateItems && <form ref={inventoryFormRef} onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                {canCreateItems && <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">Facility stock</h3><p className="text-sm text-muted-foreground">Add or update stock only when needed.</p></div><button type="button" className="btn-primary" onClick={() => { if (inventoryFormOpen) { resetInventoryForm(); } else { resetInventoryForm(); setInventoryFormOpen(true); } }}>{inventoryFormOpen ? 'Close form' : 'Add stock item'}</button></div>}
+                {canCreateItems && inventoryFormOpen && <form ref={inventoryFormRef} onSubmit={saveInventory} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {(['drug_name', 'brand_name', 'generic_name', 'category', 'strength', 'form', 'supplier', 'batch_number', 'barcode', 'expiry_date'] as const).map((field) => (
                     <div key={field}><label htmlFor={`inventory-${field}`} className="text-xs font-semibold block capitalize">{field === 'category' ? 'Global category (shared across facilities)' : field.replaceAll('_', ' ')}</label><input id={`inventory-${field}`} value={inventoryForm[field]} disabled={Boolean(editingInventoryId) && ['drug_name', 'generic_name', 'strength', 'form'].includes(field)} onChange={(event) => setInventoryForm((current) => ({ ...current, [field]: event.target.value }))} type={field === 'expiry_date' ? 'date' : 'text'} placeholder={field === 'drug_name' ? 'e.g., Amoxicillin' : field === 'generic_name' ? 'e.g., Amoxicillin trihydrate' : field === 'category' ? 'e.g., Antibiotic' : field === 'strength' ? 'e.g., 500 mg' : field === 'form' ? 'e.g., Capsule' : field === 'barcode' ? 'Scan or enter barcode' : `Enter ${field.replaceAll('_', ' ')}`} className="input-medical w-full mt-1 placeholder:text-muted-foreground/60" /></div>
                   ))}
