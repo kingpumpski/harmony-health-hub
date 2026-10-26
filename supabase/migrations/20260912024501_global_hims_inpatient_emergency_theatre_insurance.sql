@@ -82,21 +82,98 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
 -- Reconcile tables created by the preceding enterprise migration. CREATE TABLE IF NOT
 -- EXISTS does not add columns when the legacy table already exists.
 ALTER TABLE public.emergency_cases
-  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ DEFAULT now(),
-  ADD COLUMN IF NOT EXISTS acuity TEXT DEFAULT 'urgent',
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT,
   ADD COLUMN IF NOT EXISTS triage_summary TEXT,
   ADD COLUMN IF NOT EXISTS disposition_at TIMESTAMPTZ;
+
+UPDATE public.emergency_cases
+SET arrival_time = arrival_at
+WHERE arrival_time IS NULL AND arrival_at IS NOT NULL;
+
+UPDATE public.emergency_cases
+SET acuity = CASE triage_priority
+  WHEN 'critical' THEN 'resuscitation'
+  WHEN 'urgent' THEN 'urgent'
+  WHEN 'moderate' THEN 'less_urgent'
+  WHEN 'routine' THEN 'non_urgent'
+  ELSE NULL
+END
+WHERE acuity IS NULL;
+
+DO $emergency_reconcile$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.emergency_cases WHERE arrival_time IS NULL) THEN
+    RAISE EXCEPTION 'Emergency cases contain rows without a verifiable arrival timestamp; reconcile from triage records before proceeding.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.emergency_cases WHERE acuity IS NULL OR acuity NOT IN ('resuscitation','emergency','urgent','less_urgent','non_urgent')) THEN
+    RAISE EXCEPTION 'Emergency cases contain rows without a valid acuity; reconcile from triage priority before proceeding.';
+  END IF;
+END
+$emergency_reconcile$;
+
+ALTER TABLE public.emergency_cases
+  ALTER COLUMN arrival_time SET DEFAULT now(),
+  ALTER COLUMN arrival_time SET NOT NULL,
+  ALTER COLUMN acuity SET DEFAULT 'urgent',
+  ALTER COLUMN acuity SET NOT NULL;
+ALTER TABLE public.emergency_cases
+  DROP CONSTRAINT IF EXISTS emergency_cases_status_check;
+ALTER TABLE public.emergency_cases
+  ADD CONSTRAINT emergency_cases_status_check
+  CHECK (status IN ('waiting','triage','treatment','observation','admitted','transferred','discharged','deceased','referred','left_without_being_seen','cancelled'));
 
 ALTER TABLE public.theatre_cases
   ADD COLUMN IF NOT EXISTS encounter_id UUID,
   ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS theatre_name TEXT,
-  ADD COLUMN IF NOT EXISTS urgency TEXT DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS urgency TEXT,
   ADD COLUMN IF NOT EXISTS preoperative_notes TEXT,
   ADD COLUMN IF NOT EXISTS postoperative_notes TEXT,
   ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+
+UPDATE public.theatre_cases
+SET scheduled_start = scheduled_at
+WHERE scheduled_start IS NULL AND scheduled_at IS NOT NULL;
+
+UPDATE public.theatre_cases
+SET theatre_name = theatre
+WHERE theatre_name IS NULL AND theatre IS NOT NULL;
+
+UPDATE public.theatre_cases
+SET anesthetist_id = anaesthetist_id
+WHERE anesthetist_id IS NULL AND anaesthetist_id IS NOT NULL;
+
+ALTER TABLE public.theatre_cases
+  DROP CONSTRAINT IF EXISTS theatre_cases_status_check;
+UPDATE public.theatre_cases
+SET status = CASE status WHEN 'planned' THEN 'scheduled' WHEN 'cleared' THEN 'approved' ELSE status END
+WHERE status IN ('planned','cleared');
+
+DO $theatre_reconcile$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.theatre_cases WHERE scheduled_start IS NULL) THEN
+    RAISE EXCEPTION 'Theatre cases contain rows without a verifiable scheduled time; reconcile from theatre scheduling records before proceeding.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.theatre_cases WHERE urgency IS NULL OR urgency NOT IN ('emergency','urgent','elective')) THEN
+    RAISE EXCEPTION 'Theatre cases contain rows without a verified urgency; reconcile from theatre booking records before proceeding.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.theatre_cases WHERE status NOT IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed')) THEN
+    RAISE EXCEPTION 'Theatre cases contain unsupported status values; reconcile from theatre workflow records before proceeding.';
+  END IF;
+END
+$theatre_reconcile$;
+
+ALTER TABLE public.theatre_cases
+  ALTER COLUMN scheduled_start SET DEFAULT now(),
+  ALTER COLUMN scheduled_start SET NOT NULL,
+  ALTER COLUMN urgency SET DEFAULT 'elective',
+  ALTER COLUMN urgency SET NOT NULL;
+ALTER TABLE public.theatre_cases
+  ADD CONSTRAINT theatre_cases_status_check
+  CHECK (status IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed'));
 
 ALTER TABLE public.nursing_shift_handovers
   ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES public.ward_units(id) ON DELETE SET NULL,
@@ -114,8 +191,32 @@ ALTER TABLE public.transfusion_records
   ADD COLUMN IF NOT EXISTS blood_group TEXT,
   ADD COLUMN IF NOT EXISTS unit_identifier TEXT,
   ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
-  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN,
   ADD COLUMN IF NOT EXISTS reaction_notes TEXT;
+
+UPDATE public.transfusion_records
+SET blood_product = component
+WHERE blood_product IS NULL AND component IS NOT NULL;
+
+DO $transfusion_reconcile$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.transfusion_records WHERE blood_product IS NULL OR btrim(blood_product) = '') THEN
+    RAISE EXCEPTION 'Transfusion records contain rows without a verifiable blood product; reconcile from blood-bank issue records before proceeding.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.transfusion_records WHERE unit_identifier IS NULL OR btrim(unit_identifier) = '') THEN
+    RAISE EXCEPTION 'Transfusion records contain rows without a verifiable unit identifier; reconcile from blood-bank issue records before proceeding.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.transfusion_records WHERE reaction_observed IS NULL) THEN
+    RAISE EXCEPTION 'Transfusion records contain rows without a verified reaction observation; reconcile from transfusion monitoring records before proceeding.';
+  END IF;
+END
+$transfusion_reconcile$;
+
+ALTER TABLE public.transfusion_records
+  ALTER COLUMN blood_product SET NOT NULL,
+  ALTER COLUMN unit_identifier SET NOT NULL,
+  ALTER COLUMN reaction_observed SET DEFAULT false,
+  ALTER COLUMN reaction_observed SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
