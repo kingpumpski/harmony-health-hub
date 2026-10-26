@@ -55,7 +55,7 @@ export default function Imaging() {
       setPatients(workspace.patients ?? []);
       setOrders(nextOrders);
       setLastUpdated(new Date());
-    } catch (error) {
+    } catch {
       // Browser fetch can reject on ERR_CONNECTION_CLOSED before Supabase returns an RPC error.
       if (!announce) {
         toast({
