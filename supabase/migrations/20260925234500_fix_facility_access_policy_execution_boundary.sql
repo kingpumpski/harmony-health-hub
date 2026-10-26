@@ -28,16 +28,24 @@ BEGIN
     v_qual := p.qual;
     v_check := p.with_check;
 
-    v_qual := regexp_replace(
-      v_qual,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
-      'current_user_has_facility_access(\1)',
-      'gi'
-    );
+    -- The canonical healthcare-facility policy has a known safe target. Handle
+    -- it explicitly because PostgreSQL may deparse auth.uid() subqueries with
+    -- or without the generated "AS uid" alias.
+    IF p.tablename = 'healthcare_facilities'
+       AND p.policyname = 'healthcare_facilities_access' THEN
+      v_qual := 'public.current_user_has_facility_access(id)';
+    ELSE
+      v_qual := regexp_replace(
+        v_qual,
+        'has_facility_access\(\s*\(*\s*SELECT\s+auth\.uid\(\)\s*(AS\s+uid\s*)?\)*\s*,\s*(("[A-Za-z_][A-Za-z0-9_$]*"|\b[A-Za-z_][A-Za-z0-9_$]*)\s*\.\s*)?("[A-Za-z_][A-Za-z0-9_$]*"|\b[A-Za-z_][A-Za-z0-9_$]*)\s*\)',
+        'public.current_user_has_facility_access(\2)',
+        'gi'
+      );
+    END IF;
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
-      'current_user_has_facility_access(\1)',
+      'has_facility_access\(\s*\(*\s*SELECT\s+auth\.uid\(\)\s*(AS\s+uid\s*)?\)*\s*,\s*(("[A-Za-z_][A-Za-z0-9_$]*"|\b[A-Za-z_][A-Za-z0-9_$]*)\s*\.\s*)?("[A-Za-z_][A-Za-z0-9_$]*"|\b[A-Za-z_][A-Za-z0-9_$]*)\s*\)',
+      'public.current_user_has_facility_access(\2)',
       'gi'
     );
 
