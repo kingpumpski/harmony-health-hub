@@ -281,7 +281,12 @@ BEGIN
   GET DIAGNOSTICS n=ROW_COUNT; RETURN n;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- The earlier workflow migration declared this same signature as RETURNS UUID.
+-- PostgreSQL cannot change a function's return type with CREATE OR REPLACE.
+-- Drop only the function object, then recreate it with the hardened JSONB contract.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
