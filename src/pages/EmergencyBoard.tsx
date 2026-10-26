@@ -71,7 +71,7 @@ export default function EmergencyBoard() {
           <label className="space-y-1 text-sm"><span className="font-medium">Chief complaint</span><input aria-label="Chief complaint or presenting problem" required value={form.chiefComplaint} onChange={(e) => setForm({ ...form, chiefComplaint: e.target.value })} placeholder="Chief complaint / presenting problem" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Acuity</span><select aria-label="Emergency acuity" value={form.acuity} onChange={(e) => setForm({ ...form, acuity: e.target.value })} className="input-medical w-full">{acuities.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Arrival mode</span><select aria-label="Arrival mode" value={form.arrivalMode} onChange={(e) => setForm({ ...form, arrivalMode: e.target.value })} className="input-medical w-full"><option value="walk_in">Walk-in</option><option value="ambulance">Ambulance</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
-          <button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Register case"}</button>
+          <button type="button" onClick={() => setCreateOpen(false)} disabled={busy} className="btn-secondary disabled:opacity-50">Cancel</button><button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Register case"}</button>
         </form></section></div> : null
       }
       listTitle="Active emergency queue"
@@ -79,7 +79,7 @@ export default function EmergencyBoard() {
       listMeta={`${rows.length} case${rows.length === 1 ? "" : "s"}`}
       empty={!rows.length}
       emptyTitle="No emergency cases found"
-      emptyDescription="Register an emergency case above to begin the controlled workflow."
+      emptyDescription="Use “Register case” to add an emergency case when needed."
     >
       {rows.map((r) => (
         <article key={r.id} className="px-5 py-4 transition-colors hover:bg-muted/30">
