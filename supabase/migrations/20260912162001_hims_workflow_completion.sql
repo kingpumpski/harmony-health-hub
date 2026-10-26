@@ -49,8 +49,8 @@ ALTER TABLE public.facility_settings
 -- Translate legacy routing values into the canonical trigger contract.
 UPDATE public.facility_settings
 SET payment_routing_mode = CASE
-  WHEN COALESCE(to_jsonb(public.facility_settings)->>'routing_mode','') = 'pay_before_each_step'
-    OR COALESCE(to_jsonb(public.facility_settings)->>'payment_flow','') = 'strict'
+  WHEN COALESCE(to_jsonb(facility_settings)->>'routing_mode','') = 'pay_before_each_step'
+    OR COALESCE(to_jsonb(facility_settings)->>'payment_flow','') = 'strict'
     THEN 'pay_before_every_step'
   ELSE 'streamlined'
 END;
