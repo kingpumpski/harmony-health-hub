@@ -28,7 +28,7 @@ const patientHub = read('src/pages/patients/PatientHub.tsx');
 assert.match(patientHub, /const \[editing, setEditing\] = useState\(false\)/, 'Patient profile editor must start closed');
 assert.match(patientHub, /Edit patient details/, 'Patient profile must expose an explicit edit action');
 assert.match(patientHub, /editing && canEdit \? <form/, 'Patient profile form must be hidden until edit is requested');
-assert.doesNotMatch(patientHub, /<form onSubmit=\{save\} className="space-y-5">/, 'Patient profile form must not be rendered unconditionally');
+assert.match(patientHub, /: <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">/, 'Patient profile must show read-only details until editing is requested');
 
 const wardBoard = read('src/pages/WardBedBoard.tsx');
 assert.doesNotMatch(wardBoard, /window\.prompt\(['"]Bed number/, 'Bed creation must use the explicit dialog, not a browser prompt');
