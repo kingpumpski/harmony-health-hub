@@ -21,7 +21,12 @@ BEGIN
  RETURN id;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- Earlier workflow migrations used a different return type for this RPC. PostgreSQL
+-- cannot replace a function's return type in place; remove the legacy signature
+-- before defining the canonical JSONB contract below.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$

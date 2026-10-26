@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The earlier cross-dashboard queue table may already exist with its legacy shape.
+-- Reconcile the columns required by this payment-gated work queue before indexing them.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS service_order_id uuid REFERENCES public.service_orders(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS queued_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS claimed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 

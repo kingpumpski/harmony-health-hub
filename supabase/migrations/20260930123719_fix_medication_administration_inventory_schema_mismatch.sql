@@ -1,7 +1,11 @@
 -- Fix the production MAR transition function to match the live medication_administrations schema.
 -- The live table does not contain inventory_id; pharmacy inventory is not directly linked from MAR rows.
 -- Keep medication/prescription validation and lifecycle locking server-authoritative.
-CREATE OR REPLACE FUNCTION public.transition_medication_administration(
+-- This RPC's return type changes across legacy migration generations; PostgreSQL
+-- requires dropping the old signature before recreating it with the canonical result.
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
+
+CREATE FUNCTION public.transition_medication_administration(
   _record_id uuid,
   _status text,
   _reason text DEFAULT NULL,

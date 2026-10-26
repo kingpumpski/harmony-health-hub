@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.notify_insurance_claim_lifecycle()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_title TEXT;
