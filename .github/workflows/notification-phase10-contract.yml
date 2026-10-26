@@ -36,7 +36,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const files=fs.readdirSync('supabase/migrations').filter(x=>x.includes('notification'));
-          const versions=files.map(x=>x.match(/^(\\d+)_/)?.[1]).filter(Boolean);
+          const versions=files.map(x=>x.match(/^(\d{14})_/)?.[1]).filter(Boolean);
           const duplicates=versions.filter((v,i,a)=>a.indexOf(v)!==i);
           if(duplicates.length){console.error('Duplicate migration versions:',duplicates);process.exit(1)}
           console.log('Migration filename versions are unique:',versions.length)
