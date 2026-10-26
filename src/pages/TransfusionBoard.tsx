@@ -63,7 +63,7 @@ export default function TransfusionBoard() {
           <label className="space-y-1 text-sm"><span className="font-medium">Blood product</span><input required value={form.bloodProduct} onChange={(e) => setForm({ ...form, bloodProduct: e.target.value })} placeholder="Blood product" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Unit identifier</span><input required value={form.unitIdentifier} onChange={(e) => setForm({ ...form, unitIdentifier: e.target.value })} placeholder="Unit identifier" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Recorded blood group</span><input value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })} placeholder="Recorded blood group" className="input-medical w-full" /></label>
-          <div className="flex flex-wrap items-end gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.consentConfirmed} onChange={(e) => setForm({ ...form, consentConfirmed: e.target.checked })} /> Consent confirmed</label><button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">{busy ? "Saving…" : "Schedule"}</button></div>
+          <div className="flex flex-wrap items-end gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.consentConfirmed} onChange={(e) => setForm({ ...form, consentConfirmed: e.target.checked })} /> Consent confirmed</label><button type="button" onClick={() => setCreateOpen(false)} disabled={busy} className="btn-secondary disabled:opacity-50">Cancel</button><button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">{busy ? "Saving…" : "Schedule"}</button></div>
         </form></section></div> : null
       }
       listTitle="Transfusion worklist"
@@ -71,7 +71,7 @@ export default function TransfusionBoard() {
       listMeta={`${rows.length} record${rows.length === 1 ? "" : "s"}`}
       empty={!rows.length}
       emptyTitle="No transfusion records found"
-      emptyDescription="Create a transfusion record above after documented consent is confirmed."
+      emptyDescription="Use “Schedule transfusion” to add a record after consent is confirmed."
     >
       {rows.map((r) => (
         <article key={r.id} className="px-5 py-4 transition-colors hover:bg-muted/30">
