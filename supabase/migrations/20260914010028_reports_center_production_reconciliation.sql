@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(
   _report_id UUID, _facility_id UUID, _period_start DATE, _period_end DATE,
   _due_date DATE, _data_snapshot JSONB DEFAULT '{}'::jsonb
 ) RETURNS INTEGER
-LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $
+LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$
 DECLARE
   v_user UUID := auth.uid();
   v_affected INTEGER := 0;
@@ -110,7 +110,7 @@ BEGIN
 
   GET DIAGNOSTICS v_affected = ROW_COUNT;
   RETURN v_affected;
-END $;
+END $$;
 CREATE OR REPLACE FUNCTION public.sync_overdue_report_submissions(_facility_id UUID,_period_start DATE,_period_end DATE) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; UPDATE public.report_submissions SET status='overdue',updated_at=now() WHERE facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end AND status='pending' AND due_date<current_date; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 CREATE OR REPLACE FUNCTION public.mark_report_submissions_submitted(_submission_ids UUID[]) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Report submission permission denied'; END IF; UPDATE public.report_submissions SET status='submitted',submitted_at=now(),submitted_by=auth.uid(),updated_at=now() WHERE id=ANY(_submission_ids) AND public.has_facility_access(auth.uid(),facility_id) AND status IN ('pending','overdue'); GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 
