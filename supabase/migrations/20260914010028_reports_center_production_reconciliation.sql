@@ -79,7 +79,38 @@ CREATE OR REPLACE FUNCTION public.has_facility_access(_user_id UUID,_facility_id
 CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id UUID) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF; INSERT INTO public.facility_report_config(facility_id,report_id,is_enabled,submission_deadline_day) SELECT _facility_id,id,TRUE,submission_deadline_day FROM public.report_definitions WHERE is_active ON CONFLICT(facility_id,report_id) DO NOTHING; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 CREATE OR REPLACE FUNCTION public.create_reports_facility(_name TEXT,_facility_code TEXT DEFAULT NULL,_facility_type TEXT DEFAULT 'district_hospital',_district TEXT DEFAULT NULL,_region TEXT DEFAULT NULL,_dhims2_uid TEXT DEFAULT NULL) RETURNS public.healthcare_facilities LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.healthcare_facilities; BEGIN IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Only administrators may create healthcare facilities'; END IF; INSERT INTO public.healthcare_facilities(name,facility_code,facility_type,district,region,dhims2_uid,created_by) VALUES(trim(_name),NULLIF(trim(_facility_code),''),_facility_type,NULLIF(trim(_district),''),NULLIF(trim(_region),''),NULLIF(trim(_dhims2_uid),''),auth.uid()) RETURNING * INTO v; INSERT INTO public.facility_memberships(facility_id,user_id) VALUES(v.id,auth.uid()) ON CONFLICT(facility_id,user_id) DO UPDATE SET is_active=TRUE; PERFORM public.seed_facility_reports(v.id); RETURN v; END $$;
 CREATE OR REPLACE FUNCTION public.recover_stale_report_run(_run_id UUID,_stale_after_minutes INTEGER DEFAULT 30) RETURNS BOOLEAN LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v_user UUID := auth.uid(); v_run public.report_generation_runs; c INTEGER; w INTEGER; f INTEGER; t INTEGER; BEGIN IF v_user IS NULL THEN RAISE EXCEPTION 'Authentication is required'; END IF; SELECT * INTO v_run FROM public.report_generation_runs WHERE id=_run_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'Report generation run not found'; END IF; IF NOT public.has_facility_access(v_user,v_run.facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; IF v_run.status NOT IN ('queued','processing') OR COALESCE(v_run.started_at,v_run.created_at)>now()-(GREATEST(_stale_after_minutes,5)||' minutes')::interval THEN RETURN FALSE; END IF; UPDATE public.report_generation_items SET status='failed',error_message='Recovered stale report generation item',completed_at=now() WHERE run_id=_run_id AND status IN ('queued','processing'); SELECT count(*) FILTER(WHERE status='completed'),count(*) FILTER(WHERE status='warning'),count(*) FILTER(WHERE status='failed'),count(*) INTO c,w,f,t FROM public.report_generation_items WHERE run_id=_run_id; UPDATE public.report_generation_runs SET success_count=c,warning_count=w,failed_count=f,status=CASE WHEN f=t THEN 'failed' ELSE 'partial_failed' END,completed_at=now() WHERE id=_run_id; RETURN TRUE; END $$;
-CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(_report_id UUID,_facility_id UUID,_period_start DATE,_period_end DATE,_due_date DATE,_data_snapshot JSONB DEFAULT '{}'::jsonb) RETURNS public.report_submissions LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE v public.report_submissions; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; INSERT INTO public.report_submissions(report_id,facility_id,period_start,period_end,due_date,data_snapshot) VALUES(_report_id,_facility_id,_period_start,_period_end,_due_date,COALESCE(_data_snapshot,'{}'::jsonb)) ON CONFLICT(report_id,facility_id,period_start,period_end) DO UPDATE SET due_date=EXCLUDED.due_date,data_snapshot=EXCLUDED.data_snapshot,updated_at=now() WHERE public.report_submissions.status IN ('pending','overdue') RETURNING * INTO v; IF v.id IS NULL THEN SELECT * INTO v FROM public.report_submissions WHERE report_id=_report_id AND facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end; END IF; RETURN v; END $$;
+CREATE OR REPLACE FUNCTION public.upsert_report_submission_tracking(
+  _report_id UUID, _facility_id UUID, _period_start DATE, _period_end DATE,
+  _due_date DATE, _data_snapshot JSONB DEFAULT '{}'::jsonb
+) RETURNS INTEGER
+LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $
+DECLARE
+  v_user UUID := auth.uid();
+  v_affected INTEGER := 0;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Authentication is required' USING errcode = '42501';
+  END IF;
+  IF NOT public.has_facility_access(v_user, _facility_id) THEN
+    RAISE EXCEPTION 'Facility access denied' USING errcode = '42501';
+  END IF;
+
+  INSERT INTO public.report_submissions(
+    report_id, facility_id, period_start, period_end, due_date, data_snapshot
+  ) VALUES (
+    _report_id, _facility_id, _period_start, _period_end, _due_date,
+    COALESCE(_data_snapshot, '{}'::jsonb)
+  )
+  ON CONFLICT(report_id, facility_id, period_start, period_end)
+  DO UPDATE SET
+    due_date = EXCLUDED.due_date,
+    data_snapshot = EXCLUDED.data_snapshot,
+    updated_at = now()
+  WHERE public.report_submissions.status IN ('pending', 'overdue');
+
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  RETURN v_affected;
+END $;
 CREATE OR REPLACE FUNCTION public.sync_overdue_report_submissions(_facility_id UUID,_period_start DATE,_period_end DATE) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF NOT public.has_facility_access(auth.uid(),_facility_id) THEN RAISE EXCEPTION 'Facility access denied'; END IF; UPDATE public.report_submissions SET status='overdue',updated_at=now() WHERE facility_id=_facility_id AND period_start=_period_start AND period_end=_period_end AND status='pending' AND due_date<current_date; GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 CREATE OR REPLACE FUNCTION public.mark_report_submissions_submitted(_submission_ids UUID[]) RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path=public AS $$ DECLARE n INTEGER; BEGIN IF auth.uid() IS NULL OR NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Report submission permission denied'; END IF; UPDATE public.report_submissions SET status='submitted',submitted_at=now(),submitted_by=auth.uid(),updated_at=now() WHERE id=ANY(_submission_ids) AND public.has_facility_access(auth.uid(),facility_id) AND status IN ('pending','overdue'); GET DIAGNOSTICS n=ROW_COUNT; RETURN n; END $$;
 
