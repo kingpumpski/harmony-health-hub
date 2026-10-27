@@ -22,13 +22,8 @@ create index if not exists idx_fk_bulk_import_jobs_created_by on public.bulk_imp
 create index if not exists idx_fk_care_transitions_responsible_officer on public.care_transitions (responsible_officer);
 create index if not exists idx_fk_dental_records_performed_by on public.dental_records (performed_by);
 create index if not exists idx_fk_diagnoses_icd_code on public.diagnoses (icd_code);
-create index if not exists idx_fk_diagnosis_import_batches_approved_by on public.diagnosis_import_batches (approved_by);
-create index if not exists idx_fk_diagnosis_import_batches_created_by on public.diagnosis_import_batches (created_by);
-create index if not exists idx_fk_diagnosis_import_rows_icd10_code_id on public.diagnosis_import_rows (icd10_code_id);
-create index if not exists idx_fk_diagnosis_standard_mappings_reviewed_by on public.diagnosis_standard_mappings (reviewed_by);
 create index if not exists idx_fk_emergency_cases_assigned_officer on public.emergency_cases (assigned_officer);
 create index if not exists idx_fk_facility_configuration_updated_by on public.facility_configuration (updated_by);
-create index if not exists idx_fk_facility_diagnosis_standards_standard_id on public.facility_diagnosis_standards (standard_id);
 create index if not exists idx_fk_facility_report_config_report_id on public.facility_report_config (report_id);
 create index if not exists idx_fk_healthcare_facilities_created_by on public.healthcare_facilities (created_by);
 create index if not exists idx_fk_imaging_orders_encounter_id on public.imaging_orders (encounter_id);
@@ -79,7 +74,6 @@ create index if not exists idx_fk_report_submissions_submitted_by on public.repo
 create index if not exists idx_fk_service_orders_approved_by on public.service_orders (approved_by);
 create index if not exists idx_fk_service_orders_released_by on public.service_orders (released_by);
 create index if not exists idx_fk_staff_shift_assignments_user_id on public.staff_shift_assignments (user_id);
-create index if not exists idx_fk_stg_diagnoses_icd10_code_id on public.stg_diagnoses (icd10_code_id);
 create index if not exists idx_fk_theatre_cases_anaesthetist_id on public.theatre_cases (anaesthetist_id);
 create index if not exists idx_fk_theatre_cases_created_by on public.theatre_cases (created_by);
 create index if not exists idx_fk_theatre_cases_encounter_id on public.theatre_cases (encounter_id);
