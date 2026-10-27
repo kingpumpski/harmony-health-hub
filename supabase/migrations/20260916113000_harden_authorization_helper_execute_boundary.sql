@@ -7,6 +7,19 @@ revoke execute on function public.is_clinical_staff(uuid) from authenticated, an
 revoke execute on function public.has_facility_access(uuid, uuid) from authenticated, anon, public;
 revoke execute on function public.can_edit_patient_record(uuid) from authenticated, anon, public;
 
-revoke execute on function public.current_user_has_role(public.app_role) from anon, public;
-revoke execute on function public.current_user_is_clinical_staff() from anon, public;
-revoke execute on function public.current_user_can_edit_patient_record() from anon, public;
+-- These current-user wrappers are introduced by later migrations in the
+-- canonical history. Harden them here when present, without breaking clean replay
+-- before their creation; later helper-hardening migrations repeat these revokes.
+DO $
+BEGIN
+  IF to_regprocedure('public.current_user_has_role(public.app_role)') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.current_user_has_role(public.app_role) FROM anon, public';
+  END IF;
+  IF to_regprocedure('public.current_user_is_clinical_staff()') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.current_user_is_clinical_staff() FROM anon, public';
+  END IF;
+  IF to_regprocedure('public.current_user_can_edit_patient_record()') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.current_user_can_edit_patient_record() FROM anon, public';
+  END IF;
+END;
+$;
