@@ -284,7 +284,7 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r public.medication_administrations; overdue BOOLEAN;
 BEGIN
   SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id FOR UPDATE;
