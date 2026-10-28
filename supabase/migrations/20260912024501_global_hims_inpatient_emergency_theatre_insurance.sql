@@ -204,14 +204,6 @@ BEGIN
 END
 $theatre_legacy_compat$;
 
-UPDATE public.theatre_cases
-SET scheduled_start = COALESCE(scheduled_start, created_at, now()),
-    status = CASE status WHEN 'planned' THEN 'scheduled' WHEN 'cleared' THEN 'approved' ELSE status END
-WHERE scheduled_start IS NULL OR status IN ('planned','cleared');
-
-ALTER TABLE public.theatre_cases
-  ALTER COLUMN scheduled_start SET NOT NULL;
-
 DO $theatre_status_compat$
 DECLARE c RECORD;
 BEGIN
@@ -225,7 +217,13 @@ BEGIN
 END
 $theatre_status_compat$;
 
+UPDATE public.theatre_cases
+SET scheduled_start = COALESCE(scheduled_start, created_at, now()),
+    status = CASE status WHEN 'planned' THEN 'scheduled' WHEN 'cleared' THEN 'approved' ELSE status END
+WHERE scheduled_start IS NULL OR status IN ('planned','cleared');
+
 ALTER TABLE public.theatre_cases
+  ALTER COLUMN scheduled_start SET NOT NULL,
   ADD CONSTRAINT theatre_cases_status_compat_check
     CHECK (status IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed'));
 
