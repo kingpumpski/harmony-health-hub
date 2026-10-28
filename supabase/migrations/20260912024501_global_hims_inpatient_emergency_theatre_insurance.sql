@@ -388,9 +388,10 @@ BEGIN
     EXECUTE 'UPDATE public.insurance_claims SET rejection_reason = COALESCE(rejection_reason, notes) WHERE rejection_reason IS NULL AND status = ''rejected''';
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='submitted_at') THEN
-    EXECUTE 'UPDATE public.insurance_claims SET created_at = COALESCE(created_at, submitted_at), updated_at = COALESCE(updated_at, resolved_at, submitted_at) WHERE created_at IS NULL OR updated_at IS NULL';
+    EXECUTE 'UPDATE public.insurance_claims SET created_at = COALESCE(created_at, submitted_at), updated_at = COALESCE(updated_at, submitted_at) WHERE created_at IS NULL OR updated_at IS NULL';
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='resolved_at') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET updated_at = COALESCE(updated_at, resolved_at) WHERE updated_at IS NULL';
     EXECUTE 'UPDATE public.insurance_claims SET adjudicated_at = COALESCE(adjudicated_at, resolved_at) WHERE adjudicated_at IS NULL AND status IN (''approved'',''rejected'',''paid'')';
     EXECUTE 'UPDATE public.insurance_claims SET paid_at = COALESCE(paid_at, resolved_at) WHERE paid_at IS NULL AND status = ''paid''';
   END IF;
@@ -413,8 +414,15 @@ ALTER TABLE public.insurance_claims
   ALTER COLUMN updated_at SET DEFAULT now(),
   ALTER COLUMN updated_at SET NOT NULL,
   ALTER COLUMN invoice_id DROP NOT NULL,
-  ALTER COLUMN provider DROP NOT NULL,
   ALTER COLUMN status SET DEFAULT 'draft';
+
+DO $insurance_provider_compat$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='provider') THEN
+    ALTER TABLE public.insurance_claims ALTER COLUMN provider DROP NOT NULL;
+  END IF;
+END
+$insurance_provider_compat$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_insurance_claims_claim_number
   ON public.insurance_claims(claim_number) WHERE claim_number IS NOT NULL;
