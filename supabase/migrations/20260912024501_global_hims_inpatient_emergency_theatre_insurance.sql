@@ -48,6 +48,22 @@ CREATE TABLE IF NOT EXISTS public.nursing_care_plans (
 );
 CREATE INDEX IF NOT EXISTS idx_nursing_care_plans_patient ON public.nursing_care_plans(patient_id, status, created_at DESC);
 
+-- Reconcile the legacy nursing care-plan shape before later workflow code reads it.
+ALTER TABLE public.nursing_care_plans
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+UPDATE public.nursing_care_plans
+SET interventions = COALESCE(interventions, '')
+WHERE interventions IS NULL;
+
+ALTER TABLE public.nursing_care_plans
+  ALTER COLUMN interventions SET NOT NULL,
+  ALTER COLUMN created_by DROP NOT NULL,
+  DROP CONSTRAINT IF EXISTS nursing_care_plans_created_by_fkey,
+  ADD CONSTRAINT nursing_care_plans_created_by_fkey
+    FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS public.nursing_shift_handovers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
@@ -63,6 +79,34 @@ CREATE TABLE IF NOT EXISTS public.nursing_shift_handovers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_nursing_handover_patient ON public.nursing_shift_handovers(patient_id, created_at DESC);
+
+-- Reconcile legacy handover column names without discarding the original fields.
+ALTER TABLE public.nursing_shift_handovers
+  ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES public.ward_units(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS shift_label TEXT,
+  ADD COLUMN IF NOT EXISTS pending_tasks TEXT,
+  ADD COLUMN IF NOT EXISTS safety_concerns TEXT;
+
+DO $handover_legacy_compat$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='nursing_shift_handovers' AND column_name='shift_name') THEN
+    EXECUTE 'UPDATE public.nursing_shift_handovers SET shift_label = COALESCE(shift_label, shift_name) WHERE shift_label IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='nursing_shift_handovers' AND column_name='outstanding_tasks') THEN
+    EXECUTE 'UPDATE public.nursing_shift_handovers SET pending_tasks = COALESCE(pending_tasks, outstanding_tasks) WHERE pending_tasks IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='nursing_shift_handovers' AND column_name='risks_and_alerts') THEN
+    EXECUTE 'UPDATE public.nursing_shift_handovers SET safety_concerns = COALESCE(safety_concerns, risks_and_alerts) WHERE safety_concerns IS NULL';
+  END IF;
+END
+$handover_legacy_compat$;
+
+UPDATE public.nursing_shift_handovers
+SET shift_label = COALESCE(NULLIF(trim(shift_label), ''), 'general')
+WHERE shift_label IS NULL OR trim(shift_label) = '';
+
+ALTER TABLE public.nursing_shift_handovers
+  ALTER COLUMN shift_label SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.emergency_cases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
