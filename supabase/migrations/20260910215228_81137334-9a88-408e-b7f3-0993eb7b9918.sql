@@ -89,6 +89,35 @@ CREATE POLICY "admins write lab tests"
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
+-- Restore the diagnosis views referenced by the security contract. These expose
+-- only diagnosis and guideline fields already represented by generated DB types.
+CREATE OR REPLACE VIEW public.v_patient_diagnosis_full AS
+SELECT
+  d.id AS diagnosis_id,
+  d.encounter_id,
+  d.diagnosis,
+  d.icd_code,
+  ic.category,
+  ic.description AS icd_description,
+  sg.summary AS stg_summary,
+  sg.medications,
+  sg.recommended_action
+FROM public.diagnoses AS d
+LEFT JOIN public.icd_codes AS ic ON ic.code = d.icd_code
+LEFT JOIN public.stg_guidelines AS sg ON sg.icd_code = d.icd_code;
+
+CREATE OR REPLACE VIEW public.v_ai_clinical_decision AS
+SELECT
+  d.encounter_id,
+  d.diagnosis,
+  d.icd_code,
+  ic.description,
+  sg.medications,
+  sg.recommended_action
+FROM public.diagnoses AS d
+LEFT JOIN public.icd_codes AS ic ON ic.code = d.icd_code
+LEFT JOIN public.stg_guidelines AS sg ON sg.icd_code = d.icd_code;
+
 -- Views must respect the querying user's permissions
 ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
 ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
