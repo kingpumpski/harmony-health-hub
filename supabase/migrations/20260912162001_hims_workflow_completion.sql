@@ -234,6 +234,11 @@ CREATE TABLE IF NOT EXISTS public.inpatient_reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Earlier inpatient_reviews tables predate the review timestamp and assessment fields.
+ALTER TABLE public.inpatient_reviews
+  ADD COLUMN IF NOT EXISTS seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS assessment TEXT;
+
 CREATE INDEX IF NOT EXISTS inpatient_reviews_admission_idx
   ON public.inpatient_reviews (admission_id, seen_at DESC);
 CREATE INDEX IF NOT EXISTS inpatient_reviews_patient_idx
