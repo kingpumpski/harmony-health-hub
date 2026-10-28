@@ -50,6 +50,38 @@ assert.ok(hl7Rows.some((row) => row.record_type === 'OBX' && row.clinical_summar
 assert.equal(clinicalMigrationSourceFormat('sample.hl7'), 'hl7');
 assert.equal(clinicalMigrationSourceFormat('sample.xml'), 'xml');
 assert.equal(clinicalMigrationSourceFormat('bundle.json'), 'json');
+
+const xmlNode = (name, text = '', children = []) => {
+  const element = {
+    localName: name,
+    nodeName: name,
+    attributes: [],
+    children,
+    textContent: text || children.map((child) => child.textContent).join(''),
+    getElementsByTagName: () => [],
+  };
+  for (const child of children) child.parentElement = element;
+  return element;
+};
+const xmlRecord = xmlNode('record', '', [
+  xmlNode('id', 'xml-01'),
+  xmlNode('patient_id', 'PAT-XML'),
+  xmlNode('record_type', 'Condition'),
+  xmlNode('summary', 'Asthma history'),
+  xmlNode('date', '2024-11-05'),
+]);
+const xmlRoot = xmlNode('records', '', [xmlRecord]);
+globalThis.DOMParser = class {
+  parseFromString() {
+    return { documentElement: xmlRoot, querySelector: () => null };
+  }
+};
+const xmlRows = parseClinicalMigrationText('records.xml', '<records />', 'XML Legacy');
+assert.equal(xmlRows[0].source_patient_key, 'PAT-XML');
+assert.equal(xmlRows[0].record_type, 'Condition');
+assert.equal(xmlRows[0].clinical_summary, 'Asthma history');
+delete globalThis.DOMParser;
+
 assert.throws(() => parseClinicalMigrationText('bad.json', '{not-json'), /JSON is malformed/);
 assert.throws(() => parseClinicalMigrationText('wrong.txt', 'anything'), /Choose JSON\/FHIR Bundle/);
 assert.throws(() => parseClinicalMigrationText('empty.json', '  '), /file is empty/);
