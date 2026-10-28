@@ -284,7 +284,7 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE r public.medication_administrations; overdue BOOLEAN;
 BEGIN
   SELECT * INTO r FROM public.medication_administrations WHERE id=_record_id FOR UPDATE;
@@ -301,7 +301,7 @@ BEGIN
     UPDATE public.medication_administrations SET status=_status,reason=_reason,notes=COALESCE(_notes,notes),updated_at=now() WHERE id=_record_id;
   END IF;
   PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,jsonb_build_object('record_id',_record_id,'administered_by',auth.uid(),'timestamp',now(),'reason',_reason,'witnessed_by',_witnessed_by));
-  RETURN jsonb_build_object('id',_record_id,'status',_status,'administered_by',auth.uid(),'administered_at',now());
+  RETURN _record_id;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
