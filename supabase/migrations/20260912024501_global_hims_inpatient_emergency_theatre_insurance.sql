@@ -359,6 +359,66 @@ CREATE TABLE IF NOT EXISTS public.insurance_claims (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile the May insurance_claims schema before indexes and creation RPCs
+-- consume the canonical payer/member/payment/audit columns.
+ALTER TABLE public.insurance_claims
+  ADD COLUMN IF NOT EXISTS payer_name TEXT,
+  ADD COLUMN IF NOT EXISTS member_number TEXT,
+  ADD COLUMN IF NOT EXISTS claim_number TEXT,
+  ADD COLUMN IF NOT EXISTS service_from TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS service_to TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS adjudicated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+DO $insurance_claim_legacy_columns$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='provider') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET payer_name = COALESCE(payer_name, provider) WHERE payer_name IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='policy_number') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET member_number = COALESCE(member_number, policy_number) WHERE member_number IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='notes') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET rejection_reason = COALESCE(rejection_reason, notes) WHERE rejection_reason IS NULL AND status = ''rejected''';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='submitted_at') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET created_at = COALESCE(created_at, submitted_at), updated_at = COALESCE(updated_at, resolved_at, submitted_at) WHERE created_at IS NULL OR updated_at IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='insurance_claims' AND column_name='resolved_at') THEN
+    EXECUTE 'UPDATE public.insurance_claims SET adjudicated_at = COALESCE(adjudicated_at, resolved_at) WHERE adjudicated_at IS NULL AND status IN (''approved'',''rejected'',''paid'')';
+    EXECUTE 'UPDATE public.insurance_claims SET paid_at = COALESCE(paid_at, resolved_at) WHERE paid_at IS NULL AND status = ''paid''';
+  END IF;
+END
+$insurance_claim_legacy_columns$;
+
+UPDATE public.insurance_claims
+SET payer_name = COALESCE(payer_name, 'Unspecified insurer'),
+    amount_paid = COALESCE(amount_paid, 0),
+    created_at = COALESCE(created_at, now()),
+    updated_at = COALESCE(updated_at, created_at, now())
+WHERE payer_name IS NULL OR amount_paid IS NULL OR created_at IS NULL OR updated_at IS NULL;
+
+ALTER TABLE public.insurance_claims
+  ALTER COLUMN payer_name SET NOT NULL,
+  ALTER COLUMN amount_paid SET DEFAULT 0,
+  ALTER COLUMN amount_paid SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET DEFAULT now(),
+  ALTER COLUMN updated_at SET NOT NULL,
+  ALTER COLUMN invoice_id DROP NOT NULL,
+  ALTER COLUMN provider DROP NOT NULL,
+  ALTER COLUMN status SET DEFAULT 'draft';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_insurance_claims_claim_number
+  ON public.insurance_claims(claim_number) WHERE claim_number IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_patient ON public.insurance_claims(patient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON public.insurance_claims(status, created_at DESC);
 
