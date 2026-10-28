@@ -45,6 +45,7 @@ Before changing a database query, RPC, migration, generated type, or database-fa
 - Never delete a migration or skip a required operation solely to make CI pass.
 - Test clean replay and supported upgrade/legacy paths where fixtures and tooling exist. Clearly state when a path is not tested.
 - Static parsing is not proof of runtime schema correctness. Verify database catalog facts only in an authorized environment.
+- Preserve established PostgreSQL function/procedure argument and return-type contracts across the entire migration chain. `CREATE OR REPLACE FUNCTION` cannot change an existing function's return type; reconcile duplicate definitions and callers, and use an explicit drop/recreate only when dependency and compatibility impact is understood and safely migrated.
 - Do not edit live databases during repository repair without explicit authorization.
 
 ### PL/pgSQL dollar-quote integrity (mandatory)
