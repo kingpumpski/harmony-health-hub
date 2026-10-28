@@ -25,8 +25,11 @@ const formatDate = (value) => {
   if (!value) return null;
   const text = String(value).trim();
   // HL7 v2 dates commonly use YYYYMMDD[HHmmss]; convert only recognized forms.
-  const match = /^(\d{4})(\d{2})(\d{2})(?:\d{2}(?:\d{2}(?:\d{2})?)?)?$/.exec(text);
-  if (match) return `${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`;
+  const match = /^(\d{4})(\d{2})(\d{2})(\d{2})?(\d{2})?(\d{2})?(?:\.\d+)?(?:[+-]\d{4})?$/.exec(text);
+  if (match) {
+    const [, year, month, day, hour = '00', minute = '00', second = '00'] = match;
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`;
+  }
   const timestamp = Date.parse(text);
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
 };
