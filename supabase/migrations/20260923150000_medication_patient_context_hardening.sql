@@ -23,7 +23,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
-RETURNS public.medication_administrations
+RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations; p public.prescriptions%ROWTYPE; uid UUID:=auth.uid();
@@ -47,9 +47,9 @@ BEGIN
  witnessed_by=CASE WHEN _status='administered' THEN _witnessed_by ELSE witnessed_by END,updated_at=now()
  WHERE id=_record_id RETURNING * INTO r;
  PERFORM public.record_system_audit('medication_'||_status,'clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'reason',r.reason));
- RETURN r;
+ RETURN r.id;
 END;
-$$;
+$;
 
 REVOKE ALL ON FUNCTION public.schedule_medication_administration(UUID,TEXT,TEXT,TEXT,TIMESTAMPTZ,TEXT,INTEGER) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID) FROM PUBLIC,anon;
