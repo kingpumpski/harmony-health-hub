@@ -24,7 +24,7 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE r public.medication_administrations%ROWTYPE; p public.prescriptions%ROWTYPE; i public.pharmacy_inventory%ROWTYPE; uid UUID:=auth.uid(); overdue BOOLEAN; order_status TEXT;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
