@@ -328,7 +328,7 @@ END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id uuid,_reason text)
-RETURNS boolean
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -358,7 +358,7 @@ BEGIN
     'medication_administration_reopened','clinical','medication_administrations',_record_id,'warning',
     jsonb_build_object('reason',pg_catalog.btrim(_reason),'reopened_by',uid)
   );
-  RETURN true;
+  RETURN jsonb_build_object('id',_record_id,'reopened_by',uid,'reopened_at',pg_catalog.now());
 END;
 $function$;
 
