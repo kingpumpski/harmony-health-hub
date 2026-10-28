@@ -116,10 +116,18 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
 -- Existing installations may have a service_orders table created by an earlier workflow.
 -- Reconcile the queue state column before indexing it; CREATE TABLE IF NOT EXISTS is not a schema migration.
 ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS ordered_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS service_type TEXT NOT NULL DEFAULT 'other',
+  ADD COLUMN IF NOT EXISTS source_id UUID,
+  ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (payment_status IN ('pending','approved','overridden','rejected','waived')),
   ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'
-  CHECK (fulfillment_status IN ('blocked','released','in_progress','completed','cancelled')),
+    CHECK (fulfillment_status IN ('blocked','released','in_progress','completed','cancelled')),
   ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'routine'
-  CHECK (priority IN ('routine','urgent','stat'));
+    CHECK (priority IN ('routine','urgent','stat')),
+  ADD COLUMN IF NOT EXISTS release_reason TEXT,
+  ADD COLUMN IF NOT EXISTS released_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
