@@ -62,7 +62,7 @@ const queue = readMigration("20260911233000_phase2_service_order_payment_gating.
 assertBefore(
   queue,
   "ADD COLUMN IF NOT EXISTS queued_at",
-  "CREATE INDEX IF NOT EXISTS department_queues",
+  "CREATE INDEX IF NOT EXISTS idx_department_queues_work",
   "legacy department queue timestamp"
 );
 
