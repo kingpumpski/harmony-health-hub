@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _notes text DEFAULT NULL,
   _witnessed_by uuid DEFAULT NULL
 )
-RETURNS jsonb
+RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -56,7 +56,7 @@ BEGIN
   PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,
     CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,
     jsonb_build_object('record_id',_record_id,'patient_id',r.patient_id,'administered_by',uid,'timestamp',now(),'reason',r.reason,'witnessed_by',r.witnessed_by));
-  RETURN jsonb_build_object('id',r.id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at);
+  RETURN r.id;
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.transition_medication_administration(uuid,text,text,text,uuid) FROM PUBLIC, anon;
