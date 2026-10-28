@@ -22,7 +22,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id uuid)
-RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_user uuid := auth.uid(); v_count integer := 0;
 BEGIN
  IF v_user IS NULL OR NOT public.has_role(v_user,'admin') THEN RAISE EXCEPTION 'Only administrators may seed facility reports'; END IF;
@@ -33,7 +33,7 @@ BEGIN
  ON CONFLICT(facility_id,report_id) DO NOTHING;
  GET DIAGNOSTICS v_count = ROW_COUNT;
  RETURN v_count;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.stage_data_migration_rows(uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.stage_data_migration_rows(uuid,jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.seed_facility_reports(uuid) FROM PUBLIC,anon;
