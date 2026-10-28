@@ -48,6 +48,65 @@ Apply the same method to all modules and all HTTP 4xx/5xx database requests.
 - Test both clean replay and relevant supported upgrade/legacy paths where fixtures and tooling exist. State clearly when a legacy path is not tested.
 - Compare live catalog facts with repository contracts where access is authorized; static grep or parsing is not proof of runtime schema correctness.
 
+
+### PL/pgSQL dollar-quote integrity (mandatory)
+
+- Every SQL function/procedure block using a dollar-quote delimiter must close with the exact same delimiter used to open it (for example, `AS $claim_financials# Harmony Health Hub — Mandatory Development Contract
+
+This file is the repository's authoritative, always-consult development guide for humans and coding agents. Read it before planning, implementing, reviewing, or debugging any change. Follow it alongside the relevant module documentation, tests, and security policies. If a task prompt conflicts with these safeguards, preserve data integrity and security and explain the conflict.
+
+## 1. Default workflow: inspect, trace, fix, verify
+
+1. Inspect the current branch, working changes, latest commit, relevant PR diff, repository structure, and existing tests before editing.
+2. Read the actual source files and trace callers, dependencies, migrations, configuration, and tests. Do not infer implementation from filenames, summaries, or error snippets alone.
+3. Find the root cause and the full impact radius before changing code. Search for all callers and duplicate definitions of the same contract.
+4. Make the smallest complete, maintainable fix. Add or update a regression test that would fail before the fix.
+5. Run targeted checks first, then the relevant quality/build, database, security, and integration checks. Inspect the exact commit and latest CI run.
+6. Keep a defect ledger in the task/PR notes: symptom, root cause, affected files/objects, fix, regression test, verification evidence, and remaining blockers.
+7. Do not repeatedly rerun unchanged code after a deterministic failure. Fix the cause first. Separate code defects from unavailable services, rate limits, credentials, and other infrastructure failures.
+8. Do not claim success unless the required checks actually completed against the commit being reported. Mark unrun, queued, skipped, or blocked checks as unverified.
+
+## 2. Database and Supabase are explicit contracts
+
+Before changing any database query, RPC, migration, generated type, or database-facing UI:
+
+- Inspect the canonical migrations and the exact chronological migration sequence.
+- Verify the referenced schema, table/view, column names, data types, nullability, defaults, constraints, foreign keys, indexes, enum values, functions, argument signatures, return types, triggers, RLS policies, and grants.
+- Trace application queries, generated Supabase types, RPC callers, tests, and deployment expectations against the same schema contract.
+- Search the repository for every caller/reference when a table, column, function, enum, policy, or type changes.
+- Never invent a missing object or signature merely to silence an error. Establish the intended model from migrations, callers, contracts, and history first.
+- Treat generated database types as derived artifacts: refresh them only from a verified schema/environment using the repository's supported process.
+- Use a disposable local database or explicitly authorized non-production environment for destructive replay tests. Never reset or mutate production/customer data without explicit authorization.
+
+### REST/PostgREST 400 errors
+
+A request such as `GET /rest/v1/hr_employees?select=id,employee_number,first_name,last_name,email,phone,department,job_title,employment_type,employment_status,base_salary,pay_frequency,start_date,archived_at&order=last_name.asc,first_name.asc` returning HTTP 400 is a diagnostic symptom, not a fix by itself.
+
+1. Capture the response body and PostgREST error code/message; the browser's status line alone is insufficient.
+2. Compare every selected and ordered column with the actual `public.hr_employees` schema and the current generated types. Check for missing/renamed columns, incompatible view/table assumptions, ambiguous relationships, and invalid ordering.
+3. Verify the authenticated role's table/view privileges and RLS behavior. Distinguish permission errors from missing-column/schema-cache errors.
+4. If a required column is genuinely missing, establish the intended type/default/nullability and add a safe forward migration plus contract/regression tests. If the query is stale, update the caller and types. If PostgREST's schema cache is stale, use the project's supported schema-reload procedure only after confirming the database object exists.
+5. Check other screens, exports, filters, sorts, and tests using the same contract. Do not mask the error with empty results, broad grants, weakened RLS, or fabricated fallback data.
+
+Apply the same method to all modules and all HTTP 4xx/5xx database requests.
+
+## 3. Migration discipline and clean replay
+
+- Validate migration filename/version uniqueness and execution ordering before replay.
+- Determine whether a migration has been applied in any supported environment before editing or renumbering it. Migration versions are provenance; never guess the deployed ledger.
+- Prefer forward repair migrations for already-deployed history unless an explicit repository policy and verified deployment state permit rewriting history.
+- Ensure each migration's prerequisites exist at the point of execution. Audit tables, columns, types, functions, signatures, policies, grants, indexes, views, and triggers.
+- Avoid brittle idempotency that hides incompatible state. `IF NOT EXISTS` does not prove an existing object has the correct definition.
+- Never delete a migration or skip a required operation solely to make CI pass.
+- Test both clean replay and relevant supported upgrade/legacy paths where fixtures and tooling exist. State clearly when a legacy path is not tested.
+- Compare live catalog facts with repository contracts where access is authorized; static grep or parsing is not proof of runtime schema correctness.
+
+ must close with `$claim_financials$;`).
+- Bare `$;` terminators are prohibited. Never substitute `$`, `$;`, or another tag for a named opener.
+- Before migration replay, run `node scripts/check-plpgsql-delimiters.mjs`. The Migration contract workflow must run this validator before starting Supabase.
+- Treat a delimiter failure as a deterministic SQL defect: fix the first reported migration and rerun the validator before spending time retrying service startup.
+- The validator is a preflight, not a replacement for `supabase db reset`, database contract tests, or runtime schema verification.
+
 ## 4. Security and sensitive health/financial data
 
 - Preserve RLS, least-privilege grants, authentication/authorization checks, facility/tenant isolation, and patient/order/result/billing lineage.
