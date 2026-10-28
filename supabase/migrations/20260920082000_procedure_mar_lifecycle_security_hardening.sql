@@ -24,7 +24,7 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL
 )
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE r public.medication_administrations%ROWTYPE; p public.prescriptions%ROWTYPE; i public.pharmacy_inventory%ROWTYPE; uid UUID:=auth.uid(); overdue BOOLEAN; order_status TEXT;
 BEGIN
  IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
@@ -53,7 +53,7 @@ BEGIN
    UPDATE public.medication_administrations SET status=_status,reason=_reason,notes=COALESCE(_notes,notes),updated_at=now() WHERE id=_record_id;
  END IF;
  PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,jsonb_build_object('record_id',_record_id,'patient_id',r.patient_id,'administered_by',uid,'timestamp',now(),'reason',_reason,'witnessed_by',_witnessed_by));
- RETURN jsonb_build_object('id',_record_id,'status',_status,'administered_by',uid,'administered_at',CASE WHEN _status='administered' THEN now() ELSE r.administered_at END);
+ RETURN _record_id;
 END; $$;
 
 REVOKE ALL ON FUNCTION public.create_procedure_note(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,NUMERIC,UUID) FROM PUBLIC,anon;
