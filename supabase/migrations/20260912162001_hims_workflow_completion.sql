@@ -255,6 +255,23 @@ CREATE TABLE IF NOT EXISTS public.patient_audit (
   new_record JSONB
 );
 
+-- The earlier Patient Hub migration created patient_audit with actor_user_id/operation/occurred_at.
+-- Reconcile those legacy names with the later audit writer without dropping audit history.
+ALTER TABLE public.patient_audit
+  ADD COLUMN IF NOT EXISTS changed_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS action TEXT,
+  ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ;
+
+UPDATE public.patient_audit
+SET changed_by = COALESCE(changed_by, actor_user_id),
+    action = COALESCE(action, operation),
+    changed_at = COALESCE(changed_at, occurred_at, now())
+WHERE changed_by IS NULL OR action IS NULL OR changed_at IS NULL;
+
+ALTER TABLE public.patient_audit
+  ALTER COLUMN changed_at SET DEFAULT now(),
+  ALTER COLUMN changed_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS patient_audit_patient_idx
   ON public.patient_audit (patient_id, changed_at DESC);
 
