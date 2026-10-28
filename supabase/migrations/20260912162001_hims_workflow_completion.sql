@@ -34,6 +34,20 @@ CREATE TABLE IF NOT EXISTS public.facility_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Existing installations may already have facility_settings with a narrower legacy shape.
+-- Add the columns consumed by this migration instead of relying on CREATE TABLE IF NOT EXISTS.
+ALTER TABLE public.facility_settings
+  ADD COLUMN IF NOT EXISTS country_code CHAR(2) NOT NULL DEFAULT 'GH',
+  ADD COLUMN IF NOT EXISTS currency_code CHAR(3) NOT NULL DEFAULT 'GHS',
+  ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Africa/Accra',
+  ADD COLUMN IF NOT EXISTS payment_routing_mode TEXT NOT NULL DEFAULT 'streamlined'
+    CHECK (payment_routing_mode IN ('pay_before_every_step','streamlined')),
+  ADD COLUMN IF NOT EXISTS enable_patient_portal BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS enable_ai_decision_support BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30
+    CHECK (default_appointment_minutes BETWEEN 5 AND 480),
+  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS facility_settings_singleton_idx
   ON public.facility_settings ((true));
 
