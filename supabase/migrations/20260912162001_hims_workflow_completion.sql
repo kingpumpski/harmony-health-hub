@@ -113,6 +113,12 @@ CREATE TABLE IF NOT EXISTS public.service_orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Existing installations may have a service_orders table created by an earlier workflow.
+-- Reconcile the queue state column before indexing it; CREATE TABLE IF NOT EXISTS is not a schema migration.
+ALTER TABLE public.service_orders
+  ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'blocked'
+  CHECK (fulfillment_status IN ('blocked','released','in_progress','completed','cancelled'));
+
 CREATE INDEX IF NOT EXISTS service_orders_queue_idx
   ON public.service_orders (department, fulfillment_status, priority, created_at);
 CREATE INDEX IF NOT EXISTS service_orders_patient_idx
