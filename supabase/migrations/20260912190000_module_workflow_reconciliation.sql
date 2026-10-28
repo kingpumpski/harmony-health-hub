@@ -200,7 +200,7 @@ BEGIN
   PERFORM public.record_system_audit('pharmacy_inventory_created','pharmacy','pharmacy_inventory',r.id,'info',jsonb_build_object('drug_name',r.drug_name,'stock_quantity',r.stock_quantity,'actor_id',auth.uid()));
   RETURN r.id;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION public.create_pharmacy_inventory_item(TEXT,TEXT,INTEGER,INTEGER,NUMERIC) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_pharmacy_inventory_item(TEXT,TEXT,INTEGER,INTEGER,NUMERIC) TO authenticated;
 
