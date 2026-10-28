@@ -1,6 +1,5 @@
--- Ensure the AI diagnosis suggestion table exists before applying its security contract.
--- The canonical generated schema exposes these columns, but the clean migration chain
--- currently reaches this hardening migration before a table-creation migration.
+-- Bootstrap legacy reference/internal tables whose original DDL is missing from
+-- the replayable migration chain. Keep definitions aligned with generated DB types.
 CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   encounter_id uuid NULL REFERENCES public.encounters(id) ON DELETE SET NULL,
@@ -8,6 +7,41 @@ CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
   accepted boolean NULL,
   reasoning text NULL,
   model_version text NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NULL,
+  action text NULL,
+  table_name text NULL,
+  record_id text NULL,
+  old_data jsonb NULL,
+  new_data jsonb NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.sync_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name text NULL,
+  payload jsonb NULL,
+  synced boolean NULL DEFAULT false
+);
+
+CREATE TABLE IF NOT EXISTS public.ai_symptom_icd_map (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  symptom text NOT NULL,
+  icd_code text NULL REFERENCES public.icd_codes(code) ON DELETE SET NULL,
+  confidence numeric NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.lab_tests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_name text NULL,
+  loinc_code text NULL,
+  specimen text NULL,
+  normal_range text NULL,
   created_at timestamptz NULL DEFAULT now()
 );
 
