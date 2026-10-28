@@ -6,13 +6,6 @@ const FHIR_RESOURCE_TYPES = new Set([
   'ServiceRequest', 'CarePlan', 'Composition', 'Practitioner', 'Organization',
 ]);
 
-const clean = (value) => {
-  if (value === undefined || value === null) return null;
-  if (typeof value === 'string') return value.trim() || null;
-  if (typeof value === 'number' || typeof value === 'boolean') return value;
-  return value;
-};
-
 const first = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
 
 const reference = (value) => {
