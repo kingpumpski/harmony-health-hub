@@ -1,3 +1,50 @@
+-- Bootstrap legacy reference/internal tables whose original DDL is missing from
+-- the replayable migration chain. Keep definitions aligned with generated DB types.
+CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  encounter_id uuid NULL REFERENCES public.encounters(id) ON DELETE SET NULL,
+  suggested_icd text NULL REFERENCES public.icd_codes(code) ON DELETE SET NULL,
+  accepted boolean NULL,
+  reasoning text NULL,
+  model_version text NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NULL,
+  action text NULL,
+  table_name text NULL,
+  record_id text NULL,
+  old_data jsonb NULL,
+  new_data jsonb NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.sync_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name text NULL,
+  payload jsonb NULL,
+  synced boolean NULL DEFAULT false
+);
+
+CREATE TABLE IF NOT EXISTS public.ai_symptom_icd_map (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  symptom text NOT NULL,
+  icd_code text NULL REFERENCES public.icd_codes(code) ON DELETE SET NULL,
+  confidence numeric NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.lab_tests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_name text NULL,
+  loinc_code text NULL,
+  specimen text NULL,
+  normal_range text NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
 -- Lock down reference/internal tables
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
@@ -41,6 +88,35 @@ CREATE POLICY "admins write lab tests"
   ON public.lab_tests FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+-- Restore the diagnosis views referenced by the security contract. These expose
+-- only diagnosis and guideline fields already represented by generated DB types.
+CREATE OR REPLACE VIEW public.v_patient_diagnosis_full AS
+SELECT
+  d.id AS diagnosis_id,
+  d.encounter_id,
+  d.diagnosis,
+  d.icd_code,
+  ic.category,
+  ic.description AS icd_description,
+  sg.summary AS stg_summary,
+  sg.medications,
+  sg.recommended_action
+FROM public.diagnoses AS d
+LEFT JOIN public.icd_codes AS ic ON ic.code = d.icd_code
+LEFT JOIN public.stg_guidelines AS sg ON sg.icd_code = d.icd_code;
+
+CREATE OR REPLACE VIEW public.v_ai_clinical_decision AS
+SELECT
+  d.encounter_id,
+  d.diagnosis,
+  d.icd_code,
+  ic.description,
+  sg.medications,
+  sg.recommended_action
+FROM public.diagnoses AS d
+LEFT JOIN public.icd_codes AS ic ON ic.code = d.icd_code
+LEFT JOIN public.stg_guidelines AS sg ON sg.icd_code = d.icd_code;
 
 -- Views must respect the querying user's permissions
 ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);

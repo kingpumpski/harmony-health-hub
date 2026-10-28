@@ -17,6 +17,48 @@ CREATE TABLE IF NOT EXISTS public.medication_administrations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- The May schema already created this table with legacy names (drug_name,
+-- inventory_id, quantity_dispensed) and without scheduled_at/status. CREATE TABLE
+-- IF NOT EXISTS does not reconcile that existing table, so add canonical columns
+-- before any indexes or later workflow functions use them.
+ALTER TABLE public.medication_administrations
+  ADD COLUMN IF NOT EXISTS medication_name TEXT,
+  ADD COLUMN IF NOT EXISTS route TEXT,
+  ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'scheduled',
+  ADD COLUMN IF NOT EXISTS reason TEXT,
+  ADD COLUMN IF NOT EXISTS witnessed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Preserve legacy drug labels and administration timestamps where available.
+DO $mar_legacy_columns$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='medication_administrations' AND column_name='drug_name'
+  ) THEN
+    EXECUTE 'UPDATE public.medication_administrations SET medication_name = COALESCE(medication_name, drug_name) WHERE medication_name IS NULL';
+  END IF;
+END
+$mar_legacy_columns$;
+
+UPDATE public.medication_administrations
+SET medication_name = COALESCE(medication_name, 'Unspecified medication'),
+    scheduled_at = COALESCE(scheduled_at, administered_at, created_at),
+    status = CASE
+      WHEN status = 'scheduled' AND administered_at IS NOT NULL THEN 'administered'
+      ELSE status
+    END,
+    updated_at = COALESCE(updated_at, created_at, now())
+WHERE medication_name IS NULL OR scheduled_at IS NULL OR updated_at IS NULL
+   OR (status = 'scheduled' AND administered_at IS NOT NULL);
+
+ALTER TABLE public.medication_administrations
+  ALTER COLUMN medication_name SET NOT NULL,
+  ALTER COLUMN prescription_id DROP NOT NULL,
+  ALTER COLUMN administered_at DROP NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_mar_patient_time ON public.medication_administrations(patient_id, scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mar_status_time ON public.medication_administrations(status, scheduled_at);
 ALTER TABLE public.medication_administrations ENABLE ROW LEVEL SECURITY;
