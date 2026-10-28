@@ -79,6 +79,78 @@ CREATE TABLE IF NOT EXISTS public.emergency_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile the earlier emergency_cases shape (arrival_at/triage_priority/notes)
+-- before indexes and workflow policies reference the canonical column names.
+ALTER TABLE public.emergency_cases
+  ADD COLUMN IF NOT EXISTS arrival_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS acuity TEXT,
+  ADD COLUMN IF NOT EXISTS triage_summary TEXT,
+  ADD COLUMN IF NOT EXISTS disposition_at TIMESTAMPTZ;
+
+DO $emergency_legacy_compat$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='arrival_at') THEN
+    EXECUTE 'UPDATE public.emergency_cases SET arrival_time = COALESCE(arrival_time, arrival_at, created_at, now()) WHERE arrival_time IS NULL';
+  ELSE
+    UPDATE public.emergency_cases SET arrival_time = COALESCE(arrival_time, created_at, now()) WHERE arrival_time IS NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='triage_priority') THEN
+    EXECUTE $sql$UPDATE public.emergency_cases
+      SET acuity = COALESCE(acuity, CASE triage_priority
+        WHEN 'critical' THEN 'resuscitation'
+        WHEN 'urgent' THEN 'urgent'
+        WHEN 'moderate' THEN 'less_urgent'
+        WHEN 'routine' THEN 'non_urgent'
+        ELSE 'urgent' END)
+      WHERE acuity IS NULL$sql$;
+  ELSE
+    UPDATE public.emergency_cases SET acuity = COALESCE(acuity, 'urgent') WHERE acuity IS NULL;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='emergency_cases' AND column_name='notes') THEN
+    EXECUTE 'UPDATE public.emergency_cases SET triage_summary = COALESCE(triage_summary, notes) WHERE triage_summary IS NULL';
+  END IF;
+END
+$emergency_legacy_compat$;
+
+UPDATE public.emergency_cases
+SET arrival_time = COALESCE(arrival_time, created_at, now()),
+    acuity = COALESCE(acuity, 'urgent'),
+    chief_complaint = COALESCE(NULLIF(trim(chief_complaint), ''), 'Unspecified complaint')
+WHERE arrival_time IS NULL OR acuity IS NULL OR chief_complaint IS NULL OR trim(chief_complaint) = '';
+
+ALTER TABLE public.emergency_cases
+  ALTER COLUMN arrival_time SET DEFAULT now(),
+  ALTER COLUMN arrival_time SET NOT NULL,
+  ALTER COLUMN acuity SET DEFAULT 'urgent',
+  ALTER COLUMN acuity SET NOT NULL,
+  ALTER COLUMN chief_complaint SET NOT NULL;
+
+DO $emergency_check_compat$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.emergency_cases'::regclass AND contype = 'c'
+      AND (pg_get_constraintdef(oid) ILIKE '%status%'
+        OR pg_get_constraintdef(oid) ILIKE '%arrival_mode%'
+        OR pg_get_constraintdef(oid) ILIKE '%acuity%')
+  LOOP
+    EXECUTE format('ALTER TABLE public.emergency_cases DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END
+$emergency_check_compat$;
+
+ALTER TABLE public.emergency_cases
+  ADD CONSTRAINT emergency_cases_arrival_mode_compat_check
+    CHECK (arrival_mode IS NULL OR arrival_mode IN ('walk_in','ambulance','referral','police','other')),
+  ADD CONSTRAINT emergency_cases_acuity_compat_check
+    CHECK (acuity IN ('resuscitation','emergency','urgent','less_urgent','non_urgent')),
+  ADD CONSTRAINT emergency_cases_status_compat_check
+    CHECK (status IN ('waiting','triage','treatment','observation','admitted','discharged','referred','left_without_being_seen','cancelled','transferred','deceased'));
+
 CREATE INDEX IF NOT EXISTS idx_emergency_queue ON public.emergency_cases(status, acuity, arrival_time);
 
 CREATE TABLE IF NOT EXISTS public.theatre_cases (
@@ -100,6 +172,63 @@ CREATE TABLE IF NOT EXISTS public.theatre_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile legacy theatre/anaesthetist/scheduled_at fields before scheduling indexes.
+ALTER TABLE public.theatre_cases
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS anesthetist_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS scheduled_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS scheduled_end TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS theatre_name TEXT,
+  ADD COLUMN IF NOT EXISTS urgency TEXT NOT NULL DEFAULT 'elective',
+  ADD COLUMN IF NOT EXISTS preoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS postoperative_notes TEXT,
+  ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+
+DO $theatre_legacy_compat$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='anaesthetist_id') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET anesthetist_id = COALESCE(anesthetist_id, anaesthetist_id) WHERE anesthetist_id IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='scheduled_at') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET scheduled_start = COALESCE(scheduled_start, scheduled_at, created_at, now()) WHERE scheduled_start IS NULL';
+  ELSE
+    UPDATE public.theatre_cases SET scheduled_start = COALESCE(scheduled_start, created_at, now()) WHERE scheduled_start IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='theatre') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET theatre_name = COALESCE(theatre_name, theatre) WHERE theatre_name IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='theatre_cases' AND column_name='notes') THEN
+    EXECUTE 'UPDATE public.theatre_cases SET preoperative_notes = COALESCE(preoperative_notes, notes) WHERE preoperative_notes IS NULL';
+  END IF;
+END
+$theatre_legacy_compat$;
+
+UPDATE public.theatre_cases
+SET scheduled_start = COALESCE(scheduled_start, created_at, now()),
+    status = CASE status WHEN 'planned' THEN 'scheduled' WHEN 'cleared' THEN 'approved' ELSE status END
+WHERE scheduled_start IS NULL OR status IN ('planned','cleared');
+
+ALTER TABLE public.theatre_cases
+  ALTER COLUMN scheduled_start SET NOT NULL;
+
+DO $theatre_status_compat$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.theatre_cases'::regclass AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.theatre_cases DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END
+$theatre_status_compat$;
+
+ALTER TABLE public.theatre_cases
+  ADD CONSTRAINT theatre_cases_status_compat_check
+    CHECK (status IN ('requested','approved','scheduled','in_progress','completed','cancelled','postponed'));
+
 CREATE INDEX IF NOT EXISTS idx_theatre_schedule ON public.theatre_cases(scheduled_start, status);
 CREATE INDEX IF NOT EXISTS idx_theatre_patient ON public.theatre_cases(patient_id, scheduled_start DESC);
 
@@ -123,6 +252,47 @@ CREATE TABLE IF NOT EXISTS public.transfusion_records (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Reconcile legacy component/status fields with the canonical transfusion record.
+ALTER TABLE public.transfusion_records
+  ADD COLUMN IF NOT EXISTS encounter_id UUID,
+  ADD COLUMN IF NOT EXISTS blood_product TEXT,
+  ADD COLUMN IF NOT EXISTS volume_ml NUMERIC,
+  ADD COLUMN IF NOT EXISTS reaction_observed BOOLEAN NOT NULL DEFAULT false;
+
+DO $transfusion_status_compat$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.transfusion_records'::regclass AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.transfusion_records DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END
+$transfusion_status_compat$;
+
+DO $transfusion_legacy_columns$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='transfusion_records' AND column_name='component') THEN
+    EXECUTE 'UPDATE public.transfusion_records SET blood_product = COALESCE(blood_product, component) WHERE blood_product IS NULL';
+  END IF;
+END
+$transfusion_legacy_columns$;
+
+UPDATE public.transfusion_records
+SET blood_product = COALESCE(blood_product, 'other'),
+    reaction_observed = reaction_observed OR status = 'reaction' OR NULLIF(trim(reaction_notes), '') IS NOT NULL,
+    status = CASE status WHEN 'verified' THEN 'issued' WHEN 'reaction' THEN 'stopped' ELSE status END
+WHERE blood_product IS NULL OR status IN ('verified','reaction')
+   OR (reaction_observed = false AND NULLIF(trim(reaction_notes), '') IS NOT NULL);
+
+ALTER TABLE public.transfusion_records
+  ALTER COLUMN blood_product SET NOT NULL,
+  ADD CONSTRAINT transfusion_records_status_compat_check
+    CHECK (status IN ('planned','issued','running','completed','stopped','cancelled'));
+
 CREATE INDEX IF NOT EXISTS idx_transfusion_patient ON public.transfusion_records(patient_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_transfusion_unit ON public.transfusion_records(unit_identifier) WHERE status IN ('issued','running');
 
