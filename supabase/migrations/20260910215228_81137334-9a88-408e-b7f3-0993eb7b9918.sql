@@ -1,7 +1,55 @@
+-- Ensure required relations exist even when a prior restoration migration was
+-- already recorded in remote migration history or omitted from a partial replay.
+CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  encounter_id uuid REFERENCES public.encounters(id),
+  suggested_icd text REFERENCES public.icd_codes(code),
+  reasoning text,
+  model_version text,
+  accepted boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.ai_symptom_icd_map (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  confidence numeric,
+  created_at timestamptz DEFAULT now(),
+  icd_code text REFERENCES public.icd_codes(code),
+  symptom text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  action text,
+  created_at timestamptz DEFAULT now(),
+  new_data jsonb,
+  old_data jsonb,
+  record_id text,
+  table_name text,
+  user_id uuid
+);
+
+CREATE TABLE IF NOT EXISTS public.sync_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  payload jsonb,
+  synced boolean DEFAULT false,
+  table_name text
+);
+
+CREATE TABLE IF NOT EXISTS public.lab_tests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  loinc_code text,
+  normal_range text,
+  specimen text,
+  test_name text,
+  created_at timestamptz DEFAULT now()
+);
+
 -- Lock down reference/internal tables
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
 GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
+DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions" ON public.ai_diagnosis_suggestions;
 CREATE POLICY "clinical staff manage ai diagnosis suggestions"
   ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
   USING (public.is_clinical_staff(auth.uid()))
@@ -10,6 +58,7 @@ CREATE POLICY "clinical staff manage ai diagnosis suggestions"
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.audit_logs TO authenticated;
 GRANT ALL ON public.audit_logs TO service_role;
+DROP POLICY IF EXISTS "admins read audit logs" ON public.audit_logs;
 CREATE POLICY "admins read audit logs"
   ON public.audit_logs FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
@@ -17,6 +66,7 @@ CREATE POLICY "admins read audit logs"
 ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.sync_queue TO service_role;
 GRANT SELECT ON public.sync_queue TO authenticated;
+DROP POLICY IF EXISTS "admins read sync queue" ON public.sync_queue;
 CREATE POLICY "admins read sync queue"
   ON public.sync_queue FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
@@ -24,9 +74,11 @@ CREATE POLICY "admins read sync queue"
 ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
 GRANT ALL ON public.ai_symptom_icd_map TO service_role;
+DROP POLICY IF EXISTS "staff read symptom map" ON public.ai_symptom_icd_map;
 CREATE POLICY "staff read symptom map"
   ON public.ai_symptom_icd_map FOR SELECT TO authenticated
   USING (public.is_clinical_staff(auth.uid()));
+DROP POLICY IF EXISTS "admins write symptom map" ON public.ai_symptom_icd_map;
 CREATE POLICY "admins write symptom map"
   ON public.ai_symptom_icd_map FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
@@ -35,9 +87,11 @@ CREATE POLICY "admins write symptom map"
 ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.lab_tests TO authenticated;
 GRANT ALL ON public.lab_tests TO service_role;
+DROP POLICY IF EXISTS "staff read lab tests" ON public.lab_tests;
 CREATE POLICY "staff read lab tests"
   ON public.lab_tests FOR SELECT TO authenticated
   USING (public.is_clinical_staff(auth.uid()));
+DROP POLICY IF EXISTS "admins write lab tests" ON public.lab_tests;
 CREATE POLICY "admins write lab tests"
   ON public.lab_tests FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
