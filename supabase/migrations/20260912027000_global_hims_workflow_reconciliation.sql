@@ -37,7 +37,6 @@ GRANT EXECUTE ON FUNCTION public.transition_theatre_case(UUID,TEXT,TEXT) TO auth
 
 -- Claims UI uses _status; retain a single canonical transition contract.
 DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,TEXT);
-DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,NUMERIC,NUMERIC,TEXT,TEXT,TEXT);
 DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT);
 CREATE OR REPLACE FUNCTION public.transition_insurance_claim(_claim_id UUID, _status TEXT, _amount_approved NUMERIC DEFAULT NULL, _amount_paid NUMERIC DEFAULT NULL, _rejection_reason TEXT DEFAULT NULL, _notes TEXT DEFAULT NULL)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
