@@ -282,13 +282,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.patient_audit (patient_id, action, changed_by, old_record, new_record)
+  INSERT INTO public.patient_audit (
+    patient_id, action, changed_by, changed_at, old_record, new_record,
+    actor_user_id, operation, occurred_at
+  )
   VALUES (
     COALESCE(NEW.id, OLD.id),
     TG_OP,
     auth.uid(),
+    now(),
     CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) ELSE NULL END,
-    CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) ELSE NULL END
+    CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) ELSE NULL END,
+    auth.uid(),
+    TG_OP,
+    now()
   );
   RETURN COALESCE(NEW, OLD);
 END;
