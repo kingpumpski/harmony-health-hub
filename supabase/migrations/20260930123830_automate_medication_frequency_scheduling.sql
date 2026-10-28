@@ -33,7 +33,7 @@ END IF; RETURN NEW; END; $$;
 DROP TRIGGER IF EXISTS trg_create_initial_medication_administration ON public.prescriptions;
 CREATE TRIGGER trg_create_initial_medication_administration AFTER INSERT ON public.prescriptions FOR EACH ROW EXECUTE FUNCTION public.create_initial_medication_administration();
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(_record_id uuid,_status text,_reason text DEFAULT NULL,_notes text DEFAULT NULL,_witnessed_by uuid DEFAULT NULL)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE r public.medication_administrations%ROWTYPE; p public.prescriptions%ROWTYPE; uid uuid:=auth.uid(); overdue boolean; v_interval interval; v_next timestamptz; v_end timestamptz;
 BEGIN
 IF uid IS NULL OR NOT(public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'midwife') OR public.has_role(uid,'specialist_nurse') OR public.has_role(uid,'pharmacist')) THEN RAISE EXCEPTION 'Authorised clinical role required'; END IF;
@@ -56,7 +56,7 @@ ELSE
 UPDATE public.medication_administrations SET status=_status,reason=nullif(pg_catalog.btrim(coalesce(_reason,'')),''),notes=coalesce(_notes,notes),updated_at=now() WHERE id=_record_id RETURNING * INTO r;
 END IF;
 PERFORM public.record_system_audit('medication_administration_'||_status,'clinical','medication_administrations',_record_id,CASE WHEN _status='administered' THEN 'info' ELSE 'warning' END,jsonb_build_object('record_id',_record_id,'patient_id',r.patient_id,'prescription_id',r.prescription_id,'administered_by',uid,'timestamp',now(),'reason',r.reason,'witnessed_by',r.witnessed_by,'next_scheduled_at',v_next));
-RETURN jsonb_build_object('id',r.id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'next_scheduled_at',v_next);
+RETURN r.id;
 END; $function$;
 REVOKE ALL ON FUNCTION public.medication_frequency_interval(text) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.prescription_duration_end(timestamptz,text) FROM PUBLIC,anon,authenticated;
