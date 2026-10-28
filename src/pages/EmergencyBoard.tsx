@@ -1,6 +1,6 @@
 import RefreshButton from '@/components/ui/RefreshButton';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Siren } from 'lucide-react';
+import { Siren, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -16,6 +16,7 @@ export default function EmergencyBoard() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ patientId: '', chiefComplaint: '', acuity: 'urgent', arrivalMode: 'walk_in' });
+  const [createOpen, setCreateOpen] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -37,7 +38,7 @@ export default function EmergencyBoard() {
     const { error } = await (supabase as any).rpc('create_emergency_case', { _patient_id: form.patientId, _chief_complaint: form.chiefComplaint.trim(), _acuity: form.acuity, _arrival_mode: form.arrivalMode, _assigned_officer: null });
     setBusy(false);
     if (error) { toast({ title: 'Emergency intake failed', description: error.message, variant: 'destructive' }); return; }
-    setForm({ patientId: '', chiefComplaint: '', acuity: 'urgent', arrivalMode: 'walk_in' }); toast({ title: 'Emergency case registered' }); void load();
+    setForm({ patientId: '', chiefComplaint: '', acuity: 'urgent', arrivalMode: 'walk_in' }); setCreateOpen(false); toast({ title: 'Emergency case registered' }); void load();
   };
   const transition = async (id: string, status: string) => {
     setBusy(true);
@@ -56,7 +57,7 @@ export default function EmergencyBoard() {
       eyebrow="Emergency care"
       title="Emergency"
       description="Emergency intake, officer assignment and controlled disposition workflow."
-      actions={<RefreshButton onClick={() => void load()} loading={loading} />}
+      actions={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setCreateOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />Register case</button><RefreshButton onClick={() => void load()} loading={loading} /></div>}
       counters={[
         { label: "Active cases", value: rows.filter((r) => !["discharged","referred","left_without_being_seen","cancelled"].includes(r.status)).length, tone: "text-primary", surface: "bg-primary/5" },
         { label: "Resuscitation", value: rows.filter((r) => r.acuity === "resuscitation").length, tone: "text-critical", surface: "bg-critical/5" },
@@ -64,20 +65,21 @@ export default function EmergencyBoard() {
         { label: "In treatment", value: rows.filter((r) => r.status === "treatment").length, tone: "text-success", surface: "bg-success/5" },
       ]}
       beforeList={
+        createOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-record-title"><section className="w-full max-w-5xl rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6"><header className="mb-4 flex items-start justify-between gap-3"><div><h2 id="create-record-title" className="text-lg font-semibold">Register emergency case</h2><p className="mt-1 text-sm text-muted-foreground">Complete the required details and save to add this record.</p></div><button type="button" onClick={() => setCreateOpen(false)} className="btn-ghost" aria-label="Close create form"><X className="h-4 w-4" /></button></header>
         <form onSubmit={createCase} className="card-medical p-5 sm:p-6 grid gap-4 lg:grid-cols-[1.3fr_2fr_1fr_1fr_auto]">
           <label className="space-y-1 text-sm"><span className="font-medium">Patient</span><select aria-label="Patient for emergency intake" required value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="input-medical w-full"><option value="">Select patient</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.patient_code} — {p.first_name} {p.last_name}</option>)}</select></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Chief complaint</span><input aria-label="Chief complaint or presenting problem" required value={form.chiefComplaint} onChange={(e) => setForm({ ...form, chiefComplaint: e.target.value })} placeholder="Chief complaint / presenting problem" className="input-medical w-full" /></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Acuity</span><select aria-label="Emergency acuity" value={form.acuity} onChange={(e) => setForm({ ...form, acuity: e.target.value })} className="input-medical w-full">{acuities.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label className="space-y-1 text-sm"><span className="font-medium">Arrival mode</span><select aria-label="Arrival mode" value={form.arrivalMode} onChange={(e) => setForm({ ...form, arrivalMode: e.target.value })} className="input-medical w-full"><option value="walk_in">Walk-in</option><option value="ambulance">Ambulance</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
-          <button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Register case"}</button>
-        </form>
+          <button type="button" onClick={() => setCreateOpen(false)} disabled={busy} className="btn-secondary disabled:opacity-50">Cancel</button><button type="submit" disabled={busy} className="btn-primary self-end disabled:opacity-50">{busy ? "Saving…" : "Register case"}</button>
+        </form></section></div> : null
       }
       listTitle="Active emergency queue"
       listDescription="Select a case to review its current patient context and controlled workflow actions."
       listMeta={`${rows.length} case${rows.length === 1 ? "" : "s"}`}
       empty={!rows.length}
       emptyTitle="No emergency cases found"
-      emptyDescription="Register an emergency case above to begin the controlled workflow."
+      emptyDescription="Use “Register case” to add an emergency case when needed."
     >
       {rows.map((r) => (
         <article key={r.id} className="px-5 py-4 transition-colors hover:bg-muted/30">

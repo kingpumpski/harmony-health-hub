@@ -95,6 +95,22 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The legacy department_queues table predates Phase 2. Extend it before
+-- creating indexes or RPCs that rely on service-order linkage and queue timing.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS service_order_id UUID,
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS claimed_by UUID,
+  ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
+
+UPDATE public.department_queues
+SET queued_at = created_at
+WHERE queued_at IS NULL;
+
+ALTER TABLE public.department_queues
+  ALTER COLUMN queued_at SET DEFAULT now(),
+  ALTER COLUMN queued_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 
@@ -302,7 +318,7 @@ BEGIN
 
   INSERT INTO public.department_queues(service_order_id, department)
   VALUES (v_order.id, v_order.department)
-  ON CONFLICT (service_order_id) DO NOTHING;
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO NOTHING;
 
   RETURN v_order;
 END;
@@ -325,7 +341,7 @@ BEGIN
 
   INSERT INTO public.billing_overrides(service_order_id, reason, approved_by)
   VALUES (_service_order_id, trim(_reason), auth.uid())
-  ON CONFLICT (service_order_id) DO UPDATE
+  ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO UPDATE
     SET reason = EXCLUDED.reason,
         approved_by = EXCLUDED.approved_by,
         approved_at = now()

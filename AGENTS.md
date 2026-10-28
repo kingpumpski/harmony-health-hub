@@ -87,6 +87,16 @@ Fix the originating layer. Cache refresh is not a substitute for a schema repair
 - Fix shared root causes once at the canonical layer; do not scatter local workarounds across screens.
 - Keep changes scoped and reviewable. Do not mix unrelated refactors into a critical migration repair unless needed to establish correctness.
 
+## Dashboard data-entry and clutter-free interaction standard
+
+- Any form whose primary purpose is to create a database record must be hidden by default. Open it only after the corresponding explicit Add/Create/New action is activated.
+- Prefer the shared modal/dialog pattern for short and medium record-creation forms. The modal must have a clear title, labelled fields, required-field validation, visible saving/error state, Save and Cancel/Close actions, and keyboard-accessible focus/escape behavior.
+- Keep existing records, queues, KPIs, filters, and navigation visible and uncluttered when no creation action is active. Do not render creation forms permanently above or alongside the main dashboard.
+- After a successful save, close the modal and refresh/invalidate the relevant query or update the list from the confirmed server response. Keep the modal open on validation or persistence errors so entered values are not lost.
+- Preserve role/permission checks, RLS, facility scope, audit logging, and existing workflow transitions. Hiding a form is not an authorization control.
+- Do not force genuinely full-page workflows (for example, long patient registration or multi-step clinical documentation) into cramped dialogs; launch those from an explicit action into a dedicated route or full-screen dialog.
+- When touching a dashboard, inventory all create-record forms in that page and adjacent components, not just the reported form. Add a regression/UI contract that confirms the form is absent until its trigger is clicked and remains available after a failed save.
+
 ## 8. Minimum verification matrix
 
 Select checks appropriate to the change and report actual results:

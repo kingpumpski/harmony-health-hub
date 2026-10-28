@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const migration = fs.readFileSync('supabase/migrations/20261002130000_scope_appointment_workflows_to_active_facility.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261002130001_scope_appointment_workflows_to_active_facility.sql', 'utf8');
 const appointments = fs.readFileSync('src/pages/Appointments.tsx', 'utf8');
 const claimMigration = fs.readFileSync('supabase/migrations/20261002191500_harden_appointment_claim_test_mode_boundary.sql', 'utf8');
 

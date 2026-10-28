@@ -26,7 +26,7 @@ ALTER TABLE public.ophthalmology_exams ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ophthalmology clinical read" ON public.ophthalmology_exams;
 CREATE POLICY "ophthalmology clinical read" ON public.ophthalmology_exams FOR SELECT TO authenticated USING (
-  public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'ophthalmologist') OR public.has_role(auth.uid(),'specialist_nurse')
+  public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'specialist_nurse')
 );
 
 CREATE OR REPLACE FUNCTION public.create_ophthalmology_exam(
@@ -46,7 +46,7 @@ AS $$
 DECLARE v_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'ophthalmologist')) THEN
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner')) THEN
     RAISE EXCEPTION 'Ophthalmology clinical role required';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = _patient_id) THEN RAISE EXCEPTION 'Patient not found'; END IF;

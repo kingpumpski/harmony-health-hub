@@ -1,3 +1,22 @@
+-- Repair a generated-schema table referenced by this migration but absent
+-- from the preceding migration history. Keep its columns aligned with the
+-- generated Supabase type and derive facility attribution from its encounter.
+create table if not exists public.ai_diagnosis_suggestions (
+  id uuid primary key default gen_random_uuid(),
+  encounter_id uuid references public.encounters(id),
+  suggested_icd text references public.icd_codes(code),
+  reasoning text,
+  model_version text,
+  accepted boolean default false,
+  created_at timestamptz default now()
+);
+alter table public.ai_diagnosis_suggestions enable row level security;
+drop policy if exists ads_clinical_all on public.ai_diagnosis_suggestions;
+create policy ads_clinical_all on public.ai_diagnosis_suggestions
+  for all to authenticated
+  using (public.is_clinical_staff(auth.uid()))
+  with check (public.is_clinical_staff(auth.uid()));
+
 -- Extend canonical facility attribution to specialty, inpatient,
 -- nursing, referral, insurance, pharmacy, procedure, transfusion,
 -- emergency and AI clinical transaction records.
@@ -9,7 +28,8 @@ begin
  v_active:=public.current_user_facility_id();
  if tg_table_name in ('emergency_cases','maternity_episodes','fertility_cycles','patient_referrals','care_transitions','insurance_cases','pharmacy_dispensing_plans','pharmacy_pos_sales','transfusion_records','vital_alerts','ai_case_memory','ai_clinical_sessions','ai_report_requests','nursing_notes') then execute 'select p.facility_id from public.patients p where p.id=$1' into v_facility using new.patient_id;
  elsif tg_table_name in ('nursing_care_plans','nursing_shift_handovers','inpatient_bed_movements','ward_beds') then execute 'select p.facility_id from public.patients p where p.id=$1' into v_facility using new.patient_id; if v_facility is null and new.admission_id is not null then select a.facility_id into v_facility from public.admissions a where a.id=new.admission_id; end if;
- elsif tg_table_name in ('procedure_notes','theatre_cases','transfusion_records','ai_case_memory','ai_diagnosis_suggestions') then if new.encounter_id is not null then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; end if; if v_facility is null and new.patient_id is not null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
+ elsif tg_table_name='ai_diagnosis_suggestions' then if new.encounter_id is not null then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; end if;
+ elsif tg_table_name in ('procedure_notes','theatre_cases','transfusion_records','ai_case_memory') then if new.encounter_id is not null then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; end if; if v_facility is null and new.patient_id is not null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
  elsif tg_table_name='insurance_claims' then if new.invoice_id is not null then select i.facility_id into v_facility from public.invoices i where i.id=new.invoice_id; end if; if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if; end if;
  if v_facility is null then if new.facility_id is null and v_active is not null then new.facility_id:=v_active; elsif new.facility_id is null and not v_recon then raise exception 'Parent clinical record has no facility attribution'; end if;
  elsif new.facility_id is null then new.facility_id:=v_facility;

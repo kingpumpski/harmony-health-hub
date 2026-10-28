@@ -5,7 +5,7 @@ const workflow = fs.readFileSync('src/components/WorkflowSummary.tsx','utf8');
 const dashboard = fs.readFileSync('src/pages/Dashboard.tsx','utf8');
 const handoff = fs.readFileSync('src/components/workflow/OperationalHandoffPanel.tsx','utf8');
 const kpi = fs.readFileSync('supabase/migrations/20260929170000_role_dashboard_workflow_kpi_alignment.sql','utf8');
-const kpiCleanup = fs.readFileSync('supabase/migrations/20260929200000_role_dashboard_kpi_cleanup.sql','utf8');
+const kpiCleanup = fs.readFileSync('supabase/migrations/20260929200001_role_dashboard_kpi_cleanup.sql','utf8');
 
 assert.match(workflow,/Role-specific operational shortcuts/);
 assert.match(workflow,/className="mt-8 border-t border-border pt-6"/);

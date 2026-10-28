@@ -38,6 +38,18 @@ AS $$
   )
 $$;
 
+CREATE OR REPLACE FUNCTION public.has_any_role(_roles public.app_role[])
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER
+SET search_path = ''
+AS $has_any_role$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+      AND role = ANY(_roles)
+  );
+$has_any_role$;
+
 CREATE OR REPLACE FUNCTION public.is_clinical_staff(_user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public

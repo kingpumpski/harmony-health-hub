@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MedicalTermInput from '@/components/MedicalTermInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Layers, Plus, Sparkles, Search } from 'lucide-react';
+import { Layers, Plus, Sparkles, Search, X } from 'lucide-react';
 import { RecordList, type RecordColumn } from '@/components/records/RecordList';
 
 interface Template { id: string; name: string; diagnosis: string; description: string; prescriptions: any; is_ai_generated: boolean; created_at: string }
@@ -12,6 +12,7 @@ interface Template { id: string; name: string; diagnosis: string; description: s
 export default function TreatmentTemplates() {
   const { user } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [description, setDescription] = useState('');
@@ -39,7 +40,7 @@ export default function TreatmentTemplates() {
     });
     if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Template saved' });
-    setName(''); setDiagnosis(''); setDescription(''); setRxText('');
+    setName(''); setDiagnosis(''); setDescription(''); setRxText(''); setCreateOpen(false);
     load();
   };
 
@@ -71,10 +72,11 @@ export default function TreatmentTemplates() {
         <p className="text-muted-foreground">Standardized care plans practitioners can apply and customize.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-1">
         <div className="space-y-4">
-          <form onSubmit={save} className="card-medical p-5 space-y-3">
-            <h2 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New template</h2>
+          <div className="flex justify-end"><button type="button" onClick={() => setCreateOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="w-4 h-4" />New template</button></div>
+          {createOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-editor-title"><form onSubmit={save} className="card-medical w-full max-w-2xl p-5 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between"><h2 id="template-editor-title" className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> New template</h2><button type="button" className="btn-ghost" aria-label="Close template form" onClick={() => setCreateOpen(false)}><X className="h-4 w-4" /></button></div>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name (e.g. Adult Malaria Protocol)" className="input-medical w-full" />
             <MedicalTermInput value={diagnosis} onChange={setDiagnosis} placeholder="Diagnosis covered" className="w-full" diagnosisOnly />
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description / when to apply" rows={2} className="input-medical w-full" />
@@ -82,7 +84,7 @@ export default function TreatmentTemplates() {
 Medication | Dose | Frequency | Duration
 Amoxicillin | 500mg | TDS | 7 days`} rows={4} className="input-medical w-full font-mono text-xs" />
             <button className="btn-primary w-full">Save template</button>
-          </form>
+          </form></div>}
 
           <div className="card-medical p-5 space-y-3">
             <h2 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI protocol synthesis</h2>

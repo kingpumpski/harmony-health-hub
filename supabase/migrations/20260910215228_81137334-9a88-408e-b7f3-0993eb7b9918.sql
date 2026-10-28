@@ -1,7 +1,55 @@
+-- Ensure required relations exist even when a prior restoration migration was
+-- already recorded in remote migration history or omitted from a partial replay.
+CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  encounter_id uuid REFERENCES public.encounters(id),
+  suggested_icd text REFERENCES public.icd_codes(code),
+  reasoning text,
+  model_version text,
+  accepted boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.ai_symptom_icd_map (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  confidence numeric,
+  created_at timestamptz DEFAULT now(),
+  icd_code text REFERENCES public.icd_codes(code),
+  symptom text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  action text,
+  created_at timestamptz DEFAULT now(),
+  new_data jsonb,
+  old_data jsonb,
+  record_id text,
+  table_name text,
+  user_id uuid
+);
+
+CREATE TABLE IF NOT EXISTS public.sync_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  payload jsonb,
+  synced boolean DEFAULT false,
+  table_name text
+);
+
+CREATE TABLE IF NOT EXISTS public.lab_tests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  loinc_code text,
+  normal_range text,
+  specimen text,
+  test_name text,
+  created_at timestamptz DEFAULT now()
+);
+
 -- Lock down reference/internal tables
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
 GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
+DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions" ON public.ai_diagnosis_suggestions;
 CREATE POLICY "clinical staff manage ai diagnosis suggestions"
   ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
   USING (public.is_clinical_staff(auth.uid()))
@@ -10,12 +58,15 @@ CREATE POLICY "clinical staff manage ai diagnosis suggestions"
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.audit_logs TO authenticated;
 GRANT ALL ON public.audit_logs TO service_role;
+DROP POLICY IF EXISTS "admins read audit logs" ON public.audit_logs;
 CREATE POLICY "admins read audit logs"
   ON public.audit_logs FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
 ALTER TABLE public.sync_queue ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.sync_queue TO service_role;
+GRANT SELECT ON public.sync_queue TO authenticated;
+DROP POLICY IF EXISTS "admins read sync queue" ON public.sync_queue;
 CREATE POLICY "admins read sync queue"
   ON public.sync_queue FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
@@ -23,9 +74,11 @@ CREATE POLICY "admins read sync queue"
 ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
 GRANT ALL ON public.ai_symptom_icd_map TO service_role;
+DROP POLICY IF EXISTS "staff read symptom map" ON public.ai_symptom_icd_map;
 CREATE POLICY "staff read symptom map"
   ON public.ai_symptom_icd_map FOR SELECT TO authenticated
   USING (public.is_clinical_staff(auth.uid()));
+DROP POLICY IF EXISTS "admins write symptom map" ON public.ai_symptom_icd_map;
 CREATE POLICY "admins write symptom map"
   ON public.ai_symptom_icd_map FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
@@ -34,17 +87,35 @@ CREATE POLICY "admins write symptom map"
 ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.lab_tests TO authenticated;
 GRANT ALL ON public.lab_tests TO service_role;
+DROP POLICY IF EXISTS "staff read lab tests" ON public.lab_tests;
 CREATE POLICY "staff read lab tests"
   ON public.lab_tests FOR SELECT TO authenticated
   USING (public.is_clinical_staff(auth.uid()));
+DROP POLICY IF EXISTS "admins write lab tests" ON public.lab_tests;
 CREATE POLICY "admins write lab tests"
   ON public.lab_tests FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
--- Views must respect the querying user's permissions
-ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
-ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+-- Optional legacy views must respect the querying user's permissions when
+-- present. These views are not created by the current migration history, so
+-- guard by catalog kind instead of making clean replay depend on them.
+DO $view_guard$
+DECLARE
+  v_name text;
+BEGIN
+  FOREACH v_name IN ARRAY ARRAY['v_patient_diagnosis_full','v_ai_clinical_decision'] LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = v_name AND c.relkind = 'v'
+    ) THEN
+      EXECUTE format('ALTER VIEW public.%I SET (security_invoker = true)', v_name);
+    END IF;
+  END LOOP;
+END;
+$view_guard$;
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;

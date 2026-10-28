@@ -970,7 +970,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $admission$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'practitioner') OR public.has_role(auth.uid(),'nurse') OR public.has_role(auth.uid(),'midwife') OR public.has_role(auth.uid(),'specialist_nurse')) THEN RAISE EXCEPTION 'Admission creation is not permitted'; END IF;
@@ -981,7 +981,7 @@ BEGIN
     _reason
   );
 END;
-$$;
+$admission$;
 
 DROP FUNCTION IF EXISTS public.create_patient_admission(UUID,TEXT,TEXT,UUID);
 

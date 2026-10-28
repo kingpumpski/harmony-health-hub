@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const sql = fs.readFileSync(
-  'supabase/migrations/20260929150000_patient_canonical_insurer_linkage.sql',
+  'supabase/migrations/20260929150002_patient_canonical_insurer_linkage.sql',
   'utf8',
 );
 

@@ -5,9 +5,9 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS public.insurance_claims
+) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
-AS $$
+AS $claim_financials$
 DECLARE
   uid UUID := auth.uid();
   c public.insurance_claims%ROWTYPE;
@@ -62,9 +62,16 @@ BEGIN
     )
   );
 
-  RETURN c;
+  RETURN jsonb_build_object(
+    'claim_id',c.id,
+    'amount_claimed',c.amount_claimed,
+    'amount_approved',c.amount_approved,
+    'amount_paid',c.amount_paid,
+    'claim_number',c.claim_number,
+    'rejection_reason',c.rejection_reason
+  );
 END;
-$$;
+$claim_financials$;
 
 REVOKE ALL ON FUNCTION public.update_insurance_claim_financials(UUID,NUMERIC,NUMERIC,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_insurance_claim_financials(UUID,NUMERIC,NUMERIC,TEXT,TEXT) TO authenticated;

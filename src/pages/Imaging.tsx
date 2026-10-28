@@ -1,5 +1,5 @@
 import { ImageIcon, BellRing, Plus, CheckCircle2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import OperationalWorklistShell from '@/components/workflow/OperationalWorklistShell';
@@ -25,7 +25,7 @@ export default function Imaging() {
   const [amount, setAmount] = useState(0);
   const [reports, setReports] = useState<Record<string, { report: string; impression: string }>>({});
   const [loading, setLoading] = useState(false);
-  const [previousIds, setPreviousIds] = useState<Set<string>>(new Set());
+  const previousIds = useRef<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeModality, setActiveModality] = useState('all');
@@ -36,23 +36,38 @@ export default function Imaging() {
   const [completedPriority, setCompletedPriority] = useState('all');
   const [completedDate, setCompletedDate] = useState('');
 
+  const loadInFlight = useRef(false);
   const load = useCallback(async (announce = false) => {
-    if (!user?.id) return;
+    if (!user?.id || loadInFlight.current) return;
+    loadInFlight.current = true;
     setLoading(true);
-    const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc('get_imaging_workspace', { _limit: 300 });
+      if (error) {
+        // The 30-second background refresh must not spam staff with transient network toasts.
+        if (!announce) toast({ title: 'Imaging workspace unavailable', description: error.message, variant: 'destructive' });
+        return;
+      }
+      const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
+      const nextOrders = workspace.orders ?? [];
+      if (announce && previousIds.current.size > 0 && nextOrders.some((order) => !previousIds.current.has(order.id))) playWorkflowSound('info');
+      previousIds.current = new Set(nextOrders.map((order) => order.id));
+      setPatients(workspace.patients ?? []);
+      setOrders(nextOrders);
+      setLastUpdated(new Date());
+    } catch {
+      // Browser fetch can reject on ERR_CONNECTION_CLOSED before Supabase returns an RPC error.
+      if (!announce) {
+        toast({
+          title: 'Imaging workspace connection lost',
+          description: 'The latest data could not be refreshed. Check connectivity and use Refresh to try again.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      loadInFlight.current = false;
       setLoading(false);
-      toast({ title: 'Imaging workspace unavailable', description: error.message, variant: 'destructive' });
-      return;
     }
-    const workspace = (data ?? {}) as { patients?: Patient[]; orders?: ImagingOrder[] };
-    const nextOrders = workspace.orders ?? [];
-    if (announce && previousIds.size > 0 && nextOrders.some((order) => !previousIds.has(order.id))) playWorkflowSound('info');
-    setPreviousIds(new Set(nextOrders.map((order) => order.id)));
-    setPatients(workspace.patients ?? []);
-    setOrders(nextOrders);
-    setLastUpdated(new Date());
-    setLoading(false);
   }, [user?.id]);
 
   useEffect(() => {

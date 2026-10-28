@@ -1,6 +1,6 @@
 // @ts-nocheck -- schema types lag behind live database functions; runtime unaffected
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, CheckCircle2, Clock3, Plus, ShieldAlert, Utensils } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock3, Plus, ShieldAlert, Utensils, X } from 'lucide-react';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,8 @@ export default function CanteenMeals() {
   const [orders, setOrders] = useState<ActiveOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [menuEditorOpen, setMenuEditorOpen] = useState(false);
+  const [planEditorOpen, setPlanEditorOpen] = useState(false);
   const [orderAction, setOrderAction] = useState('');
   const [mealPeriod, setMealPeriod] = useState('lunch');
   const [fromTime, setFromTime] = useState('12:00');
@@ -122,6 +124,7 @@ export default function CanteenMeals() {
     setFromTime(menu.available_from ? new Date(menu.available_from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
     setUntilTime(menu.available_until ? new Date(menu.available_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
     setItems(menu.items.length ? menu.items.map(({ name, description, dietary_tags, allergens, ingredients }) => ({ name, description: description ?? '', dietary_tags: dietary_tags ?? [], allergens: allergens ?? [], ingredients: ingredients ?? '' })) : [{ name: '', description: '', dietary_tags: [], allergens: [], ingredients: '' }]);
+    setMenuEditorOpen(true);
   };
 
   const saveMenu = async (publish: boolean) => {
@@ -136,6 +139,7 @@ export default function CanteenMeals() {
       const { error } = await (supabase as any).rpc('save_canteen_menu', { _service_date: date, _meal_period: mealPeriod, _available_from: from, _available_until: until, _items: validItems, _notes: notes || null, _publish: publish });
       if (error) { toast({ title: 'Menu could not be saved', description: error.message, variant: 'destructive' }); return; }
       toast({ title: publish ? 'Menu published' : 'Menu saved as draft' });
+      setMenuEditorOpen(false);
       await loadMenus();
     } catch (error) {
       toast({ title: 'Menu could not be saved', description: error instanceof Error ? error.message : 'A network error prevented saving. Please retry.', variant: 'destructive' });
@@ -153,7 +157,7 @@ export default function CanteenMeals() {
       const { error } = await supabase.rpc('create_meal_plan_workflow', { _patient_id: planPatientId, _plan_type: planType, _restrictions: planRestrictions || null });
       if (error) { toast({ title: 'Dietary plan could not be created', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Dietary plan created' });
-      setPlanPatientId(''); setPlanRestrictions('');
+      setPlanPatientId(''); setPlanRestrictions(''); setPlanEditorOpen(false);
       await loadOrders();
     } catch (error) {
       toast({ title: 'Dietary plan could not be created', description: error instanceof Error ? error.message : 'A network error prevented saving. Please retry.', variant: 'destructive' });
@@ -192,22 +196,24 @@ export default function CanteenMeals() {
       </section>
 
       {canManage && <>
-        <section className="card-medical p-5">
-          <div className="flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /><div><h2 className="font-semibold">Create or update a menu</h2><p className="text-xs text-muted-foreground">Create a separate menu for each date and service period. Publishing makes it visible to patients and other authenticated users.</p></div></div>
+        <div className="flex flex-wrap justify-end gap-2"><button type="button" className="btn-primary inline-flex items-center gap-2" onClick={() => { setMealPeriod('lunch'); setFromTime('12:00'); setUntilTime('14:00'); setNotes(''); setItems([{ name: '', description: '', dietary_tags: [], allergens: [], ingredients: '' }]); setMenuEditorOpen(true); }}><Plus className="h-4 w-4" />Create menu</button><button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => setPlanEditorOpen(true)}><Plus className="h-4 w-4" />Create dietary plan</button></div>
+        {menuEditorOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="canteen-menu-editor-title"><section className="card-medical w-full max-w-5xl max-h-[92vh] overflow-y-auto p-5 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-3"><div className="flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /><div><h2 id="canteen-menu-editor-title" className="font-semibold">Create or update a menu</h2><p className="text-xs text-muted-foreground">Create a separate menu for each date and service period. Publishing makes it visible to patients and other authenticated users.</p></div></div><button type="button" className="btn-ghost" aria-label="Close menu editor" onClick={() => setMenuEditorOpen(false)}><X className="h-4 w-4" /></button></div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4"><select value={mealPeriod} onChange={e => setMealPeriod(e.target.value)} className="input-medical">{periods.map(p => <option key={p} value={p}>{periodLabel(p)}</option>)}</select><input type="time" value={fromTime} onChange={e => setFromTime(e.target.value)} className="input-medical" aria-label="Available from" /><input type="time" value={untilTime} onChange={e => setUntilTime(e.target.value)} className="input-medical" aria-label="Available until" /><input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Menu notes" className="input-medical" /></div>
           <div className="mt-4 space-y-3">{items.map((item, index) => <div key={index} className="grid gap-2 rounded-xl border border-border p-3 md:grid-cols-2 lg:grid-cols-5"><input value={item.name} onChange={e => setItems(v => v.map((x,i) => i === index ? { ...x, name: e.target.value } : x))} placeholder="Meal option" className="input-medical" /><input value={item.description} onChange={e => setItems(v => v.map((x,i) => i === index ? { ...x, description: e.target.value } : x))} placeholder="Description" className="input-medical" /><input value={item.dietary_tags.join(', ')} onChange={e => setItems(v => v.map((x,i) => i === index ? { ...x, dietary_tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } : x))} placeholder="Dietary tags" className="input-medical" /><input value={item.allergens.join(', ')} onChange={e => setItems(v => v.map((x,i) => i === index ? { ...x, allergens: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } : x))} placeholder="Allergens" className="input-medical" /><div className="flex gap-2"><input value={item.ingredients} onChange={e => setItems(v => v.map((x,i) => i === index ? { ...x, ingredients: e.target.value } : x))} placeholder="Ingredients" className="input-medical min-w-0 flex-1" /><button type="button" className="btn-ghost" onClick={() => setItems(v => v.length > 1 ? v.filter((_,i) => i !== index) : v)} aria-label="Remove menu item">×</button></div></div>)}
           <button type="button" className="btn-ghost inline-flex items-center gap-2" onClick={() => setItems(v => [...v, { name: '', description: '', dietary_tags: [], allergens: [], ingredients: '' }])}><Plus className="h-4 w-4" /> Add meal option</button></div>
           <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void saveMenu(false)} className="btn-secondary">{saving ? 'Saving…' : 'Save draft'}</button><button type="button" disabled={saving} onClick={() => void saveMenu(true)} className="btn-primary">{saving ? 'Publishing…' : 'Publish menu'}</button></div>
-        </section>
+        </section></div>}
 
-        <section className="card-medical p-5">
-          <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /><div><h2 className="font-semibold">Patient dietary plan</h2><p className="text-xs text-muted-foreground">Create a meal-service plan for an active ordered patient. Clinical conditions remain read-only context.</p></div></div>
-          <form onSubmit={createPlan} className="mt-4 grid gap-3 md:grid-cols-3">
+        {planEditorOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="canteen-plan-editor-title"><section className="card-medical w-full max-w-2xl p-5 shadow-xl">
+          <div className="mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /><div><h2 id="canteen-plan-editor-title" className="font-semibold">Patient dietary plan</h2><p className="text-xs text-muted-foreground">Create a meal-service plan for an active ordered patient. Clinical conditions remain read-only context.</p></div></div><button type="button" className="btn-ghost" aria-label="Close dietary plan form" onClick={() => setPlanEditorOpen(false)}><X className="h-4 w-4" /></button></div>
+          <form onSubmit={createPlan} className="grid gap-3 md:grid-cols-2">
             <select value={planPatientId} onChange={e => setPlanPatientId(e.target.value)} className="input-medical"><option value="">Select active patient…</option>{orders.map(order => <option key={order.patient_id} value={order.patient_id}>{order.patient_name}{order.patient_code ? ` · ${order.patient_code}` : ''}</option>)}</select>
             <select value={planType} onChange={e => setPlanType(e.target.value)} className="input-medical"><option>Regular</option><option>Diabetic</option><option>Low-sodium</option><option>Soft / post-op</option><option>Liquid</option><option>High-protein</option></select>
-            <div className="flex gap-2"><input value={planRestrictions} onChange={e => setPlanRestrictions(e.target.value)} placeholder="Documented dietary restrictions" className="input-medical min-w-0 flex-1" /><button className="btn-primary" disabled={orderAction !== ''}>{orderAction === 'plan' ? 'Saving…' : 'Save plan'}</button></div>
+            <div className="md:col-span-2"><input value={planRestrictions} onChange={e => setPlanRestrictions(e.target.value)} placeholder="Documented dietary restrictions" className="input-medical w-full" /></div>
+            <div className="md:col-span-2 flex justify-end gap-2"><button type="button" className="btn-secondary" disabled={orderAction === 'plan'} onClick={() => setPlanEditorOpen(false)}>Cancel</button><button className="btn-primary" disabled={orderAction !== ''}>{orderAction === 'plan' ? 'Saving…' : 'Save plan'}</button></div>
           </form>
-        </section>
+        </section></div>}
 
         <section className="card-medical p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-primary" /> Active patient meal orders</h2><p className="text-xs text-muted-foreground">Live operational context only: underlying documented conditions, current active diagnoses and dietary plan restrictions. No clinical notes, medications or unrelated chart data are exposed to the canteen.</p></div><span className="rounded-full border px-2.5 py-1 text-xs">{orders.length} active</span></div>

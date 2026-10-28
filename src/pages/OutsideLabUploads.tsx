@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Upload, FileText, Sparkles } from 'lucide-react';
+import { Upload, FileText, Sparkles, Plus, X } from 'lucide-react';
 import { playSuccessSound } from '@/lib/sounds';
 
 interface Doc { id: string; patient_id: string; document_type: string; title: string; storage_path: string; ai_analysis: string | null; created_at: string }
@@ -18,6 +18,7 @@ export default function OutsideLabUploads() {
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const load = async () => {
     if (isPatient) {
@@ -72,7 +73,7 @@ export default function OutsideLabUploads() {
         title: '✓ Upload successful',
         description: 'Document uploaded. AI analysis is running and clinicians will be notified.',
       });
-      setFile(null); setTitle(''); setPid('');
+      setFile(null); setTitle(''); setPid(''); setUploadOpen(false);
       void load();
     } catch (err: any) {
       if (uploadedPath) {
@@ -91,7 +92,8 @@ export default function OutsideLabUploads() {
         <p className="text-muted-foreground">{isPatient ? 'Review outside diagnostic documents already linked to your medical record.' : 'Upload external X-rays, scans, ECGs, PDFs. AI analyzes and notifies clinicians.'}</p>
       </div>
 
-      {!isPatient && <form onSubmit={upload} className="card-medical p-6 grid md:grid-cols-2 gap-3">
+      {!isPatient && <div className="flex justify-end"><button type="button" onClick={() => setUploadOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" />Upload outside diagnostic</button></div>}
+      {!isPatient && uploadOpen && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="outside-lab-upload-title"><form onSubmit={upload} className="card-medical w-full max-w-2xl p-6 grid md:grid-cols-2 gap-3 shadow-xl"><div className="md:col-span-2 flex items-center justify-between gap-3"><h2 id="outside-lab-upload-title" className="font-semibold">Upload outside diagnostic</h2><button type="button" className="btn-ghost" aria-label="Close upload form" onClick={() => setUploadOpen(false)}><X className="h-4 w-4" /></button></div>
         <select value={pid} onChange={(e) => setPid(e.target.value)} className="input-medical">
           <option value="">Select patient…</option>
           {patients.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
@@ -102,8 +104,8 @@ export default function OutsideLabUploads() {
         </select>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="input-medical md:col-span-2" />
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-medical md:col-span-2" />
-        <button disabled={busy} className="btn-primary md:col-span-2">{busy ? 'Uploading…' : 'Upload & analyze'}</button>
-      </form>}
+        <div className="md:col-span-2 flex justify-end gap-2"><button type="button" className="btn-secondary" disabled={busy} onClick={() => setUploadOpen(false)}>Cancel</button><button disabled={busy} className="btn-primary">{busy ? 'Uploading…' : 'Upload & analyze'}</button></div>
+      </form></div>}
 
       <div className="card-medical p-5">
         <h2 className="font-semibold mb-3">Recent uploads</h2>

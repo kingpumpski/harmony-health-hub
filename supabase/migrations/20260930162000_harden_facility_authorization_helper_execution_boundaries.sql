@@ -14,4 +14,7 @@ ALTER FUNCTION public.current_user_has_facility_access(uuid)
   SET search_path = '';
 REVOKE EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) FROM anon;
-REVOKE EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) FROM authenticated;
+-- RLS policies call this authenticated-session wrapper. Keep the low-level
+-- two-argument helper internal-only, but preserve EXECUTE for authenticated
+-- policy evaluation through the one-argument wrapper.
+GRANT EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) TO authenticated;

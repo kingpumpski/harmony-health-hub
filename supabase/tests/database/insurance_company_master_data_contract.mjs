@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const sql=fs.readFileSync('supabase/migrations/20260929100000_insurance_company_master_data.sql','utf8');
+const sql=fs.readFileSync('supabase/migrations/20260929100001_insurance_company_master_data.sql','utf8');
 const required=[
   'CREATE TABLE IF NOT EXISTS public.insurance_companies',
   'ALTER TABLE public.insurance_companies ENABLE ROW LEVEL SECURITY',
