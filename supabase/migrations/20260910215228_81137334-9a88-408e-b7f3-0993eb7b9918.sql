@@ -1,3 +1,16 @@
+-- Ensure the AI diagnosis suggestion table exists before applying its security contract.
+-- The canonical generated schema exposes these columns, but the clean migration chain
+-- currently reaches this hardening migration before a table-creation migration.
+CREATE TABLE IF NOT EXISTS public.ai_diagnosis_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  encounter_id uuid NULL REFERENCES public.encounters(id) ON DELETE SET NULL,
+  suggested_icd text NULL REFERENCES public.icd_codes(code) ON DELETE SET NULL,
+  accepted boolean NULL,
+  reasoning text NULL,
+  model_version text NULL,
+  created_at timestamptz NULL DEFAULT now()
+);
+
 -- Lock down reference/internal tables
 ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
