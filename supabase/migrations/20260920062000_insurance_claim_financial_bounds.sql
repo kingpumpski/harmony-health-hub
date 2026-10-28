@@ -71,7 +71,7 @@ BEGIN
     'rejection_reason',c.rejection_reason
   );
 END;
-$;
+$claim_financials$;
 
 REVOKE ALL ON FUNCTION public.update_insurance_claim_financials(UUID,NUMERIC,NUMERIC,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_insurance_claim_financials(UUID,NUMERIC,NUMERIC,TEXT,TEXT) TO authenticated;
