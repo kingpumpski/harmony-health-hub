@@ -49,7 +49,7 @@ BEGIN
  PERFORM public.record_system_audit('medication_'||_status,'clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'reason',r.reason));
  RETURN r.id;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.schedule_medication_administration(UUID,TEXT,TEXT,TEXT,TIMESTAMPTZ,TEXT,INTEGER) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID) FROM PUBLIC,anon;
