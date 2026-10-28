@@ -198,7 +198,7 @@ BEGIN
   VALUES(trim(_drug_name),NULLIF(trim(COALESCE(_strength,'')),''),COALESCE(_stock_quantity,0),COALESCE(_reorder_level,0),COALESCE(_unit_price,0))
   RETURNING * INTO r;
   PERFORM public.record_system_audit('pharmacy_inventory_created','pharmacy','pharmacy_inventory',r.id,'info',jsonb_build_object('drug_name',r.drug_name,'stock_quantity',r.stock_quantity,'actor_id',auth.uid()));
-  RETURN r.id;
+  RETURN r;
 END;
 $$;
 REVOKE ALL ON FUNCTION public.create_pharmacy_inventory_item(TEXT,TEXT,INTEGER,INTEGER,NUMERIC) FROM PUBLIC;
@@ -268,7 +268,7 @@ BEGIN
   VALUES(_patient_id,trim(_medication_name),NULLIF(trim(COALESCE(_dose,'')),''),NULLIF(trim(COALESCE(_route,'')),''),_scheduled_at,_notes,LEAST(GREATEST(COALESCE(_due_window_minutes,30),5),240))
   RETURNING * INTO r;
   PERFORM public.record_system_audit('medication_scheduled','clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'scheduled_at',r.scheduled_at,'actor_id',auth.uid()));
-  RETURN r;
+  RETURN r.id;
 END;
 $$;
 
