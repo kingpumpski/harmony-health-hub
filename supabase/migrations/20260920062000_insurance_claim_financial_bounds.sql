@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _rejection_reason TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
-AS $$
+AS $claim_financials$
 DECLARE
   uid UUID := auth.uid();
   c public.insurance_claims%ROWTYPE;
