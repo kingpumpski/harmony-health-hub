@@ -50,6 +50,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Clinical migration format regression
+        run: npm run test:clinical-migration-formats
+
       - name: Spreadsheet parser regression
         run: npm run test:spreadsheet-parser
 
