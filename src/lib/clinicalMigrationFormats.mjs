@@ -106,6 +106,7 @@ const xmlElementToObject = (element) => {
 };
 
 const extractXmlRecords = (text) => {
+  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('XML DTD and entity declarations are not supported.');
   if (typeof DOMParser === 'undefined') throw new Error('XML parsing is unavailable in this environment.');
   const document = new DOMParser().parseFromString(text, 'application/xml');
   if (document.querySelector('parsererror')) throw new Error('XML is malformed or could not be parsed safely.');
