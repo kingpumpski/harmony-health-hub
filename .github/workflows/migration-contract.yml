@@ -7,12 +7,16 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'scripts/check-plpgsql-delimiters.mjs'
+      - '.github/workflows/migration-contract.yml'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'scripts/check-plpgsql-delimiters.mjs'
+      - '.github/workflows/migration-contract.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +38,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Validate PL/pgSQL dollar-quote delimiters
+        run: node scripts/check-plpgsql-delimiters.mjs
       - name: Validate legacy schema compatibility contract and security
         if: hashFiles('scripts/migration-contract.mjs') != ''
         run: node scripts/migration-contract.mjs
@@ -59,7 +65,7 @@ jobs:
             if supabase start 2>&1 | tee /tmp/supabase-start.log; then
               exit 0
             fi
-            if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|syntax error at or near|migration .* failed' /tmp/supabase-start.log; then
+            if grep -Eiq 'SQLSTATE|ERROR: relation .* does not exist|syntax error at or near|migration .* failed|unterminated dollar-quoted string' /tmp/supabase-start.log; then
               echo "Supabase startup reached a deterministic migration/schema error; stopping retries so the SQL failure stays visible."
               exit 1
             fi
