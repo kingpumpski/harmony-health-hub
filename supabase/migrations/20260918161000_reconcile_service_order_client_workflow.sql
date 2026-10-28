@@ -29,6 +29,7 @@ REVOKE ALL ON FUNCTION public.create_service_order(UUID,UUID,TEXT,TEXT,NUMERIC,U
 GRANT EXECUTE ON FUNCTION public.create_service_order(UUID,UUID,TEXT,TEXT,NUMERIC,UUID,TEXT,UUID,UUID,UUID,TEXT,TEXT) TO authenticated;
 
 DROP POLICY IF EXISTS "service_orders_authenticated_read" ON public.service_orders;
+DROP POLICY IF EXISTS "service_orders_staff_read" ON public.service_orders;
 CREATE POLICY "service_orders_staff_read" ON public.service_orders
 FOR SELECT TO authenticated
 USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'accountant')
