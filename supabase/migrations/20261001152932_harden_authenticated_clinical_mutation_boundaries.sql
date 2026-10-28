@@ -228,7 +228,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id uuid,_status text,_reason text DEFAULT NULL::text,_notes text DEFAULT NULL::text,_witnessed_by uuid DEFAULT NULL::uuid
 )
-RETURNS jsonb
+RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -323,8 +323,7 @@ BEGIN
       'administered_by',uid,'timestamp',pg_catalog.now(),'reason',r.reason,'witnessed_by',r.witnessed_by,
       'next_scheduled_at',v_next)
   );
-  RETURN jsonb_build_object('id',r.id,'status',r.status,'administered_by',r.administered_by,
-    'administered_at',r.administered_at,'next_scheduled_at',v_next);
+  RETURN r.id;
 END;
 $function$;
 
