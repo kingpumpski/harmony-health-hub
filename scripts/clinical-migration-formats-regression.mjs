@@ -80,6 +80,7 @@ const xmlRows = parseClinicalMigrationText('records.xml', '<records />', 'XML Le
 assert.equal(xmlRows[0].source_patient_key, 'PAT-XML');
 assert.equal(xmlRows[0].record_type, 'Condition');
 assert.equal(xmlRows[0].clinical_summary, 'Asthma history');
+assert.throws(() => parseClinicalMigrationText('unsafe.xml', '<!DOCTYPE x [<!ENTITY y "z">]><x>&y;</x>'), /DTD and entity declarations/);
 delete globalThis.DOMParser;
 
 assert.throws(() => parseClinicalMigrationText('bad.json', '{not-json'), /JSON is malformed/);
