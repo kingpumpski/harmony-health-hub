@@ -160,3 +160,8 @@ Be factual, concise, and evidence-based. "Fixed" means the root cause was correc
 - The next run, `40861322584`, correctly rejected `20260920211000_privileged_admin_resource_scope_hardening.sql:36` because the `seed_facility_reports` function ended with a bare `$;` instead of its matching `$$;` delimiter.
 - Corrected the terminator and preserved the function's established `INTEGER` return contract with `GET DIAGNOSTICS ... ROW_COUNT`.
 - The validator failure occurred before the database replay could be trusted. A new run on the latest head must pass the delimiter preflight and then proceed to clean replay; the older run is not evidence of success.
+
+### Newly confirmed patient vitals grant defect — 2026-10-29
+- Clean replay on the current repair heads reached `20260923130000_patient_hub_entrypoint_context_hardening.sql` and failed with SQLSTATE `42883`: the `GRANT EXECUTE` referenced `record_patient_vitals(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric)`, but the function is defined with one UUID plus eight NUMERIC parameters.
+- Corrected the GRANT to the exact nine-argument signature and added a static regression assertion. The matching `REVOKE` already used the correct signature; the earlier `20260913004000_patient_hub_entrypoint_schema_reconciliation.sql` grant also has the correct signature.
+- This repair is source-level only until a fresh clean replay on the updated head completes. Continue to inspect the next replay error; do not mark the migration chain complete prematurely.
