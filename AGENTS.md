@@ -154,3 +154,9 @@ Be factual, concise, and evidence-based. "Fixed" means the root cause was correc
 - PostgreSQL reported SQLSTATE `42P13`: `public.seed_facility_reports(uuid)` was originally declared `RETURNS INTEGER` in `20260913162000_harden_reports_center_seed_function.sql`, then a later `CREATE OR REPLACE FUNCTION` attempted to change it to `RETURNS void`, which PostgreSQL rejects.
 - Fixed the later definition to preserve `RETURNS integer`, capture `ROW_COUNT` in `v_count`, and return that count. Added static regression assertions in `scripts/migration-contract.mjs`.
 - This source correction is not yet verified by a new clean replay. Continue fixing the next failure reported by the first fresh replay, and do not mark the migration workstream complete until all required checks pass.
+
+
+### Follow-up delimiter defect — 2026-10-29
+- The next run, `40861322584`, correctly rejected `20260920211000_privileged_admin_resource_scope_hardening.sql:36` because the `seed_facility_reports` function ended with a bare `$;` instead of its matching `$$;` delimiter.
+- Corrected the terminator and preserved the function's established `INTEGER` return contract with `GET DIAGNOSTICS ... ROW_COUNT`.
+- The validator failure occurred before the database replay could be trusted. A new run on the latest head must pass the delimiter preflight and then proceed to clean replay; the older run is not evidence of success.
