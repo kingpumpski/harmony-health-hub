@@ -142,3 +142,8 @@ For non-trivial fixes, report:
 - Remaining risks, blocked/unverified checks, and next action.
 
 Be factual, concise, and evidence-based. "Fixed" means the root cause was corrected and the relevant verification passed—not merely that code was edited.
+
+
+### Static contract correction — 2026-10-29
+- Corrected the insurance-claim transition return-type assertion in `scripts/migration-contract.mjs`: its regex literal had been double-escaped and could not match the intended SQL function declaration.
+- This is a source-level test-harness correction only. The static contract, clean migration replay, and required workflow checks remain unverified until they complete against the new branch head.
