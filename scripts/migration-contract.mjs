@@ -66,6 +66,11 @@ assertBefore(
   "legacy department queue timestamp"
 );
 
+const transition = readMigration("20260920063000_insurance_claim_transition_state_hardening.sql");
+if (!/\)\s*RETURNS\s+JSONB\b/i.test(transition)) {
+  fail("insurance claim transition function must preserve its established JSONB return contract");
+}
+
 const claim = readMigration("20260920062000_insurance_claim_financial_bounds.sql");
 if (!claim.includes("AS $claim_financials$") || !claim.includes("$claim_financials$;")) {
   fail("insurance claim financial function must use a matching named dollar-quote delimiter");
