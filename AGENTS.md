@@ -143,3 +143,8 @@ This section tracks the user's multi-prompt migration-reliability workstream. Do
 - Migration-contract run `40859996108` on the related prerequisite-repair branch exposed SQLSTATE `42P13` in `20260920211000_privileged_admin_resource_scope_hardening.sql`: `seed_facility_reports(uuid)` was originally `RETURNS INTEGER`, then a later `CREATE OR REPLACE FUNCTION` attempted `RETURNS void`.
 - This branch's migration already preserves the established `INTEGER` return type, counts affected rows, and returns the count. Added static assertions to guard that contract.
 - The failing replay was on a different branch and earlier commit; this branch's current replay still must be independently verified. Continue to the next fresh replay failure rather than assuming the fix resolves the full chain.
+
+### Newly confirmed patient vitals grant defect — 2026-10-29
+- Clean replay on the current repair heads reached `20260923130000_patient_hub_entrypoint_context_hardening.sql` and failed with SQLSTATE `42883`: the `GRANT EXECUTE` referenced `record_patient_vitals(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric)`, but the function is defined with one UUID plus eight NUMERIC parameters.
+- Corrected the GRANT to the exact nine-argument signature and added a static regression assertion. The matching `REVOKE` already used the correct signature; the earlier `20260913004000_patient_hub_entrypoint_schema_reconciliation.sql` grant also has the correct signature.
+- This repair is source-level only until a fresh clean replay on the updated head completes. Continue to inspect the next replay error; do not mark the migration chain complete prematurely.
