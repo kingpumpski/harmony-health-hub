@@ -123,6 +123,13 @@ The current clean-replay failure was confirmed in `20260930013529_remove_abandon
 
 Previous notes reported duplicate migration versions. Treat older notes as historical warnings to re-verify, not as proof of current state. Do not renumber applied migrations blindly or claim live-schema verification without current evidence.
 
+A fresh review of the 2026-10-28 migration-contract job log for PR #439 confirmed two separate issues in the tested history:
+- `supabase/migrations/20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql` failed with `relation "public.ai_diagnosis_suggestions" does not exist (SQLSTATE 42P01)`. The prerequisite migrations in this repair branch create the required relation before the dependent RLS migration. Re-run the full clean replay on the current head to verify ordering.
+- The log also reports `Skipping migration $(path)... (file name must match pattern "<timestamp>_name.sql")`. The repository's malformed `supabase/migrations/$(path)` file is deleted on the repair branches; the valid timestamped `20261001210000_fix_workflow_notification_role_enum_cast.sql` carries the corresponding function correction. The static contract now rejects every `.sql` filename that does not use a 14-digit timestamp and descriptive suffix, instead of silently filtering invalid filenames out of the check.
+
+These changes are not validated until the current branch completes static checks and a clean migration replay.
+
+
 ## 10. Required completion report
 
 For non-trivial fixes, report:
