@@ -95,6 +95,19 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- CREATE TABLE IF NOT EXISTS does not reconcile an older queue table.
+-- Add the columns required by this migration before indexing or defining RPCs.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS claimed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+UPDATE public.department_queues
+SET queued_at = COALESCE(queued_at, created_at, now())
+WHERE queued_at IS NULL;
+ALTER TABLE public.department_queues
+  ALTER COLUMN queued_at SET DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 

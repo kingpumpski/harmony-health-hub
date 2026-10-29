@@ -1,11 +1,18 @@
--- Lock down reference/internal tables
-ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
-GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
-CREATE POLICY "clinical staff manage ai diagnosis suggestions"
-  ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
-  USING (public.is_clinical_staff(auth.uid()))
-  WITH CHECK (public.is_clinical_staff(auth.uid()));
+-- Lock down reference/internal tables. Some legacy migration histories create
+-- this table later; do not make clean replay depend on its early existence.
+DO $migration$
+BEGIN
+  IF to_regclass('public.ai_diagnosis_suggestions') IS NOT NULL THEN
+    ALTER TABLE public.ai_diagnosis_suggestions ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_diagnosis_suggestions TO authenticated;
+    GRANT ALL ON public.ai_diagnosis_suggestions TO service_role;
+    EXECUTE 'CREATE POLICY "clinical staff manage ai diagnosis suggestions"
+      ON public.ai_diagnosis_suggestions FOR ALL TO authenticated
+      USING (public.is_clinical_staff(auth.uid()))
+      WITH CHECK (public.is_clinical_staff(auth.uid()))';
+  END IF;
+END
+$migration$;
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.audit_logs TO authenticated;
@@ -42,9 +49,26 @@ CREATE POLICY "admins write lab tests"
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
--- Views must respect the querying user's permissions
-ALTER VIEW public.v_patient_diagnosis_full SET (security_invoker = true);
-ALTER VIEW public.v_ai_clinical_decision SET (security_invoker = true);
+-- Views must respect the querying user's permissions. Legacy databases may
+-- not contain every optional view yet, so harden only views that exist.
+DO $secure_views$
+DECLARE
+  view_name text;
+BEGIN
+  FOREACH view_name IN ARRAY ARRAY['v_patient_diagnosis_full', 'v_ai_clinical_decision']
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relname = view_name
+        AND c.relkind = 'v'
+    ) THEN
+      EXECUTE format('ALTER VIEW public.%I SET (security_invoker = true)', view_name);
+    END IF;
+  END LOOP;
+END
+$secure_views$;
 
 -- Tighten patient document storage access
 DROP POLICY IF EXISTS "outside_lab_read" ON storage.objects;
