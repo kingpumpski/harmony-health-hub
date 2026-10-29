@@ -8,6 +8,8 @@ on:
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
       - 'scripts/check-plpgsql-delimiters.mjs'
+      - 'AGENTS.md'
+      - '.github/workflows/migration-contract.yml'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
@@ -15,6 +17,8 @@ on:
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
       - 'scripts/check-plpgsql-delimiters.mjs'
+      - 'AGENTS.md'
+      - '.github/workflows/migration-contract.yml'
   workflow_dispatch:
 
 permissions:
