@@ -137,3 +137,9 @@ This section tracks the user's multi-prompt migration-reliability workstream. Do
 - A fresh review of the recorded PR #421/#427 replay logs found a separate deterministic failure at `supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql`: `public.lab_results` has no `patient_id` column, but the `lab_results` branch of `public.reconcile_clinical_facility_record` selected `r.patient_id`. The repair branch now derives patient lineage via `lab_orders` (`lo.patient_id`) and its static migration contract asserts this invariant. This is a source-level correction only; current-head CI and clean replay have not yet reported results for the new commits.
 - No repair is complete until a clean disposable-database replay and the relevant post-replay contracts pass on the exact commit being reported.
 - Do not apply migrations to the live project, alter branch protection, or merge PRs as part of diagnosis without explicit authorization.
+
+
+### Newly confirmed replay defect — 2026-10-29
+- Migration-contract run `40859996108` on the related prerequisite-repair branch exposed SQLSTATE `42P13` in `20260920211000_privileged_admin_resource_scope_hardening.sql`: `seed_facility_reports(uuid)` was originally `RETURNS INTEGER`, then a later `CREATE OR REPLACE FUNCTION` attempted `RETURNS void`.
+- This branch's migration already preserves the established `INTEGER` return type, counts affected rows, and returns the count. Added static assertions to guard that contract.
+- The failing replay was on a different branch and earlier commit; this branch's current replay still must be independently verified. Continue to the next fresh replay failure rather than assuming the fix resolves the full chain.
