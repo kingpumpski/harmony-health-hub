@@ -85,6 +85,10 @@ if (!/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i.test(reportSeed))
   fail("facility report seeding must return the affected row count");
 }
 
+const patientHubEntrypoints = readMigration("20260923130000_patient_hub_entrypoint_context_hardening.sql");
+if (!/GRANT EXECUTE ON FUNCTION public\\.record_patient_vitals\\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\\) TO authenticated/i.test(patientHubEntrypoints)) {
+  fail("patient vitals grant must match the nine-argument RPC signature");
+}
 const facility = readMigration("20260930014000_clinical_facility_reconciliation_control_plane.sql");
 const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? "";
 if (!labResultBranch) {
