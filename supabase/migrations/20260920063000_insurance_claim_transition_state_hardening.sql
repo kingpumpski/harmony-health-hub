@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.transition_insurance_claim_canonical(
   _rejection_reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL
 ) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $claim_transition$$
 DECLARE
   c public.insurance_claims%ROWTYPE;
   uid UUID := auth.uid();
@@ -83,7 +83,7 @@ BEGIN
   VALUES (_claim_id,'status_changed',v_from,_status,_notes,uid);
 
   RETURN jsonb_build_object('claim_id',_claim_id,'status',_status,'amount_approved',v_approved,'amount_paid',v_paid);
-END; $$;
+END; $claim_transition$;
 
 REVOKE ALL ON FUNCTION public.transition_insurance_claim_canonical(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transition_insurance_claim_canonical(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT) TO authenticated;
