@@ -75,6 +75,9 @@ const diagnosisSuggestionsMigration = '20260910215227_reconcile_ai_diagnosis_sug
 must(read('supabase/migrations/' + diagnosisSuggestionsMigration),/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'clean replay must restore the AI diagnosis suggestions table');
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI diagnosis suggestions must be defined in the migration chain');
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
+
+const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
+must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\\.transition_insurance_claim_canonical\\([\\s\\S]*?\\)\\s*RETURNS\\s+JSONB\\b/i,'claim transition hardening must preserve the established JSONB RPC return type');
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_groups/i,'legacy repair must tolerate existing panel table'],
