@@ -70,6 +70,8 @@ jobs:
       - name: Global UI standardization contract
         run: npm run test:global-ui-standardization
 
+      - name: Role-aware financial visibility contract
+        run: npm run test:role-aware-financial-ui
 
       - name: Role dashboard contract
         run: npm run test:role-dashboards

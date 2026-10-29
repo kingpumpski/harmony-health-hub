@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Activity, BarChart3, Bell, BriefcaseBusiness, CalendarClock, BedDouble, Building2, Calendar, ChevronLeft, ChevronRight, Cloud, CloudOff, CreditCard, Eye, FileText, FlaskConical, HeartPulse, LayoutDashboard, Menu, Pill, Settings, ShieldAlert, ShieldCheck, Stethoscope, Users, ScanLine } from 'lucide-react';
 import { getDefaultPermissions, type Permission } from '@/lib/permissions';
+import { isFinancialNavigationPath, useRoleAccess } from '@/hooks/useRoleAccess';
 import { isSpecialtyModuleAllowed, moduleForPath, resolveUserSpecialty, type SpecialtyId } from '@/config/specialtyModules';
 
 interface NavItem { icon: React.ElementType; label: string; href: string; permission: Permission }
@@ -41,7 +42,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
     { label: 'Patient Care', icon: Users, items: [item(Users, 'Patients', '/patients', 'patients'), item(Calendar, 'Appointments', '/appointments', 'appointments'), item(HeartPulse, 'Triage & Vitals', '/vitals', 'triage'), item(Stethoscope, 'Healthcare', '/clinical-operations', 'clinical_operations'), item(BedDouble, 'Inpatient', '/inpatient', 'inpatient')] },
     { label: 'Diagnostics & Medicines', icon: FlaskConical, items: [item(FlaskConical, 'Laboratory', '/laboratory', 'laboratory'), item(FlaskConical, 'Laboratory Panels', '/laboratory?view=panels', 'laboratory'), item(ScanLine, 'Radiology', '/radiology', 'radiology'), item(Pill, 'Pharmacy', '/pharmacy', 'pharmacy')] },
-    { label: 'Billing', icon: CreditCard, items: [item(CreditCard, 'Billing', '/billing', 'finance')] },
+    { label: 'Financial Overview', icon: CreditCard, items: [item(BarChart3, 'Financial Overview', '/financial-reports', 'financial_reports')] },
     { label: 'Administration', icon: Settings, items: [item(Settings, 'Administration', '/administration', 'administration'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(ShieldCheck, 'Clinical References', '/admin/clinical-references', 'clinical_references'), item(Building2, 'Insurance Companies', '/admin/insurance-companies', 'insurance_companies'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
   practitioner: [
@@ -91,11 +92,11 @@ const roleNavGroups: Record<string, NavGroup[]> = {
     { label: 'Imaging', icon: ScanLine, items: [item(Users, 'Patients', '/patients', 'patients'), item(ScanLine, 'Radiology', '/radiology', 'radiology')] },
   ],
   system_superuser: [
-    { label: 'Platform', icon: ShieldCheck, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(Building2, 'Facility Onboarding', '/admin/facility-onboarding', 'facility_onboarding'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(Users, 'User Management', '/admin/users', 'users'), item(ShieldCheck, 'Facility Data Sharing', '/admin/facility-sharing', 'facility_sharing')] },
+    { label: 'Platform', icon: ShieldCheck, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard'), item(Building2, 'Facility Onboarding', '/admin/facility-onboarding', 'facility_onboarding'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(Users, 'User Management', '/admin/users', 'users'), item(ShieldCheck, 'Facility Data Sharing', '/admin/facility-sharing', 'facility_sharing'), item(BarChart3, 'Financial Overview', '/financial-reports', 'financial_reports')] },
   ],
   it_admin: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
-    { label: 'System Operations', icon: Settings, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Bell, 'Notifications', '/notifications', 'notifications'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
+    { label: 'System Operations', icon: Settings, items: [item(ShieldCheck, 'IT Support', '/it-support', 'it_support'), item(Settings, 'System Settings', '/admin/settings', 'system_settings'), item(ShieldCheck, 'Facility Attribution', '/admin/facility-attribution', 'facility_attribution'), item(BedDouble, 'Ward & Bed Management', '/ward-bed-board', 'ward'), item(Bell, 'Notifications', '/notifications', 'notifications'), item(BarChart3, 'Financial Overview', '/financial-reports', 'financial_reports'), item(BriefcaseBusiness, 'Human Resources', '/hr', 'hr'), item(CalendarClock, 'Payroll', '/payroll', 'payroll')] },
   ],
   canteen: [
     { label: 'Overview', icon: LayoutDashboard, items: [item(LayoutDashboard, 'Dashboard', '/dashboard', 'dashboard')] },
@@ -106,6 +107,7 @@ const roleNavGroups: Record<string, NavGroup[]> = {
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const { user } = useAuth();
+  const roleAccess = useRoleAccess();
   const [online, setOnline] = React.useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
   React.useEffect(() => { const onOnline = () => setOnline(true); const onOffline = () => setOnline(false); window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline); return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); }; }, []);
   const location = useLocation();
@@ -120,13 +122,19 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const unsupportedRole = !roleGroups;
   const hasFullAdministrativeAccess = user.role === 'admin' || user.role === 'it_admin' || user.role === 'system_superuser';
   const permissions = new Set(user.permissions?.length ? user.permissions : getDefaultPermissions(user.role));
-  const secondaryPermissions = new Set<Permission>(['clinical_references','insurance_companies','facility_attribution','it_support','system_settings','facility_sharing','financial_reports','accounts_approvals','claims']);
+  const secondaryPermissions = new Set<Permission>(['clinical_references','insurance_companies','facility_attribution','it_support','system_settings','facility_sharing','accounts_approvals','claims']);
   const primaryGroups = (roleGroups ?? [])
     .map(group => ({
       ...group,
-      items: hasFullAdministrativeAccess ? group.items : group.items.filter(nav => {
+      items: (hasFullAdministrativeAccess ? group.items : group.items.filter(nav => {
         const module = moduleForPath(nav.href);
         return permissions.has(nav.permission) && (!specialtyGroups || !module || isSpecialtyModuleAllowed(specialty, module));
+      })).filter(nav => {
+        if (!isFinancialNavigationPath(nav.href)) return true;
+        if (roleAccess.isAccountOfficer) return true;
+        if (roleAccess.isAdmin || roleAccess.isITAdmin || roleAccess.isSystemSuperuser) return nav.href === '/financial-reports';
+        if (roleAccess.isPatient || roleAccess.isFrontDesk) return nav.href === '/billing';
+        return false;
       }),
     }))
     .filter(group => group.items.length > 0);

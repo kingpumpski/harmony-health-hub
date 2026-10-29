@@ -11,6 +11,13 @@ import WorklistDataTable, { type WorklistColumn, type WorklistFilter } from '@/c
 
 interface ImagingOrder { id: string; patient_id: string; modality: string; study_name: string; body_site: string | null; priority: string; clinical_indication: string | null; amount: number; status: string; service_order_id: string | null; report: string | null; impression: string | null; created_at: string; patients?: { first_name: string; last_name: string } | null }
 interface Patient { id: string; first_name: string; last_name: string }
+
+const paymentStatusLabel = (order: ImagingOrder) => {
+  if (!order.service_order_id) return 'Not required';
+  if (['pending_payment', 'pending_payment_approval', 'pending_payment_review'].includes(order.status)) return 'Pending';
+  if (['released', 'in_progress', 'completed'].includes(order.status)) return 'Paid';
+  return 'Pending';
+};
 export default function Imaging() {
   const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -158,6 +165,7 @@ export default function Imaging() {
     { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{row.patient_name}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => row.patient_name },
     { key: 'study', label: 'Latest study', render: (row) => <div><p className='font-medium'>{row.latest_order.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.latest_order.modality} · {row.latest_order.body_site || 'No body site'}</p></div>, sortValue: (row) => row.latest_order.created_at },
     { key: 'status', label: 'Status', render: (row) => <span className='rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold capitalize'>{row.latest_order.status.replaceAll('_', ' ')}</span>, sortValue: (row) => row.latest_order.status },
+    { key: 'paymentStatus', label: 'Payment status', render: (row) => <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (paymentStatusLabel(row.latest_order) === 'Pending' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground')}>{paymentStatusLabel(row.latest_order)}</span>, sortValue: (row) => paymentStatusLabel(row.latest_order) },
     { key: 'priority', label: 'Priority', render: (row) => <span className={'rounded-full px-2.5 py-1 text-[11px] font-semibold ' + (['urgent','stat'].includes(row.latest_order.priority) ? 'bg-critical/10 text-critical' : 'bg-muted text-muted-foreground')}>{row.latest_order.priority.toUpperCase()}</span>, sortValue: (row) => row.latest_order.priority },
     { key: 'orders', label: 'Active orders', render: (row) => <span className='font-semibold'>{row.active_count}</span>, sortValue: (row) => row.active_count },
     { key: 'created', label: 'Latest requested', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.latest_order.created_at).toLocaleString()}</span>, sortValue: (row) => row.latest_order.created_at },
@@ -167,6 +175,7 @@ export default function Imaging() {
     { key: 'patient', label: 'Patient', required: true, render: (row) => <div><p className='font-medium'>{patientName(row)}</p><p className='text-[11px] text-muted-foreground'>Patient ID: {row.patient_id.slice(0, 8)}…</p></div>, sortValue: (row) => patientName(row) },
     { key: 'study', label: 'Study', render: (row) => <div><p className='font-medium'>{row.study_name}</p><p className='text-[11px] text-muted-foreground'>{row.modality} · {row.body_site || 'No body site'}</p></div>, sortValue: (row) => row.study_name },
     { key: 'priority', label: 'Priority', render: (row) => <span className='rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold'>{row.priority.toUpperCase()}</span>, sortValue: (row) => row.priority },
+    { key: 'paymentStatus', label: 'Payment status', render: (row) => <span className='rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold'>{paymentStatusLabel(row)}</span>, sortValue: (row) => paymentStatusLabel(row) },
     { key: 'completed', label: 'Completed', render: (row) => <span className='text-xs text-muted-foreground'>{new Date(row.created_at).toLocaleString()}</span>, sortValue: (row) => row.created_at },
     { key: 'impression', label: 'Impression', defaultVisible: false, render: (row) => <span className='line-clamp-2 text-xs text-muted-foreground'>{row.impression || 'Not recorded'}</span> },
   ];
