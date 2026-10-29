@@ -86,7 +86,7 @@ if (!/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i.test(reportSeed))
 }
 
 const patientHubEntrypoints = readMigration("20260923130000_patient_hub_entrypoint_context_hardening.sql");
-if (!/GRANT EXECUTE ON FUNCTION public\\.record_patient_vitals\\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\\) TO authenticated/i.test(patientHubEntrypoints)) {
+if (!/GRANT EXECUTE ON FUNCTION public\.record_patient_vitals\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\) TO authenticated/i.test(patientHubEntrypoints)) {
   fail("patient vitals grant must match the nine-argument RPC signature");
 }
 const facility = readMigration("20260930014000_clinical_facility_reconciliation_control_plane.sql");
