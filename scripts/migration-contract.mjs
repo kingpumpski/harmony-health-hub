@@ -114,6 +114,8 @@ must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT 
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
 must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
 must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
+const patientHubEntrypoints = read("supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql");
+must(patientHubEntrypoints,/GRANT EXECUTE ON FUNCTION public\\.record_patient_vitals\\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\\) TO authenticated/i,"patient vitals grant must match the nine-argument RPC signature");
 const facility = read('supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql');
 const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? '';
 assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_results branch');
