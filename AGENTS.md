@@ -147,3 +147,10 @@ Be factual, concise, and evidence-based. "Fixed" means the root cause was correc
 ### Static contract correction — 2026-10-29
 - Corrected the insurance-claim transition return-type assertion in `scripts/migration-contract.mjs`: its regex literal had been double-escaped and could not match the intended SQL function declaration.
 - This is a source-level test-harness correction only. The static contract, clean migration replay, and required workflow checks remain unverified until they complete against the new branch head.
+
+
+### Newly confirmed replay defect — 2026-10-29
+- Latest migration-contract run `40859996108` passed both static checks (PL/pgSQL delimiter validator and migration-contract script) but clean replay failed at `supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql`.
+- PostgreSQL reported SQLSTATE `42P13`: `public.seed_facility_reports(uuid)` was originally declared `RETURNS INTEGER` in `20260913162000_harden_reports_center_seed_function.sql`, then a later `CREATE OR REPLACE FUNCTION` attempted to change it to `RETURNS void`, which PostgreSQL rejects.
+- Fixed the later definition to preserve `RETURNS integer`, capture `ROW_COUNT` in `v_count`, and return that count. Added static regression assertions in `scripts/migration-contract.mjs`.
+- This source correction is not yet verified by a new clean replay. Continue fixing the next failure reported by the first fresh replay, and do not mark the migration workstream complete until all required checks pass.
