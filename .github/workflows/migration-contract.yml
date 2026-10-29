@@ -7,12 +7,14 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'scripts/check-plpgsql-delimiters.mjs'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'scripts/check-plpgsql-delimiters.mjs'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +36,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Validate PL/pgSQL dollar-quote delimiters
+        run: node scripts/check-plpgsql-delimiters.mjs
       - name: Validate legacy schema compatibility contract and security
         if: hashFiles('scripts/migration-contract.mjs') != ''
         run: node scripts/migration-contract.mjs
