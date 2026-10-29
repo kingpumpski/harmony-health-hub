@@ -134,5 +134,6 @@ This section tracks the user's multi-prompt migration-reliability workstream. Do
 
 - Live Supabase project `ygqoptvezotdqhtimdkr` is active on PostgreSQL 17.6.1.166. Its migration ledger includes the historical tariff and RPC migrations listed above; this is evidence to prefer a forward repair over editing deployed migration files.
 - The claim lifecycle and claim financial function return-type defects are independent from the tariff category write-path defects; all must be tested.
+- A fresh review of the recorded PR #421/#427 replay logs found a separate deterministic failure at `supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql`: `public.lab_results` has no `patient_id` column, but the `lab_results` branch of `public.reconcile_clinical_facility_record` selected `r.patient_id`. The repair branch now derives patient lineage via `lab_orders` (`lo.patient_id`) and its static migration contract asserts this invariant. This is a source-level correction only; current-head CI and clean replay have not yet reported results for the new commits.
 - No repair is complete until a clean disposable-database replay and the relevant post-replay contracts pass on the exact commit being reported.
 - Do not apply migrations to the live project, alter branch protection, or merge PRs as part of diagnosis without explicit authorization.
