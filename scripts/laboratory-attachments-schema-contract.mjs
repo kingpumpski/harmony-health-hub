@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+const catalogueMigration = readFileSync(new URL('../supabase/migrations/20261013170000_lab_paid_queue_reports_and_catalogue.sql', import.meta.url), 'utf8');
 const panelMigration = readFileSync(new URL('../supabase/migrations/20261013180000_laboratory_test_panels.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20261013190000_repair_lab_result_attachments_schema.sql', import.meta.url), 'utf8');
 const compatibilityMigration = readFileSync(new URL('../supabase/migrations/20261013200000_laboratory_api_schema_compatibility.sql', import.meta.url), 'utf8');
@@ -21,8 +22,8 @@ assert.match(panelMigration, /CREATE TABLE public\.lab_test_groups/, 'panel migr
 assert.match(panelMigration, /facility_id uuid NOT NULL REFERENCES public\.healthcare_facilities\(id\)/, 'laboratory panels must reference the canonical healthcare_facilities table');
 assert.doesNotMatch(panelMigration, /REFERENCES public\.facilities\(id\)/, 'panel migration must not reference the nonexistent legacy facilities table');
 assert.match(panelMigration, /CREATE TABLE public\.lab_test_group_items/, 'panel migration must create panel-to-test relationships');
-assert.match(panelMigration, /ADD COLUMN group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'lab orders must support panel membership');
-assert.match(panelMigration, /ADD COLUMN parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'lab orders must support panel child-order lineage');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'lab orders must support panel membership');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'lab orders must support panel child-order lineage');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_test_groups/, 'panel migration must provide the frontend read RPC');
 assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.save_laboratory_test_group/, 'panel migration must provide the panel save RPC');
 assert.match(panelMigration, /SET search_path = ''/, 'panel security-definer functions must pin an empty search path');
@@ -99,5 +100,24 @@ assert.match(approvalReconciliation, /so\.related_entity_id = coalesce\(o\.paren
 assert.match(approvalReconciliation, /so\.status IN \('released', 'in_progress', 'completed'\)/, 'approval must require a released billing service order');
 assert.match(approvalReconciliation, /REVOKE ALL ON FUNCTION public\.approve_lab_result\(uuid\) FROM PUBLIC, anon/, 'approval RPC must not be publicly or anonymously executable');
 assert.match(approvalReconciliation, /NOTIFY pgrst, 'reload schema'/, 'approval reconciliation must refresh the PostgREST schema cache');
+
+// The connected database has these migrations pending out of order relative to
+// already-recorded newer versions. Guard the local chain so reconciliation adds
+// the exact columns and RPCs the deployed frontend calls, in a safe sequence.
+assert.match(catalogueMigration, /ADD COLUMN IF NOT EXISTS sample_quantity text/, 'catalogue migration must add the sample quantity field used by the workspace');
+assert.match(catalogueMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_workspace/, 'catalogue migration must provide the laboratory workspace RPC');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES public\.lab_test_groups\(id\)/, 'panel migration must add the nullable group foreign key idempotently');
+assert.match(panelMigration, /ADD COLUMN IF NOT EXISTS parent_order_id uuid REFERENCES public\.lab_orders\(id\)/, 'panel migration must add the parent order foreign key idempotently');
+assert.match(panelMigration, /CREATE OR REPLACE FUNCTION public\.get_laboratory_workspace/, 'panel migration must replace the workspace RPC after adding panel columns');
+assert.match(catalogueMigration, /CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/, 'earlier diagnostic migration must safely provision attachment metadata');
+assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/, 'repair migration must be safe when attachment metadata was already provisioned');
+for (const column of ['lab_order_id', 'lab_result_id', 'facility_id', 'storage_path', 'file_name', 'mime_type', 'file_size_bytes', 'uploaded_by', 'created_at']) {
+  assert.ok(catalogueMigration.includes(column), `catalogue migration must define attachment field ${column}`);
+  assert.ok(migration.includes(column), `repair migration must preserve attachment field ${column}`);
+}
+assert.match(migration, /DROP POLICY IF EXISTS lab_result_attachments_facility_read/, 'repair migration must reconcile the earlier read policy without duplicate-policy failures');
+assert.match(migration, /DROP POLICY IF EXISTS lab_result_attachments_storage_read/, 'repair migration must reconcile the earlier storage policy without duplicate-policy failures');
+assert.ok(Number('20261014170000') > Number('20261013210000'), 'final approval hardening must run after the older panel migration that replaces the approval RPC');
+assert.ok(Number('20261014120000') > Number('20261013200000'), 'attachment read hardening must run after the compatibility RPC is introduced');
 
 console.log('Laboratory attachment schema repair contract passed.');
