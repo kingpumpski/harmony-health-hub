@@ -78,10 +78,10 @@ if (!claim.includes("AS $claim_financials$") || !claim.includes("$claim_financia
 if (claim.includes("END; $;")) fail("insurance claim financial migration contains a bare dollar-quote terminator");
 
 const reportSeed = readMigration("supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql");
-if (!/CREATE OR REPLACE FUNCTION public\\.seed_facility_reports\\(_facility_id uuid\\)\\s+RETURNS integer\\b/i.test(reportSeed)) {
+if (!/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS integer\b/i.test(reportSeed)) {
   fail("facility report seeding must preserve its established INTEGER RPC return contract");
 }
-if (!/GET DIAGNOSTICS v_count = ROW_COUNT;\\s+RETURN v_count;/i.test(reportSeed)) {
+if (!/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i.test(reportSeed)) {
   fail("facility report seeding must return the affected row count");
 }
 
