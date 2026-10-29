@@ -80,6 +80,9 @@ assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(dia
 
 const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
 must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSONB\b/i,'claim transition hardening must preserve the established JSONB RPC return type');
+const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
+must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS integer\b/i,'facility report seeding must preserve its established INTEGER RPC return type');
+must(reportSeedMigration,/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i,'facility report seeding must return the affected row count');
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_groups/i,'legacy repair must tolerate existing panel table'],
