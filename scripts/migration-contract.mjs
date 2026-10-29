@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = process.cwd();
 const dir = path.join(root, 'supabase', 'migrations');
-const files = fs.readdirSync(dir).filter((n) => /^\d{14}_.+\.sql$/.test(n)).sort();
+const sqlFiles = fs.readdirSync(dir).filter((n) => n.endsWith('.sql')).sort();
+for (const name of sqlFiles) assert.match(name, /^\d{14}_.+\.sql$/, `Invalid migration filename (expected <14-digit-version>_<name>.sql): ${name}`);
+const files = sqlFiles;
 const versions = new Map();
 for (const name of files) {
   const version = name.slice(0, 14);
