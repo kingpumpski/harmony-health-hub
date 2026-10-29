@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.transition_insurance_claim_canonical(
   _rejection_reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL
 ) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $claim_transition$$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $claim_transition$
 DECLARE
   c public.insurance_claims%ROWTYPE;
   uid UUID := auth.uid();
