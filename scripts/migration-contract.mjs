@@ -78,14 +78,14 @@ if (!claim.includes("AS $claim_financials$") || !claim.includes("$claim_financia
 if (claim.includes("END; $;")) fail("insurance claim financial migration contains a bare dollar-quote terminator");
 
 const facility = readMigration("20260930014000_clinical_facility_reconciliation_control_plane.sql");
-const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\\s\\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? "";
+const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? "";
 if (!labResultBranch) {
   fail("clinical facility reconciliation must retain a lab_results branch");
 } else {
-  if (/\\br\\.patient_id\\b/i.test(labResultBranch)) {
+  if (/\br\.patient_id\b/i.test(labResultBranch)) {
     fail("lab_results reconciliation must not read patient_id from lab_results; derive it through the parent lab_orders row");
   }
-  if (!/left join public\\.lab_orders lo on lo\\.id=r\\.lab_order_id/i.test(labResultBranch) || !/\\blo\\.patient_id\\b/i.test(labResultBranch)) {
+  if (!/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i.test(labResultBranch) || !/\blo\.patient_id\b/i.test(labResultBranch)) {
     fail("lab_results reconciliation must derive patient lineage from the parent lab_orders row");
   }
 }
