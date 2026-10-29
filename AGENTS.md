@@ -109,3 +109,30 @@ A static contract passing does not prove clean replay; clean replay does not pro
 ## 10. Required completion report
 
 For non-trivial fixes, report root cause/severity, files and database objects changed, migration/security implications, tests and commands actually run, commit SHA and PR/branch, latest CI statuses and the exact commit each run tested, remaining risks, blocked/unverified checks, and next action. “Fixed” means the root cause was corrected and relevant verification passed—not merely that code was edited.
+
+## 11. Migration replay repair workstream — pending checklist (2026-10-29)
+
+This section tracks the user's multi-prompt migration-reliability workstream. Do not silently mark pending prompts complete, omit them from handoffs, or treat a source edit as verification. Keep this ledger current as work proceeds.
+
+### Prompt status
+
+- [x] Prompt 01 — immediate `service_tariffs.category` seed correction: source-level correction exists on the migration repair branch. Clean replay evidence is still required before this item can be called fully verified.
+- [ ] Prompt 02 — audit every migration for latent NOT NULL / SQLSTATE 23502 risks. Initial static review found two additional write paths that omit the required `service_tariffs.category` column:
+  - `supabase/migrations/20260917120500_add_reference_data_import_rpcs.sql`, function `public.import_service_tariffs(text,jsonb)`.
+  - `supabase/migrations/20260926012000_governed_catalogue_creation_privileges.sql`, function `public.create_service_catalogue_item(text,text,text,text,numeric,text)`; a later migration `20260926012100_fix_catalogue_service_unit_default.sql` redefines this function and must also be inspected/fixed consistently.
+  The live migration ledger reports these historical migrations as already applied under versions `20260917112203`, `20260926005923`, and `20260926005934`. Do not rewrite those historical migrations as the production repair. Add a forward migration after creating it with the supported Supabase CLI workflow, preserve RPC compatibility where feasible, and add regression coverage. Inspect caller/import payloads before deciding whether missing categories should be validated or mapped; never invent a category silently.
+- [ ] Prompt 03 — harden the `service_tariffs` schema and seed-data contract. Do not add a broad default for `category` unless domain review proves it safe; prefer explicit category values and a validated reference contract.
+- [ ] Prompt 04 — strengthen CI with a mandatory clean migration replay gate, post-replay schema/RPC/RLS checks, useful failure summaries, and a local developer check. Existing workflow has static and database-contract jobs, but required branch-protection enforcement and fresh current-head replay evidence remain unverified.
+- [ ] Prompt 05 — update and validate the full migration safety guidance in `AGENTS.md`; existing rules are present, but the complete prompt-specific acceptance checklist has not been signed off.
+- [ ] Prompt 06 — inventory all open PRs targeting `main`, classify migration/schema impact and conflicts, then reconcile branches only after the canonical replay fix is verified.
+- [ ] Prompt 07 — complete post-fix replay, schema/RPC/security/HR-payroll tests, generated-type comparison, team-lead sign-off, and `MIGRATION_GUIDE.md`.
+- [ ] Prompt 08 — pending; retain its original wording and requirements when recovered. Do not substitute an invented scope.
+- [ ] Prompt 09 — pending; retain its original wording and requirements when recovered. Do not substitute an invented scope.
+- [ ] GLOBAL SAFETY AND CHANGE-CONTROL RULES — pending explicit reconciliation against the original user-provided rules. Until then, continue to apply the safety requirements already stated in this guide; do not infer that the pending section has been completed.
+
+### Current evidence and release gate
+
+- Live Supabase project `ygqoptvezotdqhtimdkr` is active on PostgreSQL 17.6.1.166. Its migration ledger includes the historical tariff and RPC migrations listed above; this is evidence to prefer a forward repair over editing deployed migration files.
+- The claim lifecycle and claim financial function return-type defects are independent from the tariff category write-path defects; all must be tested.
+- No repair is complete until a clean disposable-database replay and the relevant post-replay contracts pass on the exact commit being reported.
+- Do not apply migrations to the live project, alter branch protection, or merge PRs as part of diagnosis without explicit authorization.
