@@ -37,6 +37,12 @@ BEGIN
       IF p.with_check IS NOT NULL THEN
         v_check := 'public.current_user_has_facility_access(id)';
       END IF;
+    ELSIF p.tablename = 'facility_report_config'
+       AND p.policyname = 'facility_report_config_access' THEN
+      -- This policy's canonical expression is bound to facility_id. Use an
+      -- explicit target because pg_get_expr may deparse the auth.uid() scalar
+      -- subquery in a form not covered by the generic expression matcher.
+      v_qual := 'public.current_user_has_facility_access(facility_id)';
     ELSE
       v_qual := regexp_replace(
         v_qual,
