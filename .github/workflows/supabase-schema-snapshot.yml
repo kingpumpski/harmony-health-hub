@@ -1,0 +1,67 @@
+name: Supabase schema snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledgement:
+        description: "Enter SNAPSHOT_SCHEMA to confirm a read-only production schema export"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-schema-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: Export linked production schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Require explicit snapshot acknowledgement
+        shell: bash
+        run: |
+          test "${{ inputs.acknowledgement }}" = "SNAPSHOT_SCHEMA"
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+
+      - name: Verify Docker engine
+        run: docker info
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Create schema dump target and export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/schema
+          supabase db dump --linked --file artifacts/schema/remote-schema.sql
+          test -s artifacts/schema/remote-schema.sql
+          sha256sum artifacts/schema/remote-schema.sql > artifacts/schema/SHA256SUMS
+          {
+            echo "project_ref=$SUPABASE_PROJECT_REF"
+            echo "captured_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "scope=remote user-defined database schemas; no application row data"
+          } > artifacts/schema/metadata.txt
+
+      - name: Upload schema snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-health-hub-schema-snapshot
+          path: artifacts/schema/
+          if-no-files-found: error
+          retention-days: 30
