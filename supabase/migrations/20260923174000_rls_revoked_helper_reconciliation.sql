@@ -39,6 +39,24 @@ $function$;
 REVOKE ALL ON FUNCTION public.current_user_is_clinical_staff() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.current_user_is_clinical_staff() TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.current_user_can_edit_patient_record()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT COALESCE((SELECT auth.uid()) IS NOT NULL, false)
+     AND EXISTS (
+       SELECT 1
+       FROM public.user_roles
+       WHERE user_id = (SELECT auth.uid())
+         AND role IN ('admin','practitioner','nurse','midwife','front_desk')
+     );
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_can_edit_patient_record() FROM PUBLIC, anon;
+
 -- Replace remaining RLS references to the intentionally non-client-callable
 -- is_clinical_staff(UUID) helper with the current-user-only helper.
 -- This preserves the existing authorization semantics without reopening
