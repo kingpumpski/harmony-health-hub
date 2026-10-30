@@ -6,7 +6,7 @@ REVOKE EXECUTE ON FUNCTION public.current_user_has_role(public.app_role)
   FROM anon, public;
 
 REVOKE EXECUTE ON FUNCTION public.current_user_is_clinical_staff()
-  FROM authenticated, anon, public;
+  FROM anon, public;
 
 REVOKE EXECUTE ON FUNCTION public.current_user_can_edit_patient_record()
   FROM authenticated, anon, public;
