@@ -16,6 +16,12 @@ begin
     'notification_inbound_emails'
   ]
   loop
+    -- Some legacy notification table names may not exist in this schema lineage.
+    -- Apply deny policies only to relations that are actually present.
+    IF to_regclass(format('public.%I', t)) IS NULL THEN
+      CONTINUE;
+    END IF;
+
     execute format(
       'drop policy if exists %I on public.%I',
       'notification_internal_deny_anon', t
