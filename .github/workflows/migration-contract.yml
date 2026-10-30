@@ -45,6 +45,8 @@ jobs:
       - name: Validate legacy schema compatibility contract and security
         if: hashFiles('scripts/migration-contract.mjs') != ''
         run: node scripts/migration-contract.mjs
+      - name: Verify current-user RLS helper execution boundary
+        run: node supabase/tests/database/current_user_helper_execute_boundary_contract.mjs
       - name: Explain skipped static contract
         if: hashFiles('scripts/migration-contract.mjs') == ''
         run: echo "Static migration contract is not present on this legacy PR branch; clean replay still runs, and the full contract is required on branches that include the contract assets."
