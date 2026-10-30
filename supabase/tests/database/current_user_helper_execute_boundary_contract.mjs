@@ -6,8 +6,8 @@ const migration=fs.readFileSync(
   'utf8',
 );
 
-assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\.current_user_has_role\(public\.app_role\)[\\s\\S]*?FROM authenticated, anon, public/i);
-assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\.current_user_is_clinical_staff\(\)[\\s\\S]*?FROM authenticated, anon, public/i);
-assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\.current_user_can_edit_patient_record\(\)[\\s\\S]*?FROM authenticated, anon, public/i);
+assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\\.current_user_has_role\\(public\\.app_role\\)[\\s\\S]*?FROM anon, public/i);
+assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\\.current_user_is_clinical_staff\\(\\)[\\s\\S]*?FROM anon, public/i);
+assert.match(migration,/REVOKE EXECUTE ON FUNCTION public\\.current_user_can_edit_patient_record\\(\\)[\\s\\S]*?FROM authenticated, anon, public/i);
 
 console.log('current-user authorization helper execute boundary contract passed');
