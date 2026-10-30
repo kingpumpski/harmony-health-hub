@@ -13,20 +13,11 @@ CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_create
 CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_updated_by
   ON public.facility_notification_provider_connections(updated_by);
 
--- Keep client-visible notification RLS policies from re-evaluating auth state per row.
-DROP POLICY IF EXISTS "users manage own notification channel preferences" ON public.notification_channel_preferences;
-CREATE POLICY "users manage own notification channel preferences"
-  ON public.notification_channel_preferences
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
-
-DROP POLICY IF EXISTS "users manage own push subscriptions" ON public.notification_push_subscriptions;
-CREATE POLICY "users manage own push subscriptions"
-  ON public.notification_push_subscriptions
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
+-- Client-visible notification preferences and device subscriptions use the
+-- canonical tables/policies established by the production notification migrations:
+-- public.user_notification_preferences and public.notification_devices.
+-- Do not reference the retired, non-existent notification_channel_preferences
+-- or notification_push_subscriptions table names here.
 
 -- Facility notification configuration is read by the Settings control plane.
 -- IT administrators have the same facility-scoped operational read/write access as admins,
