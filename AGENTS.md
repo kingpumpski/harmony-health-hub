@@ -165,3 +165,35 @@ Be factual, concise, and evidence-based. "Fixed" means the root cause was correc
 - Clean replay on the current repair heads reached `20260923130000_patient_hub_entrypoint_context_hardening.sql` and failed with SQLSTATE `42883`: the `GRANT EXECUTE` referenced `record_patient_vitals(uuid, numeric, numeric, numeric, numeric, numeric, numeric, numeric)`, but the function is defined with one UUID plus eight NUMERIC parameters.
 - Corrected the GRANT to the exact nine-argument signature and added a static regression assertion. The matching `REVOKE` already used the correct signature; the earlier `20260913004000_patient_hub_entrypoint_schema_reconciliation.sql` grant also has the correct signature.
 - This repair is source-level only until a fresh clean replay on the updated head completes. Continue to inspect the next replay error; do not mark the migration chain complete prematurely.
+
+
+## 14. Verified migration-history reconciliation findings — 2026-10-30
+
+The following findings were verified against the repository and linked Supabase project `ygqoptvezotdqhtimdkr`. Treat them as a migration incident record, not permission to mutate production history.
+
+### Repository and remote ledger facts
+- The committed `supabase-migration-list.txt` was fetched from the default branch. It contains 651 local version rows, 417 remote rows, 78 exact timestamp matches, 573 local-only rows, 339 remote-only rows, 21 duplicated local version prefixes, and the invalid literal file `supabase/migrations/$(path)`.
+- The repair branch `fix/missing-ai-diagnosis-schema-migration` (PR #437) contains 661 migration SQL files, all with valid 14-digit timestamp filenames and unique timestamp prefixes; the malformed literal file is absent.
+- Against the linked remote ledger, the repair branch has 661 local files and 417 remote entries. Timestamp-only comparison reports 581 local-only, 337 remote-only, and 80 exact matches.
+- Supabase CLI migration-list comparison is timestamp-only. A separate name-based candidate audit finds 337 remote entries whose names correspond to local migration filenames after removing an optional embedded 14-digit timestamp prefix; 79 of those also match by timestamp. There are 79 remote entries with no current filename/name candidate. Three remote migration names occur more than once.
+- Name similarity is not proof that SQL contents are equivalent or that a migration's effects are present. Never use name matches alone to repair the remote ledger.
+- The linked database currently reports 417 migration ledger rows, first version `20260916002251`, last version `20261026141054`.
+
+### Required reconciliation protocol
+1. Freeze production migration pushes while the incident is open. Do not use `db reset --linked`, do not drop/recreate production objects, and do not run bulk `migration repair`.
+2. Capture and retain a remote schema snapshot before changing migration history. Keep schema-only snapshots separate from data backups; a schema dump does not back up patient, billing, payroll, or other application rows.
+3. Build a reviewed reconciliation manifest for every remote row, with exactly one classification: exact local timestamp; candidate renamed migration with verified source/history; remote-only migration whose SQL must be recovered; duplicate remote application; or unresolved. Record the candidate filename, evidence, and reviewer decision.
+4. Recover missing SQL from Git history/branches where possible. For any unrecoverable remote-only history, compare the live catalog and relevant data invariants, then create a reviewed forward-only reconciliation migration. Do not fabricate old SQL or infer effects from migration names.
+5. For a timestamp-renamed migration, verify the original SQL source and that its effects are present before using `supabase migration repair`. Repair changes only `supabase_migrations.schema_migrations`; it does not apply or reverse SQL. Make one small reviewed batch at a time and re-run `supabase migration list --linked` after each batch.
+6. Validate on a disposable clean database, then on a protected staging clone restored from the production schema/data backup. Run schema, RLS, RPC-signature/return-type, grants, trigger, foreign-key, and application contracts. Only then schedule a production change window.
+7. Preserve the complete original migration ledger as an immutable incident artifact. Future migrations must be created with `supabase migration new`, use unique 14-digit versions, and never rewrite already-applied versions.
+
+### Docker and schema snapshot
+- GitHub Actions `ubuntu-latest` successfully started the local Supabase stack during the clean-replay job; the hosted runner's Docker engine is available. The local Windows Docker issue is therefore separate from the SQL replay defect.
+- `supabase db dump` runs `pg_dump` in a container, so a working Docker daemon is required. Always create the output directory first and pass an explicit `--file` destination.
+- Added `.github/workflows/supabase-schema-snapshot.yml`, a manually dispatched, acknowledged, read-only schema export workflow. It writes to `artifacts/schema/remote-schema.sql`, checksums the output, and uploads a 30-day artifact. This is a schema snapshot only, not a data backup.
+
+### Latest confirmed clean-replay defect and source correction
+- The 2026-10-29 clean replay failed in `20260923150000_medication_patient_context_hardening.sql`: it attempted to change `public.transition_medication_administration(uuid,text,text,text,uuid)` from the earlier `RETURNS uuid` contract to `RETURNS public.medication_administrations` using `CREATE OR REPLACE FUNCTION`. PostgreSQL rejects return-type changes with SQLSTATE `42P13`.
+- The later canonical medication lifecycle migrations use `RETURNS jsonb`. The repair branch now explicitly drops and recreates that function at this not-yet-applied migration point with the JSONB contract and reapplies authenticated-only grants. The dollar-quote terminator was also verified as `$$;`.
+- The new repair must be considered provisional until the latest clean replay completes and any subsequent deterministic SQL errors are fixed in order. A passing static contract or Quality job is not proof of a successful database replay.
