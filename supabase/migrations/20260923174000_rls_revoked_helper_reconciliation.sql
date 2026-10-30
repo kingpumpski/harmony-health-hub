@@ -1,3 +1,44 @@
+-- Restore current-user authorization wrappers that were present in the
+-- remote canonical schema but absent from the repository's clean replay chain.
+-- These wrappers accept no caller-supplied user ID and are required by the
+-- authenticated RLS policies below. Keep them unavailable to anon/PUBLIC.
+
+CREATE OR REPLACE FUNCTION public.current_user_has_role(_role public.app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT public.has_role((SELECT auth.uid()), _role);
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_has_role(public.app_role) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.current_user_is_clinical_staff()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT COALESCE((SELECT auth.uid()) IS NOT NULL, false)
+     AND EXISTS (
+       SELECT 1
+       FROM public.user_roles
+       WHERE user_id = (SELECT auth.uid())
+         AND role IN (
+           'admin','practitioner','nurse','midwife','specialist_nurse',
+           'lab_technician','radiologist','pharmacist','accountant',
+           'front_desk','canteen'
+         )
+     );
+$function$;
+
+REVOKE ALL ON FUNCTION public.current_user_is_clinical_staff() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_is_clinical_staff() TO authenticated;
+
 -- Replace remaining RLS references to the intentionally non-client-callable
 -- is_clinical_staff(UUID) helper with the current-user-only helper.
 -- This preserves the existing authorization semantics without reopening
