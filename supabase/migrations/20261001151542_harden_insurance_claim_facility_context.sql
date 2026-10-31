@@ -1,13 +1,13 @@
 -- Restore repository parity for insurance claim facility attribution.
 CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(_patient_id uuid, _payer_name text DEFAULT NULL::text, _member_number text DEFAULT NULL::text, _amount_claimed numeric DEFAULT 0, _invoice_id uuid DEFAULT NULL::uuid)
-RETURNS public.insurance_claims
+RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $function$
 DECLARE
   uid uuid := auth.uid();
-  v_claim public.insurance_claims;
+  v_claim_id uuid;
   v_invoice uuid := _invoice_id;
   v_company uuid;
   v_company_name text;
@@ -41,9 +41,9 @@ BEGIN
   IF v_payer IS NULL THEN RAISE EXCEPTION 'Insurance payer is required when no canonical insurer is linked to the patient'; END IF;
   INSERT INTO public.insurance_claims(invoice_id,patient_id,facility_id,provider,policy_number,payer_name,member_number,insurance_company_id,amount_claimed,amount_approved,amount_paid,status,notes,submitted_at)
   VALUES(v_invoice,_patient_id,v_facility,v_payer,NULLIF(btrim(_member_number),''),v_payer,NULLIF(btrim(_member_number),''),v_company,_amount_claimed,NULL,0,'draft',NULL,now())
-  RETURNING * INTO v_claim;
-  PERFORM public.record_system_audit('insurance_claim_draft_created','insurance','insurance_claim',v_claim.id,'info',jsonb_build_object('patient_id',_patient_id,'invoice_id',v_invoice,'facility_id',v_facility,'amount_claimed',_amount_claimed));
-  RETURN v_claim;
+  RETURNING id INTO v_claim_id;
+  PERFORM public.record_system_audit('insurance_claim_draft_created','insurance','insurance_claim',v_claim_id,'info',jsonb_build_object('patient_id',_patient_id,'invoice_id',v_invoice,'facility_id',v_facility,'amount_claimed',_amount_claimed));
+  RETURN v_claim_id;
 END;
 $function$;
 
