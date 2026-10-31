@@ -35,27 +35,48 @@ RETURNS TABLE(
   timezone text,
   currency text
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
-  SELECT
-    hf.id,
-    hf.name,
-    hf.facility_code,
-    hf.facility_type,
-    hf.district,
-    hf.region,
-    hf.dhims2_uid,
-    COALESCE(fc.timezone,'Africa/Accra'),
-    COALESCE(fc.currency,'GHS')
-  FROM public.healthcare_facilities hf
-  LEFT JOIN public.facility_configuration fc ON true
-  WHERE hf.id = public.current_user_facility_id()
-    AND hf.is_active = true
-    AND auth.uid() IS NOT NULL
-  LIMIT 1;
+BEGIN
+  -- This migration runs before current_user_facility_id() is installed.
+  -- Resolve the single active membership without introducing a forward
+  -- function dependency; the canonical facility-context migration replaces
+  -- this transitional implementation later in the migration sequence.
+  IF auth.uid() IS NULL
+     OR to_regclass('public.facility_memberships') IS NULL THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY EXECUTE
+    'SELECT
+       hf.id,
+       hf.name,
+       hf.facility_code,
+       hf.facility_type,
+       hf.district,
+       hf.region,
+       hf.dhims2_uid,
+       COALESCE(fc.timezone, ''Africa/Accra''),
+       COALESCE(fc.currency, ''GHS'')
+     FROM public.healthcare_facilities hf
+     LEFT JOIN public.facility_configuration fc ON true
+     WHERE hf.id = (
+       SELECT fm.facility_id
+       FROM public.facility_memberships fm
+       WHERE fm.user_id = $1
+         AND fm.is_active = true
+       GROUP BY fm.facility_id
+       HAVING count(*) = 1
+       ORDER BY fm.facility_id
+       LIMIT 1
+     )
+       AND hf.is_active = true
+     LIMIT 1'
+  USING auth.uid();
+END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.get_appointment_clinician() FROM PUBLIC, anon;
