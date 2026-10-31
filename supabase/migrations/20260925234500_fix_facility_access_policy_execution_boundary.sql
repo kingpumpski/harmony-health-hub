@@ -43,6 +43,11 @@ BEGIN
       -- explicit target because pg_get_expr may deparse the auth.uid() scalar
       -- subquery in a form not covered by the generic expression matcher.
       v_qual := 'public.current_user_has_facility_access(facility_id)';
+    ELSIF p.tablename = 'report_generation_items'
+       AND p.policyname = 'report_generation_items_insert' THEN
+      -- Preserve the parent-run existence check and its facility scope. The
+      -- nested auth.uid() expression is deparsed differently across versions.
+      v_check := 'EXISTS (SELECT 1 FROM public.report_generation_runs r WHERE r.id = run_id AND public.current_user_has_facility_access(r.facility_id))';
     ELSE
       v_qual := regexp_replace(
         v_qual,
