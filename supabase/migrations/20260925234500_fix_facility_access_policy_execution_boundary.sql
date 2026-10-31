@@ -48,6 +48,11 @@ BEGIN
       -- Preserve the parent-run existence check and its facility scope. The
       -- nested auth.uid() expression is deparsed differently across versions.
       v_check := 'EXISTS (SELECT 1 FROM public.report_generation_runs r WHERE r.id = run_id AND public.current_user_has_facility_access(r.facility_id))';
+    ELSIF p.tablename = 'report_submissions'
+       AND p.policyname = 'report_submissions_access' THEN
+      -- Preserve the facility_id scope; the original policy is a direct
+      -- facility-membership check for the authenticated session.
+      v_qual := 'public.current_user_has_facility_access(facility_id)';
     ELSE
       v_qual := regexp_replace(
         v_qual,
