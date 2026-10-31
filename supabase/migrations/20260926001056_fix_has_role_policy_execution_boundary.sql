@@ -16,6 +16,10 @@ BEGIN
   LOOP
     v_qual := p.qual;
     v_check := p.with_check;
+    IF p.tablename = 'report_definitions'
+       AND p.policyname = 'report_definitions_read_authenticated' THEN
+      v_qual := 'is_active = TRUE OR public.current_user_has_role(''admin''::public.app_role)';
+    END IF;
     v_qual := replace(v_qual, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
     v_check := replace(v_check, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
     v_qual := replace(v_qual, 'has_role((SELECT auth.uid() AS uid), ', 'current_user_has_role(');
