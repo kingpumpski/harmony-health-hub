@@ -7,14 +7,14 @@ CREATE OR REPLACE FUNCTION public.create_insurance_claim_draft(
   _amount_claimed numeric DEFAULT 0,
   _invoice_id uuid DEFAULT NULL
 )
-RETURNS public.insurance_claims
+RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'pg_catalog','public'
 AS $function$
 DECLARE
   uid uuid := auth.uid();
-  v_claim public.insurance_claims;
+  v_claim_id uuid;
   v_invoice uuid := _invoice_id;
   v_company uuid;
   v_company_name text;
@@ -118,9 +118,9 @@ BEGIN
     NULL,
     now()
   )
-  RETURNING * INTO v_claim;
+  RETURNING id INTO v_claim_id;
 
-  RETURN v_claim;
+  RETURN v_claim_id;
 END;
 $function$;
 
