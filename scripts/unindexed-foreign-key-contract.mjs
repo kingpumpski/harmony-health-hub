@@ -18,6 +18,17 @@ const required = [
   'idx_user_active_facilities_facility_id',
 ];
 
+const activeFacilityTableStart = migration.indexOf('create table if not exists public.user_active_facilities');
+const activeFacilityIndex = migration.indexOf('idx_user_active_facilities_facility_id');
+if (activeFacilityTableStart < 0 || activeFacilityIndex < activeFacilityTableStart) {
+  console.error('Unindexed FK contract failed: active facility context table must exist before its FK index.');
+  process.exitCode = 1;
+}
+if (!migration.includes('user_active_facilities_select_own') || !migration.includes('using (user_id = (select auth.uid()))')) {
+  console.error('Unindexed FK contract failed: active facility context must retain caller-scoped SELECT RLS.');
+  process.exitCode = 1;
+}
+
 const missing = required.filter((name) => !migration.includes(name));
 if (missing.length) {
   console.error('Unindexed FK contract failed:', missing);
