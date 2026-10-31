@@ -25,6 +25,18 @@ BEGIN
       v_qual := 'public.current_user_has_role(''admin''::public.app_role)';
       v_check := 'public.current_user_has_role(''admin''::public.app_role)';
     END IF;
+    IF p.tablename = 'facility_memberships'
+       AND p.policyname = 'facility_memberships_admin_write' THEN
+      v_qual := 'public.current_user_has_role(''admin''::public.app_role)';
+      v_check := 'public.current_user_has_role(''admin''::public.app_role)';
+    ELSIF p.tablename = 'facility_memberships'
+       AND p.policyname = 'facility_memberships_self_or_admin' THEN
+      v_qual := 'user_id = (select auth.uid()) OR public.current_user_has_role(''admin''::public.app_role)';
+    ELSIF p.tablename = 'facility_report_config'
+       AND p.policyname = 'facility_report_config_admin_write' THEN
+      v_qual := 'public.current_user_has_role(''admin''::public.app_role)';
+      v_check := 'public.current_user_has_role(''admin''::public.app_role)';
+    END IF;
     v_qual := replace(v_qual, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
     v_check := replace(v_check, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
     v_qual := replace(v_qual, 'has_role((SELECT auth.uid() AS uid), ', 'current_user_has_role(');
