@@ -38,8 +38,9 @@ create index if not exists idx_patient_account_credits_invoice_id
 create index if not exists idx_patient_account_credits_payment_id
   on public.patient_account_credits (payment_id);
 
-create index if not exists idx_staff_signatures_facility_id
-  on public.staff_signatures (facility_id);
+-- Staff signatures are stored in public.user_document_signatures,
+-- which is keyed by user_id and has no facility_id foreign key.
+-- Do not create a facility_id index for a non-existent legacy table.
 
 create index if not exists idx_user_active_facilities_facility_id
   on public.user_active_facilities (facility_id);
