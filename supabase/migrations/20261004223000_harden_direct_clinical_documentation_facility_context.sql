@@ -15,6 +15,11 @@ BEGIN
  RETURN v;
 END;$function$;
 
+-- Apply the fixed, system-only search_path after the RPC exists. All non-system
+-- objects in this SECURITY DEFINER function are schema-qualified.
+ALTER FUNCTION public.create_nursing_note(uuid,text,text,text,text,text,uuid,uuid)
+  SET search_path = pg_catalog;
+
 CREATE OR REPLACE FUNCTION public.create_ophthalmology_exam(_patient_id uuid,_visual_acuity text,_refraction text,_keratometry text,_intraocular_pressure numeric,_color_vision text,_fundus_notes text)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$
 DECLARE v_id uuid; pf uuid;
