@@ -42,5 +42,25 @@ create index if not exists idx_patient_account_credits_payment_id
 -- which is keyed by user_id and has no facility_id foreign key.
 -- Do not create a facility_id index for a non-existent legacy table.
 
+-- Active facility context is referenced by the facility governance and
+-- membership workflows. No earlier migration creates this relation, so define
+-- its minimal canonical shape before adding its FK index or dependent routines.
+create table if not exists public.user_active_facilities (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  facility_id uuid not null references public.healthcare_facilities(id) on delete restrict,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_active_facilities enable row level security;
+revoke all on table public.user_active_facilities from public, anon, authenticated;
+
+drop policy if exists user_active_facilities_select_own
+  on public.user_active_facilities;
+create policy user_active_facilities_select_own
+  on public.user_active_facilities
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
 create index if not exists idx_user_active_facilities_facility_id
   on public.user_active_facilities (facility_id);
