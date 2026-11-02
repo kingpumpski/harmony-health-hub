@@ -184,3 +184,9 @@ The local Batch 11 and Batch 12 SECURITY DEFINER hardening migrations have been 
 ## High-risk RPC execution-boundary replay
 
 Clean replay next reached `20260930012001_harden_high_risk_rpc_execution_boundaries.sql` and failed because `public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric)` is not present at that point in the local chain. The migration now checks each exact signature and applies its search-path and EXECUTE privilege changes only when that function exists. It preserves an existing empty `search_path`, denies PUBLIC/anon, and grants authenticated execution for functions that are present. The missing RPC is not fabricated; its canonical source remains governed by later migrations or the production baseline. A static regression contract protects this behavior.
+
+## Prescription compatibility schema dependency
+
+The clean replay next exposed that `20260930014000_clinical_facility_reconciliation_control_plane.sql` and later patient treatment-context projections depend on `prescriptions.medication_name`, `route`, and `updated_at`, while the original local base table only defined `medication`. A read-only inspection of production confirmed that the live `prescriptions` table already contains all three compatibility fields.
+
+The local migration now establishes those columns before downstream use, backfills missing `medication_name` values from `medication` without overwriting populated names, and enforces non-null `updated_at`. The change aligns local replay with the observed live schema; it does not modify production. A dedicated contract protects the ordering and backfill behavior.
