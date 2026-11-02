@@ -210,5 +210,8 @@ jobs:
       - name: Production migration baseline fail-closed contract
         run: npm run test:production-migration-baseline-gate
 
+      - name: High-risk RPC replay safety contract
+        run: npm run test:high-risk-rpc-execution-boundary
+
       - name: Production build
         run: npm run build
