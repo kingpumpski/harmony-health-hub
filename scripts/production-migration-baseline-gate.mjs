@@ -8,14 +8,14 @@ const args = process.argv.slice(2);
 const argValue = (name) => {
   const index = args.indexOf(name);
   if (index >= 0) return args[index + 1];
-  const inline = args.find((arg) => arg.startsWith(\`\${name}=\`));
+  const inline = args.find((arg) => arg.startsWith(name + "="));
   return inline?.slice(name.length + 1);
 };
 const mode = argValue("--mode") ?? "validate";
 const historyFile = argValue("--history-file");
 
 if (!["validate", "apply", "verify"].includes(mode)) {
-  throw new Error(\`Unsupported mode: \${mode}\`);
+  throw new Error("Unsupported mode: " + mode);
 }
 if (!fs.existsSync(statePath)) throw new Error("Production migration baseline state file is missing.");
 
@@ -53,22 +53,22 @@ if (!historyFile) {
 }
 const resolvedHistoryPath = path.resolve(root, historyFile);
 if (!fs.existsSync(resolvedHistoryPath)) {
-  throw new Error(\`Linked migration history file not found: \${resolvedHistoryPath}\`);
+  throw new Error("Linked migration history file not found: " + resolvedHistoryPath);
 }
 
 const localPending = [];
-const lines = fs.readFileSync(resolvedHistoryPath, "utf8").split(/\\r?\\n/);
+const lines = fs.readFileSync(resolvedHistoryPath, "utf8").split(/\r?\n/);
 for (const line of lines) {
   if (!line.includes("|")) continue;
   const columns = line.split("|");
   if (columns.length < 2) continue;
-  const local = columns[0].trim().replace(/[\`"]/g, "");
-  const remote = columns[1].trim().replace(/[\`"]/g, "");
-  const localVersion = /^\\d{14}$/.test(local) ? local : "";
-  const remoteVersion = /^\\d{14}$/.test(remote) ? remote : "";
+  const local = columns[0].trim().replace(/[\x60"]/g, "");
+  const remote = columns[1].trim().replace(/[\x60"]/g, "");
+  const localVersion = /^\d{14}$/.test(local) ? local : "";
+  const remoteVersion = /^\d{14}$/.test(remote) ? remote : "";
   if (!localVersion && !remoteVersion) continue;
   if (localVersion && remoteVersion && localVersion !== remoteVersion) {
-    throw new Error(\`Ambiguous local/remote migration row; refusing production apply: \${line}\`);
+    throw new Error("Ambiguous local/remote migration row; refusing production apply: " + line);
   }
   if (localVersion && !remoteVersion) localPending.push(localVersion);
 }
@@ -78,17 +78,17 @@ const approved = Array.isArray(state.approvedPendingVersions)
   ? [...new Set(state.approvedPendingVersions)].sort()
   : null;
 if (!approved) throw new Error("approvedPendingVersions must be an explicit array in baseline state.");
-const invalidApproved = approved.filter((version) => !/^\\d{14}$/.test(version));
-if (invalidApproved.length) throw new Error(\`Invalid approved migration versions: \${invalidApproved.join(", ")}\`);
+const invalidApproved = approved.filter((version) => !/^\d{14}$/.test(version));
+if (invalidApproved.length) throw new Error("Invalid approved migration versions: " + invalidApproved.join(", "));
 
 if (JSON.stringify(actual) !== JSON.stringify(approved)) {
   console.error("[production-migration-baseline] BLOCKED: linked local-pending migration versions do not exactly match the reviewed allowlist.");
-  console.error(\`Observed pending versions: \${actual.join(", ") || "(none)"}\`);
-  console.error(\`Approved pending versions: \${approved.join(", ") || "(none)"}\`);
+  console.error("Observed pending versions: " + (actual.join(", ") || "(none)"));
+  console.error("Approved pending versions: " + (approved.join(", ") || "(none)"));
   process.exit(1);
 }
 
-console.log(\`[production-migration-baseline] History precheck passed; \${actual.length} pending migration(s) exactly match the approved allowlist.\`);
+console.log("[production-migration-baseline] History precheck passed; " + actual.length + " pending migration(s) exactly match the approved allowlist.");
 if (mode === "validate") {
   console.log("No SQL dry-run was executed. Run local replay and SQL validation before requesting production apply.");
 }
