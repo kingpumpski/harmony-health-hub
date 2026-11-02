@@ -128,7 +128,10 @@
     "test:platform-facility-directory-rpc": "node scripts/platform-facility-directory-rpc-contract.mjs",
     "test:laboratory-specimen-rls": "node scripts/laboratory-specimen-rls-contract.mjs",
     "test:specialist-workflow-indexes": "node scripts/specialist-workflow-index-contract.mjs",
-    "test:react-hook-imports": "node scripts/react-hook-import-runtime-contract.mjs"
+    "test:react-hook-imports": "node scripts/react-hook-import-runtime-contract.mjs",
+    "migration:register": "node scripts/generate-migration-register.mjs",
+    "migration:register:check": "node scripts/generate-migration-register.mjs --check",
+    "test:production-migration-baseline-gate": "node scripts/production-migration-baseline-gate-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
