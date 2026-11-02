@@ -213,5 +213,8 @@ jobs:
       - name: High-risk RPC replay safety contract
         run: npm run test:high-risk-rpc-execution-boundary
 
+      - name: Prescription compatibility schema contract
+        run: npm run test:prescription-compatibility-columns
+
       - name: Production build
         run: npm run build
