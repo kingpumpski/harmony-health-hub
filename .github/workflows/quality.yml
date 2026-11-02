@@ -195,6 +195,15 @@ jobs:
       - name: Specialist clinical workflow schema contract
         run: npm run test:specialist-clinical-workflows-schema
 
+      - name: Migration filename/version uniqueness contract
+        run: npm run test:migration-filename-uniqueness
+
+      - name: Migration workflow safety contract
+        run: npm run test:migration-workflow-safety
+
+      - name: Production migration baseline fail-closed contract
+        run: npm run test:production-migration-baseline-gate
+
       - name: Production build
         run: npm run build
 
