@@ -206,3 +206,19 @@ The following findings were verified against the repository and linked Supabase 
 - Updated `supabase/tests/database/current_user_helper_execute_boundary_contract.mjs` and wired it into the migration-contract workflow so this privilege distinction is enforced.
 - These are source repairs only. Do not apply them to production until clean replay and the full schema/security contract pass on the latest branch head.
 - The committed `supabase-migration-list.txt` is on the default branch, not PR #437's repair branch. It therefore reports the pre-repair branch's malformed filename and duplicate versions; use the repair branch's 661-file unique migration inventory for current source validation, and regenerate a fresh CLI report from that exact branch before any history repair.
+
+
+## 13. Production migration baseline and provenance gate
+
+The linked production project `ygqoptvezotdqhtimdkr` uses a canonical remote schema baseline. Its historical migration ledger is not a one-to-one replay of every repository file under `supabase/migrations`.
+
+- Treat `supabase/production-migration-baseline.json` as the explicit production migration authorization state. It must remain `status: "unreconciled"` and `productionPushAllowed: false` until a reviewed, reproducible provenance map has been committed and explicitly approved.
+- Never change that state merely to make a workflow pass. The required verification metadata (reviewed commit, mapping artifact, verification date, approver) must be evidence-backed.
+- Do not run `supabase db push`, `supabase db push --include-all`, `supabase migration repair`, or directly modify `supabase_migrations.schema_migrations` against production while the baseline gate is unresolved.
+- The two recorded baseline entries `20260916002251 canonical_remote_schema` and `20260916003113 fix_start_imaging_order_queue_contract` have no recovered original SQL. Do not fabricate replacement baseline migrations.
+- Do not interpret a local migration file's absence from the remote ledger as proof that its SQL is missing from production. Establish provenance using Git history, exact SQL/content hashes, migration names, dependency analysis, and read-only schema evidence.
+- Do not interpret a remote-only version as an instruction to create a duplicate local migration. Preserve the remote ledger as provenance.
+- `supabase-migration-list.txt` is the deterministic inventory of repository SQL files only. It is not a combined local/remote migration list and is not proof that any migration has been applied remotely. Generate it with `npm run migration:register`; verify it with `npm run migration:register:check`. The companion `supabase-migration-register.json` records each file's version, name, and SHA-256.
+- Before production apply, capture the exact output of `supabase migration list --linked` and compare every local-only pending version against the explicit `approvedPendingVersions` array in the baseline state file. The sets must match exactly; ambiguous local/remote rows must fail closed. An empty allowlist means no local migrations are approved for production.
+- Production `validate` mode must not use `supabase db push --dry-run` while historical provenance is unresolved; that command can present the entire historical mismatch as an ordinary pending migration queue. The workflow must report the baseline block clearly. Verification mode does not authorize migration apply.
+- Any eventual production apply requires a reviewed mapping artifact, clean supported validation, explicit production approval, and post-apply schema/security verification. A green static contract is not proof of migration replay or schema parity.
