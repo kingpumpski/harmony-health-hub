@@ -25,7 +25,7 @@ assert.ok(sql.includes("pg_catalog.to_regprocedure(v_signature)"), "function exi
 assert.ok(sql.includes("p.proconfig"), "existing function search_path must be inspected");
 assert.ok(sql.includes("not coalesce(v_config @> array['search_path=\"\"']"), "empty search_path must be preserved");
 assert.ok(sql.includes("format( 'alter function %s set search_path = pg_catalog, public', v_function )"), "existing functions must receive pinned search_path");
-assert.ok(sql.includes("format( 'revoke all on function %s from public, anon', v_function )"), "existing functions must deny PUBLIC and anon");
-assert.ok(sql.includes("format( 'grant execute on function %s to authenticated', v_function )"), "existing functions must retain authenticated RPC execution");
+assert.ok(sql.includes("format('revoke all on function %s from public, anon', v_function)"), "existing functions must deny PUBLIC and anon");
+assert.ok(sql.includes("format('grant execute on function %s to authenticated', v_function)"), "existing functions must retain authenticated RPC execution");
 assert.ok(sql.includes("notify pgrst, 'reload schema'"), "PostgREST schema cache reload must remain");
 console.log("[high-risk-rpc-execution-boundary] guarded signature and privilege contract passed");
