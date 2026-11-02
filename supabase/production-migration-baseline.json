@@ -26,5 +26,6 @@
     "reviewedCommit": null,
     "mappingArtifact": null,
     "approvedBy": null
-  }
+  },
+  "approvedPendingVersions": []
 }
