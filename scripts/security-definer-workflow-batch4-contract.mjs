@@ -12,7 +12,7 @@ const signatures=[
 'create_theatre_case(uuid, text, timestamptz, text, text, uuid, uuid, uuid)',
 'create_transfusion_record(uuid, text, text, text, boolean, uuid)',
 'create_workflow_notification(text, uuid, text, text, text, text, text, uuid, uuid, jsonb)',
-'end_video_session(uuid)','enqueue_external_notification_channels(uuid)'
+'end_video_session(uuid)'
 ];
 for(const s of signatures) if(!m.includes('public.'+s)) throw new Error('Missing '+s);
 if((m.match(/set search_path = pg_catalog, public/g)||[]).length!==signatures.length) throw new Error('Search-path hardening count mismatch');

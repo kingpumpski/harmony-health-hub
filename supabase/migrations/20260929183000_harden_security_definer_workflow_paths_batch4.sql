@@ -13,4 +13,4 @@ alter function public.create_transfusion_record(uuid, text, text, text, boolean,
 -- create_walk_in_billable_service is hardened in the later migration that defines its integer signature.
 alter function public.create_workflow_notification(text, uuid, text, text, text, text, text, uuid, uuid, jsonb) set search_path = pg_catalog, public;
 alter function public.end_video_session(uuid) set search_path = pg_catalog, public;
-alter function public.enqueue_external_notification_channels(uuid) set search_path = pg_catalog, public;
+-- enqueue_external_notification_channels is not defined at this point in the migration chain; harden it only after restoring its canonical definition.
