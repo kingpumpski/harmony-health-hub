@@ -164,3 +164,9 @@ This is a source-level clean-replay repair, not a production migration applicati
 A subsequent clean replay reached `20260929204500_harden_security_definer_clinical_context_paths_batch7.sql` and failed because `public.save_encounter_draft(uuid,text,text,text)` is defined later in `20261001095001_harden_encounter_appointment_lab_lineage.sql`. The remote ledger records the Batch 7 migration name under version `20260929144302`, different from the local filename version.
 
 The local source now guards only this function's ALTER: it skips when the function is not yet defined or already has an empty `search_path`. The later local migration creates/redefines the function with its canonical empty search path. The Batch 7 static contract checks the guard. This is a local replay compatibility repair only; no production migration or history repair was run.
+
+## Batch 8 clean-replay dependency
+
+After the Batch 7 guard, clean replay reached `20260929213000_harden_security_definer_mutation_paths_batch8.sql` and failed because `public.approve_diagnosis_import_batch(uuid)` does not exist in the local replay state. The migration is a production-baseline hardening batch whose functions are not all present at this point in the repository chain.
+
+The local source now iterates the migration's explicit signature list and hardens only functions that exist, while preserving functions whose `search_path` is already empty. The Batch 8 contract verifies the full signature list and fail-safe behavior. No production migration or ledger change was made.
