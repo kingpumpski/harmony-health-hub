@@ -1,1 +1,4 @@
-project_id = "ygqoptvezotdqhtimdkr"
+﻿project_id = "ygqoptvezotdqhtimdkr"
+
+[db]
+password = "postgres"
