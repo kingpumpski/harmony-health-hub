@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "ygqoptvezotdqhtimdkr",
+  "status": "unreconciled",
+  "productionPushAllowed": false,
+  "knownBaseline": [
+    {
+      "version": "20260916002251",
+      "name": "canonical_remote_schema",
+      "sqlRecovered": false
+    },
+    {
+      "version": "20260916003113",
+      "name": "fix_start_imaging_order_queue_contract",
+      "sqlRecovered": false
+    }
+  ],
+  "notes": [
+    "Production uses a canonical remote schema baseline; the original SQL for the first two baseline migrations has not been recovered.",
+    "Historical repository migration files and production ledger versions are not one-to-one. Source mappings must be evidenced by Git history and SQL identity.",
+    "Do not run supabase db push against production, edit supabase_migrations.schema_migrations directly, fabricate baseline SQL, or bulk-repair migration history.",
+    "Change status to verified and productionPushAllowed to true only after a reviewed, reproducible baseline mapping and an approved production migration plan exist."
+  ],
+  "verification": {
+    "verifiedAt": null,
+    "reviewedCommit": null,
+    "mappingArtifact": null,
+    "approvedBy": null
+  },
+  "approvedPendingVersions": []
+}
