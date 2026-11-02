@@ -180,3 +180,7 @@ The local migration now iterates its explicit full-signature list and hardens on
 ## Batch 11 and Batch 12 replay compatibility
 
 The local Batch 11 and Batch 12 SECURITY DEFINER hardening migrations have been changed to iterate their explicit function-signature inventories, apply search-path hardening only when a function exists at that point in clean replay, and preserve any already-empty `search_path`. This addresses the same structural mismatch between production-baseline functions and the historical local chain without fabricating missing RPCs or weakening function authorization. Dedicated static contracts verify the signature inventories and guard behavior.
+
+## High-risk RPC execution-boundary replay
+
+Clean replay next reached `20260930012001_harden_high_risk_rpc_execution_boundaries.sql` and failed because `public.create_lab_order_with_payment_gate(uuid,text,text,text,text,numeric)` is not present at that point in the local chain. The migration now checks each exact signature and applies its search-path and EXECUTE privilege changes only when that function exists. It preserves an existing empty `search_path`, denies PUBLIC/anon, and grants authenticated execution for functions that are present. The missing RPC is not fabricated; its canonical source remains governed by later migrations or the production baseline. A static regression contract protects this behavior.
