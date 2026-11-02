@@ -158,3 +158,9 @@ The clean replay log confirmed that local migration `20260929184500_harden_secur
 The repair branch now makes that one ALTER conditional: it skips the operation if the function does not yet exist, allowing the later canonical migration to create it; it also preserves an already-empty `search_path` rather than weakening it. Later test-context migrations recreate the final helper with an empty `search_path`. A regression contract protects this behavior.
 
 This is a source-level clean-replay repair, not a production migration application or ledger repair. The production baseline gate remains closed until the version/name/content provenance is formally reconciled.
+
+## Batch 7 clean-replay dependency
+
+A subsequent clean replay reached `20260929204500_harden_security_definer_clinical_context_paths_batch7.sql` and failed because `public.save_encounter_draft(uuid,text,text,text)` is defined later in `20261001095001_harden_encounter_appointment_lab_lineage.sql`. The remote ledger records the Batch 7 migration name under version `20260929144302`, different from the local filename version.
+
+The local source now guards only this function's ALTER: it skips when the function is not yet defined or already has an empty `search_path`. The later local migration creates/redefines the function with its canonical empty search path. The Batch 7 static contract checks the guard. This is a local replay compatibility repair only; no production migration or history repair was run.
