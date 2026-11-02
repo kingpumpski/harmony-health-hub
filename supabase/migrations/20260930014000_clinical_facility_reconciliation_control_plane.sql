@@ -4,6 +4,26 @@
 -- Restore prescription compatibility fields required by downstream patient
 -- treatment-context and clinical snapshot projections. Production already has
 -- these fields; clean repository replay must establish the same contract first.
+ALTER TABLE public.diagnoses
+  ADD COLUMN IF NOT EXISTS patient_id uuid,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+UPDATE public.diagnoses d
+SET patient_id = e.patient_id
+FROM public.encounters e
+WHERE d.encounter_id = e.id
+  AND d.patient_id IS NULL;
+
+ALTER TABLE public.diagnoses
+  ALTER COLUMN updated_at SET DEFAULT now();
+
+UPDATE public.diagnoses
+SET updated_at = COALESCE(updated_at, created_at, now())
+WHERE updated_at IS NULL;
+
+ALTER TABLE public.diagnoses
+  ALTER COLUMN updated_at SET NOT NULL;
+
 ALTER TABLE public.prescriptions
   ADD COLUMN IF NOT EXISTS medication_name text,
   ADD COLUMN IF NOT EXISTS route text,
