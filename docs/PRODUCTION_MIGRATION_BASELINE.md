@@ -170,3 +170,9 @@ The local source now guards only this function's ALTER: it skips when the functi
 After the Batch 7 guard, clean replay reached `20260929213000_harden_security_definer_mutation_paths_batch8.sql` and failed because `public.approve_diagnosis_import_batch(uuid)` does not exist in the local replay state. The migration is a production-baseline hardening batch whose functions are not all present at this point in the repository chain.
 
 The local source now iterates the migration's explicit signature list and hardens only functions that exist, while preserving functions whose `search_path` is already empty. The Batch 8 contract verifies the full signature list and fail-safe behavior. No production migration or ledger change was made.
+
+## Batch 10 clean-replay dependency
+
+After Batch 8, replay reached `20260929221500_harden_security_definer_notification_facility_paths_batch10.sql` and failed because `public.set_my_active_facility(uuid)` is not present in the local chain at that point. Other Batch 10 targets include functions created by later migrations or supplied by the production baseline.
+
+The local migration now iterates its explicit full-signature list and hardens only functions that exist at that point, preserving any already-empty `search_path`. The Batch 10 contract verifies all target signatures and the guard. This source repair is not a production migration application or history repair.
