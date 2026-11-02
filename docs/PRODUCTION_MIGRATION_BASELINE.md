@@ -176,3 +176,7 @@ The local source now iterates the migration's explicit signature list and harden
 After Batch 8, replay reached `20260929221500_harden_security_definer_notification_facility_paths_batch10.sql` and failed because `public.set_my_active_facility(uuid)` is not present in the local chain at that point. Other Batch 10 targets include functions created by later migrations or supplied by the production baseline.
 
 The local migration now iterates its explicit full-signature list and hardens only functions that exist at that point, preserving any already-empty `search_path`. The Batch 10 contract verifies all target signatures and the guard. This source repair is not a production migration application or history repair.
+
+## Batch 11 and Batch 12 replay compatibility
+
+The local Batch 11 and Batch 12 SECURITY DEFINER hardening migrations have been changed to iterate their explicit function-signature inventories, apply search-path hardening only when a function exists at that point in clean replay, and preserve any already-empty `search_path`. This addresses the same structural mismatch between production-baseline functions and the historical local chain without fabricating missing RPCs or weakening function authorization. Dedicated static contracts verify the signature inventories and guard behavior.
