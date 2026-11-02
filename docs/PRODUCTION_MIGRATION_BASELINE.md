@@ -150,3 +150,11 @@ A candidate-only inventory is recorded in `docs/PRODUCTION_MIGRATION_PROVENANCE_
 The snapshot contains 661 local SQL files and 417 remote ledger entries: 80 exact version matches, 581 local-only versions, and 337 remote-only versions. Among the 337 remote-only entries, 257 have one same-name local candidate, one has multiple same-name candidates, and 79 have no same-name candidate.
 
 These are triage classifications only. Same-name candidates are not SQL-equivalence proof. Git blob SHAs identify local Git objects but are not SHA-256 digests. No production history repair or migration apply is authorized by this report.
+
+## Batch 5 clean-replay dependency
+
+The clean replay log confirmed that local migration `20260929184500_harden_security_definer_auth_helper_paths_batch5.sql` attempted to alter `public.current_user_facility_id()` before the later local canonical definition in `20260930012647_canonical_clinical_facility_reconciliation_control_plane.sql`. The remote ledger records the same migration name under version `20260929142353`, so the local filename and remote version are not identical.
+
+The repair branch now makes that one ALTER conditional: it skips the operation if the function does not yet exist, allowing the later canonical migration to create it; it also preserves an already-empty `search_path` rather than weakening it. Later test-context migrations recreate the final helper with an empty `search_path`. A regression contract protects this behavior.
+
+This is a source-level clean-replay repair, not a production migration application or ledger repair. The production baseline gate remains closed until the version/name/content provenance is formally reconciled.
