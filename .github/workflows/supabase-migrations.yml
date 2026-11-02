@@ -51,15 +51,22 @@ jobs:
       - name: Reject conflicting migration versions
         run: npm run test:migration-filename-uniqueness
 
+      - name: Verify production migration baseline safety contract
+        run: npm run test:production-migration-baseline-gate
+
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Show migration state
         run: supabase migration list --linked
 
-      - name: Validate migrations
+      - name: Validate production migration baseline
         if: ${{ inputs.mode == 'validate' }}
-        run: supabase db push --linked --dry-run
+        run: node scripts/production-migration-baseline-gate.mjs --mode validate
+
+      - name: Enforce production baseline gate before apply
+        if: ${{ inputs.mode == 'apply' }}
+        run: node scripts/production-migration-baseline-gate.mjs --mode apply
 
       - name: Require explicit production apply confirmation
         if: ${{ inputs.mode == 'apply' }}
