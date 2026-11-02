@@ -4,12 +4,18 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const statePath = path.join(root, "supabase", "production-migration-baseline.json");
-const mode = process.argv.find((arg) => arg.startsWith("--mode="))?.split("=")[1]
-  ?? process.argv[process.argv.indexOf("--mode") + 1]
-  ?? "validate";
+const args = process.argv.slice(2);
+const argValue = (name) => {
+  const index = args.indexOf(name);
+  if (index >= 0) return args[index + 1];
+  const inline = args.find((arg) => arg.startsWith(\`\${name}=\`));
+  return inline?.slice(name.length + 1);
+};
+const mode = argValue("--mode") ?? "validate";
+const historyFile = argValue("--history-file");
 
 if (!["validate", "apply", "verify"].includes(mode)) {
-  throw new Error(`Unsupported mode: ${mode}`);
+  throw new Error(\`Unsupported mode: \${mode}\`);
 }
 if (!fs.existsSync(statePath)) throw new Error("Production migration baseline state file is missing.");
 
@@ -33,12 +39,56 @@ if (mode === "apply" && !verified) {
 
 if (mode === "validate" && !verified) {
   console.warn("[production-migration-baseline] BLOCKED: production dry-run skipped because historical migration provenance is unresolved.");
-  console.warn("Static migration checks may run, but this result is not a production migration validation.");
+  console.warn("This is not a production migration validation. No SQL was applied or dry-run.");
   process.exit(0);
 }
 
 if (mode === "verify") {
   console.log("[production-migration-baseline] Read-only verification mode; no migration apply is authorized by this gate.");
-} else {
-  console.log("[production-migration-baseline] Production migration baseline gate passed.");
+  process.exit(0);
+}
+
+if (!historyFile) {
+  throw new Error("A linked migration history file is required for validate/apply baseline checks.");
+}
+const resolvedHistoryPath = path.resolve(root, historyFile);
+if (!fs.existsSync(resolvedHistoryPath)) {
+  throw new Error(\`Linked migration history file not found: \${resolvedHistoryPath}\`);
+}
+
+const localPending = [];
+const lines = fs.readFileSync(resolvedHistoryPath, "utf8").split(/\\r?\\n/);
+for (const line of lines) {
+  if (!line.includes("|")) continue;
+  const columns = line.split("|");
+  if (columns.length < 2) continue;
+  const local = columns[0].trim().replace(/[\`"]/g, "");
+  const remote = columns[1].trim().replace(/[\`"]/g, "");
+  const localVersion = /^\\d{14}$/.test(local) ? local : "";
+  const remoteVersion = /^\\d{14}$/.test(remote) ? remote : "";
+  if (!localVersion && !remoteVersion) continue;
+  if (localVersion && remoteVersion && localVersion !== remoteVersion) {
+    throw new Error(\`Ambiguous local/remote migration row; refusing production apply: \${line}\`);
+  }
+  if (localVersion && !remoteVersion) localPending.push(localVersion);
+}
+
+const actual = [...new Set(localPending)].sort();
+const approved = Array.isArray(state.approvedPendingVersions)
+  ? [...new Set(state.approvedPendingVersions)].sort()
+  : null;
+if (!approved) throw new Error("approvedPendingVersions must be an explicit array in baseline state.");
+const invalidApproved = approved.filter((version) => !/^\\d{14}$/.test(version));
+if (invalidApproved.length) throw new Error(\`Invalid approved migration versions: \${invalidApproved.join(", ")}\`);
+
+if (JSON.stringify(actual) !== JSON.stringify(approved)) {
+  console.error("[production-migration-baseline] BLOCKED: linked local-pending migration versions do not exactly match the reviewed allowlist.");
+  console.error(\`Observed pending versions: \${actual.join(", ") || "(none)"}\`);
+  console.error(\`Approved pending versions: \${approved.join(", ") || "(none)"}\`);
+  process.exit(1);
+}
+
+console.log(\`[production-migration-baseline] History precheck passed; \${actual.length} pending migration(s) exactly match the approved allowlist.\`);
+if (mode === "validate") {
+  console.log("No SQL dry-run was executed. Run local replay and SQL validation before requesting production apply.");
 }
