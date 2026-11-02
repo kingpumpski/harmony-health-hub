@@ -216,5 +216,8 @@ jobs:
       - name: Prescription compatibility schema contract
         run: npm run test:prescription-compatibility-columns
 
+      - name: Diagnosis patient lineage compatibility contract
+        run: npm run test:diagnosis-compatibility-columns
+
       - name: Production build
         run: npm run build
