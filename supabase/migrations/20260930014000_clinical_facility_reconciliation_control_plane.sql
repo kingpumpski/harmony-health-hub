@@ -92,8 +92,19 @@ begin
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.lab_orders set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='lab_results' then
-  select r.facility_id,r.patient_id,r.lab_order_id,true,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.lab_results r where r.id=_entity_id;
-  select l.facility_id into v_parent from public.lab_orders l where l.id=v_ref; if v_parent is null then raise exception 'Reconcile the parent lab order first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent lab order'; end if;
+  select r.facility_id,lo.patient_id,r.lab_order_id,true,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) into v_source,v_patient,v_ref,v_exists,v_metadata
+  from public.lab_results r
+  left join public.lab_orders lo on lo.id=r.lab_order_id
+  where r.id=_entity_id;
+  if v_patient is null then raise exception 'Reconcile the parent lab order first'; end if;
+  if exists (
+    select 1 from public.lab_results lr
+    join public.lab_orders lo on lo.id=lr.lab_order_id
+    where lr.id=_entity_id and lr.patient_id is not null
+      and lr.patient_id is distinct from lo.patient_id
+  ) then raise exception 'Lab result patient lineage conflicts with parent lab order'; end if;
+  select l.facility_id into v_parent from public.lab_orders l where l.id=v_ref;
+  if v_parent is null then raise exception 'Reconcile the parent lab order first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent lab order'; end if;
   if v_exists then update public.lab_results set facility_id=_target_facility_id where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='imaging_orders' then
   select i.facility_id,i.patient_id,i.encounter_id,true,jsonb_build_object('modality',i.modality,'study_name',i.study_name,'status',i.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.imaging_orders i where i.id=_entity_id;
