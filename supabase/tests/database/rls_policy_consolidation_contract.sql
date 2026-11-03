@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(19);
+SELECT plan(21);
 
 SELECT ok(
   (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.invoices'::regclass AND polcmd='r' AND polpermissive),
@@ -65,6 +65,27 @@ SELECT ok(
   EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_periods'::regclass AND polname='payroll_periods_admin_it_accountant_write' AND polcmd='*' AND polpermissive)
   AND NOT EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_periods'::regclass AND polname='payroll_periods_admin_it_accountant_select'),
   'payroll periods retains its original ALL policy and removes only the duplicate SELECT policy'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_policy
+    WHERE polrelid='public.lab_result_attachments'::regclass
+      AND polname='lab_result_attachments_technician_insert'
+      AND pg_get_expr(polwithcheck,polrelid) ILIKE '%uploaded_by = ( SELECT auth.uid()%'
+  ),
+  'lab attachment insert policy evaluates auth.uid once per statement'
+);
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_policy
+    WHERE polrelid='public.lab_result_attachments'::regclass
+      AND polname='lab_result_attachments_technician_insert'
+      AND pg_get_expr(polwithcheck,polrelid) ILIKE '%service_orders%'
+      AND pg_get_expr(polwithcheck,polrelid) ILIKE '%released%'
+      AND pg_get_expr(polwithcheck,polrelid) ILIKE '%current_user_facility_id%'
+  ),
+  'lab attachment insert policy retains facility and released-service-order authorization'
 );
 
 SELECT ok(
