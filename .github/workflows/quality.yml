@@ -38,6 +38,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production migration baseline gate runtime contract
+        run: node scripts/production-migration-baseline-gate-runtime-test.mjs
+
+      - name: PL/pgSQL migration delimiter contract
+        run: node scripts/check-plpgsql-delimiters.mjs
+
+      - name: Insurance claim financial RPC compatibility contract
+        run: node scripts/insurance-claim-financial-rpc-contract.mjs
+
       - name: Codespaces devcontainer configuration contract
         run: npm run test:devcontainer-config
 
