@@ -82,6 +82,8 @@ assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(dia
 
 const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
 must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSON\b/i,'claim transition hardening must preserve the production JSON RPC return type');
+const legacyClaimWrapper = read('supabase/migrations/20260912027000_global_hims_workflow_reconciliation.sql');
+must(legacyClaimWrapper,/CREATE OR REPLACE FUNCTION public\\.transition_insurance_claim\\(_claim_id UUID, _status TEXT, _amount_approved NUMERIC DEFAULT NULL, _amount_paid NUMERIC DEFAULT NULL, _rejection_reason TEXT DEFAULT NULL, _notes TEXT DEFAULT NULL\\)\\s*RETURNS JSON\\b/i,'legacy claim workflow wrapper must preserve the earlier JSON return type');
 const legacyClaimTransitionMigration = read('supabase/migrations/20260912027000_global_hims_workflow_reconciliation.sql');
 const legacyClaimTransitionFunction = legacyClaimTransitionMigration.match(/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim\([\s\S]*?END; \$\$;/i)?.[0] ?? '';
 assert.ok(legacyClaimTransitionFunction,'legacy insurance claim transition function must remain defined');
