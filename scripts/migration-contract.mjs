@@ -301,8 +301,8 @@ const diagnosisImportSchema = read('supabase/migrations/20260916000000_restore_d
 for (const table of ['diagnosis_standards','stg_diagnoses','diagnosis_standard_mappings','diagnosis_import_batches','diagnosis_import_rows']) must(diagnosisImportSchema,new RegExp('CREATE TABLE IF NOT EXISTS public\\.'+table+'\\b','i'),'diagnosis import schema must restore '+table+' before the foreign-key index migration');
 assert.ok(files.indexOf('20260916000000_restore_diagnosis_import_schema.sql') < files.indexOf('20260916103212_add_missing_foreign_key_indexes.sql'),'diagnosis import schema restoration must precede its foreign-key index migration');
 must(diagnosisImportSchema,/ALTER TABLE public\.diagnosis_import_batches ENABLE ROW LEVEL SECURITY/i,'diagnosis import batches must retain row-level security');
-must(diagnosisImportSchema,/diagnosis_import_batches_admin_insert[\s\S]*?current_user_has_role\('admin'::public\.app_role\)/i,'diagnosis import batch writes must be administrator-only');
-must(diagnosisImportSchema,/diagnosis_import_rows_admin_update[\s\S]*?current_user_has_role\('admin'::public\.app_role\)/i,'diagnosis import row updates must be administrator-only');
+must(diagnosisImportSchema,/diagnosis_import_batches_admin_insert[\s\S]*?public\.has_role\(auth\.uid\(\),'admin'::public\.app_role\)/i,'diagnosis import batch writes must be administrator-only using a helper available before the index migration');
+must(diagnosisImportSchema,/diagnosis_import_rows_admin_update[\s\S]*?public\.has_role\(auth\.uid\(\),'admin'::public\.app_role\)/i,'diagnosis import row updates must be administrator-only using a helper available before the index migration');
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
