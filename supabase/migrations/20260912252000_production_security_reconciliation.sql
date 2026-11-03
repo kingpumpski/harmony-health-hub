@@ -2,12 +2,16 @@
 -- Keeps notification mutations user-scoped, narrows longitudinal clinical access,
 -- and expands immutable audit coverage without changing existing workflow RPCs.
 
+DROP FUNCTION IF EXISTS public.mark_notification_read(UUID);
+
 CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id UUID)
-RETURNS VOID
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
-AS $
+SET search_path = ''
+AS $$
+DECLARE
+  changed BOOLEAN := false;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
@@ -33,8 +37,11 @@ BEGIN
         )
       )
     );
+
+  changed := FOUND;
+  RETURN changed;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.mark_notifications_read(_notification_ids UUID[])
 RETURNS INTEGER
@@ -75,7 +82,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.mark_notification_read(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mark_notification_read(UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.mark_notifications_read(UUID[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.mark_notification_read(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_notifications_read(UUID[]) TO authenticated;
