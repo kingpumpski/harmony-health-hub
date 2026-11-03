@@ -58,3 +58,25 @@ Do not use `supabase migration repair`, edit `supabase_migrations.schema_migrati
 ## Gate state
 
 This register is deliberately marked candidate-only. The two canonical baseline entries retain `mappingStatus: unverified`, and `supabase/production-migration-baseline.json` remains `status: unreconciled` with `productionPushAllowed: false`.
+
+## Renamed migrations with no same-name production-ledger candidate
+
+The following 15 files in the 23-file duplicate-version normalization tranche have no same-name candidate in the current production ledger:
+
+- `20260912003500_phase4_triage.sql`
+- `20260912010001_phase8_ai_clinical_provenance.sql`
+- `20260912021001_global_hims_operations.sql`
+- `20260912024501_global_hims_inpatient_emergency_theatre_insurance.sql`
+- `20260912162001_hims_workflow_completion.sql`
+- `20260912200001_prescription_payment_lifecycle_reconciliation.sql`
+- `20260912250001_reconciliation_finalization.sql`
+- `20260913180001_reports_center_submission_rbac.sql`
+- `20260914140001_theatre_emergency_transfusion_lifecycle_hardening.sql`
+- `20260914150001_clinical_claim_nursing_direct_mutation_hardening.sql`
+- `20260914170001_clinical_triage_medication_mutation_hardening.sql`
+- `20260915170001_remove_duplicate_insurance_claim_indexes.sql`
+- `20260929150001_operational_workspace_scope_hardening.sql`
+- `20260929200002_secure_default_function_execute_privileges.sql`
+- `20260930012001_harden_high_risk_rpc_execution_boundaries.sql`
+
+Absence of a same-name remote entry does not prove a migration is pending; it may be covered by the canonical baseline or another remote migration. Each requires object-level comparison and an approved disposition.
