@@ -142,34 +142,34 @@ CREATE POLICY diagnosis_standard_mappings_authenticated_read
 DROP POLICY IF EXISTS diagnosis_import_batches_admin_insert ON public.diagnosis_import_batches;
 CREATE POLICY diagnosis_import_batches_admin_insert
   ON public.diagnosis_import_batches FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_has_role('admin'::public.app_role));
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS diagnosis_import_batches_admin_select ON public.diagnosis_import_batches;
 CREATE POLICY diagnosis_import_batches_admin_select
   ON public.diagnosis_import_batches FOR SELECT TO authenticated
-  USING (public.current_user_has_role('admin'::public.app_role));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS diagnosis_import_batches_admin_update ON public.diagnosis_import_batches;
 CREATE POLICY diagnosis_import_batches_admin_update
   ON public.diagnosis_import_batches FOR UPDATE TO authenticated
-  USING (public.current_user_has_role('admin'::public.app_role))
-  WITH CHECK (public.current_user_has_role('admin'::public.app_role));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS diagnosis_import_rows_admin_insert ON public.diagnosis_import_rows;
 CREATE POLICY diagnosis_import_rows_admin_insert
   ON public.diagnosis_import_rows FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_has_role('admin'::public.app_role));
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS diagnosis_import_rows_admin_select ON public.diagnosis_import_rows;
 CREATE POLICY diagnosis_import_rows_admin_select
   ON public.diagnosis_import_rows FOR SELECT TO authenticated
-  USING (public.current_user_has_role('admin'::public.app_role));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role));
 
 DROP POLICY IF EXISTS diagnosis_import_rows_admin_update ON public.diagnosis_import_rows;
 CREATE POLICY diagnosis_import_rows_admin_update
   ON public.diagnosis_import_rows FOR UPDATE TO authenticated
-  USING (public.current_user_has_role('admin'::public.app_role))
-  WITH CHECK (public.current_user_has_role('admin'::public.app_role));
+  USING (public.has_role(auth.uid(),'admin'::public.app_role))
+  WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
 
 REVOKE ALL ON TABLE public.diagnosis_standards, public.stg_diagnoses,
   public.diagnosis_standard_mappings, public.diagnosis_import_batches,
