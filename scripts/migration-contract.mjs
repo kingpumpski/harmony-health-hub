@@ -280,10 +280,10 @@ assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration ch
 const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
 assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
 const labRpcPrivileges = read('supabase/migrations/20261103092000_reassert_laboratory_read_rpc_privileges.sql');
-must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\\.get_laboratory_test_groups\\(boolean\\) FROM PUBLIC, anon/i,'laboratory test-group RPC must not be executable by anon or PUBLIC');
-must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\\.get_laboratory_test_groups\\(boolean\\) TO authenticated/i,'laboratory test-group RPC must remain available to authenticated users');
-must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\\.get_lab_result_attachments\\(uuid\\[\\]\\) FROM PUBLIC, anon/i,'laboratory attachment metadata RPC must not be executable by anon or PUBLIC');
-must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\\.get_lab_result_attachments\\(uuid\\[\\]\\) TO authenticated/i,'laboratory attachment metadata RPC must remain available to authenticated users');
+must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\.get_laboratory_test_groups\(boolean\) FROM PUBLIC, anon/i,'laboratory test-group RPC must not be executable by anon or PUBLIC');
+must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\.get_laboratory_test_groups\(boolean\) TO authenticated/i,'laboratory test-group RPC must remain available to authenticated users');
+must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/i,'laboratory attachment metadata RPC must not be executable by anon or PUBLIC');
+must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) TO authenticated/i,'laboratory attachment metadata RPC must remain available to authenticated users');
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
