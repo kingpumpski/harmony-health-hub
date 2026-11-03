@@ -278,6 +278,9 @@ must(reportsRecovery,/DROP FUNCTION IF EXISTS public\.recover_stale_report_run\(
 must(reportsRecovery,/CREATE OR REPLACE FUNCTION public\.recover_stale_report_run\([\s\S]*?RETURNS public\.report_generation_runs/i,'Reports Center recovery RPC must preserve the production report_generation_runs return contract');
 must(reportsRecovery,/REVOKE ALL ON FUNCTION public\.recover_stale_report_run\(UUID,INTEGER\) FROM PUBLIC, anon/i,'Reports Center recovery RPC must revoke PUBLIC and anon execution after recreation');
 must(reportsRecovery,/GRANT EXECUTE ON FUNCTION public\.recover_stale_report_run\(UUID,INTEGER\) TO authenticated/i,'Reports Center recovery RPC must grant execution to authenticated users after recreation');
+const pharmacyInventoryCompatibility = read('supabase/migrations/20260914140500_pharmacy_inventory_active_compatibility.sql');
+must(pharmacyInventoryCompatibility,/ALTER TABLE public\\.pharmacy_inventory\\s+ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE/i,'pharmacy inventory active compatibility column must be added before pharmacy lifecycle RPCs reference it');
+assert.ok(files.indexOf('20260914140500_pharmacy_inventory_active_compatibility.sql') < files.indexOf('20260914141000_pharmacy_lifecycle_server_authority.sql'),'pharmacy inventory active compatibility migration must precede pharmacy lifecycle RPCs');
 const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
 must(workflowCompletion,/WHEN payment_routing_mode IN \('pay_before_every_step',\s*'streamlined'\)\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
 must(workflowCompletion,/WHEN COALESCE\(to_jsonb\(facility_settings\)->>'routing_mode',''\) = 'pay_before_each_step'[\s\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
