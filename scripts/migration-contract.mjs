@@ -94,7 +94,7 @@ for (const [indexName, tableName, columnName] of [
   ['idx_lab_test_group_items_test_id','lab_test_group_items','test_id'],
   ['idx_lab_test_groups_created_by','lab_test_groups','created_by'],
 ]) {
-  must(productionAdvisorMigration,new RegExp('CREATE INDEX IF NOT EXISTS\\s+'+indexName+'\\s+ON public\\\\.'+tableName+'\\s*\\\\('+columnName+'\\\\)','i'),'production advisor migration must index '+tableName+'.'+columnName);
+  must(productionAdvisorMigration,new RegExp('CREATE INDEX IF NOT EXISTS\\s+'+indexName+'\\s+ON public\\.'+tableName+'\\s*\\('+columnName+'\\)','i'),'production advisor migration must index '+tableName+'.'+columnName);
 }
 const reportSeedFoundation = read('supabase/migrations/20260913162000_harden_reports_center_seed_function.sql');
 must(reportSeedFoundation,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id UUID\)\s+RETURNS VOID\b/i,'unreleased report seed foundation must use the canonical VOID return type');
