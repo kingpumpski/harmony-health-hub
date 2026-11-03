@@ -122,6 +122,11 @@ must(medicationAdministrationCompatibility,/DO \$medication_name_reconcile\$[\s\
 must(medicationAdministrationCompatibility,/DO \$medication_status_reconcile\$[\s\S]*?END;\s*\$medication_status_reconcile\$;/i,'medication-status reconciliation DO block must terminate correctly');
 must(medicationAdministrationCompatibility,/DO \$medication_updated_at_reconcile\$[\s\S]*?END;\s*\$medication_updated_at_reconcile\$;/i,'medication-updated_at reconciliation DO block must terminate correctly');
 assert.ok(files.indexOf('20260912022900_reconcile_medication_administration_legacy_columns.sql') < files.indexOf('20260912023000_global_medication_administration.sql'),'MAR legacy columns must be reconciled before MAR indexes and triggers');
+const patientAuditFoundation = read('supabase/migrations/20260912001500_restore_patient_audit_log.sql');
+must(patientAuditFoundation,/ADD CONSTRAINT patient_audit_log_action_check\s+CHECK/i,'legacy patient audit action values must remain constrained');
+must(patientAuditFoundation,/pg_index[\s\S]*?indisunique[\s\S]*?indnatts = 1[\s\S]*?indkey\[0\]/i,'patient audit ID index must not duplicate an existing primary/unique index');
+must(patientAuditFoundation,/END;\s*\$patient_audit_action_check\$;/i,'patient audit action-check DO block must terminate correctly');
+must(patientAuditFoundation,/END;\s*\$patient_audit_id_unique\$;/i,'patient audit ID-index DO block must terminate correctly');
 const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
 must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
