@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.transition_insurance_claim_canonical(
   _amount_paid NUMERIC DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL,
   _notes TEXT DEFAULT NULL
-) RETURNS JSONB
+) RETURNS JSON
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE
   c public.insurance_claims%ROWTYPE;
