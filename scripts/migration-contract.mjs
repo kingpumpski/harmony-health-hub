@@ -201,6 +201,7 @@ assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_r
 assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
 must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
 must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
+must(labResultBranch,/lr\.patient_id IS NOT NULL AND lr\.patient_id IS DISTINCT FROM lo\.patient_id/i,'lab_results reconciliation must fail closed when legacy patient_id conflicts with the parent order');
 // Preserve canonical facility payment-routing settings when upgrading legacy rows.
 const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
 must(workflowCompletion,/WHEN payment_routing_mode IN \\('pay_before_every_step',\\s*'streamlined'\\)\\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
