@@ -180,3 +180,17 @@ A CI/CD repair is complete only when:
 - The relevant workflow/configuration checks and regression tests actually pass, or unverified checks are explicitly listed.
 - The exact commit and latest relevant run are identified.
 - Any branch-protection/ruleset/provider changes that could not be verified are recorded as outstanding administrator actions.
+
+## 16. Migration baseline and reconciliation fail-closed rules
+
+- Treat `supabase/production-migration-baseline.json` as an explicit production safety control. While `status` is not `verified`, `productionPushAllowed` is not `true`, or any verification evidence is missing, production migration validation/apply must stop with a failing workflow status. A warning followed by exit code 0 is not an acceptable validation result.
+- The `verify` workflow mode is read-only and must never imply that migration provenance is verified or authorize apply.
+- Do not run `supabase db push --linked --dry-run` against production while the baseline is unresolved. Capture linked migration history for review, but do not treat a history listing as proof of schema equivalence.
+- Before allowing apply, require an exact reviewed allowlist of pending 14-digit migration versions. Reject malformed versions, duplicate local pending versions, ambiguous local/remote rows, and any difference between observed and approved pending versions.
+- Test gate behavior at runtime, including unresolved baseline, apply blocked, read-only verify, exact allowlist pass, unexpected pending version, ambiguous history row, duplicate version, and malformed allowlist.
+- A green static source-pattern test is not sufficient evidence that the gate blocks execution. The runtime test must execute the gate as a child process against isolated temporary state.
+- Do not change baseline state to verified, add approved pending versions, or enable production push based on candidate mappings, filename similarity, commit messages, or an incomplete SQL archive. Require reproducible evidence and named approval.
+- Do not change historical migration function return types merely to fix SQL quoting. Inspect the live function signature, generated types, and every application/RPC caller first. PostgreSQL `CREATE OR REPLACE FUNCTION` cannot change an existing function's return type; any necessary transition requires a separately reviewed forward migration and compatibility plan.
+- Every changed/renamed migration must be checked against deployed version history before it is renumbered, removed, or reintroduced under a new version. Never assume a renamed migration is unapplied.
+- Clean replay must run only against a disposable local database or explicitly authorized non-production environment. If Docker/Supabase local runtime is unavailable, mark replay unverified and do not claim migration completion.
+
