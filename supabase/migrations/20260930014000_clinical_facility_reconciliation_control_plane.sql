@@ -118,7 +118,7 @@ begin
   if v_exists then update public.prescriptions set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='diagnoses' then
   select d.facility_id,e.patient_id,d.encounter_id,true,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code) into v_source,v_patient,v_ref,v_exists,v_metadata from public.diagnoses d join public.encounters e on e.id=d.encounter_id where d.id=_entity_id;
-  if v_ref is not null then select e.facility_id into v_parent from public.encounters e where e.id=v_ref; elsif v_patient is not null then select p.facility_id into v_parent from public.patients p where p.id=v_patient; end if;
+  if v_ref is not null then select coalesce(e.facility_id,p.facility_id) into v_parent from public.encounters e join public.patients p on p.id=e.patient_id where e.id=v_ref; end if;
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.diagnoses set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  else raise exception 'Unsupported clinical entity type'; end if;
