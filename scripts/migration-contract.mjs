@@ -113,24 +113,31 @@ for (const [r,m] of [
   [/ADD COLUMN IF NOT EXISTS group_id/i,'legacy repair must tolerate existing lab_orders.group_id'],
   [/ADD COLUMN IF NOT EXISTS parent_order_id/i,'legacy repair must tolerate existing lab_orders.parent_order_id'],
   [/CREATE TABLE IF NOT EXISTS public\.lab_result_attachments/i,'legacy repair must tolerate existing attachment table'],
+  [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'base migration must restore canonical attachment RPC'],
+  [/SET search_path\s*=\s*''/i,'sensitive attachment RPC must use an empty pinned search_path'],
+  [/REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/i,'attachment RPC must revoke PUBLIC and anon'],
+  [/GRANT EXECUTE ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) TO authenticated/i,'attachment RPC must grant only authenticated execution'],
+]) must(legacy,r,m);
+
+const attachmentReconciliation = read('supabase/migrations/20261015070000_reconcile_lab_result_attachment_columns.sql');
+for (const [r,m] of [
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS lab_order_id uuid/i,'legacy repair must reconcile missing attachment order linkage'],
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS lab_result_id uuid/i,'legacy repair must reconcile missing attachment result linkage'],
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS facility_id uuid/i,'legacy repair must reconcile missing attachment facility scope'],
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS storage_path text/i,'legacy repair must reconcile missing storage path metadata'],
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS file_size_bytes bigint/i,'legacy repair must reconcile missing attachment size metadata'],
-  [/UPDATE public\.lab_result_attachments[\s\S]*?SET id = gen_random_uuid\(\)[\s\S]*?WHERE id IS NULL/i,'legacy attachment identifiers must be backfilled'],
-  [/row_number\(\) OVER \(PARTITION BY id/i,'duplicate legacy attachment identifiers must be repaired before uniqueness enforcement'],
-  [/CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_id_legacy_uidx/i,'legacy attachment identifiers must be unique after reconciliation'],
+  [/WHERE id IS NULL[\s\S]*?HAVING count\(\*\) > 1[\s\S]*?RAISE EXCEPTION/i,'legacy attachment identifiers must fail closed when null or duplicated'],
+  [/ADD CONSTRAINT lab_result_attachments_pkey PRIMARY KEY \(id\)/i,'legacy attachment identifiers must have a primary key after validation'],
   [/UPDATE public\.lab_result_attachments AS attachment[\s\S]*?WHERE attachment\.facility_id IS NULL[\s\S]*?attachment\.lab_order_id = lo\.id/i,'legacy facility scope may only be backfilled from an explicit order link'],
-  [/CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx/i,'legacy storage paths must be unique when existing data allows it'],
   [/file_size_bytes BETWEEN 1 AND 15728640/i,'attachment metadata writes must validate file size'],
   [/duplicate\.storage_path = a\.storage_path[\s\S]*?duplicate\.id <> a\.id/i,'ambiguous legacy storage paths must fail closed'],
-  [/CREATE OR REPLACE FUNCTION public\.get_lab_result_attachments\(_lab_order_ids uuid\[\]\)/i,'legacy repair must restore canonical attachment RPC'],
-  [/CREATE UNIQUE INDEX IF NOT EXISTS lab_result_attachments_storage_path_legacy_uidx/i,'effective attachment RPC migration must conditionally enforce unique storage paths'],
-  [/AND a\.storage_path IS NOT NULL[\s\S]*?AND NOT EXISTS \(\s*SELECT 1[\s\S]*?duplicate\.storage_path = a\.storage_path/i,'effective attachment RPC must fail closed for incomplete and duplicate paths'],
-]) must(legacy,r,m);
+  [/CREATE UNIQUE INDEX idx_lab_result_attachments_storage_path_unique[\s\S]*?ON public\.lab_result_attachments \(storage_path\)/i,'legacy storage paths must be unique when existing data allows it'],
+]) must(attachmentReconciliation,r,m);
+
 // Guard partial legacy schemas: missing audit tables are valid, and canonical
 // tariff aliases must satisfy installations where service_tariffs.category is NOT NULL.
+const medicationTransitionMigration = read('supabase/migrations/20260912173000_billing_pharmacy_marpayment_hardening.sql');
+must(medicationTransitionMigration,/DROP FUNCTION IF EXISTS public\.transition_medication_administration\(UUID,TEXT,TEXT,TEXT,UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.transition_medication_administration\([\s\S]*?\)\s*RETURNS\s+JSONB/i,'MAR transition must explicitly replace the legacy UUID-returning function with the production JSONB RPC contract');
 const medicationAdministrationCompatibility = read('supabase/migrations/20260912022900_reconcile_medication_administration_legacy_columns.sql');
 must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ/i,'legacy medication administration must reconcile scheduled_at before indexing');
 must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/i,'legacy medication administration must reconcile updated_at before trigger creation');
