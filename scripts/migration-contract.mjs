@@ -138,6 +138,10 @@ for (const [r,m] of [
 // tariff aliases must satisfy installations where service_tariffs.category is NOT NULL.
 const medicationTransitionMigration = read('supabase/migrations/20260912173000_billing_pharmacy_marpayment_hardening.sql');
 must(medicationTransitionMigration,/DROP FUNCTION IF EXISTS public\.transition_medication_administration\(UUID,TEXT,TEXT,TEXT,UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.transition_medication_administration\([\s\S]*?\)\s*RETURNS\s+JSONB/i,'MAR transition must explicitly replace the legacy UUID-returning function with the production JSONB RPC contract');
+const medicationReopenCompositeMigration = read('supabase/migrations/20260912190000_module_workflow_reconciliation.sql');
+must(medicationReopenCompositeMigration,/DROP FUNCTION IF EXISTS public\.reopen_medication_administration\(UUID,TEXT\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.reopen_medication_administration\([\s\S]*?\)\s*RETURNS\s+public\.medication_administrations/i,'MAR reopen return-type transition must explicitly drop the preceding JSONB signature');
+const medicationReopenBooleanMigration = read('supabase/migrations/20261001152932_harden_authenticated_clinical_mutation_boundaries.sql');
+must(medicationReopenBooleanMigration,/DROP FUNCTION IF EXISTS public\.reopen_medication_administration\(UUID,TEXT\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.reopen_medication_administration\([\s\S]*?\)\s*RETURNS\s+boolean/i,'MAR reopen must preserve the production BOOLEAN RPC contract');
 const medicationAdministrationCompatibility = read('supabase/migrations/20260912022900_reconcile_medication_administration_legacy_columns.sql');
 must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ/i,'legacy medication administration must reconcile scheduled_at before indexing');
 must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/i,'legacy medication administration must reconcile updated_at before trigger creation');
