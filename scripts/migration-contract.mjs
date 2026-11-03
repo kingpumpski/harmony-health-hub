@@ -7,12 +7,14 @@ const sqlFiles = fs.readdirSync(dir).filter((n) => n.endsWith('.sql')).sort();
 for (const name of sqlFiles) assert.match(name, /^\d{14}_.+\.sql$/, `Invalid migration filename (expected <14-digit-version>_<name>.sql): ${name}`);
 const files = sqlFiles;
 const versions = new Map();
+const duplicateVersions = [];
 for (const name of files) {
   const version = name.slice(0, 14);
   const previous = versions.get(version);
-  assert.equal(previous, undefined, `Duplicate Supabase migration version ${version}: ${previous ?? ''} and ${name}`);
-  versions.set(version, name);
+  if (previous) duplicateVersions.push(`${version}: ${previous} and ${name}`);
+  else versions.set(version, name);
 }
+assert.deepEqual(duplicateVersions, [], 'Duplicate Supabase migration versions: ' + duplicateVersions.join('; '));
 const migrations = files.map((name) => ({name, source: fs.readFileSync(path.join(dir,name),'utf8')}));
 const all = migrations.map((m) => m.source).join('\n');
 const read = (p) => fs.readFileSync(path.join(root,p),'utf8');
