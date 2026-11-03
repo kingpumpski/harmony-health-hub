@@ -108,3 +108,11 @@ Read-only policy catalog inspection confirmed the facility identity policies are
 - `invoices` and `video_sessions`, each with distinct patient-own and staff-read permissive policies. These access paths are now combined into one OR expression per table, while existing restrictive facility guards remain unchanged.
 
 The new pgTAP contract verifies that the patient-own and staff access paths remain present, facility guards remain restrictive, and internal notification tables remain inaccessible to both client roles.
+
+### Verified insurance claim RPC return contracts
+
+Read-only inspection of the live production catalog confirmed:
+- `transition_insurance_claim_canonical(uuid,text,numeric,numeric,text,text)` returns PostgreSQL `json`, not `jsonb`.
+- `update_insurance_claim_financials(uuid,numeric,numeric,text,text)` returns `public.insurance_claims` (the composite row type), not `jsonb`.
+
+The migration-contract assertion inherited from the fix branch incorrectly expected JSONB for the transition RPC. It has been corrected to the live `json` contract. The integration branch preserves both production return types and adds a separate regression assertion for the composite financial RPC return type.
