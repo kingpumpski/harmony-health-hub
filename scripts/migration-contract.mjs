@@ -93,6 +93,13 @@ must(read('supabase/migrations/' + diagnosisSuggestionsMigration),/CREATE TABLE 
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI diagnosis suggestions must be defined in the migration chain');
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
+const claimFinancialFoundation = read('supabase/migrations/20260912035000_global_hims_operational_integrity.sql');
+must(claimFinancialFoundation,/CREATE OR REPLACE FUNCTION public\\.update_insurance_claim_financials\\([\\s\\S]*?\\) RETURNS public\\.insurance_claims/i,'early claim financial RPC must use the production insurance_claims row return type');
+must(claimFinancialFoundation,/UPDATE public\\.insurance_claims[\\s\\S]*?RETURNING \\* INTO c;[\\s\\S]*?RETURN c;/i,'early claim financial RPC must return the updated insurance_claims row');
+assert.doesNotMatch(claimFinancialFoundation,/update_insurance_claim_financials[\\s\\S]*?RETURNS JSONB/i,'early claim financial RPC must not use the incompatible JSONB return type');
+const claimFinancialBounds = read('supabase/migrations/20260920062000_insurance_claim_financial_bounds.sql');
+must(claimFinancialBounds,/CREATE OR REPLACE FUNCTION public\\.update_insurance_claim_financials\\([\\s\\S]*?\\) RETURNS public\\.insurance_claims/i,'claim financial bounds migration must preserve the production insurance_claims row return type');
+assert.ok(files.indexOf('20260912035000_global_hims_operational_integrity.sql') < files.indexOf('20260920062000_insurance_claim_financial_bounds.sql'),'claim financial RPC foundation must precede its bounds hardening migration');
 const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
 must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSON\b/i,'claim transition hardening must preserve the production JSON RPC return type');
 const legacyClaimTransitionMigration = read('supabase/migrations/20260912027000_global_hims_workflow_reconciliation.sql');
