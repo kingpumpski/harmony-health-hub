@@ -231,3 +231,24 @@ A CI/CD repair is complete only when:
 - Treat advisor output as evidence to triage, not a command list. Record which findings were fixed, which are intentionally retained, and which require additional workload or authorization review.
 
 - Every function privilege statement must use the exact identity-argument signature declared by the function at that point in the migration chain. Verify each GRANT and REVOKE against pg_get_function_identity_arguments or the preceding CREATE FUNCTION declaration; a one-argument overload must never be assumed from a similarly named two-argument function.
+
+
+## 10. Coordinated recovery across open pull requests
+
+For any repository-wide recovery or request to fix multiple blockers together:
+
+1. Inventory every open PR from the live repository, recording PR number, head SHA, changed files, latest required checks, draft/mergeability state, and last update. Historical summaries are not current evidence.
+2. Build a recovery matrix that classifies each PR as: shared-root-cause repair, duplicate/superseded repair, independent feature, documentation/architecture, or unsafe/stale branch.
+3. Compare each PR against the current integration base. Identify overlapping files and dependencies before selecting changes. Do not merge or cherry-pick a long-diverged branch wholesale merely because its title sounds relevant.
+4. Maintain one canonical integration workstream for shared database/migration repairs. Selectively carry over only reviewed fixes and their tests. Keep unrelated UI/features in their own reviewable PRs.
+5. Mark a PR superseded only after confirming that its required change is present in the canonical branch or live schema and its regression test is covered. Preserve the evidence and state the replacement PR/commit.
+6. Rebase or port independent feature PRs only after their schema dependencies and the canonical migration chain are stable. Re-run all required checks on the resulting final head SHA.
+7. Do not merge PRs or close/relabel them as superseded unless the user explicitly authorizes that action. A green Vercel preview is not a substitute for repository quality, migration, security, or integration checks.
+
+## 11. PostgreSQL signature, enum, and contract-test safeguards
+
+- Before changing an RPC, read its actual production signature with `pg_get_function_result` and inspect its definition, execute grants, callers, and database dependents. The checked-in historical migration alone is not proof of the live contract.
+- PostgreSQL `CREATE OR REPLACE FUNCTION` cannot change a function's return type. If a return-type transition is required, inspect `pg_depend`, confirm no dependent database objects will be broken, explicitly drop/recreate in a reviewed migration, restore least-privilege grants, and test both clean replay and the supported upgrade path. Never silently replace a production return type.
+- Add PostgreSQL enum values in an isolated migration that commits before any subsequent migration references the new value. Add a chronological contract assertion for the prerequisite migration.
+- Static migration contracts must use valid JavaScript regular expressions, not accidentally double-escaped regex literals. Verify each assertion against the exact checked-in SQL and include an assertion that fails when the intended SQL protection is absent.
+- A successful static contract is not a substitute for a clean local replay. Continue fixing the first deterministic replay failure, then rerun the entire chain from an empty disposable database until all migrations and post-replay contracts complete.
