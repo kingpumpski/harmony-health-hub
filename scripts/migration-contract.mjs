@@ -113,6 +113,8 @@ for (const [r,m] of [
 const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
 must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
+assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
 must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
 must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
