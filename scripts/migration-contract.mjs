@@ -126,6 +126,10 @@ assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_r
 assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
 must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
 must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
+// Preserve canonical facility payment-routing settings when upgrading legacy rows.
+const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
+must(workflowCompletion,/WHEN payment_routing_mode IN \\('pay_before_every_step',\\s*'streamlined'\\)\\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
+must(workflowCompletion,/WHEN COALESCE\\(to_jsonb\\(facility_settings\\)->>'routing_mode',''\\) = 'pay_before_each_step'[\\s\\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 // Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
