@@ -16,11 +16,11 @@ assert.match(repairBlock, /SET queued_at = COALESCE\(queued_at, created_at\)/, "
 assert.match(repairBlock, /ALTER COLUMN queued_at SET NOT NULL/, "queue timestamp must be non-null before index creation");
 assert.match(compatibility, /CREATE OR REPLACE FUNCTION public\.release_service_order/, "later compatibility migration must retain legacy required-column population");
 const eventStart = coverage.indexOf("CREATE OR REPLACE FUNCTION public.service_order_event_trigger()");
-const eventEnd = coverage.indexOf("\\n$;", eventStart);
+const eventEnd = coverage.indexOf("\n$$;", eventStart);
 assert.ok(eventStart >= 0 && eventEnd > eventStart, "coverage migration must define the service-order event trigger");
 const eventFunction = coverage.slice(eventStart, eventEnd);
-assert.match(eventFunction, /INSERT INTO public\.department_queues\\s*\\([\\s\\S]*?service_order_id,[\\s\\S]*?patient_id,[\\s\\S]*?department,[\\s\\S]*?priority,[\\s\\S]*?queued_at,[\\s\\S]*?status/i, "auto-released covered visits must populate legacy queue-required columns");
-assert.match(eventFunction, /COALESCE\\(NEW\.created_by, NEW\.requested_by, auth\.uid\\(\\)\\)/i, "covered-visit queue rows must retain their creator");
-assert.match(eventFunction, /ON CONFLICT \\(service_order_id\\) WHERE service_order_id IS NOT NULL DO NOTHING/i, "covered-visit queue insert must infer the partial unique index");
-assert.doesNotMatch(eventFunction, /INSERT INTO public\.department_queues\\s*\\(service_order_id\\s*,\\s*department\\s*\\)/i, "covered-visit queue insert must not omit legacy required columns");
+assert.match(eventFunction, /INSERT INTO public\.department_queues\s*\([\s\S]*?service_order_id,[\s\S]*?patient_id,[\s\S]*?department,[\s\S]*?priority,[\s\S]*?queued_at,[\s\S]*?status/i, "auto-released covered visits must populate legacy queue-required columns");
+assert.match(eventFunction, /COALESCE\(NEW\.created_by, NEW\.requested_by, auth\.uid\(\)\)/i, "covered-visit queue rows must retain their creator");
+assert.match(eventFunction, /ON CONFLICT \(service_order_id\) WHERE service_order_id IS NOT NULL DO NOTHING/i, "covered-visit queue insert must infer the partial unique index");
+assert.doesNotMatch(eventFunction, /INSERT INTO public\.department_queues\s*\(service_order_id\s*,\s*department\s*\)/i, "covered-visit queue insert must not omit legacy required columns");
 console.log("[department-queue-legacy-columns] migration ordering and covered-visit runtime contracts passed");
