@@ -130,6 +130,17 @@ ALTER TABLE IF EXISTS public.billing_overrides
 ALTER TABLE IF EXISTS public.department_queues
   DROP CONSTRAINT IF EXISTS department_queues_service_order_fk;
 
+-- Cover the four production foreign keys reported by the advisor. These
+-- tables are currently small, and each index supports parent-row updates/deletes.
+CREATE INDEX IF NOT EXISTS idx_hr_employees_archived_by
+  ON public.hr_employees(archived_by);
+CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by
+  ON public.lab_result_attachments(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_lab_test_group_items_test_id
+  ON public.lab_test_group_items(test_id);
+CREATE INDEX IF NOT EXISTS idx_lab_test_groups_created_by
+  ON public.lab_test_groups(created_by);
+
 -- Keep idx_lab_result_attachments_lab_result_id; this second index has the
 -- identical btree key and provides no additional query coverage.
 DROP INDEX IF EXISTS public.lab_result_attachments_result_idx;
