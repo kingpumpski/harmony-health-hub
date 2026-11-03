@@ -76,6 +76,9 @@ jobs:
       - name: Verify live schema, RPC return types, privileges and RLS
         if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
         run: supabase test db supabase/tests/database/migration_contract.sql
+      - name: Verify production schema advisor remediation
+        if: hashFiles('supabase/tests/database/production_schema_advisor_reconciliation_contract.sql') != ''
+        run: supabase test db supabase/tests/database/production_schema_advisor_reconciliation_contract.sql
       - name: Verify HR/payroll employee query columns and record controls
         if: hashFiles('supabase/tests/database/hr_payroll_record_management_contract.sql') != ''
         timeout-minutes: 10
