@@ -207,10 +207,25 @@ const diagnosisFacilityBranch = facility.match(/elsif _entity_type='diagnoses' t
 must(diagnosisFacilityBranch,/join public\.encounters e on e\.id=d\.encounter_id/i,'facility reconciliation must resolve diagnosis patient identity through its encounter');
 must(diagnosisFacilityBranch,/coalesce\(e\.facility_id,p\.facility_id\)/i,'diagnosis facility reconciliation must fall back through the encounter patient');
 assert.doesNotMatch(diagnosisFacilityBranch,/\bd\.patient_id\b/i,'diagnosis reconciliation must not depend on the nullable legacy patient_id column');
+const baseDiagnosisTrigger = read('supabase/migrations/20260930013000_canonical_clinical_facility_attribution.sql');
+const baseDiagnosisTriggerBranch = baseDiagnosisTrigger.match(/elsif tg_table_name='diagnoses' then([\s\S]*?)\n  end if;/i)?.[1] ?? '';
+must(baseDiagnosisTriggerBranch,/join public\.patients p on p\.id=e\.patient_id/i,'initial diagnosis facility trigger must derive the patient from the parent encounter');
+assert.doesNotMatch(baseDiagnosisTriggerBranch,/new\.patient_id/i,'initial diagnosis facility trigger must not read NEW.patient_id');
+const diagnosisRepairTrigger = read('supabase/migrations/20260930017100_repair_diagnosis_facility_workflow.sql');
+const diagnosisRepairBranch = diagnosisRepairTrigger.match(/ELSIF tg_table_name='diagnoses' THEN([\s\S]*?)\n  END IF;/i)?.[1] ?? '';
+must(diagnosisRepairBranch,/join public\.patients p on p\.id=e\.patient_id/i,'diagnosis facility repair must derive the patient from the parent encounter');
+assert.doesNotMatch(diagnosisRepairBranch,/new\.patient_id|current_user_facility_id/i,'diagnosis facility repair must not invent lineage from the caller context');
+const reconciliationTriggerBranch = facility.match(/elsif tg_table_name='diagnoses' then([\s\S]*?)if v_facility is null then raise exception/i)?.[1] ?? '';
+must(reconciliationTriggerBranch,/join public\.patients p on p\.id=e\.patient_id/i,'facility reconciliation trigger must derive diagnosis patient from the encounter');
+assert.doesNotMatch(reconciliationTriggerBranch,/new\.patient_id/i,'facility reconciliation trigger must not read NEW.patient_id');
 const diagnosisInventory = read('supabase/migrations/20260930015100_extend_facility_reconciliation_inventory.sql');
 must(diagnosisInventory,/select 'diagnoses',d\.id,e\.patient_id[\s\S]{0,200}from public\.diagnoses d join public\.encounters e on e\.id=d\.encounter_id/i,'facility inventory must derive diagnosis patient identity through encounters');
+const finalDiagnosisInventory = read('supabase/migrations/20261024070000_reconcile_clinical_facility_unresolved_record_query.sql');
+must(finalDiagnosisInventory,/select 'diagnoses',d\.id,e\.patient_id[\s\S]{0,200}from public\.diagnoses d join public\.encounters e on e\.id=d\.encounter_id/i,'final facility inventory must derive diagnosis patient identity through encounters');
 const canteenDiagnosisContext = read('supabase/migrations/20260929152000_restrict_canteen_patient_context_fields.sql');
 must(canteenDiagnosisContext,/FROM public\.diagnoses d\s+JOIN public\.encounters e ON e\.id=d\.encounter_id AND e\.patient_id=p\.id\s+WHERE e\.status NOT IN/i,'canteen patient context must join diagnoses to the matching patient encounter');
+const canteenBaseContext = read('supabase/migrations/20260929150000_canteen_dietary_operational_workspace.sql');
+must(canteenBaseContext,/FROM public\.diagnoses d\s+JOIN public\.encounters e ON e\.id=d\.encounter_id AND e\.patient_id=p\.id\s+WHERE e\.status NOT IN/i,'base canteen patient context must join diagnoses to the matching patient encounter');
 const resultsTranche = read('supabase/migrations/20261001230000_clinical_results_production_tranche.sql');
 must(resultsTranche,/CREATE OR REPLACE FUNCTION public\.sync_child_facility_from_parent\(\)[\s\S]*?ELSIF tg_table_name='diagnoses' THEN[\s\S]*?JOIN public\.patients p ON p\.id=e\.patient_id/i,'forward lineage repair must replace the deployed diagnosis trigger with encounter-derived facility attribution');
 const diagnosisTrigger = resultsTranche.match(/CREATE OR REPLACE FUNCTION public\.sync_child_facility_from_parent\(\)([\s\S]*?)\$function\$/i)?.[0] ?? '';
@@ -218,6 +233,13 @@ const diagnosisTriggerBranch = diagnosisTrigger.match(/ELSIF tg_table_name='diag
 assert.doesNotMatch(diagnosisTriggerBranch,/new\.patient_id/i,'diagnosis facility trigger must not read NEW.patient_id');
 must(resultsTranche,/FROM public\.diagnoses d\s+JOIN public\.encounters diagnosis_encounter ON diagnosis_encounter\.id=d\.encounter_id[\s\S]*?diagnosis_encounter\.patient_id=io\.patient_id/i,'imaging results must match diagnoses through encounter patient lineage');
 must(resultsTranche,/FROM public\.diagnoses d\s+JOIN public\.encounters diagnosis_encounter ON diagnosis_encounter\.id=d\.encounter_id[\s\S]*?diagnosis_encounter\.patient_id=o\.patient_id/i,'lab results must match diagnoses through encounter patient lineage');
+for (const path of [
+  'supabase/migrations/20261005190000_portal_clinical_continuity_and_clerking_referrals.sql',
+  'supabase/migrations/20261006090000_patient_clinical_snapshot_facility_boundary.sql'
+]) {
+  const snapshot = read(path);
+  must(snapshot,/FROM public\.diagnoses d\s+JOIN public\.encounters e ON e\.id=d\.encounter_id\s+WHERE e\.patient_id=_patient_id/i,'patient diagnosis snapshot must derive patient scope through encounters: '+path);
+}
 const patientHubSnapshot = read('supabase/migrations/20261007145000_reconcile_patient_hub_system_superuser_access.sql');
 must(patientHubSnapshot,/FROM public\.diagnoses d JOIN public\.encounters e ON e\.id=d\.encounter_id WHERE e\.patient_id=_patient_id/i,'patient hub diagnosis history must be scoped through the encounter');
 const labPanels = read('supabase/migrations/20261013180000_laboratory_test_panels.sql');
