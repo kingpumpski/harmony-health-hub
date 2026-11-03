@@ -17,8 +17,8 @@ BEGIN
     -- path used by the production helper and by its later migration definition.
     IF NOT EXISTS (
       SELECT 1
-      FROM unnest(COALESCE(helper_config, ARRAY[]::text[])) AS setting
-      WHERE setting LIKE 'search_path=%'
+      FROM unnest(COALESCE(helper_config, ARRAY[]::text[])) AS config(setting)
+      WHERE config.setting LIKE 'search_path=%'
     ) THEN
       EXECUTE 'ALTER FUNCTION public.current_user_facility_id() SET search_path = pg_catalog, public';
     END IF;
