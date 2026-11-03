@@ -125,6 +125,8 @@ assert.ok(files.indexOf('20260912022900_reconcile_medication_administration_lega
 const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
 must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+const rlsPolicyConsolidation = read('supabase/migrations/20261103091000_consolidate_rls_policy_paths.sql');
+must(rlsPolicyConsolidation,/END;\s*\$notification_tables\$;/i,'notification RLS policy consolidation DO block must terminate with END;');
 const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
 assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
