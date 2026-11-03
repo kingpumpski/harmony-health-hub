@@ -30,3 +30,15 @@ The baseline remains `unreconciled`. The original SQL for production versions `2
 ## Prohibited actions
 
 No production `supabase db push`, no direct edits to `supabase_migrations.schema_migrations`, no `supabase migration repair`, no fabricated baseline migrations, no `supabase db reset` against production, and no merge to `main` without explicit approval and passing required checks.
+
+## Defects exposed by CI and repairs added to this branch
+
+The first CI pass found three independent classes of problems:
+
+- The clean local Supabase startup stopped at `20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql` because `public.ai_diagnosis_suggestions` had not been created before RLS was enabled. This branch adds the missing timestamped prerequisite migrations for reference tables, symptom-to-ICD mapping, and AI diagnosis suggestions, and makes the RLS migration idempotently restore the expected relations/policies.
+- The delimiter scan exposed malformed bare-dollar delimiters in the Patient Hub entrypoints, clinical diagnosis context hardening, and inpatient admission workflow. The corresponding SQL files now use matching tagged delimiters.
+- The fix-branch version of the insurance financial migration changed the function return type to JSONB. This branch explicitly preserves the main branch's composite `public.insurance_claims` return type and changes only the delimiter.
+
+The initial quality run passed the baseline-gate runtime test, then failed on the delimiter checker and skipped subsequent checks as expected after the failure. The initial migration replay did not reach the full chain: local Supabase startup failed on the missing AI diagnosis prerequisite. The repairs above are committed for the next CI run; they are not yet verified by a completed rerun.
+
+These edits are integration candidates only until production migration history confirms whether the added historical versions are already recorded. Do not push them to production while the baseline is unreconciled.
