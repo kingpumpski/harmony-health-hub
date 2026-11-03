@@ -51,3 +51,12 @@ These edits are integration candidates only until production migration history c
 
 - The static contract then found a second duplicate migration version: `20260912010000` was assigned to both the Phase 6 anesthetic foundation and Phase 8 AI clinical provenance files. The AI provenance file is now moved to `20260912010001`, with content verified identical to the fix-branch rename. As with the Phase 4 triage rename, production ledger provenance must confirm which file was historically recorded as version `20260912010000` before merge/apply.
 - The next replay exposed the bulk-import legacy schema collision: `20260912005000_phase7_bulk_import_hardening.sql` used `CREATE TABLE IF NOT EXISTS` then indexed `entity_type`, even though the May legacy table had `entity`, `filename`, and `inserted_rows`. The fix-branch compatibility block is now moved before index creation in the integration candidate. It maps preserved legacy values and derives source format only from a verifiable filename extension; unknown legacy values fail closed rather than being silently guessed.
+
+## Duplicate-version normalization tranche
+
+The fix-branch migration-version collision commit identifies 23 duplicate-version file renames. All 23 are now represented in this integration candidate with unique 14-digit versions. Twenty renames were content-identical; three also include substantive repairs that were reviewed and ported:
+- The triage mutation grant now matches the actual 14-argument numeric RPC signature created earlier in the chain.
+- The default function privilege migration guards changes to `supabase_admin` defaults based on current-role membership, avoiding permission failures during clean replay while retaining explicit PUBLIC/anon/authenticated revokes where authorized.
+- High-risk RPC execution-boundary hardening now checks exact function signatures and only alters functions that exist, rather than failing replay when an optional historical RPC is absent.
+
+These version changes remain candidate-only. Because duplicate versions make the historical production identity ambiguous, the remote migration ledger and deployment records must be reconciled before any of these renamed versions are allowed into production.
