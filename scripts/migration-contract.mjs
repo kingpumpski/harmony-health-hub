@@ -146,6 +146,10 @@ must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
 const rlsPolicyConsolidation = read('supabase/migrations/20261103091000_consolidate_rls_policy_paths.sql');
 must(rlsPolicyConsolidation,/END;\s*\$notification_tables\$;/i,'notification RLS policy consolidation DO block must terminate with END;');
+const reportSeedCompatibility = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
+must(reportSeedCompatibility,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.seed_facility_reports\([\s\S]*?RETURNS\s+VOID/i,'reports seed RPC return-type change must explicitly drop the prior INTEGER signature');
+const reportSeedHardening = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
+must(reportSeedHardening,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.seed_facility_reports\([\s\S]*?RETURNS\s+void/i,'later reports seed hardening must preserve the production VOID contract');
 const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
 assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
