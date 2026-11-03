@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(14);
+SELECT plan(15);
 
 SELECT ok(
   (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.invoices'::regclass AND polcmd='r' AND polpermissive),
@@ -79,6 +79,11 @@ SELECT ok(
 SELECT ok(
   (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.notification_provider_credentials'::regclass AND polname='notification_internal_deny_clients' AND NOT polpermissive AND pg_get_expr(polqual,polrelid)='false' AND pg_get_expr(polwithcheck,polrelid)='false'),
   'notification provider credentials are denied to both client roles by one restrictive policy'
+);
+
+SELECT ok(
+  (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.scheduled_notifications'::regclass AND polname='notification_internal_deny_clients' AND NOT polpermissive AND pg_get_expr(polqual,polrelid)='false' AND pg_get_expr(polwithcheck,polrelid)='false'),
+  'scheduled notifications are denied to both client roles by one restrictive policy'
 );
 
 SELECT * FROM finish();
