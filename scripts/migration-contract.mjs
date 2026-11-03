@@ -214,7 +214,9 @@ assert.doesNotMatch(baseDiagnosisTriggerBranch,/new\.patient_id/i,'initial diagn
 const diagnosisRepairTrigger = read('supabase/migrations/20260930017100_repair_diagnosis_facility_workflow.sql');
 const diagnosisRepairBranch = diagnosisRepairTrigger.match(/ELSIF tg_table_name='diagnoses' THEN([\s\S]*?)\n  END IF;/i)?.[1] ?? '';
 must(diagnosisRepairBranch,/join public\.patients p on p\.id=e\.patient_id/i,'diagnosis facility repair must derive the patient from the parent encounter');
-assert.doesNotMatch(diagnosisRepairBranch,/new\.patient_id|current_user_facility_id/i,'diagnosis facility repair must not invent lineage from the caller context');
+must(diagnosisRepairBranch,/public\.current_user_facility_id\(\)/i,'authenticated diagnosis workflow may recover a missing parent facility from the active user facility');
+must(diagnosisRepairBranch,/UPDATE public\.patients p SET facility_id=v_facility[\s\S]*FROM public\.encounters e[\s\S]*p\.id=e\.patient_id/i,'diagnosis facility recovery must update the patient through the parent encounter');
+assert.doesNotMatch(diagnosisRepairBranch,/new\.patient_id/i,'diagnosis facility recovery must not read NEW.patient_id');
 const reconciliationTriggerBranch = facility.match(/elsif tg_table_name='diagnoses' then([\s\S]*?)if v_facility is null then raise exception/i)?.[1] ?? '';
 must(reconciliationTriggerBranch,/join public\.patients p on p\.id=e\.patient_id/i,'facility reconciliation trigger must derive diagnosis patient from the encounter');
 assert.doesNotMatch(reconciliationTriggerBranch,/new\.patient_id/i,'facility reconciliation trigger must not read NEW.patient_id');
