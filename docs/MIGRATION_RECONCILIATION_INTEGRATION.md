@@ -100,3 +100,11 @@ The connected Supabase project was inspected using read-only migration-history, 
 - The security catalog contains 313 public SECURITY DEFINER functions; 279 are executable by authenticated users, zero are executable by anon, and all have a pinned search_path. The authenticated functions reviewed have auth/facility guards or delegate to guarded RPCs; two simple wrappers delegate to guarded functions. Therefore, do not blanket-revoke authenticated execution from all 279 functions. A database contract now protects the actual least-privilege invariants.
 
 The new forward migration is candidate-only. It must remain blocked by the unresolved production baseline until the migration provenance review is approved.
+
+### RLS policy performance findings
+
+Read-only policy catalog inspection confirmed the facility identity policies are already **restrictive** policies, so they AND with the role/patient access policies; they are not the source of the permissive OR behavior. The remaining multiple-permissive-policy findings came from:
+- Six internal notification tables, each with separate permissive false policies for `anon` and `authenticated`. These are now consolidated into one restrictive deny policy per table.
+- `invoices` and `video_sessions`, each with distinct patient-own and staff-read permissive policies. These access paths are now combined into one OR expression per table, while existing restrictive facility guards remain unchanged.
+
+The new pgTAP contract verifies that the patient-own and staff access paths remain present, facility guards remain restrictive, and internal notification tables remain inaccessible to both client roles.
