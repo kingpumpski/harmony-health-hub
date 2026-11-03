@@ -289,6 +289,9 @@ must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\.get_laboratory_test_groups
 must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\.get_laboratory_test_groups\(boolean\) TO authenticated/i,'laboratory test-group RPC must remain available to authenticated users');
 must(labRpcPrivileges,/REVOKE ALL ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) FROM PUBLIC, anon/i,'laboratory attachment metadata RPC must not be executable by anon or PUBLIC');
 must(labRpcPrivileges,/GRANT EXECUTE ON FUNCTION public\.get_lab_result_attachments\(uuid\[\]\) TO authenticated/i,'laboratory attachment metadata RPC must remain available to authenticated users');
+const emergencyAcuityCompatibility = read('supabase/migrations/20261021100000_reconcile_emergency_case_acuity.sql');
+must(emergencyAcuityCompatibility,/ADD COLUMN IF NOT EXISTS acuity TEXT NOT NULL DEFAULT 'urgent'/i,'emergency acuity compatibility must restore the legacy column before dependent indexes');
+must(emergencyAcuityCompatibility,/ADD CONSTRAINT emergency_cases_acuity_check[\\s\\S]*?CHECK \\(acuity IN \\('resuscitation','emergency','urgent','less_urgent','non_urgent'\\)\\)/i,'emergency acuity compatibility must enforce the canonical acuity values');
 const workflow = read('.github/workflows/migration-contract.yml');
 must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
 must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
