@@ -62,7 +62,49 @@ ALTER TABLE public.patient_audit_log
   ALTER COLUMN changed_fields SET DEFAULT '{}',
   ALTER COLUMN changed_fields SET NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS patient_audit_log_id_legacy_uidx
-  ON public.patient_audit_log(id);
+DO $patient_audit_action_check$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.patient_audit_log'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%action%'
+      AND pg_get_constraintdef(oid) ILIKE '%INSERT%'
+      AND pg_get_constraintdef(oid) ILIKE '%UPDATE%'
+      AND pg_get_constraintdef(oid) ILIKE '%DELETE%'
+  ) THEN
+    ALTER TABLE public.patient_audit_log
+      ADD CONSTRAINT patient_audit_log_action_check
+      CHECK (action IN ('INSERT','UPDATE','DELETE'));
+  END IF;
+END;
+$patient_audit_action_check$;
+
+-- Do not create a second unique index when a primary key or equivalent
+-- single-column unique index already protects id on an existing installation.
+DO $patient_audit_id_unique$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_index i
+    WHERE i.indrelid = 'public.patient_audit_log'::regclass
+      AND i.indisunique
+      AND i.indisvalid
+      AND i.indnatts = 1
+      AND i.indkey[0] = (
+        SELECT a.attnum
+        FROM pg_attribute a
+        WHERE a.attrelid = 'public.patient_audit_log'::regclass
+          AND a.attname = 'id'
+          AND NOT a.attisdropped
+      )
+  ) THEN
+    CREATE UNIQUE INDEX patient_audit_log_id_legacy_uidx
+      ON public.patient_audit_log(id);
+  END IF;
+END;
+$patient_audit_id_unique$;
+
 CREATE INDEX IF NOT EXISTS idx_patient_audit_patient_time
   ON public.patient_audit_log(patient_id, changed_at DESC);
