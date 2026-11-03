@@ -98,6 +98,7 @@ for (const [indexName, tableName, columnName] of [
 }
 const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
 must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'facility report seeding must preserve its established VOID RPC return type');
+must(reportSeedMigration,/DROP FUNCTION IF EXISTS public\\.seed_facility_reports\\(UUID\\);[\\s\\S]*?CREATE OR REPLACE FUNCTION public\\.seed_facility_reports\\(_facility_id uuid\\)\\s+RETURNS void\\b/i,'facility report seed return-type transition must explicitly drop and recreate the earlier INTEGER signature');
 must(reportSeedMigration,/INSERT INTO public\.facility_report_config[\s\S]*?ON CONFLICT\(facility_id,report_id\) DO NOTHING;/i,'facility report seeding must be idempotent for each facility/report pair');
 must(reportSeedMigration,/IF v_user IS NULL OR NOT public\.has_role\(v_user,'admin'\) THEN/i,'facility report seeding must require an authenticated administrator');
 must(reportSeedMigration,/IF NOT public\.has_facility_access\(v_user,_facility_id\) THEN/i,'facility report seeding must enforce facility-scoped authorization');
