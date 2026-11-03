@@ -193,6 +193,8 @@ const medicationContext = read('supabase/migrations/20260923150000_medication_pa
 const medicationContextTransition = medicationContext.match(/CREATE OR REPLACE FUNCTION public\.transition_medication_administration\(([\s\S]*?)REVOKE ALL ON FUNCTION public\.schedule_medication_administration/i)?.[0] ?? '';
 must(medicationContextTransition,/RETURNS JSONB/i,'medication patient-context hardening must preserve the JSONB RPC return contract');
 must(medicationContextTransition,/RETURN jsonb_build_object/i,'medication patient-context hardening must return a JSONB response');
+const notificationSecurityMigration = read('supabase/migrations/20260912252000_production_security_reconciliation.sql');
+must(notificationSecurityMigration,/CREATE OR REPLACE FUNCTION public\\.mark_notification_read\\(_notification_id UUID\\)\\s+RETURNS VOID\\b/i,'notification read RPC must preserve the production VOID return contract');
 const patientHubEntrypoints = read("supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql");
 must(patientHubEntrypoints,/GRANT EXECUTE ON FUNCTION public\.record_patient_vitals\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\) TO authenticated/i,"patient vitals grant must match the nine-argument RPC signature");
 const facility = read('supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql');
@@ -201,7 +203,7 @@ assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_r
 assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
 must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
 must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
-must(labResultBranch,/lr\\.patient_id\\s+IS NOT NULL\\s+AND\\s+lr\\.patient_id\\s+IS DISTINCT FROM\\s+lo\\.patient_id/i,'lab_results reconciliation must fail closed when legacy patient_id conflicts with the parent order');
+must(labResultBranch,/lr\.patient_id\s+IS NOT NULL\s+AND\s+lr\.patient_id\s+IS DISTINCT FROM\s+lo\.patient_id/i,'lab_results reconciliation must fail closed when legacy patient_id conflicts with the parent order');
 // Diagnosis patient identity is canonicalized through encounters; the legacy nullable diagnoses.patient_id field is not authoritative and is absent from the clean-install schema.
 const diagnosisFacilityBranch = facility.match(/elsif _entity_type='diagnoses' then([\s\S]*?)else raise exception 'Unsupported clinical entity type'/i)?.[1] ?? '';
 must(diagnosisFacilityBranch,/join public\.encounters e on e\.id=d\.encounter_id/i,'facility reconciliation must resolve diagnosis patient identity through its encounter');
