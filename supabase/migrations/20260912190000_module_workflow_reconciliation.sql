@@ -317,6 +317,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(UUID,TEXT);
+
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS public.medication_administrations
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
