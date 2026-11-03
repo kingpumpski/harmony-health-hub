@@ -36,6 +36,13 @@ interface LabOrder {
   facility_id?: string; service_order_id?: string; billing_status?: string;
   group_id?: string | null; parent_order_id?: string | null; panel_name?: string | null;
 }
+const labPaymentStatusLabel = (order: LabOrder) => {
+  const status = String(order.billing_status ?? '').toLowerCase();
+  if (['released', 'in_progress', 'completed', 'paid', 'approved'].includes(status)) return 'Paid';
+  if (['pending_payment', 'pending_payment_approval', 'pending', 'awaiting_payment'].includes(status)) return 'Pending';
+  return order.service_order_id ? 'Pending' : 'Not required';
+};
+
 interface LabResult {
   id: string; lab_order_id: string; result_data: { value?: string } | null; parameter_results?: Record<string, unknown> | null; interpretation: string | null;
   is_abnormal: boolean; status: string; entered_at: string; approved_at: string | null;
@@ -676,7 +683,7 @@ export default function Laboratory() {
             empty={false}
           >
             <thead>
-              <tr><th scope="col">Patient ID</th><th scope="col">Patient name</th><th scope="col">Status</th><th scope="col">Test name</th><th scope="col">Lab ID</th><th scope="col">Ordered</th><th scope="col" className="text-right">Actions</th></tr>
+              <tr><th scope="col">Patient ID</th><th scope="col">Patient name</th><th scope="col">Status</th><th scope="col">Payment status</th><th scope="col">Test name</th><th scope="col">Lab ID</th><th scope="col">Ordered</th><th scope="col" className="text-right">Actions</th></tr>
             </thead>
             <tbody>
               {visibleOrders.map((o, orderIndex) => {
@@ -686,7 +693,7 @@ export default function Laboratory() {
                 return (
                   <Fragment key={o.id}>
                     {(orderIndex === 0 || visibleOrders[orderIndex - 1].patient_id !== o.patient_id) && (
-                      <tr className="bg-muted/30"><td colSpan={7} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <tr className="bg-muted/30"><td colSpan={8} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Patient group · {p ? `${p.first_name} ${p.last_name}` : 'Patient'} · {visibleOrders.filter((entry) => entry.patient_id === o.patient_id).length} test(s)
                       </td></tr>
                     )}
@@ -694,7 +701,7 @@ export default function Laboratory() {
                       (() => {
                         const panelTests = orders.filter((entry) => entry.parent_order_id === o.parent_order_id);
                         const panelComplete = panelTests.length > 0 && panelTests.every((entry) => entry.status === 'approved');
-                        return <tr className="bg-primary/5"><td colSpan={7} className="py-2 text-xs font-semibold text-primary">
+                        return <tr className="bg-primary/5"><td colSpan={8} className="py-2 text-xs font-semibold text-primary">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-primary/20 px-2 py-0.5">Panel</span>
                             <span>{o.panel_name ?? 'Laboratory panel'}</span>
@@ -710,6 +717,7 @@ export default function Laboratory() {
                       <td className="font-mono text-xs">{p?.patient_code ?? o.patient_id.slice(0, 8).toUpperCase()}</td>
                       <td className="font-medium">{p ? `${p.first_name} ${p.last_name}` : 'Patient record'}</td>
                       <td><ClinicalStatusBadge status={o.status} /></td>
+                      <td><span className={"rounded-full px-2 py-1 text-[11px] font-semibold " + (labPaymentStatusLabel(o) === "Pending" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground")}>{labPaymentStatusLabel(o)}</span></td>
                       <td>
                         <div className="min-w-[180px]">
                           <p className="font-medium">{o.test_name}</p>
@@ -729,7 +737,7 @@ export default function Laboratory() {
                     </tr>
                     {expandedOrderId === o.id && (
                       <tr key={`${o.id}-details`} className="bg-muted/20">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                             <section className="rounded-xl border border-primary/20 bg-primary/5 p-4 lg:col-span-2">
                               <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Laboratory report workspace</p><h3 className="mt-1 text-lg font-semibold">{o.test_name}</h3></div><ClinicalStatusBadge status={result?.status ?? o.status} /></div>

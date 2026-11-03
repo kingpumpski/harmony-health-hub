@@ -166,23 +166,19 @@ async function fetchPharmacy(): Promise<RoleDashboardData> {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const monthStart = new Date(start.getFullYear(), start.getMonth(), 1).toISOString();
-  const [prescriptionsResult, dispensedResult, inventoryResult, monthResult, salesResult] = await Promise.all([
+  const [prescriptionsResult, dispensedResult, inventoryResult, monthResult] = await Promise.all([
     supabase.from('prescriptions').select('id,status', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('prescriptions').select('id,status', { count: 'exact', head: true }).eq('status', 'dispensed').gte('dispensed_at', start.toISOString()),
     supabase.from('pharmacy_inventory').select('id,drug_name,stock_quantity,reorder_level,expiry_date').order('drug_name').limit(300),
     supabase.from('prescriptions').select('id', { count: 'exact', head: true }).gte('created_at', monthStart),
-    supabase.from('pharmacy_pos_sales').select('id,total_amount,dispensed_at,status').eq('status', 'dispensed').gte('dispensed_at', monthStart).limit(500),
   ]);
   if (prescriptionsResult.error) throw new Error(`Pending prescriptions unavailable: ${prescriptionsResult.error.message}`);
   if (dispensedResult.error) throw new Error(`Dispensing totals unavailable: ${dispensedResult.error.message}`);
   if (inventoryResult.error) throw new Error(`Pharmacy inventory unavailable: ${inventoryResult.error.message}`);
   if (monthResult.error) throw new Error(`Monthly prescription count unavailable: ${monthResult.error.message}`);
-  if (salesResult.error) throw new Error(`Pharmacy revenue unavailable: ${salesResult.error.message}`);
   const inventory = (inventoryResult.data ?? []) as Row[];
-  const sales = (salesResult.data ?? []) as Row[];
   const lowStock = inventory.filter((item) => item.stock_quantity <= (item.reorder_level ?? 0));
   const emptyStock = inventory.filter((item) => item.stock_quantity <= 0);
-  const revenue = sales.reduce((total, sale) => total + (Number(sale.total_amount) || 0), 0);
   const activityResult = await supabase.from('prescriptions').select('id,medication,status,created_at,patients(first_name,last_name)').order('created_at', { ascending: false }).limit(6);
   const activity = ensure(activityResult, 'Recent pharmacy activity unavailable') as unknown as Row[];
   const expiring = inventory.filter((item) => item.expiry_date && Date.parse(item.expiry_date) >= Date.now() && Date.parse(item.expiry_date) <= Date.now() + 30 * 86400000);
@@ -196,7 +192,7 @@ async function fetchPharmacy(): Promise<RoleDashboardData> {
     secondaryMetrics: [
       { label: 'Total Prescriptions (Month)', value: monthResult.count ?? 0, href: '/pharmacy' },
       { label: 'Average Dispense Time', value: '—', description: 'Not available from current dispensing records' },
-      { label: 'Revenue from Pharmacy', value: `GHS ${revenue.toFixed(2)}`, href: '/financial-reports' },
+      { label: 'Items Requiring Reorder', value: lowStock.length, href: '/inventory' },
     ],
     activities: activity.map((row) => makeActivity(row, `Prescription ${row.status ?? 'updated'} for ${patientName(row)}`, row.medication, '/pharmacy')),
     upcoming: [],
