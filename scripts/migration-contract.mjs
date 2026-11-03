@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 const root = process.cwd();
-const trackedPaths = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\\0').filter(Boolean);
+const trackedPaths = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split(String.fromCharCode(0)).filter(Boolean);
 const forbiddenTrackedArtifacts = trackedPaths.filter((p) =>
   p.startsWith('supabase/.temp/') ||
   p.startsWith('.reconciliation/') ||
