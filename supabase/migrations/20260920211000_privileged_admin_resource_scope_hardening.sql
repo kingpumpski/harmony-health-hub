@@ -21,11 +21,6 @@ BEGIN
  RETURN v_count;
 END; $$;
 
--- The earlier clean-replay migration declared this function RETURNS INTEGER.
--- PostgreSQL cannot change a function return type with CREATE OR REPLACE;
--- drop the exact signature before recreating the production-compatible VOID RPC.
-DROP FUNCTION IF EXISTS public.seed_facility_reports(UUID);
-
 CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_user uuid:=auth.uid();
