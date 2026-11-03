@@ -30,5 +30,7 @@ assert.match(migration, /REVOKE ALL ON FUNCTION public\.create_patient_appointme
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.get_pending_specialist_referrals/);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.patient_coverage_details/);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.attach_lab_catalogue_to_order/);
+assert.match(migration, /REVOKE ALL ON FUNCTION public\.attach_lab_catalogue_to_order\(UUID,UUID\)/);
+assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.attach_lab_catalogue_to_order\(UUID,UUID\)/);
 
 console.log('revoked helper dependency reconciliation contract passed');
