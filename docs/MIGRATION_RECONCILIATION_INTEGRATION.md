@@ -68,3 +68,35 @@ A follow-up review found that the covered-visit auto-release trigger in `2026091
 Read-only inspection of the connected production schema also found two foreign-key constraints on `department_queues.service_order_id` with different names but identical referenced-table definitions. Record this as duplicate-constraint drift. Do not drop either constraint until the migration provenance and dependent schema are reconciled; any cleanup must be a reviewed forward migration.
 
 The checked-in `supabase-migration-list.txt` is not current evidence: its remote column contains 339 versions, whereas the connected production migration ledger returned 417 versions on 2026-11-03. The snapshot also contains repeated local version rows. Regenerate the inventory from the exact reviewed branch and fresh linked ledger before making version-mapping decisions. Do not use the stale snapshot to approve or repair the production baseline.
+
+## Read-only production inspection (2026-11-03)
+
+The connected Supabase project was inspected using read-only migration-history, catalog, privilege, and advisor queries. No production mutation was performed.
+
+### Migration ledger and provenance
+
+- The current production ledger contains 417 applied migration entries.
+- The production baseline entries `20260916002251_canonical_remote_schema` and `20260916003113_fix_start_imaging_order_queue_contract` are present in the ledger, but their original SQL remains unrecovered.
+- The attached evidence archive captured the fix-branch snapshot at commit `31645d93`: 661 local migration files and 417 remote entries, with 80 exact version overlaps, 581 local-only versions, and 337 remote-only versions. The local Supabase history command in that archive failed to connect to localhost port 54322, so no local database replay was established by that archive.
+- Eight of the 23 renamed migration names have candidate name matches in the production ledger, but SQL identity is not established. The candidates are:
+  - `notification_inbound_email_store` — remote version `20260925205248`
+  - `insurance_company_master_data` — remote version `20260929063756`
+  - `service_catalogue_department_control` — remote version `20260929063454`
+  - `patient_canonical_insurer_linkage` — remote version `20260929081044`
+  - `role_dashboard_kpi_cleanup` — remote version `20260929141826`
+  - `harden_security_definer_read_workspace_paths_batch6` — remote version `20260929143830`
+  - `scope_appointment_workflows_to_active_facility` — remote version `20261002052916`
+  - `pharmacy_global_category_edit` — remote version `20261002132256`
+- These are candidate mappings only. Do not mark any migration as applied or add it to an allowlist based on matching names alone.
+
+### Current production schema findings
+
+- The production schema already contains the AI diagnosis suggestion/reference tables, patient audit relations, diagnosis patient lineage, lab result patient lineage, department queue columns, and prescription compatibility fields. This confirms those objects exist in production today, even though clean replay from the repository exposed missing prerequisites/order defects.
+- `bulk_import_jobs` remains on the legacy shape (`entity`, `filename`, `inserted_rows`) and currently has no rows. A new forward-only candidate migration adds the modern columns, preserves/backfills legacy values, and refuses to guess unknown entity types or file formats.
+- `department_queues` and `billing_overrides` each have two identical service-order foreign keys. The forward candidate removes only the duplicate constraints and retains the canonical FK.
+- `lab_result_attachments` has two identical btree indexes on `lab_result_id`. The forward candidate removes the redundant index.
+- `lab_test_groups` and `lab_test_group_items` have RLS enabled but no policies, while client roles still hold table grants. The UI uses guarded SECURITY DEFINER RPCs for all panel reads/writes; the forward candidate revokes direct client table access and adds explicit restrictive deny policies.
+- `public.ensure_updated_at()` is a trigger-only, SECURITY INVOKER function with no pinned search path and direct execute grants to client roles. The forward candidate pins `search_path=pg_catalog` and revokes direct execute while preserving its existing triggers.
+- The security catalog contains 313 public SECURITY DEFINER functions; 279 are executable by authenticated users, zero are executable by anon, and all have a pinned search_path. The authenticated functions reviewed have auth/facility guards or delegate to guarded RPCs; two simple wrappers delegate to guarded functions. Therefore, do not blanket-revoke authenticated execution from all 279 functions. A database contract now protects the actual least-privilege invariants.
+
+The new forward migration is candidate-only. It must remain blocked by the unresolved production baseline until the migration provenance review is approved.
