@@ -88,8 +88,10 @@ assert.ok(legacyClaimTransitionFunction,'legacy insurance claim transition funct
 assert.match(legacyClaimTransitionFunction,/RETURNS\s+JSON\b/i,'legacy claim transition RPC must retain its JSON return type');
 assert.doesNotMatch(legacyClaimTransitionFunction,/RETURNS\s+JSONB\b/i,'legacy claim transition RPC must not change its return type');
 const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
-must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS integer\b/i,'facility report seeding must preserve its established INTEGER RPC return type');
-must(reportSeedMigration,/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i,'facility report seeding must return the affected row count');
+must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'facility report seeding must preserve its established VOID RPC return type');
+must(reportSeedMigration,/INSERT INTO public\.facility_report_config[\s\S]*?ON CONFLICT\(facility_id,report_id\) DO NOTHING;/i,'facility report seeding must be idempotent for each facility/report pair');
+must(reportSeedMigration,/IF v_user IS NULL OR NOT public\.has_role\(v_user,'admin'\) THEN/i,'facility report seeding must require an authenticated administrator');
+must(reportSeedMigration,/IF NOT public\.has_facility_access\(v_user,_facility_id\) THEN/i,'facility report seeding must enforce facility-scoped authorization');
 const legacy = read('supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql');
 for (const [r,m] of [
   [/CREATE TABLE IF NOT EXISTS public\.lab_test_groups/i,'legacy repair must tolerate existing panel table'],
