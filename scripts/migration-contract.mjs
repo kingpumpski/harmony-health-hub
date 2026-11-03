@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 const root = process.cwd();
+const trackedPaths = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\\0').filter(Boolean);
+const forbiddenTrackedArtifacts = trackedPaths.filter((p) =>
+  p.startsWith('supabase/.temp/') ||
+  p.startsWith('.reconciliation/') ||
+  p === 'database-reconciliation-evidence.zip'
+);
+assert.deepEqual(
+  forbiddenTrackedArtifacts,
+  [],
+  'Local Supabase state and reconciliation evidence archives must never be committed: ' + forbiddenTrackedArtifacts.join(', '),
+);
 const dir = path.join(root, 'supabase', 'migrations');
 const sqlFiles = fs.readdirSync(dir).filter((n) => n.endsWith('.sql')).sort();
 for (const name of sqlFiles) assert.match(name, /^\d{14}_.+\.sql$/, `Invalid migration filename (expected <14-digit-version>_<name>.sql): ${name}`);
