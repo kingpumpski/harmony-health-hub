@@ -110,6 +110,73 @@ for (const [r,m] of [
 ]) must(legacy,r,m);
 // Guard partial legacy schemas: missing audit tables are valid, and canonical
 // tariff aliases must satisfy installations where service_tariffs.category is NOT NULL.
+const medicationAdministrationCompatibility = read('supabase/migrations/20260912022900_reconcile_medication_administration_legacy_columns.sql');
+must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ/i,'legacy medication administration must reconcile scheduled_at before indexing');
+must(medicationAdministrationCompatibility,/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/i,'legacy medication administration must reconcile updated_at before trigger creation');
+for (const tag of ['medication_name_reconcile','medication_status_reconcile','medication_updated_at_reconcile']) {
+  must(medicationAdministrationCompatibility,new RegExp('DO \\
+must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
+must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
+assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
+const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
+must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
+must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
+const patientHubEntrypoints = read("supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql");
+must(patientHubEntrypoints,/GRANT EXECUTE ON FUNCTION public\.record_patient_vitals\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\) TO authenticated/i,"patient vitals grant must match the nine-argument RPC signature");
+const facility = read('supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql');
+const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? '';
+assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_results branch');
+assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
+must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
+must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
+// Preserve canonical facility payment-routing settings when upgrading legacy rows.
+const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
+must(workflowCompletion,/WHEN payment_routing_mode IN \\('pay_before_every_step',\\s*'streamlined'\\)\\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
+must(workflowCompletion,/WHEN COALESCE\\(to_jsonb\\(facility_settings\\)->>'routing_mode',''\\) = 'pay_before_each_step'[\\s\\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
+// Catch malformed single-dollar function openers and terminators before clean replay.
+assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
+// Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
+const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
+assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
+const workflow = read('.github/workflows/migration-contract.yml');
+must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
+must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
+must(workflow,/legacy schema compatibility contract/i,'CI must validate partial legacy-schema compatibility');
+console.log('[migration-contract] schema, index, RPC return/security, attachment lineage and legacy-reconciliation checks passed; inspected '+files.length+' migrations and '+checked+' SECURITY DEFINER definitions.');
++tag+'\\$[\\s\\S]*?END;\\s*\\
+must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
+must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
+const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
+assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
+const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
+must(canonicalTariffs,/INSERT INTO public\.service_tariffs\s*\(\s*service_code,\s*service_name,\s*category,\s*department,\s*unit,\s*amount,\s*active,\s*currency,\s*metadata\s*\)/i,'canonical tariff aliases must explicitly populate required category');
+must(canonicalTariffs,/category\s*=\s*EXCLUDED\.category/i,'canonical tariff upserts must reconcile category on existing aliases');
+const patientHubEntrypoints = read("supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql");
+must(patientHubEntrypoints,/GRANT EXECUTE ON FUNCTION public\.record_patient_vitals\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\) TO authenticated/i,"patient vitals grant must match the nine-argument RPC signature");
+const facility = read('supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql');
+const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? '';
+assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_results branch');
+assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
+must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
+must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
+// Preserve canonical facility payment-routing settings when upgrading legacy rows.
+const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
+must(workflowCompletion,/WHEN payment_routing_mode IN \\('pay_before_every_step',\\s*'streamlined'\\)\\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
+must(workflowCompletion,/WHEN COALESCE\\(to_jsonb\\(facility_settings\\)->>'routing_mode',''\\) = 'pay_before_each_step'[\\s\\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
+// Catch malformed single-dollar function openers and terminators before clean replay.
+assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
+// Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
+const malformedOpeners = migrations.filter(({source}) => /\bAS\s+\$(?=\s|$)/.test(source)).map(({name}) => name);
+assert.deepEqual(malformedOpeners, [], 'migration chain must not use single-dollar function openers: ' + malformedOpeners.join(', '));
+const workflow = read('.github/workflows/migration-contract.yml');
+must(workflow,/supabase db reset/i,'CI must replay migrations on a clean database');
+must(workflow,/migration_contract\.sql/i,'CI must run live database migration contract');
+must(workflow,/legacy schema compatibility contract/i,'CI must validate partial legacy-schema compatibility');
+console.log('[migration-contract] schema, index, RPC return/security, attachment lineage and legacy-reconciliation checks passed; inspected '+files.length+' migrations and '+checked+' SECURITY DEFINER definitions.');
++tag+'\\$;'),'MAR reconciliation DO block must terminate with END; ('+tag+')');
+}
+assert.ok(files.indexOf('20260912022900_reconcile_medication_administration_legacy_columns.sql') < files.indexOf('20260912023000_global_medication_administration.sql'),'MAR legacy columns must be reconciled before MAR indexes and triggers');
 const patientAuditRetention = read('supabase/migrations/20260912002000_phase5_patient_audit_retention.sql');
 must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT NULL THEN/i,'patient audit retention must guard absent legacy patient_audit_log tables');
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
