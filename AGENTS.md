@@ -194,3 +194,4 @@ A CI/CD repair is complete only when:
 - Every changed/renamed migration must be checked against deployed version history before it is renumbered, removed, or reintroduced under a new version. Never assume a renamed migration is unapplied.
 - Clean replay must run only against a disposable local database or explicitly authorized non-production environment. If Docker/Supabase local runtime is unavailable, mark replay unverified and do not claim migration completion.
 
+- For every legacy table, do not assume `CREATE TABLE IF NOT EXISTS` upgrades its existing columns. Before indexes, constraints, policies, or RPCs reference newer columns, add explicit `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` compatibility steps and backfill required non-null data. Add a regression contract that asserts the compatibility DDL occurs before first use.
