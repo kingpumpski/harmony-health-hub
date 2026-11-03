@@ -181,3 +181,27 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.diagnosis_import_batches,
 GRANT ALL ON TABLE public.diagnosis_standards, public.stg_diagnoses,
   public.diagnosis_standard_mappings, public.diagnosis_import_batches,
   public.diagnosis_import_rows TO service_role;
+
+-- Facility-specific terminology preference; the catalogue itself remains global.
+CREATE TABLE IF NOT EXISTS public.facility_diagnosis_standards (
+  facility_id uuid NOT NULL REFERENCES public.healthcare_facilities(id) ON DELETE CASCADE,
+  standard_id uuid NOT NULL REFERENCES public.diagnosis_standards(id) ON DELETE CASCADE,
+  priority integer NOT NULL DEFAULT 100 CHECK (priority >= 0),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (facility_id, standard_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_facility_diagnosis_standards_priority
+  ON public.facility_diagnosis_standards(facility_id, priority);
+
+ALTER TABLE public.facility_diagnosis_standards ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS facility_diagnosis_standards_authenticated_read
+  ON public.facility_diagnosis_standards;
+CREATE POLICY facility_diagnosis_standards_authenticated_read
+  ON public.facility_diagnosis_standards FOR SELECT TO authenticated
+  USING (is_active = true);
+
+REVOKE ALL ON TABLE public.facility_diagnosis_standards FROM PUBLIC, anon;
+GRANT SELECT ON TABLE public.facility_diagnosis_standards TO authenticated;
+GRANT ALL ON TABLE public.facility_diagnosis_standards TO service_role;
