@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(15);
+SELECT plan(19);
 
 SELECT ok(
   (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.invoices'::regclass AND polcmd='r' AND polpermissive),
@@ -46,6 +46,25 @@ SELECT ok(
 SELECT ok(
   NOT EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.video_sessions'::regclass AND polname IN ('patient own video sessions select','staff read telemedicine')),
   'superseded video-session SELECT policies are removed'
+);
+
+SELECT ok(
+  (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.payroll_items'::regclass AND polcmd IN ('*','r') AND polpermissive),
+  'payroll items retains one permissive SELECT policy after duplicate removal'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_items'::regclass AND polname='payroll_items_admin_it_accountant_write' AND polcmd='*' AND polpermissive)
+  AND NOT EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_items'::regclass AND polname='payroll_items_admin_it_accountant_select'),
+  'payroll items retains its original ALL policy and removes only the duplicate SELECT policy'
+);
+SELECT ok(
+  (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.payroll_periods'::regclass AND polcmd IN ('*','r') AND polpermissive),
+  'payroll periods retains one permissive SELECT policy after duplicate removal'
+);
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_periods'::regclass AND polname='payroll_periods_admin_it_accountant_write' AND polcmd='*' AND polpermissive)
+  AND NOT EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.payroll_periods'::regclass AND polname='payroll_periods_admin_it_accountant_select'),
+  'payroll periods retains its original ALL policy and removes only the duplicate SELECT policy'
 );
 
 SELECT ok(
