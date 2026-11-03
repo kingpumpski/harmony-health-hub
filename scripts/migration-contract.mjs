@@ -272,6 +272,10 @@ const ophthalmologyRoleMigration = read('supabase/migrations/20260912253900_add_
 must(ophthalmologyRoleMigration,/ALTER TYPE public\.app_role ADD VALUE IF NOT EXISTS 'ophthalmologist'/i,'ophthalmologist enum value must be committed before the ophthalmology workflow references it');
 must(ophthalmologyRoleMigration,/ALTER TYPE public\.app_role ADD VALUE IF NOT EXISTS 'radiologist'/i,'radiologist enum value must be committed before outside-lab security policies reference it');
 assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260913008000_outside_lab_storage_security.sql'),'radiologist role enum migration must precede outside-lab security migration');
+const itAdminRoleMigration = read('supabase/migrations/20260917149900_add_it_admin_app_role_prerequisite.sql');
+must(itAdminRoleMigration,/ALTER TYPE public\\.app_role ADD VALUE IF NOT EXISTS 'it_admin'/i,'IT administrator enum value must be committed before referral workflow functions reference it');
+assert.ok(files.indexOf('20260917149900_add_it_admin_app_role_prerequisite.sql') < files.indexOf('20260917150000_clinical_admission_referral_document_lifecycle.sql'),'IT administrator enum prerequisite must precede clinical admission/referral lifecycle migration');
+
 assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260912254000_ophthalmology_workflow.sql'),'ophthalmologist role enum migration must precede the ophthalmology workflow migration');
 const reportsRecovery = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
 must(reportsRecovery,/DROP FUNCTION IF EXISTS public\.recover_stale_report_run\(UUID,INTEGER\)/i,'Reports Center reconciliation must explicitly drop the earlier BOOLEAN RPC before changing its return type');
