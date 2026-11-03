@@ -22,8 +22,8 @@ CREATE POLICY invoices_scoped_read
         )
     )
     OR (SELECT public.current_user_is_clinical_staff())
-    OR public.current_user_has_role('accountant'::public.app_role)
-    OR public.current_user_has_role('admin'::public.app_role)
+    OR (SELECT public.current_user_has_role('accountant'::public.app_role))
+    OR (SELECT public.current_user_has_role('admin'::public.app_role))
   );
 
 DROP POLICY IF EXISTS "patient own video sessions select" ON public.video_sessions;
@@ -74,7 +74,7 @@ BEGIN
       table_name
     );
   END LOOP;
-END
+END;
 $notification_tables$;
 
 COMMIT;
