@@ -47,6 +47,12 @@ CREATE POLICY video_sessions_scoped_read
     OR (SELECT public.current_user_is_clinical_staff())
   );
 
+-- These SELECT policies duplicate the SELECT arm of the existing ALL policies
+-- byte-for-byte. Removing only the redundant SELECT copies preserves the same
+-- authorization predicate while avoiding duplicate permissive policy evaluation.
+DROP POLICY IF EXISTS payroll_items_admin_it_accountant_select ON public.payroll_items;
+DROP POLICY IF EXISTS payroll_periods_admin_it_accountant_select ON public.payroll_periods;
+
 -- Internal notification tables must remain inaccessible to both client roles.
 -- One restrictive policy is stronger than two permissive false policies: it
 -- continues to deny access even if a permissive policy is accidentally added.
