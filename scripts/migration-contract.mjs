@@ -81,7 +81,12 @@ must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI dia
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
 const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
-must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSON\b/i,'claim transition hardening must preserve the established JSON RPC return type');
+must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSON\b/i,'claim transition hardening must preserve the production JSON RPC return type');
+const legacyClaimTransitionMigration = read('supabase/migrations/20260912027000_global_hims_workflow_reconciliation.sql');
+const legacyClaimTransitionFunction = legacyClaimTransitionMigration.match(/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim\([\s\S]*?END; \$\$;/i)?.[0] ?? '';
+assert.ok(legacyClaimTransitionFunction,'legacy insurance claim transition function must remain defined');
+assert.match(legacyClaimTransitionFunction,/RETURNS\s+JSON\b/i,'legacy claim transition RPC must retain its JSON return type');
+assert.doesNotMatch(legacyClaimTransitionFunction,/RETURNS\s+JSONB\b/i,'legacy claim transition RPC must not change its return type');
 const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
 must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS integer\b/i,'facility report seeding must preserve its established INTEGER RPC return type');
 must(reportSeedMigration,/GET DIAGNOSTICS v_count = ROW_COUNT;\s+RETURN v_count;/i,'facility report seeding must return the affected row count');
