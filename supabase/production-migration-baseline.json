@@ -4,15 +4,35 @@
   "status": "unreconciled",
   "productionPushAllowed": false,
   "knownBaseline": [
-    { "version": "20260916002251", "name": "canonical_remote_schema", "sqlRecovered": false },
-    { "version": "20260916003113", "name": "fix_start_imaging_order_queue_contract", "sqlRecovered": false }
+    {
+      "version": "20260916002251",
+      "name": "canonical_remote_schema",
+      "sqlRecovered": false,
+      "mappingStatus": "unverified",
+      "mappedTo": null,
+      "mappingEvidence": null
+    },
+    {
+      "version": "20260916003113",
+      "name": "fix_start_imaging_order_queue_contract",
+      "sqlRecovered": false,
+      "mappingStatus": "unverified",
+      "mappedTo": null,
+      "mappingEvidence": null
+    }
   ],
   "notes": [
     "The original SQL for the two known canonical production baseline migrations has not been recovered.",
     "Repository migration files and the production ledger are not one-to-one. Candidate mappings are not verified provenance.",
     "Never run production db push, edit supabase_migrations.schema_migrations directly, fabricate baseline SQL, or bulk-repair migration history while this state is unreconciled.",
-    "Only a reviewed, reproducible, evidence-backed mapping and an approved production plan may change this state."
+    "Only a reviewed, reproducible, evidence-backed mapping and an approved production plan may change this state.",
+    "The production gate additionally requires every known baseline entry to have an individually verified mapping, a non-empty in-repository evidence artifact, a valid reviewed commit/date, and named approval."
   ],
-  "verification": { "verifiedAt": null, "reviewedCommit": null, "mappingArtifact": null, "approvedBy": null },
+  "verification": {
+    "verifiedAt": null,
+    "reviewedCommit": null,
+    "mappingArtifact": null,
+    "approvedBy": null
+  },
   "approvedPendingVersions": []
 }
