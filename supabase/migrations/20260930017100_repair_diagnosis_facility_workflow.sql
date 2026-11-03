@@ -28,6 +28,16 @@ BEGIN
     FROM public.encounters e
     JOIN public.patients p ON p.id=e.patient_id
     WHERE e.id=new.encounter_id;
+    IF v_facility IS NULL AND auth.uid() IS NOT NULL THEN
+      v_facility := public.current_user_facility_id();
+      IF v_facility IS NOT NULL AND new.encounter_id IS NOT NULL THEN
+        UPDATE public.encounters SET facility_id=v_facility, updated_at=now()
+        WHERE id=new.encounter_id AND facility_id IS NULL;
+        UPDATE public.patients p SET facility_id=v_facility, updated_at=now()
+        FROM public.encounters e
+        WHERE e.id=new.encounter_id AND p.id=e.patient_id AND p.facility_id IS NULL;
+      END IF;
+    END IF;
   END IF;
 
   IF v_facility IS NULL THEN
