@@ -60,8 +60,8 @@ BEGIN
   RETURN v_id;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS public.insurance_claims
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Clinical administrator role required'; END IF;
@@ -88,8 +88,14 @@ BEGIN
   v_approved:=COALESCE(_amount_approved,c.amount_approved); v_paid:=COALESCE(_amount_paid,c.amount_paid);
   IF v_approved IS NOT NULL AND v_approved < 0 THEN RAISE EXCEPTION 'Approved amount cannot be negative'; END IF;
   IF v_paid < 0 OR (v_approved IS NOT NULL AND v_paid > v_approved) THEN RAISE EXCEPTION 'Invalid paid amount'; END IF;
-  UPDATE public.insurance_claims SET amount_approved=COALESCE(_amount_approved,amount_approved),amount_paid=COALESCE(_amount_paid,amount_paid),claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),rejection_reason=COALESCE(_rejection_reason,rejection_reason) WHERE id=_claim_id;
-  RETURN jsonb_build_object('claim_id',_claim_id,'amount_approved',v_approved,'amount_paid',v_paid);
+  UPDATE public.insurance_claims
+  SET amount_approved=COALESCE(_amount_approved,amount_approved),
+      amount_paid=COALESCE(_amount_paid,amount_paid),
+      claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),
+      rejection_reason=COALESCE(_rejection_reason,rejection_reason)
+  WHERE id=_claim_id
+  RETURNING * INTO c;
+  RETURN c;
 END; $$;
 
 REVOKE ALL ON FUNCTION public.create_ward_unit(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC;
