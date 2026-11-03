@@ -26,8 +26,8 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.assign_emergency_officer(
   _case_id UUID,
   _officer_id UUID DEFAULT NULL
-) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+) RETURNS public.insurance_claims
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE uid UUID := auth.uid(); v_officer UUID;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN
@@ -61,8 +61,9 @@ BEGIN
       amount_paid=COALESCE(_amount_paid,amount_paid),
       claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),
       rejection_reason=COALESCE(_rejection_reason,rejection_reason)
-  WHERE id=_claim_id;
-  RETURN jsonb_build_object('claim_id',_claim_id);
+  WHERE id=_claim_id
+  RETURNING * INTO c;
+  RETURN c;
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.record_transfusion_reaction(
