@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.service_tariffs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   service_code TEXT NOT NULL UNIQUE,
   service_name TEXT NOT NULL,
-  category TEXT NOT NULL,
+  category TEXT,
   department TEXT NOT NULL,
   unit TEXT NOT NULL DEFAULT 'each',
   amount NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
