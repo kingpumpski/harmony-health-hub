@@ -128,9 +128,10 @@ for (const [r,m] of [
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS file_size_bytes bigint/i,'legacy repair must reconcile missing attachment size metadata'],
   [/WHERE id IS NULL[\s\S]*?HAVING count\(\*\) > 1[\s\S]*?RAISE EXCEPTION/i,'legacy attachment identifiers must fail closed when null or duplicated'],
   [/ADD CONSTRAINT lab_result_attachments_pkey PRIMARY KEY \(id\)/i,'legacy attachment identifiers must have a primary key after validation'],
-  [/UPDATE public\.lab_result_attachments AS attachment[\s\S]*?WHERE attachment\.facility_id IS NULL[\s\S]*?attachment\.lab_order_id = lo\.id/i,'legacy facility scope may only be backfilled from an explicit order link'],
+  [/WHERE facility_id IS NULL[\s\S]*?RAISE EXCEPTION/i,'legacy attachment facility scope must fail closed when missing rather than being guessed'],
+  [/WHERE a\.facility_id IS DISTINCT FROM lo\.facility_id[\s\S]*?RAISE EXCEPTION/i,'legacy attachment facility scope must match its linked laboratory order'],
   [/file_size_bytes BETWEEN 1 AND 15728640/i,'attachment metadata writes must validate file size'],
-  [/duplicate\.storage_path = a\.storage_path[\s\S]*?duplicate\.id <> a\.id/i,'ambiguous legacy storage paths must fail closed'],
+  [/GROUP BY storage_path[\s\S]*?HAVING count\(\*\) > 1[\s\S]*?RAISE EXCEPTION/i,'ambiguous legacy storage paths must fail closed'],
   [/CREATE UNIQUE INDEX idx_lab_result_attachments_storage_path_unique[\s\S]*?ON public\.lab_result_attachments \(storage_path\)/i,'legacy storage paths must be unique when existing data allows it'],
 ]) must(attachmentReconciliation,r,m);
 
