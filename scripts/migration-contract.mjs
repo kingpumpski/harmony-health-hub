@@ -97,10 +97,10 @@ for (const [indexName, tableName, columnName] of [
   must(productionAdvisorMigration,new RegExp('CREATE INDEX IF NOT EXISTS\\s+'+indexName+'\\s+ON public\\\\.'+tableName+'\\s*\\\\('+columnName+'\\\\)','i'),'production advisor migration must index '+tableName+'.'+columnName);
 }
 const reportSeedFoundation = read('supabase/migrations/20260913162000_harden_reports_center_seed_function.sql');
-must(reportSeedFoundation,/CREATE OR REPLACE FUNCTION public\\.seed_facility_reports\\(_facility_id UUID\\)\\s+RETURNS VOID\\b/i,'unreleased report seed foundation must use the canonical VOID return type');
+must(reportSeedFoundation,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id UUID\)\s+RETURNS VOID\b/i,'unreleased report seed foundation must use the canonical VOID return type');
 assert.doesNotMatch(reportSeedFoundation,/GET DIAGNOSTICS|RETURN v_count/i,'VOID report seeding must not retain the obsolete row-count return contract');
 const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
-must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\\.seed_facility_reports\\(_facility_id uuid\\)\\s+RETURNS void\\b/i,'facility report seeding must preserve its established VOID RPC return type');
+must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'facility report seeding must preserve its established VOID RPC return type');
 const reportSeedTypeTransition = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
 must(reportSeedTypeTransition,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'facility report seed return-type transition must explicitly drop and recreate the earlier INTEGER signature');
 must(reportSeedMigration,/INSERT INTO public\.facility_report_config[\s\S]*?ON CONFLICT\(facility_id,report_id\) DO NOTHING;/i,'facility report seeding must be idempotent for each facility/report pair');
@@ -153,8 +153,8 @@ must(rlsPolicyConsolidation,/uploaded_by = \(SELECT auth\.uid\(\)\)/i,'lab attac
 must(rlsPolicyConsolidation,/DROP POLICY IF EXISTS payroll_items_admin_it_accountant_select ON public\.payroll_items/i,'redundant payroll item SELECT policy must be removed without altering the ALL policy');
 must(rlsPolicyConsolidation,/DROP POLICY IF EXISTS payroll_periods_admin_it_accountant_select ON public\.payroll_periods/i,'redundant payroll period SELECT policy must be removed without altering the ALL policy');
 const reportSeedHardening = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
-must(reportSeedHardening,/CREATE OR REPLACE FUNCTION public\\.seed_facility_reports\\(_facility_id uuid\\)\\s+RETURNS void\\b/i,'later reports seed hardening must preserve the production VOID contract');
-assert.doesNotMatch(reportSeedHardening,/DROP FUNCTION IF EXISTS public\\.seed_facility_reports\\(UUID\\)/i,'already-deployed report seed hardening migration must remain immutable');
+must(reportSeedHardening,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'later reports seed hardening must preserve the production VOID contract');
+assert.doesNotMatch(reportSeedHardening,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\)/i,'already-deployed report seed hardening migration must remain immutable');
 const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
 assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
