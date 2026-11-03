@@ -3,11 +3,25 @@ alter function public.can_edit_patient_record(uuid) set search_path = pg_catalog
 alter function public.claim_notification_queue(integer) set search_path = pg_catalog, public;
 alter function public.current_user_can_edit_patient_record() set search_path = pg_catalog, public;
 DO $current_user_facility_id_search_path$
+DECLARE
+  helper_function regprocedure := to_regprocedure('public.current_user_facility_id()');
+  helper_config text[];
 BEGIN
-  IF to_regprocedure('public.current_user_facility_id()') IS NOT NULL THEN
-    EXECUTE 'ALTER FUNCTION public.current_user_facility_id() SET search_path = pg_catalog, public';
-  ELSE
-    RAISE NOTICE 'Skipping current_user_facility_id hardening because the helper is created by a later migration with an empty pinned search_path.';
+  IF helper_function IS NOT NULL THEN
+    SELECT p.proconfig
+      INTO helper_config
+    FROM pg_proc p
+    WHERE p.oid = helper_function::oid;
+
+    -- Preserve any existing function-level search_path, especially the empty
+    -- path used by the production helper and by its later migration definition.
+    IF NOT EXISTS (
+      SELECT 1
+      FROM unnest(COALESCE(helper_config, ARRAY[]::text[])) AS setting
+      WHERE setting LIKE 'search_path=%'
+    ) THEN
+      EXECUTE 'ALTER FUNCTION public.current_user_facility_id() SET search_path = pg_catalog, public';
+    END IF;
   END IF;
 END;
 $current_user_facility_id_search_path$;
