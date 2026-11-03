@@ -19,6 +19,11 @@ SELECT ok(
   'bulk import source format values are constrained'
 );
 
+SELECT ok(to_regclass('public.idx_hr_employees_archived_by') IS NOT NULL,'hr employee archived_by foreign key has an index');
+SELECT ok(to_regclass('public.idx_lab_result_attachments_uploaded_by') IS NOT NULL,'lab attachment uploaded_by foreign key has an index');
+SELECT ok(to_regclass('public.idx_lab_test_group_items_test_id') IS NOT NULL,'lab test group item test_id foreign key has an index');
+SELECT ok(to_regclass('public.idx_lab_test_groups_created_by') IS NOT NULL,'lab test group created_by foreign key has an index');
+
 SELECT ok(
   EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid='public.ensure_updated_at()'::regprocedure AND p.proconfig @> ARRAY['search_path=pg_catalog']),
   'ensure_updated_at has a pinned pg_catalog search path'
