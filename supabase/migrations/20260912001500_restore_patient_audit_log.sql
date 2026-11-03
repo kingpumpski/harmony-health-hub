@@ -69,10 +69,7 @@ BEGIN
     FROM pg_constraint
     WHERE conrelid = 'public.patient_audit_log'::regclass
       AND contype = 'c'
-      AND pg_get_constraintdef(oid) ILIKE '%action%'
-      AND pg_get_constraintdef(oid) ILIKE '%INSERT%'
-      AND pg_get_constraintdef(oid) ILIKE '%UPDATE%'
-      AND pg_get_constraintdef(oid) ILIKE '%DELETE%'
+      AND conname = 'patient_audit_log_action_check'
   ) THEN
     ALTER TABLE public.patient_audit_log
       ADD CONSTRAINT patient_audit_log_action_check
