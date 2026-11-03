@@ -90,6 +90,17 @@ CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
   ON public.bulk_import_jobs(entity_type, status, created_at DESC);
 
+-- Add indexes for the four verified foreign-key columns that had no supporting
+-- index in the live production catalog.
+CREATE INDEX IF NOT EXISTS idx_hr_employees_archived_by
+  ON public.hr_employees(archived_by);
+CREATE INDEX IF NOT EXISTS idx_lab_result_attachments_uploaded_by
+  ON public.lab_result_attachments(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_lab_test_group_items_test_id
+  ON public.lab_test_group_items(test_id);
+CREATE INDEX IF NOT EXISTS idx_lab_test_groups_created_by
+  ON public.lab_test_groups(created_by);
+
 -- The panel manager deliberately uses guarded SECURITY DEFINER RPCs. Direct
 -- PostgREST access to the underlying tables is not part of the client contract.
 REVOKE ALL ON TABLE public.lab_test_groups, public.lab_test_group_items
