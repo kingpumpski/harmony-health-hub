@@ -46,9 +46,12 @@ ALTER TABLE public.facility_settings
   ADD COLUMN IF NOT EXISTS default_appointment_minutes INTEGER NOT NULL DEFAULT 30,
   ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES auth.users(id);
 
--- Translate legacy routing values into the canonical trigger contract.
+-- Translate only recognized legacy values. Preserve settings that already
+-- use the canonical payment-routing contract.
 UPDATE public.facility_settings
 SET payment_routing_mode = CASE
+  WHEN payment_routing_mode IN ('pay_before_every_step', 'streamlined')
+    THEN payment_routing_mode
   WHEN COALESCE(to_jsonb(facility_settings)->>'routing_mode','') = 'pay_before_each_step'
     OR COALESCE(to_jsonb(facility_settings)->>'payment_flow','') = 'strict'
     THEN 'pay_before_every_step'
