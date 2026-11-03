@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { notifyMasterDataChanged } from '@/lib/masterDataEvents';
 import { MAX_SPREADSHEET_FILE_BYTES, MAX_SPREADSHEET_ROWS, normalizeSpreadsheetRows, parseSpreadsheetBuffer } from '@/lib/spreadsheetImport.mjs';
+import { clinicalMigrationSourceFormat, parseClinicalMigrationText } from '@/lib/clinicalMigrationFormats.mjs';
 
 type Entity = 'patients' | 'pharmacy_inventory' | 'icd_codes' | 'stg_diagnoses' | 'service_tariffs' | 'legacy_clinical_records';
 type Row = Record<string, string | number | boolean | null>;
@@ -80,7 +81,18 @@ export default function DataImport() {
     setFileName(''); setRows([]); setErrors([]);
     if (file.size > MAX_SPREADSHEET_FILE_BYTES) return toast({ title: 'File too large', description: `Imports are limited to ${MAX_SPREADSHEET_FILE_BYTES / 1024 / 1024} MB.`, variant: 'destructive' });
     const lowerName = file.name.toLowerCase();
-    if (!lowerName.endsWith('.csv') && !lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) return toast({ title: 'Unsupported file', description: 'Choose CSV, XLSX or XLS.', variant: 'destructive' });
+    const allowedExtensions = entity === 'legacy_clinical_records'
+      ? ['.csv', '.xlsx', '.xls', '.json', '.xml', '.hl7', '.v2', '.mllp']
+      : ['.csv', '.xlsx', '.xls'];
+    if (!allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
+      return toast({
+        title: 'Unsupported file',
+        description: entity === 'legacy_clinical_records'
+          ? 'Choose CSV, XLSX, XLS, JSON/FHIR Bundle, XML or HL7 v2.'
+          : 'Choose CSV, XLSX or XLS.',
+        variant: 'destructive',
+      });
+    }
     setFileName(file.name);
     if (lowerName.endsWith('.csv')) {
       Papa.parse<Record<string, unknown>>(file, { header: true, skipEmptyLines: true, transformHeader: (header) => header.trim().toLowerCase(), complete: (result) => {
@@ -88,6 +100,17 @@ export default function DataImport() {
         if (result.data.length > MAX_SPREADSHEET_ROWS) { setFileName(''); return toast({ title: 'Too many rows', description: `Imports are limited to ${MAX_SPREADSHEET_ROWS.toLocaleString()} rows.`, variant: 'destructive' }); }
         setRows(normalizeSpreadsheetRows(result.data) as Row[]);
       }, error: (error) => { setFileName(''); toast({ title: 'CSV parse failed', description: error.message, variant: 'destructive' }); } });
+      return;
+    }
+    if (entity === 'legacy_clinical_records' && (lowerName.endsWith('.json') || lowerName.endsWith('.xml') || lowerName.endsWith('.hl7') || lowerName.endsWith('.v2') || lowerName.endsWith('.mllp'))) {
+      try {
+        const parsedRows = parseClinicalMigrationText(file.name, await file.text(), sourceSystem);
+        if (parsedRows.length > MAX_SPREADSHEET_ROWS) throw new Error(`Imports are limited to ${MAX_SPREADSHEET_ROWS.toLocaleString()} rows.`);
+        setRows(parsedRows as Row[]);
+      } catch (error) {
+        setFileName('');
+        toast({ title: 'Clinical migration parse failed', description: error instanceof Error ? error.message : 'Invalid clinical migration file.', variant: 'destructive' });
+      }
       return;
     }
     try {
@@ -119,7 +142,7 @@ export default function DataImport() {
         const { data, error } = await supabase.rpc('import_service_tariffs' as never, { _source_standard: sourceSystem || 'Facility tariff', _rows: validRows } as never);
         if (error) throw error; inserted = Number(data ?? 0);
       } else if (entity === 'legacy_clinical_records') {
-        const { data: batch, error: batchError } = await supabase.rpc('create_data_migration_batch' as never, { _entity_type: 'legacy_clinical_records', _source_system: sourceSystem, _source_version: sourceVersion || null, _file_name: fileName || null, _source_format: fileName.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx', _total_rows: validRows.length } as never);
+        const { data: batch, error: batchError } = await supabase.rpc('create_data_migration_batch' as never, { _entity_type: 'legacy_clinical_records', _source_system: sourceSystem, _source_version: sourceVersion || null, _file_name: fileName || null, _source_format: clinicalMigrationSourceFormat(fileName), _total_rows: validRows.length } as never);
         if (batchError) throw batchError;
         const { data, error } = await supabase.rpc('stage_data_migration_rows' as never, { _batch_id: batch, _rows: validRows } as never);
         if (error) throw error;
@@ -185,7 +208,7 @@ export default function DataImport() {
     <div className="card-medical p-5 space-y-4">
       <div className="grid gap-3 md:grid-cols-3"><select value={entity} onChange={(e) => { setEntity(e.target.value as Entity); setRows([]); setErrors([]); setFileName(''); }} className="input-medical"><option value="patients">Patients</option><option value="pharmacy_inventory">Pharmacy inventory</option><option value="icd_codes">ICD-10 codes</option><option value="stg_diagnoses">Ghana STG diagnoses</option><option value="service_tariffs">Services & tariffs</option><option value="legacy_clinical_records">Legacy clinical records</option></select><input value={sourceSystem} onChange={(e) => setSourceSystem(e.target.value)} placeholder="Source system / standard" className="input-medical" /><input value={sourceVersion} onChange={(e) => setSourceVersion(e.target.value)} placeholder="Source version (optional)" className="input-medical" /></div>
       <p className="text-sm text-muted-foreground">{schemas[entity].description}</p>
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadTemplate} className="btn-ghost inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Download template</button><input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const file = e.target.files?.[0]; if (file) void parse(file); e.currentTarget.value = ''; }} className="input-medical flex-1 min-w-64" /></div>
+      <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadTemplate} className="btn-ghost inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Download template</button><input type="file" accept={entity === 'legacy_clinical_records' ? ".csv,.xlsx,.xls,.json,.xml,.hl7,.v2,.mllp" : ".csv,.xlsx,.xls"} onChange={(e) => { const file = e.target.files?.[0]; if (file) void parse(file); e.currentTarget.value = ''; }} className="input-medical flex-1 min-w-64" /></div>
       {rows.length > 0 && <><p className="text-sm">{fileName} · {rows.length.toLocaleString()} rows</p><div className="overflow-auto border border-border rounded-xl max-h-80"><table className="text-xs w-full"><thead><tr>{Object.keys(rows[0]).map((key) => <th key={key} className="text-left p-2 border-b border-border">{key}</th>)}</tr></thead><tbody>{rows.slice(0, PREVIEW_ROWS).map((row, i) => <tr key={i} className="border-b border-border">{Object.keys(rows[0]).map((key) => <td key={key} className="p-2 max-w-48 truncate">{String(row[key] ?? '')}</td>)}</tr>)}</tbody></table></div><button disabled={busy} onClick={() => void importRows()} className="btn-primary inline-flex items-center gap-2"><Upload className="w-4 h-4" />{busy ? 'Processing…' : `Process ${rows.length.toLocaleString()} rows`}</button></>}
     </div>
 
