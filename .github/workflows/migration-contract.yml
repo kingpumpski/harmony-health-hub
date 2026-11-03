@@ -7,12 +7,18 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'docs/PRODUCTION_MIGRATION_PROVENANCE.md'
+      - 'supabase/production-migration-baseline.json'
+      - 'AGENTS.md'
   push:
     branches: [main, 'feature/**', 'fix/**', 'ci/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
       - 'scripts/migration-contract.mjs'
+      - 'docs/PRODUCTION_MIGRATION_PROVENANCE.md'
+      - 'supabase/production-migration-baseline.json'
+      - 'AGENTS.md'
   workflow_dispatch:
 
 permissions:
@@ -76,6 +82,12 @@ jobs:
       - name: Verify live schema, RPC return types, privileges and RLS
         if: hashFiles('supabase/tests/database/migration_contract.sql') != ''
         run: supabase test db supabase/tests/database/migration_contract.sql
+      - name: Verify production schema advisor remediation
+        if: hashFiles('supabase/tests/database/production_schema_advisor_reconciliation_contract.sql') != ''
+        run: supabase test db supabase/tests/database/production_schema_advisor_reconciliation_contract.sql
+      - name: Verify consolidated RLS policy access paths
+        if: hashFiles('supabase/tests/database/rls_policy_consolidation_contract.sql') != ''
+        run: supabase test db supabase/tests/database/rls_policy_consolidation_contract.sql
       - name: Verify HR/payroll employee query columns and record controls
         if: hashFiles('supabase/tests/database/hr_payroll_record_management_contract.sql') != ''
         timeout-minutes: 10

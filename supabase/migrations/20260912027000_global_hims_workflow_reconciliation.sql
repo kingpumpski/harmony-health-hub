@@ -36,9 +36,11 @@ END; $$;
 GRANT EXECUTE ON FUNCTION public.transition_theatre_case(UUID,TEXT,TEXT) TO authenticated;
 
 -- Claims UI uses _status; retain a single canonical transition contract.
+-- 20260912025500 already created this six-argument signature as RETURNS JSON.
+-- Preserve JSON here: CREATE OR REPLACE cannot change the existing return type.
 DROP FUNCTION IF EXISTS public.transition_insurance_claim(UUID,TEXT,TEXT);
 CREATE OR REPLACE FUNCTION public.transition_insurance_claim(_claim_id UUID, _status TEXT, _amount_approved NUMERIC DEFAULT NULL, _amount_paid NUMERIC DEFAULT NULL, _rejection_reason TEXT DEFAULT NULL, _notes TEXT DEFAULT NULL)
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE c public.insurance_claims%ROWTYPE; uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -62,7 +64,7 @@ BEGIN
   WHERE id=_claim_id;
   INSERT INTO public.insurance_claim_events(claim_id,event_type,from_status,to_status,notes,actor_id)
   VALUES (_claim_id,'status_changed',c.status,_status,_notes,uid);
-  RETURN jsonb_build_object('claim_id',_claim_id,'status',_status,'amount_approved',COALESCE(_amount_approved,c.amount_approved),'amount_paid',COALESCE(_amount_paid,c.amount_paid));
+  RETURN json_build_object('claim_id',_claim_id,'status',_status,'amount_approved',COALESCE(_amount_approved,c.amount_approved),'amount_paid',COALESCE(_amount_paid,c.amount_paid));
 END; $$;
 GRANT EXECUTE ON FUNCTION public.transition_insurance_claim(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT) TO authenticated;
 

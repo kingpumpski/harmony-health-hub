@@ -180,3 +180,75 @@ A CI/CD repair is complete only when:
 - The relevant workflow/configuration checks and regression tests actually pass, or unverified checks are explicitly listed.
 - The exact commit and latest relevant run are identified.
 - Any branch-protection/ruleset/provider changes that could not be verified are recorded as outstanding administrator actions.
+
+## 16. Migration baseline and reconciliation fail-closed rules
+
+- Treat `supabase/production-migration-baseline.json` as an explicit production safety control. While `status` is not `verified`, `productionPushAllowed` is not `true`, or any verification evidence is missing, production migration validation/apply must stop with a failing workflow status. A warning followed by exit code 0 is not an acceptable validation result.
+- The `verify` workflow mode is read-only and must never imply that migration provenance is verified or authorize apply.
+- Do not run `supabase db push --linked --dry-run` against production while the baseline is unresolved. Capture linked migration history for review, but do not treat a history listing as proof of schema equivalence.
+- Before allowing apply, require an exact reviewed allowlist of pending 14-digit migration versions. Reject malformed versions, duplicate local pending versions, ambiguous local/remote rows, and any difference between observed and approved pending versions.
+- Test gate behavior at runtime, including unresolved baseline, apply blocked, read-only verify, exact allowlist pass, unexpected pending version, ambiguous history row, duplicate version, and malformed allowlist.
+- A green static source-pattern test is not sufficient evidence that the gate blocks execution. The runtime test must execute the gate as a child process against isolated temporary state.
+- Do not change baseline state to verified, add approved pending versions, or enable production push based on candidate mappings, filename similarity, commit messages, or an incomplete SQL archive. Require reproducible evidence and named approval.
+- Do not change historical migration function return types merely to fix SQL quoting. Inspect the live function signature, generated types, and every application/RPC caller first. PostgreSQL `CREATE OR REPLACE FUNCTION` cannot change an existing function's return type; any necessary transition requires a separately reviewed forward migration and compatibility plan.
+- Every changed/renamed migration must be checked against deployed version history before it is renumbered, removed, or reintroduced under a new version. Never assume a renamed migration is unapplied.
+- Clean replay must run only against a disposable local database or explicitly authorized non-production environment. If Docker/Supabase local runtime is unavailable, mark replay unverified and do not claim migration completion.
+
+- For every legacy table, do not assume `CREATE TABLE IF NOT EXISTS` upgrades its existing columns. Before indexes, constraints, policies, or RPCs reference newer columns, add explicit `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` compatibility steps and backfill required non-null data. Add a regression contract that asserts the compatibility DDL occurs before first use.
+
+- Review every writer to a legacy table, not only the DDL that adds columns. Include triggers, RPCs, background workers, and application inserts. For every legacy NOT NULL column without a default, assert that every applicable insert path supplies a valid value.
+- When a queue or relationship uses a partial unique index, make each `ON CONFLICT` target include a predicate that allows PostgreSQL to infer that exact index. Add regression contracts for trigger-driven and RPC-driven writes separately.
+- The covered-visit auto-release path must populate the legacy `department_queues` patient and priority fields and use the partial `service_order_id IS NOT NULL` conflict predicate. The `department-queue-legacy-columns-contract` test protects this trigger path.
+- Treat `supabase-migration-list.txt` as a dated snapshot, never as the current source of truth. Regenerate local inventory and linked remote history from the same review window before reconciliation. On 2026-11-03, the committed snapshot showed 339 remote entries while the connected production ledger returned 417; the snapshot is stale and must not be used to approve migration provenance.
+- Duplicate constraints with different names but identical definitions are schema drift. Record and reconcile them through a reviewed forward migration after baseline provenance is verified; do not add another equivalent constraint or modify production ad hoc.
+
+
+## 17. Production schema advisor and RLS reconciliation
+
+- Use read-only Supabase catalog queries and advisor results to confirm the live production shape before proposing forward migrations. Record the observation date and project reference in evidence.
+- Do not treat every SECURITY DEFINER function executable by `authenticated` as a vulnerability. Verify anon exposure, pinned search_path, auth/facility guards, and whether wrapper RPCs delegate to guarded functions. Never blanket-revoke authenticated execution from application RPCs.
+- Preserve restrictive facility-identity policies. PostgreSQL combines permissive policies with OR and restrictive policies with AND; never assume a permissive policy named “guard” restricts other permissive policies.
+- Before consolidating permissive RLS policies, compare exact predicates and retain each patient-own, staff, accountant, administrator, and facility-scoped access path. Add pgTAP assertions for both preserved access and facility restrictions.
+- Consolidate duplicate false client-deny policies only into restrictive deny policies covering the same roles and commands. Do not widen access to internal tables.
+- Drop duplicate foreign keys or indexes only after catalog evidence proves their definitions are identical; retain one canonical constraint/index and add a database contract.
+- A live production schema gap must be addressed by a forward-only migration. Historical migrations may be adjusted in the integration candidate to make clean replay possible, but they must not be merged/applied until production-ledger provenance establishes whether those versions have already been recorded.
+- Every forward schema advisor repair must have an executable pgTAP contract and must be tested on clean replay before merge.
+
+- Never change an existing PostgreSQL function's return type with `CREATE OR REPLACE FUNCTION`. Inspect `pg_proc` on the connected database and all application RPC callers first. Preserve the exact `json` versus `jsonb` contract; introduce a separately named canonical RPC or a reviewed drop/recreate compatibility migration when a new contract is required.
+- Every PL/pgSQL `DO` block must terminate its block body with `END;` before the matching dollar-quote delimiter. Add a regression contract for new or repaired DO blocks; delimiter matching alone is not enough.
+- In RLS policies, wrap stable authorization helpers in scalar subqueries, e.g. `(SELECT public.current_user_has_role(...))`, to avoid per-row re-evaluation. Keep the policy semantics unchanged when applying this performance optimization.
+- Before applying `ALTER FUNCTION` in a migration, verify the exact function signature exists at that point in a clean replay. If a helper is intentionally created by a later migration, guard the optional hardening step with `to_regprocedure` and ensure the later definition has the required pinned search path.
+- Create all new migration files with `supabase migration new` and valid UTC timestamp prefixes. Do not normalize old non-standard timestamp strings or rename historical versions without a documented dependency and production-provenance review.
+
+
+## 18. Clean-install schema parity and advisor-warning exceptions
+
+- A successful migration replay must converge on the canonical production schema, not merely avoid SQL errors. Compare the final local catalog with the production catalog for columns, nullability, defaults, constraints, indexes, functions, grants, and RLS policies.
+- When an early clean-install migration creates a legacy column that does not exist in the canonical production schema, do not make later deployed migrations depend on that column. Keep legacy values nullable where the business contract allows, migrate values into the canonical field in a forward reconciliation migration, and remove the obsolete field only after checking all SQL/application references.
+- Never edit the content of a migration version already recorded in production. When a migration is already deployed, preserve it and use a new forward migration for any production schema correction. If a clean replay requires an integration-only historical correction, explicitly document the version's production status and keep the production baseline gate closed until provenance review is complete.
+- A multiple_permissive_policies advisor warning is not automatically a security defect or a reason to delete a policy. Review the exact USING and WITH CHECK predicates, role scope, command, patient ownership, and facility constraints. If one policy grants specialty writes and another grants broader clinical read-only access, retain both unless a semantics-preserving command-specific consolidation is proven. Add tests for each retained access path and record the intentional warning.
+- An unused_index warning is not sufficient evidence to drop an index. Review workload coverage, statistics reset time, query plans, write overhead, and constraint dependencies before proposing removal.
+- Treat advisor output as evidence to triage, not a command list. Record which findings were fixed, which are intentionally retained, and which require additional workload or authorization review.
+
+- Every function privilege statement must use the exact identity-argument signature declared by the function at that point in the migration chain. Verify each GRANT and REVOKE against pg_get_function_identity_arguments or the preceding CREATE FUNCTION declaration; a one-argument overload must never be assumed from a similarly named two-argument function.
+
+
+## 10. Coordinated recovery across open pull requests
+
+For any repository-wide recovery or request to fix multiple blockers together:
+
+1. Inventory every open PR from the live repository, recording PR number, head SHA, changed files, latest required checks, draft/mergeability state, and last update. Historical summaries are not current evidence.
+2. Build a recovery matrix that classifies each PR as: shared-root-cause repair, duplicate/superseded repair, independent feature, documentation/architecture, or unsafe/stale branch.
+3. Compare each PR against the current integration base. Identify overlapping files and dependencies before selecting changes. Do not merge or cherry-pick a long-diverged branch wholesale merely because its title sounds relevant.
+4. Maintain one canonical integration workstream for shared database/migration repairs. Selectively carry over only reviewed fixes and their tests. Keep unrelated UI/features in their own reviewable PRs.
+5. Mark a PR superseded only after confirming that its required change is present in the canonical branch or live schema and its regression test is covered. Preserve the evidence and state the replacement PR/commit.
+6. Rebase or port independent feature PRs only after their schema dependencies and the canonical migration chain are stable. Re-run all required checks on the resulting final head SHA.
+7. Do not merge PRs or close/relabel them as superseded unless the user explicitly authorizes that action. A green Vercel preview is not a substitute for repository quality, migration, security, or integration checks.
+
+## 11. PostgreSQL signature, enum, and contract-test safeguards
+
+- Before changing an RPC, read its actual production signature with `pg_get_function_result` and inspect its definition, execute grants, callers, and database dependents. The checked-in historical migration alone is not proof of the live contract.
+- PostgreSQL `CREATE OR REPLACE FUNCTION` cannot change a function's return type. If a return-type transition is required, inspect `pg_depend`, confirm no dependent database objects will be broken, explicitly drop/recreate in a reviewed migration, restore least-privilege grants, and test both clean replay and the supported upgrade path. Never silently replace a production return type.
+- Add PostgreSQL enum values in an isolated migration that commits before any subsequent migration references the new value. Add a chronological contract assertion for the prerequisite migration.
+- Static migration contracts must use valid JavaScript regular expressions, not accidentally double-escaped regex literals. Verify each assertion against the exact checked-in SQL and include an assertion that fails when the intended SQL protection is absent.
+- A successful static contract is not a substitute for a clean local replay. Continue fixing the first deterministic replay failure, then rerun the entire chain from an empty disposable database until all migrations and post-replay contracts complete.

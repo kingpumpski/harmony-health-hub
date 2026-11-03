@@ -106,6 +106,6 @@ REVOKE ALL ON FUNCTION public.record_patient_vitals(UUID,NUMERIC,NUMERIC,NUMERIC
 REVOKE ALL ON FUNCTION public.create_patient_lab_order(UUID,TEXT,TEXT) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.create_patient_document(UUID,TEXT,TEXT,TEXT) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.create_encounter_workflow(UUID,TEXT,TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.record_patient_vitals(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.record_patient_vitals(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_patient_lab_order(UUID,TEXT,TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_patient_document(UUID,TEXT,TEXT,TEXT) TO authenticated;

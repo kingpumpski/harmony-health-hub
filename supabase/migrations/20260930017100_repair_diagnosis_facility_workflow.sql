@@ -1,4 +1,4 @@
--- Repair diagnosis authoring for legacy encounters that are being actively worked.
+-- Preserve diagnosis facility lineage through the parent encounter; unresolved parents fail closed.
 -- Direct diagnosis DML remains revoked; only authenticated clinical workflow RPCs can reach this trigger.
 CREATE OR REPLACE FUNCTION public.sync_child_facility_from_parent()
 RETURNS trigger
@@ -8,7 +8,7 @@ SET search_path=''
 AS $function$
 DECLARE
   v_facility uuid;
-  v_reconciliation boolean := coalesce(current_setting('hms.facility_reconciliation', true), 'off') = 'on';
+  v_reconciliation boolean := coalesce(pg_catalog.current_setting('hms.facility_reconciliation', true), 'off') = 'on';
 BEGIN
   IF tg_table_name='department_queues' THEN
     SELECT so.facility_id INTO v_facility FROM public.service_orders so WHERE so.id=new.service_order_id;
@@ -24,19 +24,18 @@ BEGIN
     SELECT e.facility_id INTO v_facility FROM public.encounters e WHERE e.id=new.encounter_id;
     IF v_facility IS NULL THEN SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id; END IF;
   ELSIF tg_table_name='diagnoses' THEN
-    SELECT e.facility_id INTO v_facility FROM public.encounters e WHERE e.id=new.encounter_id;
-    IF v_facility IS NULL THEN
-      SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id;
-    END IF;
+    SELECT COALESCE(e.facility_id,p.facility_id) INTO v_facility
+    FROM public.encounters e
+    JOIN public.patients p ON p.id=e.patient_id
+    WHERE e.id=new.encounter_id;
     IF v_facility IS NULL AND auth.uid() IS NOT NULL THEN
       v_facility := public.current_user_facility_id();
       IF v_facility IS NOT NULL AND new.encounter_id IS NOT NULL THEN
         UPDATE public.encounters SET facility_id=v_facility, updated_at=now()
         WHERE id=new.encounter_id AND facility_id IS NULL;
-      END IF;
-      IF v_facility IS NOT NULL AND new.patient_id IS NOT NULL THEN
-        UPDATE public.patients SET facility_id=v_facility, updated_at=now()
-        WHERE id=new.patient_id AND facility_id IS NULL;
+        UPDATE public.patients p SET facility_id=v_facility, updated_at=now()
+        FROM public.encounters e
+        WHERE e.id=new.encounter_id AND p.id=e.patient_id AND p.facility_id IS NULL;
       END IF;
     END IF;
   END IF;

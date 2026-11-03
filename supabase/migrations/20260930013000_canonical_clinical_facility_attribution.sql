@@ -52,8 +52,10 @@ begin
     select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id;
     if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
   elsif tg_table_name='diagnoses' then
-    select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id;
-    if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
+    select coalesce(e.facility_id,p.facility_id) into v_facility
+    from public.encounters e
+    join public.patients p on p.id=e.patient_id
+    where e.id=new.encounter_id;
   end if;
   if v_facility is null then raise exception 'Parent clinical record has no facility attribution'; end if;
   if new.facility_id is null then new.facility_id:=v_facility;

@@ -720,7 +720,7 @@ BEGIN
       'diagnoses',coalesce((
         SELECT jsonb_agg(jsonb_build_object('id',d.id,'diagnosis',d.diagnosis,'icd_code',d.icd_code,'is_principal',d.is_principal)
           ORDER BY d.is_principal DESC,d.created_at ASC)
-        FROM public.diagnoses d WHERE d.encounter_id=o.encounter_id AND d.patient_id=o.patient_id
+        FROM public.diagnoses d JOIN public.encounters diagnosis_encounter ON diagnosis_encounter.id=d.encounter_id AND diagnosis_encounter.patient_id=o.patient_id WHERE d.encounter_id=o.encounter_id
       ),'[]'::jsonb),
       'patients',jsonb_build_object('id',p.id,'first_name',p.first_name,'last_name',p.last_name,'patient_code',p.patient_code)
     ) row_data

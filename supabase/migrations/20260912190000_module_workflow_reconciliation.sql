@@ -294,7 +294,7 @@ CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _notes TEXT DEFAULT NULL,
   _witnessed_by UUID DEFAULT NULL
 )
-RETURNS public.medication_administrations
+RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
 AS $$
 DECLARE r public.medication_administrations;
@@ -313,9 +313,11 @@ BEGIN
       updated_at=now()
   WHERE id=_record_id RETURNING * INTO r;
   PERFORM public.record_system_audit('medication_'||_status,'clinical','medication_administrations',r.id,'info',jsonb_build_object('patient_id',r.patient_id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at,'reason',r.reason));
-  RETURN r;
+  RETURN jsonb_build_object('id',r.id,'status',r.status,'administered_by',r.administered_by,'administered_at',r.administered_at);
 END;
 $$;
+
+DROP FUNCTION IF EXISTS public.reopen_medication_administration(UUID,TEXT);
 
 CREATE OR REPLACE FUNCTION public.reopen_medication_administration(_record_id UUID,_reason TEXT)
 RETURNS public.medication_administrations

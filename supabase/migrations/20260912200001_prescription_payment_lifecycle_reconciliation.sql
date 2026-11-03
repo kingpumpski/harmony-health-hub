@@ -1,4 +1,9 @@
 -- Reconcile prescription state with the payment-gated pharmacy workflow.
+-- Legacy prescription schemas did not consistently include updated_at.
+-- Add it idempotently before payment/dispensing lifecycle triggers reference it.
+ALTER TABLE public.prescriptions
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 -- A prescription remains clinically distinct from its pharmacy service order:
 -- unpaid/pending -> paid after the linked billable item is fully paid ->
 -- dispensed after the pharmacy dispensing plan is completed.

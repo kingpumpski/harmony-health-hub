@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.service_tariffs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   service_code TEXT NOT NULL UNIQUE,
   service_name TEXT NOT NULL,
-  category TEXT NOT NULL,
+  category TEXT,
   department TEXT NOT NULL,
   unit TEXT NOT NULL DEFAULT 'each',
   amount NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
@@ -280,6 +280,8 @@ BEGIN
   WHERE status='scheduled' AND scheduled_at IS NOT NULL AND scheduled_at + make_interval(mins => due_window_minutes) < now() AND locked_at IS NULL;
   GET DIAGNOSTICS n=ROW_COUNT; RETURN n;
 END; $$;
+
+DROP FUNCTION IF EXISTS public.transition_medication_administration(UUID,TEXT,TEXT,TEXT,UUID);
 
 CREATE OR REPLACE FUNCTION public.transition_medication_administration(
   _record_id UUID,_status TEXT,_reason TEXT DEFAULT NULL,_notes TEXT DEFAULT NULL,_witnessed_by UUID DEFAULT NULL

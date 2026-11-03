@@ -126,3 +126,21 @@ The desired end state is:
 The production schema has been verified for the operational read contracts used by Theatre, Insurance Claims, Pharmacy, and Accounts. The imaging lifecycle RPCs have been reconciled to server-authoritative execution and verified after application. The service-order compatibility contract and lifecycle metadata dependencies have also been reconciled and verified. The selected-invoice payment release path has been verified as authenticated-only and now has an authorization contract covering the existing front-desk billing workflow. The service-order override boundary has also been verified as authenticated-only and state-restricted to pending payment approval. FK coverage, RLS auth-expression optimization, internal trigger execution boundaries, pharmacy authorization boundaries, and arbitrary-user authorization-helper execution boundaries have subsequently been reconciled and recorded in production.
 
 The remaining migration-baseline task is therefore a **migration tracking reconciliation**, not a request to rebuild or overwrite the production schema.
+
+
+## Current evidence snapshot — 2026-11-03
+
+The earlier production-only list above is a selected set of baseline and service-order provenance examples, not a complete ledger inventory. Use [PRODUCTION_MIGRATION_PROVENANCE.md](./PRODUCTION_MIGRATION_PROVENANCE.md) as the current candidate register.
+
+The 2026-11-02 evidence archive captured from fix-branch commit `31645d93d07fd620c3e7c54df9907ce239b3ebaf` contains:
+- 661 local migration files, with 661 unique version prefixes;
+- 417 remote production migration ledger entries;
+- 80 exact version overlaps;
+- 581 local-only versions;
+- 337 remote-only versions.
+
+The archive's local migration-list and local Supabase-status commands did not connect to the local database: the Postgres endpoint at `127.0.0.1:54322` refused the connection and Docker reported that `supabase_db_ygqoptvezotdqhtimdkr` did not exist. This is an environment/runtime blocker, not evidence that the migration chain replayed successfully. The same archive successfully captured the linked production migration history.
+
+The checked-in `supabase-migration-list.txt` snapshot showed only 339 remote entries at the later 2026-11-03 review, while the live linked ledger returned 417. The checked-in list is therefore stale and must not be used for approval or mapping.
+
+Exact version overlap is useful provenance evidence but is not a content checksum. The 337 remote-only and 581 local-only entries remain unmapped unless an independently reproducible source/effect comparison proves their disposition. The two canonical baseline SQL files remain unrecovered. The gate must remain `unreconciled` and production apply disabled.

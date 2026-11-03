@@ -1,6 +1,6 @@
 -- Functional-domain permission migration.
 -- Keep legacy submodule keys for compatibility; add domain keys without deleting existing mappings.
-INSERT INTO public.permissions(permission_key, description, is_active)
+INSERT INTO public.permissions(permission_key, description)
 VALUES
   ('inpatient','Inpatient functional domain: admissions, movements, beds, handover and ward operations'),
   ('finance','Finance functional domain: billing, approvals, claims and reconciliation'),
