@@ -128,7 +128,7 @@ for (const [r,m] of [
   [/ALTER TABLE public\.lab_result_attachments[\s\S]*?ADD COLUMN IF NOT EXISTS file_size_bytes bigint/i,'legacy repair must reconcile missing attachment size metadata'],
   [/WHERE id IS NULL[\s\S]*?HAVING count\(\*\) > 1[\s\S]*?RAISE EXCEPTION/i,'legacy attachment identifiers must fail closed when null or duplicated'],
   [/ADD CONSTRAINT lab_result_attachments_pkey PRIMARY KEY \(id\)/i,'legacy attachment identifiers must have a primary key after validation'],
-  [/WHERE facility_id IS NULL[\s\S]*?RAISE EXCEPTION/i,'legacy attachment facility scope must fail closed when missing rather than being guessed'],
+  [/facility_id IS NULL[\s\S]*?RAISE EXCEPTION/i,'legacy attachment facility scope must fail closed when missing rather than being guessed'],
   [/WHERE a\.facility_id IS DISTINCT FROM lo\.facility_id[\s\S]*?RAISE EXCEPTION/i,'legacy attachment facility scope must match its linked laboratory order'],
   [/file_size_bytes BETWEEN 1 AND 15728640/i,'attachment metadata writes must validate file size'],
   [/GROUP BY storage_path[\s\S]*?HAVING count\(\*\) > 1[\s\S]*?RAISE EXCEPTION/i,'ambiguous legacy storage paths must fail closed'],
