@@ -1,5 +1,27 @@
 BEGIN;
 
+-- Normalize the clean-install legacy tariff shape to the production catalogue.
+-- Older clean installs created category; production uses specialty_category.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='service_tariffs' AND column_name='category'
+  ) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='service_tariffs' AND column_name='specialty_category'
+    ) THEN
+      RAISE EXCEPTION 'Cannot retire service_tariffs.category before specialty_category exists';
+    END IF;
+    EXECUTE 'UPDATE public.service_tariffs
+             SET specialty_category=category
+             WHERE specialty_category IS NULL AND category IS NOT NULL';
+    ALTER TABLE public.service_tariffs DROP COLUMN category;
+  END IF;
+END;
+$$;
+
 -- Bring the production legacy bulk-import table forward without discarding
 -- historical values from entity/filename/inserted_rows.
 ALTER TABLE public.bulk_import_jobs
