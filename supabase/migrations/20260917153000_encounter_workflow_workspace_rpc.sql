@@ -8,7 +8,7 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path=public AS $$
          e.status,e.version_no,e.admission_id,e.created_at
   FROM public.encounters e
   JOIN public.patients p ON p.id=e.patient_id
-  WHERE (e.practitioner_id=auth.uid() OR public.has_role(auth.uid(),'admin'))
+  WHERE (e.practitioner_id=auth.uid() OR public.has_role(auth.uid(), 'admin'::public.app_role))
     AND e.status IN ('draft','completed')
   ORDER BY e.updated_at DESC
   LIMIT 25;
