@@ -24,10 +24,10 @@ BEGIN
     SELECT e.facility_id INTO v_facility FROM public.encounters e WHERE e.id=new.encounter_id;
     IF v_facility IS NULL THEN SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id; END IF;
   ELSIF tg_table_name='diagnoses' THEN
-    SELECT e.facility_id INTO v_facility FROM public.encounters e WHERE e.id=new.encounter_id;
-    IF v_facility IS NULL THEN
-      SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id;
-    END IF;
+    SELECT COALESCE(e.facility_id,p.facility_id) INTO v_facility
+    FROM public.encounters e
+    JOIN public.patients p ON p.id=e.patient_id
+    WHERE e.id=new.encounter_id;
     IF v_facility IS NULL AND auth.uid() IS NOT NULL THEN
       v_facility := public.current_user_facility_id();
       IF v_facility IS NOT NULL AND new.encounter_id IS NOT NULL THEN
