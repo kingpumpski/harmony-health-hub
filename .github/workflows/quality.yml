@@ -198,5 +198,26 @@ jobs:
       - name: Specialist clinical workflow schema contract
         run: npm run test:specialist-clinical-workflows-schema
 
+      - name: Migration safety script syntax
+        run: node --check scripts/generate-migration-register.mjs && node --check scripts/production-migration-baseline-gate.mjs
+
+      - name: Migration filename/version uniqueness contract
+        run: npm run test:migration-filename-uniqueness
+
+      - name: Migration workflow safety contract
+        run: npm run test:migration-workflow-safety
+
+      - name: Production migration baseline fail-closed contract
+        run: npm run test:production-migration-baseline-gate
+
+      - name: High-risk RPC replay safety contract
+        run: npm run test:high-risk-rpc-execution-boundary
+
+      - name: Prescription compatibility schema contract
+        run: npm run test:prescription-compatibility-columns
+
+      - name: Diagnosis patient lineage compatibility contract
+        run: npm run test:diagnosis-compatibility-columns
+
       - name: Production build
         run: npm run build

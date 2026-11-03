@@ -1,5 +1,47 @@
 -- Governed reconciliation of legacy clinical facility attribution.
 -- Historical rows remain unresolved until an administrator or IT administrator records evidence.
+
+-- Restore prescription compatibility fields required by downstream patient
+-- treatment-context and clinical snapshot projections. Production already has
+-- these fields; clean repository replay must establish the same contract first.
+ALTER TABLE public.diagnoses
+  ADD COLUMN IF NOT EXISTS patient_id uuid,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+UPDATE public.diagnoses d
+SET patient_id = e.patient_id
+FROM public.encounters e
+WHERE d.encounter_id = e.id
+  AND d.patient_id IS NULL;
+
+ALTER TABLE public.diagnoses
+  ALTER COLUMN updated_at SET DEFAULT now();
+
+UPDATE public.diagnoses
+SET updated_at = COALESCE(updated_at, created_at, now())
+WHERE updated_at IS NULL;
+
+ALTER TABLE public.diagnoses
+  ALTER COLUMN updated_at SET NOT NULL;
+
+ALTER TABLE public.prescriptions
+  ADD COLUMN IF NOT EXISTS medication_name text,
+  ADD COLUMN IF NOT EXISTS route text,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.prescriptions
+  ALTER COLUMN updated_at SET DEFAULT now();
+
+UPDATE public.prescriptions
+SET medication_name = COALESCE(NULLIF(btrim(medication_name), ''), medication),
+    updated_at = COALESCE(updated_at, created_at, now())
+WHERE medication_name IS NULL
+   OR btrim(medication_name) = ''
+   OR updated_at IS NULL;
+
+ALTER TABLE public.prescriptions
+  ALTER COLUMN updated_at SET NOT NULL;
+
 create table if not exists public.clinical_facility_reconciliation (
   id uuid primary key default gen_random_uuid(), entity_type text not null, entity_id uuid not null,
   source_facility_id uuid references public.healthcare_facilities(id),
@@ -56,7 +98,7 @@ as $$ select x.* from (
  union all select 'lab_orders',l.id,l.patient_id,l.created_at,jsonb_build_object('test_name',l.test_name,'status',l.status,'encounter_id',l.encounter_id) from public.lab_orders l where l.facility_id is null
  union all select 'lab_results',r.id,lo.patient_id,r.created_at,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) from public.lab_results r left join public.lab_orders lo on lo.id=r.lab_order_id where r.facility_id is null
  union all select 'imaging_orders',i.id,i.patient_id,i.created_at,jsonb_build_object('modality',i.modality,'study_name',i.study_name,'status',i.status,'encounter_id',i.encounter_id) from public.imaging_orders i where i.facility_id is null
- union all select 'prescriptions',rx.id,rx.patient_id,rx.created_at,jsonb_build_object('medication',coalesce(rx.medication_name,rx.medication),'status',rx.status,'encounter_id',rx.encounter_id) from public.prescriptions rx where rx.facility_id is null
+ union all select 'prescriptions',rx.id,rx.patient_id,rx.created_at,jsonb_build_object('medication',COALESCE(rx.medication_name,rx.medication),'status',rx.status,'encounter_id',rx.encounter_id) from public.prescriptions rx where rx.facility_id is null
  union all select 'diagnoses',d.id,d.patient_id,d.created_at,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code,'encounter_id',d.encounter_id) from public.diagnoses d where d.facility_id is null
 ) x where public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500)); $$;
 revoke all on function public.list_unresolved_clinical_facility_records(integer) from public,anon;
@@ -101,7 +143,7 @@ begin
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.imaging_orders set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='prescriptions' then
-  select rx.facility_id,rx.patient_id,rx.encounter_id,true,jsonb_build_object('medication',coalesce(rx.medication_name,rx.medication),'status',rx.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.prescriptions rx where rx.id=_entity_id;
+  select rx.facility_id,rx.patient_id,rx.encounter_id,true,jsonb_build_object('medication',COALESCE(rx.medication_name,rx.medication),'status',rx.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.prescriptions rx where rx.id=_entity_id;
   if v_ref is not null then select e.facility_id into v_parent from public.encounters e where e.id=v_ref; elsif v_patient is not null then select p.facility_id into v_parent from public.patients p where p.id=v_patient; end if;
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.prescriptions set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;

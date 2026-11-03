@@ -11,11 +11,19 @@ const source = files.map((name) => fs.readFileSync(path.join(migrationsDir, name
 const migration = files.find((name) => name === "20260929200002_secure_default_function_execute_privileges.sql");
 assert.ok(migration, "secure default function execution migration must exist");
 const migrationSource = fs.readFileSync(path.join(migrationsDir, migration), "utf8");
-const migrationStatements = migrationSource
-  .split(";")
-  .map((statement) => statement.trim())
-  .filter(Boolean);
-assert.equal(migrationStatements.length, 6, "secure default migration must contain exactly six default-privilege statements");
+
+assert.equal(
+  (migrationSource.match(/ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public/gi) ?? []).length,
+  3,
+  "postgres default privileges must revoke EXECUTE from PUBLIC, anon, and authenticated",
+);
+assert.match(migrationSource, /DO \$supabase_admin_default_privileges\$/i, "supabase_admin defaults must be guarded by a role-membership check");
+assert.match(migrationSource, /pg_has_role\(current_user, 'supabase_admin', 'MEMBER'\)/i, "supabase_admin defaults must only change when the migration owner has membership");
+assert.equal(
+  (migrationSource.match(/EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin/gi) ?? []).length,
+  3,
+  "supabase_admin default privileges must be guarded for all three API roles",
+);
 assert.equal(
   (migrationSource.match(/REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;/g) ?? []).length,
   1,
@@ -38,26 +46,9 @@ assert.match(
   "public-schema default function EXECUTE must be revoked from authenticated",
 );
 
-console.log("[default-function-execute] secure-by-default migration contract passed");
-
-
-for (const role of ["postgres", "supabase_admin"]) {
-  const rolePattern = new RegExp(
-    "ALTER\\s+DEFAULT\\s+PRIVILEGES\\s+FOR\\s+ROLE\\s+" +
-      role +
-      "\\s+IN\\s+SCHEMA\\s+public[\\s\\S]*?REVOKE\\s+EXECUTE\\s+ON\\s+FUNCTIONS\\s+FROM\\s+PUBLIC",
-    "i",
-  );
-  assert.match(source, rolePattern, role + " public-schema default function EXECUTE must be revoked from PUBLIC");
-
-  for (const target of ["anon", "authenticated"]) {
-    const targetPattern = new RegExp(
-      "ALTER\\s+DEFAULT\\s+PRIVILEGES\\s+FOR\\s+ROLE\\s+" +
-        role +
-        "\\s+IN\\s+SCHEMA\\s+public[\\s\\S]*?REVOKE\\s+EXECUTE\\s+ON\\s+FUNCTIONS\\s+FROM\\s+" +
-        target,
-      "i",
-    );
-    assert.match(source, targetPattern, role + " public-schema default function EXECUTE must be revoked from " + target);
-  }
+for (const target of ["PUBLIC", "anon", "authenticated"]) {
+  const statement = "EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM " + target + "'";
+  assert.ok(migrationSource.includes(statement), "supabase_admin default EXECUTE must be revoked from " + target + " when role membership permits it");
 }
+
+console.log("[default-function-execute] secure-by-default migration contract passed");

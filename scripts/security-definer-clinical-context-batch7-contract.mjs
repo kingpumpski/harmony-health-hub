@@ -10,6 +10,22 @@ const signatures=[
 'search_patient_directory(text, integer)','start_appointment_encounter(uuid, text, text)',
 'transition_medication_administration(uuid, text, text, text, uuid)'
 ];
-for(const s of signatures){const q=`alter function public.${s} set search_path = pg_catalog, public;`;if(!sql.includes(q))throw new Error(`Missing: ${s}`);}
+for(const s of signatures){const q='alter function public.'+s+' set search_path = pg_catalog, public;';if(!sql.includes(q))throw new Error('Missing: '+s);}
 if(/set search_path = public\s*;/i.test(sql))throw new Error('Unsafe public-only search_path');
-console.log(`Verified ${signatures.length} clinical SECURITY DEFINER hardening statements.`);
+
+const delimiter = '$' + 'batch7_encounter_draft' + '$';
+const guardStart = sql.indexOf('do ' + delimiter);
+const guardEnd = sql.indexOf(delimiter + ';', guardStart);
+if (guardStart < 0 || guardEnd < 0) throw new Error('Missing replay-safe encounter draft helper guard');
+const guard = sql.slice(guardStart, guardEnd + delimiter.length + 1);
+for (const required of [
+  "to_regprocedure('public.save_encounter_draft(uuid, text, text, text)')",
+  'p.proconfig',
+  'search_path=""',
+  'alter function public.save_encounter_draft(uuid, text, text, text) set search_path = pg_catalog, public'
+]) {
+  if (!guard.includes(required)) throw new Error('Missing Batch7 replay guard control: ' + required);
+}
+if (!guard.includes('not coalesce(v_config @> array')) throw new Error('Batch7 must preserve an already-empty search_path');
+
+console.log('Verified ' + signatures.length + ' clinical SECURITY DEFINER hardening statements.');
