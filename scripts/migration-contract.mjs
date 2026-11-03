@@ -94,6 +94,9 @@ must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI dia
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
 const claimFinancialInitial = read('supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql');
+const emergencyOfficerFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\.assign_emergency_officer\([\s\S]*?END; \$assign_emergency_officer\$;/i)?.[0] ?? '';
+assert.ok(emergencyOfficerFunction,'emergency officer assignment RPC must remain defined');
+must(emergencyOfficerFunction,/\) RETURNS JSONB/i,'emergency officer assignment RPC must preserve its JSONB return contract');
 const claimFinancialInitialFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?END; \$\$;/i)?.[0] ?? '';
 assert.ok(claimFinancialInitialFunction,'initial claim financial RPC must remain defined');
 must(claimFinancialInitialFunction,/\) RETURNS public\.insurance_claims/i,'first claim financial RPC definition must use the production insurance_claims row return type');
