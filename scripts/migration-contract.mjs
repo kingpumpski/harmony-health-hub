@@ -94,12 +94,12 @@ must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI dia
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
 const claimFinancialFoundation = read('supabase/migrations/20260912035000_global_hims_operational_integrity.sql');
-const claimFinancialFoundationFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?\$\$;/i)?.[0] ?? '';
+const claimFinancialFoundationFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?\$claim_financials\$;/i)?.[0] ?? '';
 assert.ok(claimFinancialFoundationFunction,'early claim financial RPC must remain defined');
 must(claimFinancialFoundationFunction,/\) RETURNS public\.insurance_claims/i,'early claim financial RPC must use the production insurance_claims row return type');
 must(claimFinancialFoundationFunction,/UPDATE public\.insurance_claims[\s\S]*?RETURNING \* INTO c;[\s\S]*?RETURN c;/i,'early claim financial RPC must return the updated insurance_claims row');
 assert.doesNotMatch(claimFinancialFoundationFunction,/RETURNS JSONB/i,'early claim financial RPC must not use the incompatible JSONB return type');
-const theatreAnesthetistFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.assign_theatre_anesthetist\([\s\S]*?END; \$\$;/i)?.[0] ?? '';
+const theatreAnesthetistFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.assign_theatre_anesthetist\([\s\S]*?END; \$assign_theatre_anesthetist\$;/i)?.[0] ?? '';
 assert.ok(theatreAnesthetistFunction,'theatre anesthetist assignment RPC must remain defined');
 must(theatreAnesthetistFunction,/\) RETURNS JSONB/i,'theatre anesthetist assignment RPC must preserve its JSONB return contract');
 const claimFinancialBounds = read('supabase/migrations/20260920062000_insurance_claim_financial_bounds.sql');
