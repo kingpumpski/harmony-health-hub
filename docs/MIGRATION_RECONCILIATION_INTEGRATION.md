@@ -60,3 +60,11 @@ The fix-branch migration-version collision commit identifies 23 duplicate-versio
 - High-risk RPC execution-boundary hardening now checks exact function signatures and only alters functions that exist, rather than failing replay when an optional historical RPC is absent.
 
 These version changes remain candidate-only. Because duplicate versions make the historical production identity ambiguous, the remote migration ledger and deployment records must be reconciled before any of these renamed versions are allowed into production.
+
+## Additional queue-writer and inventory findings (2026-11-03)
+
+A follow-up review found that the covered-visit auto-release trigger in `20260914000000_patient_visit_coverage_activation.sql` also writes to the legacy `department_queues` table. Its former insert supplied only `service_order_id` and `department`, omitting the legacy required `patient_id` and `priority` values. It also used an `ON CONFLICT (service_order_id)` target that did not explicitly infer the partial unique index created for non-null service-order links. The integration branch now populates the legacy queue fields and uses `WHERE service_order_id IS NOT NULL`; the queue contract test now protects this trigger path as well as the migration column-ordering path. This is a source-level repair pending the current CI run and clean replay/runtime verification.
+
+Read-only inspection of the connected production schema also found two foreign-key constraints on `department_queues.service_order_id` with different names but identical referenced-table definitions. Record this as duplicate-constraint drift. Do not drop either constraint until the migration provenance and dependent schema are reconciled; any cleanup must be a reviewed forward migration.
+
+The checked-in `supabase-migration-list.txt` is not current evidence: its remote column contains 339 versions, whereas the connected production migration ledger returned 417 versions on 2026-11-03. The snapshot also contains repeated local version rows. Regenerate the inventory from the exact reviewed branch and fresh linked ledger before making version-mapping decisions. Do not use the stale snapshot to approve or repair the production baseline.
