@@ -110,6 +110,7 @@ for (const [indexName, tableName, columnName] of [
 }
 const reportSeedFoundation = read('supabase/migrations/20260913162000_harden_reports_center_seed_function.sql');
 must(reportSeedFoundation,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id UUID\)\s+RETURNS VOID\b/i,'unreleased report seed foundation must use the canonical VOID return type');
+must(reportSeedFoundation,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id UUID\)\s+RETURNS VOID\b/i,'report seed hardening must drop the earlier INTEGER signature before recreating the canonical VOID RPC');
 assert.doesNotMatch(reportSeedFoundation,/GET DIAGNOSTICS|RETURN v_count/i,'VOID report seeding must not retain the obsolete row-count return contract');
 const reportSeedMigration = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
 must(reportSeedMigration,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'facility report seeding must preserve its established VOID RPC return type');
