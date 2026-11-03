@@ -61,7 +61,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $assign_theatre_anesthetist$
 DECLARE uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Clinical administrator role required'; END IF;
@@ -69,7 +69,7 @@ BEGIN
   UPDATE public.theatre_cases SET anesthetist_id=_anesthetist_id WHERE id=_case_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
   RETURN jsonb_build_object('case_id',_case_id,'anesthetist_id',_anesthetist_id);
-END; $$;
+END; $assign_theatre_anesthetist$;
 
 CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _claim_id UUID,
@@ -78,7 +78,7 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
 ) RETURNS public.insurance_claims
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $claim_financials$
 DECLARE uid UUID := auth.uid(); c public.insurance_claims%ROWTYPE; v_approved NUMERIC; v_paid NUMERIC;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
@@ -96,7 +96,7 @@ BEGIN
   WHERE id=_claim_id
   RETURNING * INTO c;
   RETURN c;
-END; $$;
+END; $claim_financials$;
 
 REVOKE ALL ON FUNCTION public.create_ward_unit(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_ward_unit(TEXT,TEXT,TEXT,TEXT) TO authenticated;
