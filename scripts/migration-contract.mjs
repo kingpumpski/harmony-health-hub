@@ -271,6 +271,11 @@ must(ophthalmologyRoleMigration,/ALTER TYPE public\.app_role ADD VALUE IF NOT EX
 must(ophthalmologyRoleMigration,/ALTER TYPE public\.app_role ADD VALUE IF NOT EXISTS 'radiologist'/i,'radiologist enum value must be committed before outside-lab security policies reference it');
 assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260913008000_outside_lab_storage_security.sql'),'radiologist role enum migration must precede outside-lab security migration');
 assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260912254000_ophthalmology_workflow.sql'),'ophthalmologist role enum migration must precede the ophthalmology workflow migration');
+const reportsRecovery = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
+must(reportsRecovery,/DROP FUNCTION IF EXISTS public\\.recover_stale_report_run\\(UUID,INTEGER\\)/i,'Reports Center reconciliation must explicitly drop the earlier BOOLEAN RPC before changing its return type');
+must(reportsRecovery,/CREATE OR REPLACE FUNCTION public\\.recover_stale_report_run\\([\\s\\S]*?RETURNS public\\.report_generation_runs/i,'Reports Center recovery RPC must preserve the production report_generation_runs return contract');
+must(reportsRecovery,/REVOKE ALL ON FUNCTION public\\.recover_stale_report_run\\(UUID,INTEGER\\) FROM PUBLIC, anon/i,'Reports Center recovery RPC must revoke PUBLIC and anon execution after recreation');
+must(reportsRecovery,/GRANT EXECUTE ON FUNCTION public\\.recover_stale_report_run\\(UUID,INTEGER\\) TO authenticated/i,'Reports Center recovery RPC must grant execution to authenticated users after recreation');
 const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
 must(workflowCompletion,/WHEN payment_routing_mode IN \('pay_before_every_step',\s*'streamlined'\)\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
 must(workflowCompletion,/WHEN COALESCE\(to_jsonb\(facility_settings\)->>'routing_mode',''\) = 'pay_before_each_step'[\s\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
