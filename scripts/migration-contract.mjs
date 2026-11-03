@@ -166,6 +166,14 @@ must(rlsPolicyConsolidation,/DROP POLICY IF EXISTS payroll_periods_admin_it_acco
 const reportSeedHardening = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
 must(reportSeedHardening,/CREATE OR REPLACE FUNCTION public\.seed_facility_reports\(_facility_id uuid\)\s+RETURNS void\b/i,'later reports seed hardening must preserve the production VOID contract');
 assert.doesNotMatch(reportSeedHardening,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\)/i,'already-deployed report seed hardening migration must remain immutable');
+const systemSettingsCatalogueMigration = read('supabase/migrations/20260912174000_system_settings_catalogues.sql');
+assert.doesNotMatch(systemSettingsCatalogueMigration,/lab_test_catalogue/i,'system settings migration must not reference the lab catalogue before its foundation exists');
+const labCatalogueFoundation = read('supabase/migrations/20260912200000_phase5_lab_catalogue_and_audit.sql');
+must(labCatalogueFoundation,/CREATE TABLE IF NOT EXISTS public\.lab_test_catalogue/i,'Phase 5 must create the lab catalogue before applying its RLS policies');
+const legacyLabCataloguePolicyCleanup = read('supabase/migrations/20260917073705_remove_legacy_lab_catalogue_policies.sql');
+must(legacyLabCataloguePolicyCleanup,/DROP POLICY IF EXISTS "lab catalogue staff read" ON public\.lab_test_catalogue/i,'superseded broad lab catalogue read policy must be removed');
+must(legacyLabCataloguePolicyCleanup,/DROP POLICY IF EXISTS "lab catalogue admin write" ON public\.lab_test_catalogue/i,'superseded lab-technician write policy must be removed');
+assert.ok(files.indexOf('20260912200000_phase5_lab_catalogue_and_audit.sql') < files.indexOf('20260917073705_remove_legacy_lab_catalogue_policies.sql'),'lab catalogue policies must be cleaned only after the catalogue foundation exists');
 const enterpriseRoles = read('supabase/migrations/20260912024500_global_hims_enterprise_operations.sql');
 assert.doesNotMatch(enterpriseRoles,/public\.has_role\(auth\.uid\(\),\s*ARRAY\[/i,'HIMS policies must use the supported scalar has_role(uuid, app_role) signature');
 const canonicalTariffs = read('supabase/migrations/20260919055127_reconcile_remaining_canonical_service_tariff_codes.sql');
