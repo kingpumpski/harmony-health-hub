@@ -1,0 +1,1677 @@
+{
+  "observedDate": "2026-11-03",
+  "projectRef": "ygqoptvezotdqhtimdkr",
+  "source": "Read-only Supabase migration history inspection",
+  "mutationPerformed": false,
+  "count": 417,
+  "migrations": [
+    {
+      "version": "20260916002251",
+      "name": "canonical_remote_schema"
+    },
+    {
+      "version": "20260916003113",
+      "name": "fix_start_imaging_order_queue_contract"
+    },
+    {
+      "version": "20260916085626",
+      "name": "reconcile_imaging_lifecycle_server_authority"
+    },
+    {
+      "version": "20260916092730",
+      "name": "reconcile_service_order_workflow_authority"
+    },
+    {
+      "version": "20260916093000",
+      "name": "harden_service_order_rpc_execute_boundary"
+    },
+    {
+      "version": "20260916093154",
+      "name": "reconcile_service_order_lifecycle_metadata"
+    },
+    {
+      "version": "20260916093512",
+      "name": "harden_selected_invoice_payment_service_release"
+    },
+    {
+      "version": "20260916093546",
+      "name": "complete_selected_invoice_service_order_release"
+    },
+    {
+      "version": "20260916093817",
+      "name": "allow_front_desk_payment_release_boundary"
+    },
+    {
+      "version": "20260916094245",
+      "name": "harden_service_order_override_and_release_contract"
+    },
+    {
+      "version": "20260916103212",
+      "name": "add_missing_foreign_key_indexes"
+    },
+    {
+      "version": "20260916103904",
+      "name": "optimize_rls_auth_uid_initplans"
+    },
+    {
+      "version": "20260916103929",
+      "name": "normalize_rls_auth_uid_initplans"
+    },
+    {
+      "version": "20260916105508",
+      "name": "harden_internal_trigger_function_execute_boundary"
+    },
+    {
+      "version": "20260916105824",
+      "name": "harden_pharmacy_rpc_authorization_boundary"
+    },
+    {
+      "version": "20260916110729",
+      "name": "harden_authorization_helper_execute_boundary"
+    },
+    {
+      "version": "20260916205934",
+      "name": "harden_record_system_audit_execute_boundary"
+    },
+    {
+      "version": "20260917073704",
+      "name": "normalize_multiple_permissive_rls_policies"
+    },
+    {
+      "version": "20260917100222",
+      "name": "20260917101500_harden_service_order_release_execution"
+    },
+    {
+      "version": "20260917112143",
+      "name": "expand_master_data_migration_and_legacy_records"
+    },
+    {
+      "version": "20260917112203",
+      "name": "add_reference_data_import_rpcs"
+    },
+    {
+      "version": "20260917113051",
+      "name": "harden_reference_data_import_rpc_grants"
+    },
+    {
+      "version": "20260917115211",
+      "name": "add_migration_reconciliation_workflows"
+    },
+    {
+      "version": "20260918064318",
+      "name": "expand_master_data_migration_and_legacy_records"
+    },
+    {
+      "version": "20260918064331",
+      "name": "add_reference_data_import_rpcs"
+    },
+    {
+      "version": "20260918064345",
+      "name": "legacy_migration_reconciliation_approval"
+    },
+    {
+      "version": "20260918064407",
+      "name": "clinical_admission_referral_document_lifecycle"
+    },
+    {
+      "version": "20260918064421",
+      "name": "facility_financial_override_configuration"
+    },
+    {
+      "version": "20260918064426",
+      "name": "specialist_referral_queue_security"
+    },
+    {
+      "version": "20260918064432",
+      "name": "encounter_workflow_workspace_rpc"
+    },
+    {
+      "version": "20260918064438",
+      "name": "default_streamlined_clinical_routing"
+    },
+    {
+      "version": "20260918064444",
+      "name": "specialist_referral_appointment_bridge"
+    },
+    {
+      "version": "20260918064451",
+      "name": "admission_override_queue_reconciliation"
+    },
+    {
+      "version": "20260918064501",
+      "name": "billing_tariff_adjustment_workflow"
+    },
+    {
+      "version": "20260918064509",
+      "name": "imaging_result_clinician_notification"
+    },
+    {
+      "version": "20260918064515",
+      "name": "discharge_accounts_reconciliation_handoff"
+    },
+    {
+      "version": "20260918064522",
+      "name": "discharge_billing_reconciliation_rpc"
+    },
+    {
+      "version": "20260918064528",
+      "name": "discharge_insurance_claim_bridge"
+    },
+    {
+      "version": "20260918064622",
+      "name": "reconcile_transition_insurance_claim_canonical_signature"
+    },
+    {
+      "version": "20260918064630",
+      "name": "insurance_claim_lifecycle_reconciliation"
+    },
+    {
+      "version": "20260918064639",
+      "name": "financial_settlement_notifications"
+    },
+    {
+      "version": "20260918064645",
+      "name": "consolidate_insurance_settlement_notifications"
+    },
+    {
+      "version": "20260918064652",
+      "name": "add_radiologist_role"
+    },
+    {
+      "version": "20260918064659",
+      "name": "staff_patient_notification_access_bridge"
+    },
+    {
+      "version": "20260918065102",
+      "name": "harden_public_security_definer_execute_boundary"
+    },
+    {
+      "version": "20260918065144",
+      "name": "remove_anon_security_definer_execute_grants"
+    },
+    {
+      "version": "20260918065248",
+      "name": "expand_staff_patient_read_authority"
+    },
+    {
+      "version": "20260918065838",
+      "name": "expand_is_clinical_staff_role_boundary"
+    },
+    {
+      "version": "20260918072351",
+      "name": "maternity_read_workspace"
+    },
+    {
+      "version": "20260918073627",
+      "name": "pharmacy_read_workspace_security_bridge"
+    },
+    {
+      "version": "20260918073713",
+      "name": "laboratory_read_workspace_security_bridge"
+    },
+    {
+      "version": "20260918084821",
+      "name": "imaging_read_workspace_security_bridge"
+    },
+    {
+      "version": "20260918084852",
+      "name": "emergency_read_workspace_security_bridge"
+    },
+    {
+      "version": "20260918085811",
+      "name": "operational_workspace_security_bridge"
+    },
+    {
+      "version": "20260918090246",
+      "name": "operational_workspace_nursing_care_extension"
+    },
+    {
+      "version": "20260918090305",
+      "name": "operational_workspace_reconcile_modules"
+    },
+    {
+      "version": "20260918091121",
+      "name": "operational_workspace_security_bridge_v2"
+    },
+    {
+      "version": "20260918133547",
+      "name": "add_it_admin_support_role_live"
+    },
+    {
+      "version": "20260918133553",
+      "name": "configure_it_admin_support_live"
+    },
+    {
+      "version": "20260918133626",
+      "name": "align_functional_domain_permissions_live"
+    },
+    {
+      "version": "20260918152910",
+      "name": "reconcile_missing_runtime_schemas_and_workflows_20260918"
+    },
+    {
+      "version": "20260918152955",
+      "name": "harden_reconciled_function_execute_privileges_20260918"
+    },
+    {
+      "version": "20260918153045",
+      "name": "revoke_explicit_public_function_grants_20260918"
+    },
+    {
+      "version": "20260918153159",
+      "name": "restore_missing_operational_rpc_workflows_20260918"
+    },
+    {
+      "version": "20260918153526",
+      "name": "restore_missing_patient_care_continuity_rpc_20260918"
+    },
+    {
+      "version": "20260918153551",
+      "name": "tighten_reconciled_rpc_execute_privileges_20260918"
+    },
+    {
+      "version": "20260918153648",
+      "name": "tighten_maternity_workspace_execute_privilege_20260918"
+    },
+    {
+      "version": "20260918155629",
+      "name": "reconcile_invoice_item_service_code_and_missing_tariff_workflow_20260918"
+    },
+    {
+      "version": "20260918160533",
+      "name": "reconcile_service_order_client_workflow_20260918"
+    },
+    {
+      "version": "20260918161023",
+      "name": "allow_admit_after_encounter_save_20260918"
+    },
+    {
+      "version": "20260918161438",
+      "name": "harden_billing_override_client_mutation_boundary_20260918"
+    },
+    {
+      "version": "20260918161954",
+      "name": "add_runtime_workflow_fk_indexes_20260918"
+    },
+    {
+      "version": "20260918162153",
+      "name": "scope_department_queue_workspace_20260918"
+    },
+    {
+      "version": "20260918163330",
+      "name": "add_remaining_runtime_fk_indexes_20260918"
+    },
+    {
+      "version": "20260918163526",
+      "name": "optimize_remaining_auth_rls_initplans_20260918"
+    },
+    {
+      "version": "20260918164042",
+      "name": "harden_service_order_actor_boundary_20260918"
+    },
+    {
+      "version": "20260918164722",
+      "name": "optimize_remaining_auth_rls_initplans_20260918b"
+    },
+    {
+      "version": "20260918164759",
+      "name": "optimize_service_order_event_rls_initplan_20260918"
+    },
+    {
+      "version": "20260918221434",
+      "name": "tighten_clinical_admission_anesthetic_rls_20260918"
+    },
+    {
+      "version": "20260918222218",
+      "name": "bind_anesthetic_clearance_actor_20260918"
+    },
+    {
+      "version": "20260918222257",
+      "name": "consolidate_overlapping_select_rls_20260918"
+    },
+    {
+      "version": "20260919054029",
+      "name": "atomic_admin_role_update"
+    },
+    {
+      "version": "20260919054032",
+      "name": "tighten_exposed_security_definers"
+    },
+    {
+      "version": "20260919054832",
+      "name": "reconcile_canonical_service_tariff_codes"
+    },
+    {
+      "version": "20260919055127",
+      "name": "reconcile_remaining_canonical_service_tariff_codes"
+    },
+    {
+      "version": "20260919055443",
+      "name": "align_admission_override_with_canonical_facility_configuration"
+    },
+    {
+      "version": "20260919060738",
+      "name": "20260919061000_persist_service_release_authorization_metadata"
+    },
+    {
+      "version": "20260919061518",
+      "name": "20260919062000_scope_it_support_system_logs"
+    },
+    {
+      "version": "20260919062218",
+      "name": "20260919063000_remove_direct_it_audit_log_select"
+    },
+    {
+      "version": "20260919062524",
+      "name": "20260919064000_scope_it_admin_notifications"
+    },
+    {
+      "version": "20260921051847",
+      "name": "20260920061000_service_order_item_payment_release_hardening"
+    },
+    {
+      "version": "20260921052113",
+      "name": "20260920062000_insurance_claim_financial_bounds"
+    },
+    {
+      "version": "20260921052230",
+      "name": "20260920063000_insurance_claim_transition_state_hardening"
+    },
+    {
+      "version": "20260921052236",
+      "name": "20260920064000_invoice_item_payment_concurrency_hardening"
+    },
+    {
+      "version": "20260921052241",
+      "name": "20260920065000_billable_item_materialization_concurrency_hardening"
+    },
+    {
+      "version": "20260921052316",
+      "name": "20260920070000_discharge_claim_replay_hardening"
+    },
+    {
+      "version": "20260921052323",
+      "name": "20260920071000_pharmacy_dispensing_quantity_hardening"
+    },
+    {
+      "version": "20260921052328",
+      "name": "20260920072000_pharmacy_pos_integrity_hardening"
+    },
+    {
+      "version": "20260921052332",
+      "name": "20260920073000_pharmacy_inventory_workspace_hardening"
+    },
+    {
+      "version": "20260921052337",
+      "name": "20260920074000_pharmacy_dispense_consistency_hardening"
+    },
+    {
+      "version": "20260921052341",
+      "name": "20260920075000_service_order_release_consistency_hardening"
+    },
+    {
+      "version": "20260921052426",
+      "name": "20260920080000_lab_lifecycle_consistency_hardening"
+    },
+    {
+      "version": "20260921052431",
+      "name": "20260920081000_imaging_lifecycle_consistency_hardening"
+    },
+    {
+      "version": "20260921052434",
+      "name": "20260920082000_procedure_mar_lifecycle_security_hardening"
+    },
+    {
+      "version": "20260921052438",
+      "name": "20260920083000_theatre_transfusion_lifecycle_consistency_hardening"
+    },
+    {
+      "version": "20260921052442",
+      "name": "20260920084000_referral_handover_lifecycle_consistency_hardening"
+    },
+    {
+      "version": "20260921052447",
+      "name": "20260920085000_admission_discharge_replay_consistency_hardening"
+    },
+    {
+      "version": "20260921052451",
+      "name": "20260920090000_emergency_transfusion_identity_state_hardening"
+    },
+    {
+      "version": "20260921052619",
+      "name": "20260920093000_staff_directory_notification_least_privilege"
+    },
+    {
+      "version": "20260921052623",
+      "name": "20260920094000_maternity_workspace_read_consistency"
+    },
+    {
+      "version": "20260921052628",
+      "name": "20260920095000_clinical_workspace_read_hardening"
+    },
+    {
+      "version": "20260921052632",
+      "name": "20260920100000_operational_workspace_read_least_privilege"
+    },
+    {
+      "version": "20260921052636",
+      "name": "20260920101000_operational_workspace_module_reconciliation"
+    },
+    {
+      "version": "20260921052640",
+      "name": "20260920102000_admission_workspace_read_security"
+    },
+    {
+      "version": "20260921052643",
+      "name": "20260920103000_patient_admission_history_read_security"
+    },
+    {
+      "version": "20260921052659",
+      "name": "20260920210000_remove_legacy_claim_transition_overloads"
+    },
+    {
+      "version": "20260921052703",
+      "name": "20260920211000_privileged_admin_resource_scope_hardening"
+    },
+    {
+      "version": "20260921052707",
+      "name": "20260920212000_retire_legacy_admin_role_rpc"
+    },
+    {
+      "version": "20260921052711",
+      "name": "20260920220000_notification_queue_atomic_delivery"
+    },
+    {
+      "version": "20260921052715",
+      "name": "20260920221000_ai_workspace_least_privilege"
+    },
+    {
+      "version": "20260921052718",
+      "name": "20260920222000_ai_protocol_lifecycle_hardening"
+    },
+    {
+      "version": "20260921052722",
+      "name": "20260920222100_ai_protocol_draft_creation"
+    },
+    {
+      "version": "20260921052726",
+      "name": "20260920223000_ai_clinical_context_read_scoped"
+    },
+    {
+      "version": "20260921054344",
+      "name": "clinical_read_context_linkage_hardening_clean"
+    },
+    {
+      "version": "20260921055221",
+      "name": "notification_queue_worker_auth_fix"
+    },
+    {
+      "version": "20260921064730",
+      "name": "post_merge_runtime_role_lookup_fix"
+    },
+    {
+      "version": "20260921064954",
+      "name": "patient_history_scoped_read_rpcs"
+    },
+    {
+      "version": "20260921084058",
+      "name": "add_patient_hub_clinical_snapshot"
+    },
+    {
+      "version": "20260921084116",
+      "name": "lock_patient_hub_clinical_snapshot_execute"
+    },
+    {
+      "version": "20260921085524",
+      "name": "20260921090000_harden_ai_clinical_context_role_lookup"
+    },
+    {
+      "version": "20260922083045",
+      "name": "operational_workspace_medication_read_minimization"
+    },
+    {
+      "version": "20260924232338",
+      "name": "inpatient_transfer_movement_integrity"
+    },
+    {
+      "version": "20260925092107",
+      "name": "grant_report_access_policy_functions"
+    },
+    {
+      "version": "20260925092128",
+      "name": "scope_report_policy_authorization_helpers"
+    },
+    {
+      "version": "20260925092357",
+      "name": "scope_permission_rbac_policies_to_current_user"
+    },
+    {
+      "version": "20260925093526",
+      "name": "scope_report_generation_run_rbac"
+    },
+    {
+      "version": "20260925115745",
+      "name": "encounter_lifecycle_amendments"
+    },
+    {
+      "version": "20260925134409",
+      "name": "clinical_encounter_continuity_configuration"
+    },
+    {
+      "version": "20260925141721",
+      "name": "harden_clinical_order_linkage_and_result_notifications"
+    },
+    {
+      "version": "20260925145941",
+      "name": "lab_result_attention_deeplink"
+    },
+    {
+      "version": "20260925145946",
+      "name": "notification_multichannel_delivery"
+    },
+    {
+      "version": "20260925150042",
+      "name": "notification_external_fanout_reconciliation"
+    },
+    {
+      "version": "20260925150644",
+      "name": "facility_notification_onboarding"
+    },
+    {
+      "version": "20260925161337",
+      "name": "notification_advisor_reconciliation"
+    },
+    {
+      "version": "20260925161432",
+      "name": "20260925150000_production_notification_module"
+    },
+    {
+      "version": "20260925161435",
+      "name": "20260925170000_notification_provider_operationalization"
+    },
+    {
+      "version": "20260925161438",
+      "name": "20260925181000_notification_queue_service_role_reconciliation"
+    },
+    {
+      "version": "20260925161441",
+      "name": "20260925182000_notification_facility_onboarding_reconciliation"
+    },
+    {
+      "version": "20260925161443",
+      "name": "20260925183000_notification_smtp_provider"
+    },
+    {
+      "version": "20260925161446",
+      "name": "20260925184000_notification_onboarding_configuration_catalog"
+    },
+    {
+      "version": "20260925161449",
+      "name": "20260925190000_admin_it_notification_settings_control_plane"
+    },
+    {
+      "version": "20260925161522",
+      "name": "notification_performance_reconciliation"
+    },
+    {
+      "version": "20260925161542",
+      "name": "notification_facility_policy_finalization"
+    },
+    {
+      "version": "20260925163034",
+      "name": "notification_advisor_finalization"
+    },
+    {
+      "version": "20260925205231",
+      "name": "20260925195500_notification_provider_credentials"
+    },
+    {
+      "version": "20260925205248",
+      "name": "20260925200000_notification_inbound_email_store"
+    },
+    {
+      "version": "20260925210150",
+      "name": "20260925201500_notification_provider_multi_provider"
+    },
+    {
+      "version": "20260925210206",
+      "name": "20260925202000_notification_provider_it_admin_multi_provider"
+    },
+    {
+      "version": "20260925210500",
+      "name": "notification_provider_priority_control_plane"
+    },
+    {
+      "version": "20260925223450",
+      "name": "20260925220000_notification_event_catalog_expansion"
+    },
+    {
+      "version": "20260925230241",
+      "name": "add_radiology_technician_role"
+    },
+    {
+      "version": "20260925232926",
+      "name": "20260925231500_harden_patient_admission_wrapper_execute"
+    },
+    {
+      "version": "20260925232928",
+      "name": "20260925240000_notification_internal_table_rls_guards"
+    },
+    {
+      "version": "20260925233744",
+      "name": "seed_radiology_technician_permissions"
+    },
+    {
+      "version": "20260926000317",
+      "name": "20260925234500_fix_facility_access_policy_execution_boundary"
+    },
+    {
+      "version": "20260926001056",
+      "name": "fix_has_role_policy_execution_boundary"
+    },
+    {
+      "version": "20260926002111",
+      "name": "appointment_clinician_rpc_reconciliation"
+    },
+    {
+      "version": "20260926002122",
+      "name": "appointment_clinician_rpc_execute_hardening"
+    },
+    {
+      "version": "20260926003937",
+      "name": "harden_report_generation_rls_policies"
+    },
+    {
+      "version": "20260926004458",
+      "name": "fix_prepare_patient_bill_amount_ambiguity"
+    },
+    {
+      "version": "20260926005923",
+      "name": "20260926012000_governed_catalogue_creation_privileges"
+    },
+    {
+      "version": "20260926005934",
+      "name": "20260926012100_fix_catalogue_service_unit_default"
+    },
+    {
+      "version": "20260926010444",
+      "name": "20260926013000_fix_patient_bill_invoice_item_source_key"
+    },
+    {
+      "version": "20260926100909",
+      "name": "facility_context_clinical_documentation_signatures"
+    },
+    {
+      "version": "20260926101003",
+      "name": "encounter_draft_and_facility_workspace"
+    },
+    {
+      "version": "20260926101020",
+      "name": "restore_operational_workspace_dispatcher"
+    },
+    {
+      "version": "20260926101036",
+      "name": "fix_operational_workspace_aggregate"
+    },
+    {
+      "version": "20260926101334",
+      "name": "lab_report_signature_resolution"
+    },
+    {
+      "version": "20260926101400",
+      "name": "lab_workspace_signature_projection"
+    },
+    {
+      "version": "20260926225635",
+      "name": "fix_pay_selected_no_conflict"
+    },
+    {
+      "version": "20260926232847",
+      "name": "role_dashboard_server_summary"
+    },
+    {
+      "version": "20260926235425",
+      "name": "billing_window_insurance_credit_receipt"
+    },
+    {
+      "version": "20260926235610",
+      "name": "billing_window_rpc_reconcile_202609262359"
+    },
+    {
+      "version": "20260927000209",
+      "name": "triage_partial_measurement_nullability_20260927001000_v3"
+    },
+    {
+      "version": "20260927000240",
+      "name": "triage_temperature_precision_20260927002500"
+    },
+    {
+      "version": "20260927001253",
+      "name": "dashboard_role_resolution_production_reconciliation"
+    },
+    {
+      "version": "20260928124839",
+      "name": "post_merge_runtime_patient_history_rpcs"
+    },
+    {
+      "version": "20260928124849",
+      "name": "harden_patient_hub_clinical_snapshot_roles"
+    },
+    {
+      "version": "20260928135330",
+      "name": "harden_patient_appointment_role_boundary"
+    },
+    {
+      "version": "20260928140011",
+      "name": "20260928163000_harden_legacy_clinical_role_boundaries"
+    },
+    {
+      "version": "20260928145648",
+      "name": "patient_scoped_triage_history"
+    },
+    {
+      "version": "20260928171053",
+      "name": "clinical_reference_values"
+    },
+    {
+      "version": "20260928171108",
+      "name": "harden_clinical_reference_audit_trigger"
+    },
+    {
+      "version": "20260928172610",
+      "name": "complete_triage_clinical_reference_coverage"
+    },
+    {
+      "version": "20260928185147",
+      "name": "clinical_operations_lifecycle_role_parity"
+    },
+    {
+      "version": "20260928220742",
+      "name": "add_bmi_clinical_reference"
+    },
+    {
+      "version": "20260928220815",
+      "name": "harden_triage_priority_authority"
+    },
+    {
+      "version": "20260928224825",
+      "name": "harden_triage_table_data_api_boundary"
+    },
+    {
+      "version": "20260928234353",
+      "name": "triage_offline_idempotency"
+    },
+    {
+      "version": "20260928234414",
+      "name": "harden_triage_offline_execute_boundary"
+    },
+    {
+      "version": "20260929055007",
+      "name": "triage_server_vital_requirement_parity"
+    },
+    {
+      "version": "20260929055513",
+      "name": "triage_offline_replay_race_safety"
+    },
+    {
+      "version": "20260929055841",
+      "name": "ward_bed_facility_boundary"
+    },
+    {
+      "version": "20260929061302",
+      "name": "inpatient_facility_boundaries"
+    },
+    {
+      "version": "20260929062036",
+      "name": "ward_bed_management_control_plane"
+    },
+    {
+      "version": "20260929062038",
+      "name": "ward_management_facility_selection"
+    },
+    {
+      "version": "20260929062043",
+      "name": "ward_management_workspace_read_surface"
+    },
+    {
+      "version": "20260929062045",
+      "name": "expand_department_service_creation_roles"
+    },
+    {
+      "version": "20260929062047",
+      "name": "20260929080000_ward_bed_management_control_plane"
+    },
+    {
+      "version": "20260929062050",
+      "name": "20260929081500_ward_management_facility_selection"
+    },
+    {
+      "version": "20260929062053",
+      "name": "20260929083000_ward_management_workspace_read_surface"
+    },
+    {
+      "version": "20260929062055",
+      "name": "20260929084500_expand_department_service_creation_roles"
+    },
+    {
+      "version": "20260929062248",
+      "name": "harden_legacy_ward_visibility"
+    },
+    {
+      "version": "20260929062847",
+      "name": "harden_ward_table_data_api_boundary"
+    },
+    {
+      "version": "20260929063050",
+      "name": "harden_operational_workspace_search_path"
+    },
+    {
+      "version": "20260929063454",
+      "name": "service_catalogue_department_control"
+    },
+    {
+      "version": "20260929063458",
+      "name": "insurance_tariff_governance"
+    },
+    {
+      "version": "20260929063506",
+      "name": "reconcile_billing_canonical_tariffs"
+    },
+    {
+      "version": "20260929063756",
+      "name": "insurance_company_master_data"
+    },
+    {
+      "version": "20260929063848",
+      "name": "claim_reconciliation_read_context"
+    },
+    {
+      "version": "20260929064521",
+      "name": "claim_invoice_reconciliation"
+    },
+    {
+      "version": "20260929081044",
+      "name": "patient_canonical_insurer_linkage"
+    },
+    {
+      "version": "20260929094721",
+      "name": "canteen_dietary_operational_workspace"
+    },
+    {
+      "version": "20260929094922",
+      "name": "seed_patient_meal_menu_permission"
+    },
+    {
+      "version": "20260929094950",
+      "name": "enable_meal_menu_realtime"
+    },
+    {
+      "version": "20260929095050",
+      "name": "fix_canteen_realtime_topic_authorization"
+    },
+    {
+      "version": "20260929095149",
+      "name": "restrict_canteen_patient_context_fields"
+    },
+    {
+      "version": "20260929095154",
+      "name": "cover_unindexed_foreign_keys"
+    },
+    {
+      "version": "20260929095507",
+      "name": "harden_claim_security_definer_search_path"
+    },
+    {
+      "version": "20260929100439",
+      "name": "harden_clinical_security_definer_search_paths"
+    },
+    {
+      "version": "20260929100626",
+      "name": "role_dashboard_workflow_kpi_alignment"
+    },
+    {
+      "version": "20260929100746",
+      "name": "patient_workflow_field_authorization"
+    },
+    {
+      "version": "20260929101100",
+      "name": "harden_clinical_financial_security_definer_search_paths_batch2"
+    },
+    {
+      "version": "20260929101220",
+      "name": "role_dashboard_radiologist_workflow_boundary"
+    },
+    {
+      "version": "20260929102330",
+      "name": "role_dashboard_kpi_semantic_alignment"
+    },
+    {
+      "version": "20260929141826",
+      "name": "role_dashboard_kpi_cleanup"
+    },
+    {
+      "version": "20260929141913",
+      "name": "harden_security_definer_workflow_paths_batch3"
+    },
+    {
+      "version": "20260929142135",
+      "name": "harden_security_definer_workflow_paths_batch4"
+    },
+    {
+      "version": "20260929142353",
+      "name": "harden_security_definer_auth_helper_paths_batch5"
+    },
+    {
+      "version": "20260929142436",
+      "name": "active_dashboard_role_context"
+    },
+    {
+      "version": "20260929143037",
+      "name": "fix_canteen_menu_rbac_realtime"
+    },
+    {
+      "version": "20260929143830",
+      "name": "harden_security_definer_read_workspace_paths_batch6"
+    },
+    {
+      "version": "20260929144302",
+      "name": "harden_security_definer_clinical_context_paths_batch7"
+    },
+    {
+      "version": "20260929144949",
+      "name": "20260929213000_harden_security_definer_mutation_paths_batch8"
+    },
+    {
+      "version": "20260929145202",
+      "name": "20260929214500_reconcile_revoked_role_helper_rls_policies"
+    },
+    {
+      "version": "20260929154601",
+      "name": "harden_radiology_patient_directory_search"
+    },
+    {
+      "version": "20260929230239",
+      "name": "20260929160000_harden_radiology_patient_directory_search"
+    },
+    {
+      "version": "20260929230242",
+      "name": "20260929170000_fix_ward_management_workspace_ordering"
+    },
+    {
+      "version": "20260929230244",
+      "name": "20260929200000_seed_system_settings_permission"
+    },
+    {
+      "version": "20260929230247",
+      "name": "20260929201000_allow_it_admin_notification_onboarding"
+    },
+    {
+      "version": "20260929230250",
+      "name": "20260929223000_harden_notification_config_anon_access"
+    },
+    {
+      "version": "20260929235557",
+      "name": "account_reporting_lab_document_foundations"
+    },
+    {
+      "version": "20260929235742",
+      "name": "scope_reports_to_role_audiences"
+    },
+    {
+      "version": "20260930000158",
+      "name": "seed_departmental_reporting_catalogue"
+    },
+    {
+      "version": "20260930001351",
+      "name": "atomic_account_profile_save_audit"
+    },
+    {
+      "version": "20260930001902",
+      "name": "structured_lab_parameter_result_workflow"
+    },
+    {
+      "version": "20260930011120",
+      "name": "harden_department_queue_multirole"
+    },
+    {
+      "version": "20260930012647",
+      "name": "canonical_clinical_facility_reconciliation_control_plane"
+    },
+    {
+      "version": "20260930013529",
+      "name": "remove_abandoned_clinical_facility_reconciliation"
+    },
+    {
+      "version": "20260930014945",
+      "name": "complete_remaining_facility_attribution"
+    },
+    {
+      "version": "20260930101956",
+      "name": "harden_facility_reconciliation_audit"
+    },
+    {
+      "version": "20260930104743",
+      "name": "system_superuser_role"
+    },
+    {
+      "version": "20260930104819",
+      "name": "facility_identity_and_cross_facility_governance"
+    },
+    {
+      "version": "20260930105125",
+      "name": "enforce_facility_owned_record_read_boundaries"
+    },
+    {
+      "version": "20260930105412",
+      "name": "lock_facility_context_switching"
+    },
+    {
+      "version": "20260930105425",
+      "name": "derive_single_facility_context_for_users"
+    },
+    {
+      "version": "20260930110651",
+      "name": "20260930111220_harden_facility_governance_rpc_privileges"
+    },
+    {
+      "version": "20260930110653",
+      "name": "20260930112000_global_diagnosis_catalogue_access"
+    },
+    {
+      "version": "20260930110737",
+      "name": "20260930112100_index_facility_sharing_audit_foreign_keys"
+    },
+    {
+      "version": "20260930123719",
+      "name": "fix_medication_administration_inventory_schema_mismatch"
+    },
+    {
+      "version": "20260930123830",
+      "name": "automate_medication_frequency_scheduling"
+    },
+    {
+      "version": "20260930123849",
+      "name": "current_patient_treatment_context"
+    },
+    {
+      "version": "20260930144000",
+      "name": "expand_current_treatment_admin_access"
+    },
+    {
+      "version": "20260930160347",
+      "name": "durable_medication_alert_acknowledgement"
+    },
+    {
+      "version": "20260930161253",
+      "name": "harden_medication_alert_acknowledgement"
+    },
+    {
+      "version": "20260930163227",
+      "name": "repair_start_appointment_encounter_facility_attribution"
+    },
+    {
+      "version": "20260930163749",
+      "name": "fix_start_appointment_encounter_btrim"
+    },
+    {
+      "version": "20261001094358",
+      "name": "20261001094000_harden_legacy_lineage_and_clinical_rpc_boundaries"
+    },
+    {
+      "version": "20261001095001",
+      "name": "20261001104500_harden_encounter_appointment_lab_lineage"
+    },
+    {
+      "version": "20261001095700",
+      "name": "harden_acute_clinical_facility_lineage"
+    },
+    {
+      "version": "20261001100909",
+      "name": "harden_legacy_clinical_wrapper_facility_context"
+    },
+    {
+      "version": "20261001101239",
+      "name": "harden_referral_facility_lineage"
+    },
+    {
+      "version": "20261001101432",
+      "name": "repair_radiologist_dashboard_aggregation"
+    },
+    {
+      "version": "20261001102111",
+      "name": "harden_patient_read_facility_context"
+    },
+    {
+      "version": "20261001102129",
+      "name": "harden_admission_and_imaging_facility_context"
+    },
+    {
+      "version": "20261001102331",
+      "name": "harden_patient_clinical_ai_billing_context"
+    },
+    {
+      "version": "20261001104509",
+      "name": "harden_start_appointment_encounter_facility_context"
+    },
+    {
+      "version": "20261001104701",
+      "name": "harden_encounter_submit_imaging_facility_context"
+    },
+    {
+      "version": "20261001145619",
+      "name": "harden_service_order_patient_encounter_facility_lineage"
+    },
+    {
+      "version": "20261001145709",
+      "name": "index_medication_alert_acknowledger_fk"
+    },
+    {
+      "version": "20261001151540",
+      "name": "20261001173000_harden_outside_lab_document_facility_context"
+    },
+    {
+      "version": "20261001151542",
+      "name": "20261001173100_harden_insurance_claim_facility_context"
+    },
+    {
+      "version": "20261001152336",
+      "name": "20261001152000_harden_service_order_trigger_execute_boundary"
+    },
+    {
+      "version": "20261001152358",
+      "name": "20261001152100_lock_internal_trigger_function_execute_grants"
+    },
+    {
+      "version": "20261001152608",
+      "name": "20261001154500_harden_pharmacy_care_transition_document_boundaries"
+    },
+    {
+      "version": "20261001152610",
+      "name": "20261001160000_harden_pharmacy_pos_facility_context"
+    },
+    {
+      "version": "20261001152635",
+      "name": "clinician_report_only_access"
+    },
+    {
+      "version": "20261001152820",
+      "name": "remove_practitioner_pharmacy_permission"
+    },
+    {
+      "version": "20261001152932",
+      "name": "20261001101500_harden_authenticated_clinical_mutation_boundaries"
+    },
+    {
+      "version": "20261001161505",
+      "name": "patient_hub_profile_access"
+    },
+    {
+      "version": "20261001162112",
+      "name": "repair_appointment_worklist_and_notification_provider_rpc"
+    },
+    {
+      "version": "20261001163017",
+      "name": "20261001173000_enable_test_role_mode"
+    },
+    {
+      "version": "20261001163101",
+      "name": "20261001174500_test_mode_appointment_compatibility"
+    },
+    {
+      "version": "20261001163132",
+      "name": "20261001175000_test_mode_production_default_off"
+    },
+    {
+      "version": "20261001165043",
+      "name": "super_admin_test_mode_toggle_control"
+    },
+    {
+      "version": "20261001165327",
+      "name": "super_admin_test_mode_toggle"
+    },
+    {
+      "version": "20261001200302",
+      "name": "platform_superuser_facility_onboarding"
+    },
+    {
+      "version": "20261001204413",
+      "name": "fix_workflow_notification_role_enum_cast"
+    },
+    {
+      "version": "20261001213448",
+      "name": "refresh_postgrest_patient_history_rpc_schema_cache"
+    },
+    {
+      "version": "20261001222133",
+      "name": "harden_workflow_notification_search_path"
+    },
+    {
+      "version": "20261001222203",
+      "name": "harden_workflow_notification_search_path_20261001220000"
+    },
+    {
+      "version": "20261001222221",
+      "name": "harden_workflow_notification_search_path_retry"
+    },
+    {
+      "version": "20261001222235",
+      "name": "harden_workflow_notification_enum_cast"
+    },
+    {
+      "version": "20261001222653",
+      "name": "clinical_results_production_tranche"
+    },
+    {
+      "version": "20261001223220",
+      "name": "normalize_notification_security_definer_search_path"
+    },
+    {
+      "version": "20261002050540",
+      "name": "appointment_schedulable_patient_directory"
+    },
+    {
+      "version": "20261002052916",
+      "name": "scope_appointment_workflows_to_active_facility"
+    },
+    {
+      "version": "20261002053306",
+      "name": "patient_history_readonly_facility_context"
+    },
+    {
+      "version": "20261002054934",
+      "name": "patient_hub_and_test_facility_context_repair"
+    },
+    {
+      "version": "20261002065556",
+      "name": "allow_superadmin_facility_context_override"
+    },
+    {
+      "version": "20261002065703",
+      "name": "allow_superadmin_facility_context_override"
+    },
+    {
+      "version": "20261002065912",
+      "name": "superadmin_patient_history_context_access"
+    },
+    {
+      "version": "20261002070402",
+      "name": "enforce_superadmin_selected_facility_reads"
+    },
+    {
+      "version": "20261002102222",
+      "name": "billing_workspace_summary"
+    },
+    {
+      "version": "20261002111152",
+      "name": "enforce_test_user_patient_read_facility_boundary"
+    },
+    {
+      "version": "20261002114059",
+      "name": "20261002120000_pharmacy_inventory_catalogue_management"
+    },
+    {
+      "version": "20261002114213",
+      "name": "seed_synthetic_test_patient_fixture"
+    },
+    {
+      "version": "20261002114347",
+      "name": "20261002124500_preserve_pharmacy_expiry_filter"
+    },
+    {
+      "version": "20261002115106",
+      "name": "scope_patient_hub_to_active_facility"
+    },
+    {
+      "version": "20261002131200",
+      "name": "pharmacy_global_catalogue_facility_stock_and_safety"
+    },
+    {
+      "version": "20261002131449",
+      "name": "pharmacy_legacy_stock_reconciliation_rpc"
+    },
+    {
+      "version": "20261002132256",
+      "name": "pharmacy_global_category_edit"
+    },
+    {
+      "version": "20261002134652",
+      "name": "patient_hub_read_rpc_get_compatibility"
+    },
+    {
+      "version": "20261002134656",
+      "name": "reassert_start_appointment_encounter_facility_context"
+    },
+    {
+      "version": "20261003094123",
+      "name": "harden_service_order_and_invoice_facility_boundaries"
+    },
+    {
+      "version": "20261003094747",
+      "name": "harden_billing_workflow_facility_boundaries"
+    },
+    {
+      "version": "20261003094845",
+      "name": "harden_insurance_claim_facility_boundaries"
+    },
+    {
+      "version": "20261004135725",
+      "name": "20261004170000_make_test_control_rls_deny_explicit"
+    },
+    {
+      "version": "20261004184727",
+      "name": "harden_notification_feature_flag_user_scope"
+    },
+    {
+      "version": "20261004184838",
+      "name": "refine_notification_feature_flag_admin_scope"
+    },
+    {
+      "version": "20261004185011",
+      "name": "pin_create_ward_unit_wrapper_search_path"
+    },
+    {
+      "version": "20261004185307",
+      "name": "harden_clinical_creation_facility_context"
+    },
+    {
+      "version": "20261004185459",
+      "name": "harden_appointment_inpatient_maternity_facility_context"
+    },
+    {
+      "version": "20261004185636",
+      "name": "pin_create_admission_workflow_search_path"
+    },
+    {
+      "version": "20261004185913",
+      "name": "harden_remaining_clinical_workflows_v2"
+    },
+    {
+      "version": "20261004185953",
+      "name": "harden_discharge_facility_context_v2"
+    },
+    {
+      "version": "20261004185957",
+      "name": "correct_discharge_facility_assert_order"
+    },
+    {
+      "version": "20261004190241",
+      "name": "reconcile_legacy_test_patients_to_harmony_test_facility"
+    },
+    {
+      "version": "20261004190639",
+      "name": "harden_additional_clinical_patient_writes"
+    },
+    {
+      "version": "20261004190925",
+      "name": "revoke_public_execute_hardened_clinical_rpcs"
+    },
+    {
+      "version": "20261004191059",
+      "name": "optimize_medication_catalogue_rls_initplan"
+    },
+    {
+      "version": "20261004191252",
+      "name": "reassert_create_ward_unit_wrapper_search_path_v2"
+    },
+    {
+      "version": "20261004192110",
+      "name": "harden_collect_lab_sample_search_path"
+    },
+    {
+      "version": "20261004192252",
+      "name": "harden_patient_hub_read_rpc_search_paths"
+    },
+    {
+      "version": "20261004192823",
+      "name": "harden_billing_meal_patient_facility_context"
+    },
+    {
+      "version": "20261004193017",
+      "name": "pin_patient_journey_wrappers_search_path"
+    },
+    {
+      "version": "20261004193249",
+      "name": "harden_direct_clinical_documentation_facility_context"
+    },
+    {
+      "version": "20261004193458",
+      "name": "harden_remaining_direct_patient_write_wrappers"
+    },
+    {
+      "version": "20261004193612",
+      "name": "harden_care_transition_handover_lab_approval"
+    },
+    {
+      "version": "20261004193700",
+      "name": "pin_remaining_patient_ai_billing_wrappers"
+    },
+    {
+      "version": "20261004193804",
+      "name": "harden_alert_ack_and_ai_report_completion"
+    },
+    {
+      "version": "20261004193947",
+      "name": "harden_fertility_maternity_transfusion_theatre_workflows"
+    },
+    {
+      "version": "20261004194104",
+      "name": "harden_ai_lab_patient_read_workflows"
+    },
+    {
+      "version": "20261004194159",
+      "name": "harden_operational_workspace_read_boundaries"
+    },
+    {
+      "version": "20261004194337",
+      "name": "harden_referral_notification_insurance_reads"
+    },
+    {
+      "version": "20261004194525",
+      "name": "harden_notification_consent_device_boundaries"
+    },
+    {
+      "version": "20261004194659",
+      "name": "harden_remaining_notification_insurance_security_definer_boundaries"
+    },
+    {
+      "version": "20261004194845",
+      "name": "harden_maternity_operational_workspace_search_paths"
+    },
+    {
+      "version": "20261004200928",
+      "name": "reconcile_encounter_draft_edit_workflow_live"
+    },
+    {
+      "version": "20261004201331",
+      "name": "extend_encounter_submission_system_superuser"
+    },
+    {
+      "version": "20261004215044",
+      "name": "restore_system_superuser_platform_access_and_facility_rpc_compatibility"
+    },
+    {
+      "version": "20261004215532",
+      "name": "align_platform_facility_compatibility_wrapper"
+    },
+    {
+      "version": "20261004224404",
+      "name": "complete_platform_user_facility_membership_workflows"
+    },
+    {
+      "version": "20261004225608",
+      "name": "complete_platform_user_role_assignment_workflow"
+    },
+    {
+      "version": "20261004231700",
+      "name": "harden_bilateral_facility_data_sharing"
+    },
+    {
+      "version": "20261004233801",
+      "name": "20261004290000_restrict_user_active_facility_context_management"
+    },
+    {
+      "version": "20261005091332",
+      "name": "cleanup_inactive_user_facility_context"
+    },
+    {
+      "version": "20261005094733",
+      "name": "harden_workspace_patient_directory_and_pharmacy_stock_editing"
+    },
+    {
+      "version": "20261005094757",
+      "name": "align_operational_workspace_admin_roles"
+    },
+    {
+      "version": "20261005100356",
+      "name": "reconcile_workspace_role_resolution_and_zero_stock_edit"
+    },
+    {
+      "version": "20261005101014",
+      "name": "reconcile_workspace_and_pharmacy_rpc_compatibility"
+    },
+    {
+      "version": "20261005101247",
+      "name": "reconcile_inpatient_workspace_facility_boundaries"
+    },
+    {
+      "version": "20261005101316",
+      "name": "remove_ambiguous_pharmacy_inventory_overloads"
+    },
+    {
+      "version": "20261005102108",
+      "name": "harden_patient_workflow_admin_roles"
+    },
+    {
+      "version": "20261005102543",
+      "name": "harden_missing_foreign_key_indexes"
+    },
+    {
+      "version": "20261005120028",
+      "name": "unify_runtime_patient_directory_and_pharmacy_zero_price_edits"
+    },
+    {
+      "version": "20261005120259",
+      "name": "allow_zero_price_pharmacy_creation"
+    },
+    {
+      "version": "20261005152502",
+      "name": "20261005153000_reconcile_authenticated_entrypoints_and_edge_schema_inventory"
+    },
+    {
+      "version": "20261006094257",
+      "name": "reconcile_patient_telemedicine_duty_validation"
+    },
+    {
+      "version": "20261006094402",
+      "name": "reconcile_patient_clinical_snapshot_facility_boundary_live"
+    },
+    {
+      "version": "20261006094416",
+      "name": "reconcile_patient_clinical_snapshot_facility_boundary_exact"
+    },
+    {
+      "version": "20261006095729",
+      "name": "patient_portal_self_service_runtime_reconciliation"
+    },
+    {
+      "version": "20261006144457",
+      "name": "reconcile_platform_admin_workspace_context"
+    },
+    {
+      "version": "20261006144500",
+      "name": "revoke_anon_review_queue_security_definers"
+    },
+    {
+      "version": "20261006152312",
+      "name": "reconcile_remaining_facility_review_schema"
+    },
+    {
+      "version": "20261006163711",
+      "name": "reconcile_encounter_completion_billing_materialization_v2"
+    },
+    {
+      "version": "20261007151221",
+      "name": "patient_portal_identity_index"
+    },
+    {
+      "version": "20261008132113",
+      "name": "20261008120000_add_hr_payroll_foundation"
+    },
+    {
+      "version": "20261008163616",
+      "name": "patient_telemedicine_availability_reconciliation"
+    },
+    {
+      "version": "20261008213627",
+      "name": "index_hr_payroll_foreign_keys"
+    },
+    {
+      "version": "20261013060634",
+      "name": "laboratory_specimen_accession_and_rejection"
+    },
+    {
+      "version": "20261013063118",
+      "name": "create_laboratory_catalogue_parameters_reconciliation"
+    },
+    {
+      "version": "20261013063129",
+      "name": "create_lab_order_with_catalogue_atomic_reconciliation"
+    },
+    {
+      "version": "20261013161651",
+      "name": "index_lab_specimen_foreign_keys"
+    },
+    {
+      "version": "20261013161739",
+      "name": "harden_atomic_inpatient_bed_transfer_facility_boundary"
+    },
+    {
+      "version": "20261013161848",
+      "name": "add_specialist_app_roles"
+    },
+    {
+      "version": "20261013161853",
+      "name": "specialist_clinical_workflows_schema"
+    },
+    {
+      "version": "20261013161858",
+      "name": "reconcile_specialist_clinical_staff_helper"
+    },
+    {
+      "version": "20261014102159",
+      "name": "harden_lab_approval_patient_facility_lineage"
+    },
+    {
+      "version": "20261014102730",
+      "name": "restore_platform_facility_directory_rpc"
+    },
+    {
+      "version": "20261014103413",
+      "name": "lab_specimens_explicit_deny_policy"
+    },
+    {
+      "version": "20261014104232",
+      "name": "index_specialist_workflow_foreign_keys"
+    },
+    {
+      "version": "20261026134619",
+      "name": "reconcile_hr_payroll_record_management"
+    },
+    {
+      "version": "20261026134818",
+      "name": "reconcile_inpatient_reviews_seen_at"
+    },
+    {
+      "version": "20261026135424",
+      "name": "reconcile_laboratory_rpc_argument_contracts"
+    },
+    {
+      "version": "20261026135602",
+      "name": "reconcile_laboratory_rpc_legacy_schema_compatibility"
+    },
+    {
+      "version": "20261026141054",
+      "name": "reconcile_lab_catalogue_sample_quantity_rpc"
+    }
+  ]
+}
