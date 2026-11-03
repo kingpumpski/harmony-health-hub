@@ -118,3 +118,17 @@ Read-only inspection of the live production catalog confirmed:
 The migration-contract assertion inherited from the fix branch incorrectly expected JSONB for the transition RPC. It has been corrected to the live `json` contract. The integration branch preserves both production return types and adds a separate regression assertion for the composite financial RPC return type.
 
 - The next clean replay reached `20260912027000_global_hims_workflow_reconciliation.sql` and exposed a return-type mismatch: the six-argument legacy `transition_insurance_claim` function had already been created as `RETURNS JSON` by `20260912025500`, while the main-branch reconciliation attempted `RETURNS JSONB`. The integration candidate now preserves `JSON`, with a source comment and static contract. This is confirmed by the production canonical transition RPC also returning `json`; the legacy overload is absent in current production and is later removed by the chain.
+
+## Additional replay and API-compatibility findings (2026-11-03)
+
+The migration replay subsequently exposed a medication-administration dependency: the legacy `medication_administrations` table was created with `drug_name`, `administered_at`, and `created_at`, while the later MAR migration indexed `scheduled_at`. The integration branch now inserts `20260912022900_reconcile_medication_administration_legacy_columns.sql` before the index migration. It backfills only from existing source fields, fails closed when required history cannot be established, and includes explicit `END;` terminators in all DO blocks.
+
+The HIMS enterprise migration originally called `has_role(auth.uid(), app_role[])`, but the connected production database exposes only the scalar `has_role(uuid, app_role)` overload. The integration migration now uses explicit scalar role checks. The authenticated clinical RPC migration also uses an empty pinned search path.
+
+A later replay exposed an incompatible return-type replacement for `transition_insurance_claim`: an earlier migration created the six-argument function as `RETURNS JSON`, while the later migration attempted `RETURNS JSONB`. The integration branch now preserves `JSON` for the legacy function and the canonical transition RPC, matching the connected production `transition_insurance_claim_canonical` return type. Regression contracts inspect both migration definitions. The claim financial RPC continues to preserve its separate `public.insurance_claims` return contract.
+
+The optional `current_user_facility_id()` hardening in batch 5 is now guarded because the helper is introduced by a later migration; its later definition pins an empty search path. The RLS policy consolidation also wraps stable role helpers in `(SELECT ...)` and terminates its notification-policy DO block correctly.
+
+The patient-audit foundation now enforces the action constraint on pre-existing legacy tables and avoids adding a redundant unique index when a primary key or equivalent unique index already protects `id`.
+
+At this checkpoint, the integration branch contains 657 SQL migration files with 657 unique version prefixes. The current CI runs are still pending; this inventory does not substitute for a completed clean replay or full quality suite.
