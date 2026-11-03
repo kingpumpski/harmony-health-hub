@@ -93,6 +93,11 @@ must(read('supabase/migrations/' + diagnosisSuggestionsMigration),/CREATE TABLE 
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI diagnosis suggestions must be defined in the migration chain');
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
+const claimFinancialInitial = read('supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql');
+const claimFinancialInitialFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\\.update_insurance_claim_financials\\([\\s\\S]*?END; \\$\\$;/i)?.[0] ?? '';
+assert.ok(claimFinancialInitialFunction,'initial claim financial RPC must remain defined');
+must(claimFinancialInitialFunction,/\\) RETURNS public\\.insurance_claims/i,'first claim financial RPC definition must use the production insurance_claims row return type');
+must(claimFinancialInitialFunction,/UPDATE public\\.insurance_claims[\\s\\S]*?RETURNING \\* INTO c;[\\s\\S]*?RETURN c;/i,'first claim financial RPC definition must return the updated insurance_claims row');
 const claimFinancialFoundation = read('supabase/migrations/20260912035000_global_hims_operational_integrity.sql');
 const claimFinancialFoundationFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?\$claim_financials\$;/i)?.[0] ?? '';
 assert.ok(claimFinancialFoundationFunction,'early claim financial RPC must remain defined');
@@ -106,6 +111,7 @@ const claimFinancialBounds = read('supabase/migrations/20260920062000_insurance_
 const claimFinancialBoundsFunction = claimFinancialBounds.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?\$claim_financials\$/i)?.[0] ?? '';
 assert.ok(claimFinancialBoundsFunction,'claim financial bounds RPC must remain defined');
 must(claimFinancialBoundsFunction,/\) RETURNS public\.insurance_claims/i,'claim financial bounds migration must preserve the production insurance_claims row return type');
+assert.ok(files.indexOf('20260912033000_global_hims_reconciliation_hardening.sql') < files.indexOf('20260912035000_global_hims_operational_integrity.sql'),'initial claim financial RPC contract must precede the operational integrity redefinition');
 assert.ok(files.indexOf('20260912035000_global_hims_operational_integrity.sql') < files.indexOf('20260920062000_insurance_claim_financial_bounds.sql'),'claim financial RPC foundation must precede its bounds hardening migration');
 const claimTransitionMigration = read('supabase/migrations/20260920063000_insurance_claim_transition_state_hardening.sql');
 must(claimTransitionMigration,/CREATE OR REPLACE FUNCTION public\.transition_insurance_claim_canonical\([\s\S]*?\)\s*RETURNS\s+JSON\b/i,'claim transition hardening must preserve the production JSON RPC return type');
