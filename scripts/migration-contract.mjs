@@ -7,7 +7,8 @@ const trackedPaths = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' 
 const forbiddenTrackedArtifacts = trackedPaths.filter((p) =>
   p.startsWith('supabase/.temp/') ||
   p.startsWith('.reconciliation/') ||
-  p === 'database-reconciliation-evidence.zip'
+  p === 'database-reconciliation-evidence.zip' ||
+  p === 'supabase/migrations/$(path)'
 );
 assert.deepEqual(
   forbiddenTrackedArtifacts,
