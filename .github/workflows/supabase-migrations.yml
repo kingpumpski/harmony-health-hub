@@ -54,12 +54,23 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
-      - name: Show migration state
-        run: supabase migration list --linked
+      - name: Verify production migration baseline gate runtime behavior
+        run: node scripts/production-migration-baseline-gate-runtime-test.mjs
 
-      - name: Validate migrations
+      - name: Capture linked migration history
+        run: supabase migration list --linked | tee .supabase-migration-history.txt
+
+      - name: Validate production migration baseline
         if: ${{ inputs.mode == 'validate' }}
-        run: supabase db push --linked --dry-run
+        run: node scripts/production-migration-baseline-gate.mjs --mode validate --history-file .supabase-migration-history.txt
+
+      - name: Enforce production baseline gate before apply
+        if: ${{ inputs.mode == 'apply' }}
+        run: node scripts/production-migration-baseline-gate.mjs --mode apply --history-file .supabase-migration-history.txt
+
+      - name: Confirm read-only verification mode
+        if: ${{ inputs.mode == 'verify' }}
+        run: node scripts/production-migration-baseline-gate.mjs --mode verify
 
       - name: Require explicit production apply confirmation
         if: ${{ inputs.mode == 'apply' }}
