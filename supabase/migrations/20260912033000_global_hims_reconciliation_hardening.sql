@@ -26,8 +26,8 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.assign_emergency_officer(
   _case_id UUID,
   _officer_id UUID DEFAULT NULL
-) RETURNS public.insurance_claims
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $assign_emergency_officer$
 DECLARE uid UUID := auth.uid(); v_officer UUID;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner') OR public.has_role(uid,'nurse') OR public.has_role(uid,'specialist_nurse')) THEN
@@ -37,7 +37,7 @@ BEGIN
   UPDATE public.emergency_cases SET assigned_officer=v_officer WHERE id=_case_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Emergency case not found'; END IF;
   RETURN jsonb_build_object('case_id',_case_id,'assigned_officer',v_officer);
-END; $$;
+END; $assign_emergency_officer$;
 
 CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _claim_id UUID,
@@ -45,7 +45,7 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS JSONB
+) RETURNS public.insurance_claims
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE uid UUID := auth.uid(); c public.insurance_claims%ROWTYPE;
 BEGIN
