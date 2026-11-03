@@ -249,9 +249,12 @@ must(patientHubSnapshot,/FROM public\.diagnoses d JOIN public\.encounters e ON e
 const labPanels = read('supabase/migrations/20261013180000_laboratory_test_panels.sql');
 must(labPanels,/FROM public\.diagnoses d JOIN public\.encounters diagnosis_encounter ON diagnosis_encounter\.id=d\.encounter_id AND diagnosis_encounter\.patient_id=o\.patient_id/i,'laboratory panels must use encounter patient lineage for diagnoses');
 // Preserve canonical facility payment-routing settings when upgrading legacy rows.
+const ophthalmologyRoleMigration = read('supabase/migrations/20260912253900_add_ophthalmologist_app_role.sql');
+must(ophthalmologyRoleMigration,/ALTER TYPE public\\.app_role ADD VALUE IF NOT EXISTS 'ophthalmologist'/i,'ophthalmologist enum value must be committed before the ophthalmology workflow references it');
+assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260912254000_ophthalmology_workflow.sql'),'ophthalmologist role enum migration must precede the ophthalmology workflow migration');
 const workflowCompletion = read('supabase/migrations/20260912162001_hims_workflow_completion.sql');
-must(workflowCompletion,/WHEN payment_routing_mode IN \\('pay_before_every_step',\\s*'streamlined'\\)\\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
-must(workflowCompletion,/WHEN COALESCE\\(to_jsonb\\(facility_settings\\)->>'routing_mode',''\\) = 'pay_before_each_step'[\\s\\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
+must(workflowCompletion,/WHEN payment_routing_mode IN \('pay_before_every_step',\s*'streamlined'\)\s+THEN payment_routing_mode/i,'facility settings migration must preserve existing canonical payment-routing values');
+must(workflowCompletion,/WHEN COALESCE\(to_jsonb\(facility_settings\)->>'routing_mode',''\) = 'pay_before_each_step'[\s\S]*?THEN 'pay_before_every_step'/i,'facility settings migration must translate the recognized legacy payment-routing value');
 // Catch malformed single-dollar function openers and terminators before clean replay.
 assert.ok(!all.includes('END;\n$;') && !all.includes('END;\r\n$;'),'migration chain must not contain a single-dollar PL/pgSQL function terminator');
 // Do not reject tagged dollar-quote terminators such as $function$; the exact bare $; check above catches the malformed form.
