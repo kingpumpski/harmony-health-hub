@@ -124,6 +124,7 @@ must(medicationAdministrationCompatibility,/DO \$medication_updated_at_reconcile
 assert.ok(files.indexOf('20260912022900_reconcile_medication_administration_legacy_columns.sql') < files.indexOf('20260912023000_global_medication_administration.sql'),'MAR legacy columns must be reconciled before MAR indexes and triggers');
 const patientAuditFoundation = read('supabase/migrations/20260912001500_restore_patient_audit_log.sql');
 must(patientAuditFoundation,/ADD CONSTRAINT patient_audit_log_action_check\s+CHECK/i,'legacy patient audit action values must remain constrained');
+must(patientAuditFoundation,/conname\s*=\s*'patient_audit_log_action_check'/i,'legacy patient audit must check the exact action constraint name before adding it');
 must(patientAuditFoundation,/pg_index[\s\S]*?indisunique[\s\S]*?indnatts = 1[\s\S]*?indkey\[0\]/i,'patient audit ID index must not duplicate an existing primary/unique index');
 must(patientAuditFoundation,/END;\s*\$patient_audit_action_check\$;/i,'patient audit action-check DO block must terminate correctly');
 must(patientAuditFoundation,/END;\s*\$patient_audit_id_unique\$;/i,'patient audit ID-index DO block must terminate correctly');
