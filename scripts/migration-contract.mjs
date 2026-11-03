@@ -93,6 +93,17 @@ must(read('supabase/migrations/' + diagnosisSuggestionsMigration),/CREATE TABLE 
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI diagnosis suggestions must be defined in the migration chain');
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
+const currentUserAuthorizationHelpers = read('supabase/migrations/20260923173900_create_current_user_authorization_helpers_prerequisite.sql');
+must(currentUserAuthorizationHelpers,/CREATE OR REPLACE FUNCTION public\.current_user_has_role\(\_role public\.app_role\)/i,'current-user role helper must be created before role-scoped RLS policies');
+must(currentUserAuthorizationHelpers,/CREATE OR REPLACE FUNCTION public\.current_user_is_clinical_staff\(\)/i,'current-user clinical-staff helper must be created before clinical RLS policies');
+must(currentUserAuthorizationHelpers,/CREATE OR REPLACE FUNCTION public\.current_user_can_edit_patient_record\(\)/i,'current-user patient-edit helper must be created before later privilege hardening');
+must(currentUserAuthorizationHelpers,/GRANT EXECUTE ON FUNCTION public\.current_user_is_clinical_staff\(\) TO authenticated, service_role/i,'authenticated RLS policies must be able to execute the current-user clinical helper');
+assert.ok(files.indexOf('20260923173900_create_current_user_authorization_helpers_prerequisite.sql') < files.indexOf('20260923174000_rls_revoked_helper_reconciliation.sql'),'current-user helpers must precede RLS policies that call them');
+assert.ok(files.indexOf('20260923173900_create_current_user_authorization_helpers_prerequisite.sql') < files.indexOf('20260923175000_service_order_revoked_helper_reconciliation.sql'),'current-user helpers must precede service-order RPCs that call them');
+const currentUserHelperPrivileges = read('supabase/migrations/20260923190000_harden_current_user_helper_execute_boundary.sql');
+must(currentUserHelperPrivileges,/REVOKE ALL ON FUNCTION public\.current_user_is_clinical_staff\(\) FROM PUBLIC, anon/i,'current-user helper must remain unavailable to PUBLIC and anon');
+must(currentUserHelperPrivileges,/GRANT EXECUTE ON FUNCTION public\.current_user_is_clinical_staff\(\) TO authenticated, service_role/i,'authenticated RLS policies must retain current-user helper execution');
+assert.doesNotMatch(currentUserHelperPrivileges,/FROM authenticated, anon, public/i,'current-user helper hardening must not revoke execution required by authenticated RLS policies');
 const claimFinancialInitial = read('supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql');
 const emergencyOfficerFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\.assign_emergency_officer\([\s\S]*?END; \$assign_emergency_officer\$;/i)?.[0] ?? '';
 assert.ok(emergencyOfficerFunction,'emergency officer assignment RPC must remain defined');
