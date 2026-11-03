@@ -201,7 +201,7 @@ assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_r
 assert.doesNotMatch(labResultBranch, /\br\.patient_id\b/i, 'lab_results reconciliation must not read patient_id from lab_results');
 must(labResultBranch,/left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab_results reconciliation must join the parent lab order');
 must(labResultBranch,/\blo\.patient_id\b/i,'lab_results reconciliation must derive patient lineage through the parent lab order');
-must(labResultBranch,/lr\.patient_id IS NOT NULL AND lr\.patient_id IS DISTINCT FROM lo\.patient_id/i,'lab_results reconciliation must fail closed when legacy patient_id conflicts with the parent order');
+must(labResultBranch,/lr\\.patient_id\\s+IS NOT NULL\\s+AND\\s+lr\\.patient_id\\s+IS DISTINCT FROM\\s+lo\\.patient_id/i,'lab_results reconciliation must fail closed when legacy patient_id conflicts with the parent order');
 // Diagnosis patient identity is canonicalized through encounters; the legacy nullable diagnoses.patient_id field is not authoritative and is absent from the clean-install schema.
 const diagnosisFacilityBranch = facility.match(/elsif _entity_type='diagnoses' then([\s\S]*?)else raise exception 'Unsupported clinical entity type'/i)?.[1] ?? '';
 must(diagnosisFacilityBranch,/join public\.encounters e on e\.id=d\.encounter_id/i,'facility reconciliation must resolve diagnosis patient identity through its encounter');
