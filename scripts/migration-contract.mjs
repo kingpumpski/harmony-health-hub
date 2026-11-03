@@ -275,6 +275,11 @@ assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < fil
 const itAdminRoleMigration = read('supabase/migrations/20260917149900_add_it_admin_app_role_prerequisite.sql');
 must(itAdminRoleMigration,/ALTER TYPE public\\.app_role ADD VALUE IF NOT EXISTS 'it_admin'/i,'IT administrator enum value must be committed before referral workflow functions reference it');
 assert.ok(files.indexOf('20260917149900_add_it_admin_app_role_prerequisite.sql') < files.indexOf('20260917150000_clinical_admission_referral_document_lifecycle.sql'),'IT administrator enum prerequisite must precede clinical admission/referral lifecycle migration');
+const globalAuditTriggerRepair = read('supabase/migrations/20260917153900_harden_global_hims_audit_trigger_row_shape.sql');
+must(globalAuditTriggerRepair,/CREATE OR REPLACE FUNCTION public\\.audit_global_hims_change\\(\\)[\\s\\S]*?to_jsonb\\(NEW\\)->>'risk_level'/i,'shared HIMS audit trigger must read table-specific optional fields through JSON row projection');
+assert.doesNotMatch(globalAuditTriggerRepair,/NEW\\.risk_level/i,'generic audit trigger must not bind maternity-only columns to unrelated row types');
+assert.ok(files.indexOf('20260917153900_harden_global_hims_audit_trigger_row_shape.sql') < files.indexOf('20260917154000_default_streamlined_clinical_routing.sql'),'generic audit trigger row-shape repair must precede facility-configuration updates');
+
 
 assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < files.indexOf('20260912254000_ophthalmology_workflow.sql'),'ophthalmologist role enum migration must precede the ophthalmology workflow migration');
 const reportsRecovery = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
