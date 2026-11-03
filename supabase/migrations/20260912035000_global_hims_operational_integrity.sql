@@ -60,7 +60,7 @@ BEGIN
   RETURN v_id;
 END; $$;
 
-CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS public.insurance_claims
+CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE uid UUID := auth.uid();
 BEGIN
@@ -77,8 +77,8 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+) RETURNS public.insurance_claims
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
 DECLARE uid UUID := auth.uid(); c public.insurance_claims%ROWTYPE; v_approved NUMERIC; v_paid NUMERIC;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
