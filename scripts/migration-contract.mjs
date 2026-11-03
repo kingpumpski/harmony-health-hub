@@ -275,6 +275,11 @@ assert.ok(files.indexOf('20260912253900_add_ophthalmologist_app_role.sql') < fil
 const itAdminRoleMigration = read('supabase/migrations/20260917149900_add_it_admin_app_role_prerequisite.sql');
 must(itAdminRoleMigration,/ALTER TYPE public\\.app_role ADD VALUE IF NOT EXISTS 'it_admin'/i,'IT administrator enum value must be committed before referral workflow functions reference it');
 assert.ok(files.indexOf('20260917149900_add_it_admin_app_role_prerequisite.sql') < files.indexOf('20260917150000_clinical_admission_referral_document_lifecycle.sql'),'IT administrator enum prerequisite must precede clinical admission/referral lifecycle migration');
+const permissionCatalog = read('supabase/migrations/20260918114000_database_permission_catalog.sql');
+must(permissionCatalog,/is_active BOOLEAN NOT NULL DEFAULT TRUE/i,'permission catalog must default new permissions to active');
+const functionalDomainPermissions = read('supabase/migrations/20260918133000_functional_domain_permissions.sql');
+must(functionalDomainPermissions,/INSERT INTO public\\.permissions\\(permission_key, description\\)[\\s\\S]*?ON CONFLICT\\(permission_key\\) DO UPDATE SET description=EXCLUDED\\.description, is_active=TRUE/i,'functional-domain permission seed must rely on the catalog active default and reactivate existing keys');
+assert.doesNotMatch(functionalDomainPermissions,/INSERT INTO public\\.permissions\\(permission_key, description, is_active\\)/i,'functional-domain permission seed must not declare an is_active target without a corresponding value');
 const globalAuditTriggerRepair = read('supabase/migrations/20260917153900_harden_global_hims_audit_trigger_row_shape.sql');
 must(globalAuditTriggerRepair,/CREATE OR REPLACE FUNCTION public\\.audit_global_hims_change\\(\\)[\\s\\S]*?to_jsonb\\(NEW\\)->>'risk_level'/i,'shared HIMS audit trigger must read table-specific optional fields through JSON row projection');
 assert.doesNotMatch(globalAuditTriggerRepair,/NEW\\.risk_level/i,'generic audit trigger must not bind maternity-only columns to unrelated row types');
