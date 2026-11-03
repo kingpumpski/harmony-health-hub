@@ -201,3 +201,15 @@ A CI/CD repair is complete only when:
 - The covered-visit auto-release path must populate the legacy `department_queues` patient and priority fields and use the partial `service_order_id IS NOT NULL` conflict predicate. The `department-queue-legacy-columns-contract` test protects this trigger path.
 - Treat `supabase-migration-list.txt` as a dated snapshot, never as the current source of truth. Regenerate local inventory and linked remote history from the same review window before reconciliation. On 2026-11-03, the committed snapshot showed 339 remote entries while the connected production ledger returned 417; the snapshot is stale and must not be used to approve migration provenance.
 - Duplicate constraints with different names but identical definitions are schema drift. Record and reconcile them through a reviewed forward migration after baseline provenance is verified; do not add another equivalent constraint or modify production ad hoc.
+
+
+## 17. Production schema advisor and RLS reconciliation
+
+- Use read-only Supabase catalog queries and advisor results to confirm the live production shape before proposing forward migrations. Record the observation date and project reference in evidence.
+- Do not treat every SECURITY DEFINER function executable by `authenticated` as a vulnerability. Verify anon exposure, pinned search_path, auth/facility guards, and whether wrapper RPCs delegate to guarded functions. Never blanket-revoke authenticated execution from application RPCs.
+- Preserve restrictive facility-identity policies. PostgreSQL combines permissive policies with OR and restrictive policies with AND; never assume a permissive policy named “guard” restricts other permissive policies.
+- Before consolidating permissive RLS policies, compare exact predicates and retain each patient-own, staff, accountant, administrator, and facility-scoped access path. Add pgTAP assertions for both preserved access and facility restrictions.
+- Consolidate duplicate false client-deny policies only into restrictive deny policies covering the same roles and commands. Do not widen access to internal tables.
+- Drop duplicate foreign keys or indexes only after catalog evidence proves their definitions are identical; retain one canonical constraint/index and add a database contract.
+- A live production schema gap must be addressed by a forward-only migration. Historical migrations may be adjusted in the integration candidate to make clean replay possible, but they must not be merged/applied until production-ledger provenance establishes whether those versions have already been recorded.
+- Every forward schema advisor repair must have an executable pgTAP contract and must be tested on clean replay before merge.
