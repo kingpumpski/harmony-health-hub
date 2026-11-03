@@ -1,6 +1,6 @@
 # Production migration provenance register
 
-<badge>Candidate evidence only — NOT VERIFIED</badge>
+**Candidate evidence only — NOT VERIFIED**
 
 **Project reference:** `ygqoptvezotdqhtimdkr`  
 **Observation date:** 2026-11-03  
