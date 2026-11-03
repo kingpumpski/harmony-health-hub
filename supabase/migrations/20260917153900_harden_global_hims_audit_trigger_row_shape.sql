@@ -1,6 +1,6 @@
 -- A single generic audit trigger serves tables with different row shapes.
 -- Read optional maternity-only fields through JSON so facility_configuration
--- updates do not attempt to resolve NEW.risk_level on the wrong composite type.
+-- updates do not attempt to resolve maternity-only fields on the wrong composite type.
 CREATE OR REPLACE FUNCTION public.audit_global_hims_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
