@@ -47,6 +47,34 @@ CREATE POLICY video_sessions_scoped_read
     OR (SELECT public.current_user_is_clinical_staff())
   );
 
+-- Keep the attachment upload authorization unchanged while evaluating auth.uid()
+-- once per statement instead of once per candidate row.
+DROP POLICY IF EXISTS lab_result_attachments_technician_insert ON public.lab_result_attachments;
+CREATE POLICY lab_result_attachments_technician_insert
+  ON public.lab_result_attachments
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    facility_id = (SELECT public.current_user_facility_id())
+    AND uploaded_by = (SELECT auth.uid())
+    AND (
+      (SELECT public.current_user_has_role('admin'::public.app_role))
+      OR (SELECT public.current_user_has_role('it_admin'::public.app_role))
+      OR (SELECT public.current_user_has_role('lab_technician'::public.app_role))
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM public.lab_orders lo
+      JOIN public.service_orders so
+        ON so.related_entity_id = COALESCE(lo.parent_order_id, lo.id)
+       AND so.department = 'laboratory'
+       AND so.patient_id = lo.patient_id
+       AND so.facility_id = lo.facility_id
+       AND so.status IN ('released', 'in_progress', 'completed')
+      WHERE lo.id = lab_result_attachments.lab_order_id
+        AND lo.facility_id = lab_result_attachments.facility_id
+    )
+  );
+
 -- These SELECT policies duplicate the SELECT arm of the existing ALL policies
 -- byte-for-byte. Removing only the redundant SELECT copies preserves the same
 -- authorization predicate while avoiding duplicate permissive policy evaluation.
