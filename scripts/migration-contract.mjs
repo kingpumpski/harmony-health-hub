@@ -197,6 +197,10 @@ const notificationSecurityMigration = read('supabase/migrations/20260912252000_p
 must(notificationSecurityMigration,/DROP FUNCTION IF EXISTS public\.mark_notification_read\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.mark_notification_read\(_notification_id UUID\)\s+RETURNS BOOLEAN\b/i,'notification read RPC must explicitly transition from the earlier VOID signature to the production BOOLEAN return contract');
 const patientHubEntrypoints = read("supabase/migrations/20260923130000_patient_hub_entrypoint_context_hardening.sql");
 must(patientHubEntrypoints,/GRANT EXECUTE ON FUNCTION public\.record_patient_vitals\(UUID,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC,NUMERIC\) TO authenticated/i,"patient vitals grant must match the nine-argument RPC signature");
+const extendedFacilityInventory = read('supabase/migrations/20260930015100_extend_facility_reconciliation_inventory.sql');
+const labInventoryBranch = extendedFacilityInventory.match(/union all select 'lab_results',[\\s\\S]*?(?=\\nunion all select 'imaging_orders')/i)?.[0] ?? '';
+must(labInventoryBranch,/r\.id,lo\.patient_id,[\s\S]*?from public\.lab_results r\s+left join public\.lab_orders lo on lo\.id=r\.lab_order_id/i,'lab-result facility inventory must derive patient identity through the parent lab order');
+assert.doesNotMatch(labInventoryBranch,/\br\.patient_id\b/i,'lab-result facility inventory must not read the noncanonical lab_results.patient_id field');
 const facility = read('supabase/migrations/20260930014000_clinical_facility_reconciliation_control_plane.sql');
 const labResultBranch = facility.match(/elsif _entity_type='lab_results' then([\s\S]*?)elsif _entity_type='imaging_orders' then/i)?.[1] ?? '';
 assert.ok(labResultBranch, 'clinical facility reconciliation must retain a lab_results branch');
