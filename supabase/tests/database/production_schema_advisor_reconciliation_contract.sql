@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(26);
+SELECT plan(30);
 
 SELECT has_column('public','bulk_import_jobs','entity_type','bulk import entity type is present');
 SELECT has_column('public','bulk_import_jobs','source_format','bulk import source format is present');
@@ -57,6 +57,11 @@ SELECT ok(NOT has_table_privilege('anon','public.lab_test_groups','SELECT'),'ano
 SELECT ok(NOT has_table_privilege('authenticated','public.lab_test_groups','SELECT'),'authenticated has no direct SELECT grant on laboratory panels');
 SELECT ok(NOT has_table_privilege('anon','public.lab_test_group_items','SELECT'),'anon has no direct SELECT grant on laboratory panel membership');
 SELECT ok(NOT has_table_privilege('authenticated','public.lab_test_group_items','SELECT'),'authenticated has no direct SELECT grant on laboratory panel membership');
+
+SELECT ok(to_regclass('public.idx_hr_employees_archived_by') IS NOT NULL,'hr employee archived_by foreign key is indexed');
+SELECT ok(to_regclass('public.idx_lab_result_attachments_uploaded_by') IS NOT NULL,'lab attachment uploaded_by foreign key is indexed');
+SELECT ok(to_regclass('public.idx_lab_test_group_items_test_id') IS NOT NULL,'lab panel item test_id foreign key is indexed');
+SELECT ok(to_regclass('public.idx_lab_test_groups_created_by') IS NOT NULL,'lab panel created_by foreign key is indexed');
 
 SELECT ok(
   NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.billing_overrides'::regclass AND conname='billing_overrides_service_order_fk'),
