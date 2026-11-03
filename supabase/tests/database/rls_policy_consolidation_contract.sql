@@ -1,6 +1,54 @@
 BEGIN;
 
-SELECT plan(21);
+SELECT plan(29);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.appointments'::regclass AND polname='staff manage appointments' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.appointments'::regclass AND polname='patient own appointments select' AND polcmd='r' AND polpermissive),
+  'patient ownership and staff management remain separate, intentional SELECT access paths'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dental_assessments'::regclass AND polname='dental_assessments_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dental_assessments'::regclass AND polname='dental_assessments_clinical_read' AND polcmd='r' AND polpermissive),
+  'dental specialty write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dietary_assessments'::regclass AND polname='dietary_assessments_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dietary_assessments'::regclass AND polname='dietary_assessments_clinical_read' AND polcmd='r' AND polpermissive),
+  'dietician write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dietary_meal_orders'::regclass AND polname='dietary_meal_orders_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.dietary_meal_orders'::regclass AND polname='dietary_meal_orders_clinical_read' AND polcmd='r' AND polpermissive),
+  'meal-order specialty write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.ophthalmology_assessments'::regclass AND polname='ophthalmology_assessments_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.ophthalmology_assessments'::regclass AND polname='ophthalmology_assessments_clinical_read' AND polcmd='r' AND polpermissive),
+  'ophthalmology specialty write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.physio_assessments'::regclass AND polname='physio_assessments_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.physio_assessments'::regclass AND polname='physio_assessments_clinical_read' AND polcmd='r' AND polpermissive),
+  'physiotherapy specialty write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.physio_treatment_plans'::regclass AND polname='physio_treatment_plans_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.physio_treatment_plans'::regclass AND polname='physio_treatment_plans_clinical_read' AND polcmd='r' AND polpermissive),
+  'physiotherapy treatment-plan write access and clinical read access remain distinct'
+);
+
+SELECT ok(
+  EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.specialist_review_sessions'::regclass AND polname='specialist_review_sessions_facility_access' AND polcmd='*' AND polpermissive)
+  AND EXISTS (SELECT 1 FROM pg_policy WHERE polrelid='public.specialist_review_sessions'::regclass AND polname='specialist_review_sessions_clinical_read' AND polcmd='r' AND polpermissive),
+  'specialty-specific review access and general clinical read access remain distinct'
+);
 
 SELECT ok(
   (SELECT count(*) = 1 FROM pg_policy WHERE polrelid='public.invoices'::regclass AND polcmd='r' AND polpermissive),
