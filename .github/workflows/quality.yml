@@ -47,6 +47,9 @@ jobs:
       - name: Insurance claim financial RPC compatibility contract
         run: node scripts/insurance-claim-financial-rpc-contract.mjs
 
+      - name: Department queue legacy-column ordering contract
+        run: node scripts/department-queue-legacy-columns-contract.mjs
+
       - name: Codespaces devcontainer configuration contract
         run: npm run test:devcontainer-config
 
