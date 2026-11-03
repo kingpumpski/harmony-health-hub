@@ -116,3 +116,5 @@ Read-only inspection of the live production catalog confirmed:
 - `update_insurance_claim_financials(uuid,numeric,numeric,text,text)` returns `public.insurance_claims` (the composite row type), not `jsonb`.
 
 The migration-contract assertion inherited from the fix branch incorrectly expected JSONB for the transition RPC. It has been corrected to the live `json` contract. The integration branch preserves both production return types and adds a separate regression assertion for the composite financial RPC return type.
+
+- The next clean replay reached `20260912027000_global_hims_workflow_reconciliation.sql` and exposed a return-type mismatch: the six-argument legacy `transition_insurance_claim` function had already been created as `RETURNS JSON` by `20260912025500`, while the main-branch reconciliation attempted `RETURNS JSONB`. The integration candidate now preserves `JSON`, with a source comment and static contract. This is confirmed by the production canonical transition RPC also returning `json`; the legacy overload is absent in current production and is later removed by the chain.
