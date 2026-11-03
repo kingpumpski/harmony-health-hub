@@ -69,7 +69,7 @@ function validate(source, file) {
         i += 2;
         continue;
       }
-      const match = source.slice(i).match(/^\\$(?:[A-Za-z_][A-Za-z0-9_]*)?\\$/);
+      const match = source.slice(i).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/);
       if (match) {
         const delimiter = match[0];
         const start = i;
@@ -82,7 +82,7 @@ function validate(source, file) {
         i = close + delimiter.length;
         continue;
       }
-      if (i + 1 === source.length || /\\s|[;,()]/.test(source[i + 1])) {
+      if (i + 1 === source.length || /\s|[;,()]/.test(source[i + 1])) {
         errors.push(`${file}:${lineAt(source, i)}: invalid bare dollar sign; use a valid dollar-quote delimiter such as $$ or $tag$`);
         return errors;
       }
