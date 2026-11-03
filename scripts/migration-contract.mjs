@@ -94,10 +94,10 @@ must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI dia
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
 const claimFinancialInitial = read('supabase/migrations/20260912033000_global_hims_reconciliation_hardening.sql');
-const claimFinancialInitialFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\\.update_insurance_claim_financials\\([\\s\\S]*?END; \\$\\$;/i)?.[0] ?? '';
+const claimFinancialInitialFunction = claimFinancialInitial.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?END; \$\$;/i)?.[0] ?? '';
 assert.ok(claimFinancialInitialFunction,'initial claim financial RPC must remain defined');
-must(claimFinancialInitialFunction,/\\) RETURNS public\\.insurance_claims/i,'first claim financial RPC definition must use the production insurance_claims row return type');
-must(claimFinancialInitialFunction,/UPDATE public\\.insurance_claims[\\s\\S]*?RETURNING \\* INTO c;[\\s\\S]*?RETURN c;/i,'first claim financial RPC definition must return the updated insurance_claims row');
+must(claimFinancialInitialFunction,/\) RETURNS public\.insurance_claims/i,'first claim financial RPC definition must use the production insurance_claims row return type');
+must(claimFinancialInitialFunction,/UPDATE public\.insurance_claims[\s\S]*?RETURNING \* INTO c;[\s\S]*?RETURN c;/i,'first claim financial RPC definition must return the updated insurance_claims row');
 const claimFinancialFoundation = read('supabase/migrations/20260912035000_global_hims_operational_integrity.sql');
 const claimFinancialFoundationFunction = claimFinancialFoundation.match(/CREATE OR REPLACE FUNCTION public\.update_insurance_claim_financials\([\s\S]*?\$claim_financials\$;/i)?.[0] ?? '';
 assert.ok(claimFinancialFoundationFunction,'early claim financial RPC must remain defined');
