@@ -146,6 +146,9 @@ must(patientAuditRetention,/IF to_regclass\('public\.patient_audit_log'\) IS NOT
 must(patientAuditRetention,/ELSIF to_regclass\('public\.patient_audit'\) IS NOT NULL THEN/i,'patient audit retention must support the canonical patient_audit table');
 const rlsPolicyConsolidation = read('supabase/migrations/20261103091000_consolidate_rls_policy_paths.sql');
 must(rlsPolicyConsolidation,/END;\s*\$notification_tables\$;/i,'notification RLS policy consolidation DO block must terminate with END;');
+must(rlsPolicyConsolidation,/uploaded_by = \(SELECT auth\.uid\(\)\)/i,'lab attachment insert policy must wrap auth.uid in a scalar subquery');
+must(rlsPolicyConsolidation,/DROP POLICY IF EXISTS payroll_items_admin_it_accountant_select ON public\.payroll_items/i,'redundant payroll item SELECT policy must be removed without altering the ALL policy');
+must(rlsPolicyConsolidation,/DROP POLICY IF EXISTS payroll_periods_admin_it_accountant_select ON public\.payroll_periods/i,'redundant payroll period SELECT policy must be removed without altering the ALL policy');
 const reportSeedCompatibility = read('supabase/migrations/20260914010028_reports_center_production_reconciliation.sql');
 must(reportSeedCompatibility,/DROP FUNCTION IF EXISTS public\.seed_facility_reports\(UUID\);[\s\S]*?CREATE OR REPLACE FUNCTION public\.seed_facility_reports\([\s\S]*?RETURNS\s+VOID/i,'reports seed RPC return-type change must explicitly drop the prior INTEGER signature');
 const reportSeedHardening = read('supabase/migrations/20260920211000_privileged_admin_resource_scope_hardening.sql');
