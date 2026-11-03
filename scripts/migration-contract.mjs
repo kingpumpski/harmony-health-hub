@@ -93,6 +93,16 @@ must(read('supabase/migrations/' + diagnosisSuggestionsMigration),/CREATE TABLE 
 must(all,/CREATE TABLE IF NOT EXISTS public[.]ai_diagnosis_suggestions/i,'AI diagnosis suggestions must be defined in the migration chain');
 assert.ok(files.indexOf(diagnosisSuggestionsMigration) >= 0 && files.indexOf(diagnosisSuggestionsMigration) < files.indexOf('20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql'),'AI diagnosis suggestions must exist before historical RLS hardening references it');
 
+const notificationDeliveriesPrerequisite = read('supabase/migrations/20260925191900_create_notification_deliveries_table_prerequisite.sql');
+must(notificationDeliveriesPrerequisite,/CREATE TABLE IF NOT EXISTS public\.notification_deliveries/i,'service-only notification delivery evidence table must exist before advisor reconciliation');
+for (const column of ['queue_id UUID NOT NULL','user_id UUID','channel TEXT NOT NULL','destination_hash TEXT','attempts INTEGER NOT NULL DEFAULT 0','provider_message_id TEXT','delivered_at TIMESTAMPTZ']) {
+  assert.ok(notificationDeliveriesPrerequisite.includes(column), 'notification deliveries prerequisite must define ' + column);
+}
+must(notificationDeliveriesPrerequisite,/ALTER TABLE public\.notification_deliveries ENABLE ROW LEVEL SECURITY/i,'notification delivery evidence must have RLS enabled');
+must(notificationDeliveriesPrerequisite,/REVOKE ALL ON TABLE public\.notification_deliveries FROM PUBLIC, anon, authenticated/i,'notification delivery evidence must not be exposed to Data API client roles');
+must(notificationDeliveriesPrerequisite,/GRANT ALL ON TABLE public\.notification_deliveries TO service_role/i,'notification delivery workers must retain service-role table access');
+assert.ok(files.indexOf('20260925191900_create_notification_deliveries_table_prerequisite.sql') < files.indexOf('20260925192000_notification_advisor_reconciliation.sql'),'notification delivery table must precede its advisor indexes and comments');
+assert.ok(files.indexOf('20260925191900_create_notification_deliveries_table_prerequisite.sql') < files.indexOf('20260925240000_notification_internal_table_rls_guards.sql'),'notification delivery table must precede internal-table RLS guards');
 const currentUserAuthorizationHelpers = read('supabase/migrations/20260923173900_create_current_user_authorization_helpers_prerequisite.sql');
 must(currentUserAuthorizationHelpers,/CREATE OR REPLACE FUNCTION public\.current_user_has_role\(\_role public\.app_role\)/i,'current-user role helper must be created before role-scoped RLS policies');
 must(currentUserAuthorizationHelpers,/CREATE OR REPLACE FUNCTION public\.current_user_is_clinical_staff\(\)/i,'current-user clinical-staff helper must be created before clinical RLS policies');
