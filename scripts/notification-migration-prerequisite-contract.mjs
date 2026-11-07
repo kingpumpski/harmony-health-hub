@@ -83,10 +83,12 @@ const queueCompatibility = fs.readFileSync(path.join(migrationsDir, queueCompati
 const queueContract = fs.readFileSync(queueContractPath, 'utf8');
 const queueColumnAdd = queuePhase2.indexOf('ADD COLUMN IF NOT EXISTS queued_at');
 const queueBackfill = queuePhase2.indexOf('SET queued_at = COALESCE(queued_at, created_at)');
+const queueNotNull = queuePhase2.indexOf('ALTER COLUMN queued_at SET NOT NULL');
 const queueIndex = queuePhase2.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
-assert.ok(queueColumnAdd >= 0 && queueBackfill > queueColumnAdd && queueIndex > queueBackfill,
-  'department queue timestamp must be added and backfilled before its work index');
-assert.ok(queuePhase2.includes('ALTER COLUMN queued_at SET NOT NULL'));
+assert.ok(versions(queuePhase2Name) < versions(queueCompatibilityName),
+  'Phase 2 queue migration must precede its legacy compatibility follow-up');
+assert.ok(queueColumnAdd >= 0 && queueBackfill > queueColumnAdd && queueNotNull > queueBackfill && queueIndex > queueNotNull,
+  'department queue timestamp must be added, backfilled, made non-null, and indexed in that order');
 assert.ok(queueCompatibility.includes('department_queues_service_order_fk'));
 assert.ok(queueCompatibility.includes('uq_department_queues_service_order'));
 assert.ok(queueContract.includes('department_queues.queued_at must be a non-null timestamp with a default'));
