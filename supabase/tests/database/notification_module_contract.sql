@@ -1,6 +1,18 @@
 DO $$
 DECLARE c integer;
 BEGIN
+ ASSERT to_regclass('public.notification_devices') IS NOT NULL, 'notification_devices missing';
+ ASSERT to_regclass('public.notification_deliveries') IS NOT NULL, 'notification_deliveries missing';
+ ASSERT EXISTS (
+   SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname='notification_devices' AND c.relrowsecurity
+ ), 'notification_devices must have RLS enabled';
+ ASSERT EXISTS (
+   SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname='notification_deliveries' AND c.relrowsecurity
+ ), 'notification_deliveries must have RLS enabled';
+ ASSERT NOT has_table_privilege('anon','public.notification_deliveries','SELECT'), 'anon must not read notification delivery evidence';
+ ASSERT NOT has_table_privilege('authenticated','public.notification_deliveries','SELECT'), 'authenticated must not read notification delivery evidence';
  ASSERT to_regclass('public.notification_events') IS NOT NULL, 'notification_events missing';
  ASSERT to_regclass('public.notification_templates') IS NOT NULL, 'notification_templates missing';
  ASSERT to_regclass('public.user_notification_preferences') IS NOT NULL, 'user_notification_preferences missing';
