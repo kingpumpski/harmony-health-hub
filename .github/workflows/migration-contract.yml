@@ -90,6 +90,10 @@ jobs:
         if: hashFiles('supabase/tests/database/clinical_reference_prerequisite_contract.sql') != ''
         timeout-minutes: 10
         run: supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql
+      - name: Verify department queue compatibility contract
+        if: hashFiles('supabase/tests/database/department_queue_compatibility_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/department_queue_compatibility_contract.sql
       - name: Explain skipped database contract
         if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
         run: echo "Database contract SQL is not present on this legacy PR branch; migration replay remains required."

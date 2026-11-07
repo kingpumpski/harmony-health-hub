@@ -6,6 +6,8 @@ const root = process.cwd();
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const prerequisiteName = '20260925191900_create_notification_deliveries_table_prerequisite.sql';
 const advisorName = '20260925192000_notification_advisor_reconciliation.sql';
+const queuePhase2Name = '20260911233000_phase2_service_order_payment_gating.sql';
+const queueCompatibilityName = '20260911241000_phase2_legacy_queue_compatibility.sql';
 const referenceFiles = [
   '20260910215225_restore_missing_reference_tables.sql',
   '20260910215226_reconcile_ai_symptom_icd_map.sql',
@@ -16,16 +18,17 @@ const prerequisitePath = path.join(migrationsDir, prerequisiteName);
 const advisorPath = path.join(migrationsDir, advisorName);
 const contractPath = path.join(root, 'supabase', 'tests', 'database', 'notification_module_contract.sql');
 const referenceContractPath = path.join(root, 'supabase', 'tests', 'database', 'clinical_reference_prerequisite_contract.sql');
+const queueContractPath = path.join(root, 'supabase', 'tests', 'database', 'department_queue_compatibility_contract.sql');
 const workflowPath = path.join(root, '.github', 'workflows', 'migration-contract.yml');
 
-for (const file of [prerequisitePath, advisorPath, contractPath, referenceContractPath, workflowPath,
+for (const file of [prerequisitePath, advisorPath, contractPath, referenceContractPath, queueContractPath, workflowPath,
   ...referenceFiles.map((name) => path.join(migrationsDir, name))]) {
   assert.ok(fs.existsSync(file), 'Required migration contract file missing: ' + path.relative(root, file));
 }
 
 const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith('.sql'));
 const versions = (name) => name.match(/^(\d{14})_/u)?.[1] ?? null;
-for (const name of [...referenceFiles, prerequisiteName, advisorName]) {
+for (const name of [...referenceFiles, prerequisiteName, advisorName, queuePhase2Name, queueCompatibilityName]) {
   assert.ok(versions(name), 'Invalid migration version prefix: ' + name);
   assert.equal(migrationFiles.filter((candidate) => versions(candidate) === versions(name)).length, 1,
     'Migration version collision for ' + versions(name));
@@ -75,4 +78,19 @@ assert.ok(referenceContract.includes('must have RLS enabled'));
 assert.ok(referenceContract.includes('anon/public policies must not expose'));
 assert.ok(workflowText.includes('supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql'));
 
-console.log('Clinical reference prerequisites, RLS, grants, and notification migration contracts passed.');
+const queuePhase2 = fs.readFileSync(path.join(migrationsDir, queuePhase2Name), 'utf8');
+const queueCompatibility = fs.readFileSync(path.join(migrationsDir, queueCompatibilityName), 'utf8');
+const queueContract = fs.readFileSync(queueContractPath, 'utf8');
+const queueColumnAdd = queuePhase2.indexOf('ADD COLUMN IF NOT EXISTS queued_at');
+const queueBackfill = queuePhase2.indexOf('SET queued_at = COALESCE(queued_at, created_at)');
+const queueIndex = queuePhase2.indexOf('CREATE INDEX IF NOT EXISTS idx_department_queues_work');
+assert.ok(queueColumnAdd >= 0 && queueBackfill > queueColumnAdd && queueIndex > queueBackfill,
+  'department queue timestamp must be added and backfilled before its work index');
+assert.ok(queuePhase2.includes('ALTER COLUMN queued_at SET NOT NULL'));
+assert.ok(queueCompatibility.includes('department_queues_service_order_fk'));
+assert.ok(queueCompatibility.includes('uq_department_queues_service_order'));
+assert.ok(queueContract.includes('department_queues.queued_at must be a non-null timestamp with a default'));
+assert.ok(queueContract.includes('department queue work index must be created after queued_at exists'));
+assert.ok(workflowText.includes('supabase test db supabase/tests/database/department_queue_compatibility_contract.sql'));
+
+console.log('Clinical reference, notification, and department queue migration contracts passed.');
