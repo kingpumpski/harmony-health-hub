@@ -3,6 +3,29 @@
 -- This preserves the existing SECURITY DEFINER execution boundary while fixing
 -- direct policy evaluation failures for authenticated users, including admins.
 
+DO $create_current_user_facility_access$
+BEGIN
+  IF to_regprocedure('public.current_user_has_facility_access(uuid)') IS NULL THEN
+    EXECUTE $create_function$
+      CREATE FUNCTION public.current_user_has_facility_access(_facility_id uuid)
+      RETURNS boolean
+      LANGUAGE sql
+      STABLE
+      SECURITY DEFINER
+      SET search_path = ''
+      AS $function_body$
+        SELECT public.has_facility_access((SELECT auth.uid()), _facility_id);
+      $function_body$;
+    $create_function$;
+  ELSIF pg_get_function_result('public.current_user_has_facility_access(uuid)'::regprocedure) <> 'boolean' THEN
+    RAISE EXCEPTION 'current_user_has_facility_access(uuid) must return boolean';
+  END IF;
+END;
+$create_current_user_facility_access$;
+
+REVOKE ALL ON FUNCTION public.current_user_has_facility_access(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) TO authenticated, service_role;
+
 DO $$
 DECLARE
   p record;
