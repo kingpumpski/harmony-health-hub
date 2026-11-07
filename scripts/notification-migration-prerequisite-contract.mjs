@@ -6,18 +6,26 @@ const root = process.cwd();
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const prerequisiteName = '20260925191900_create_notification_deliveries_table_prerequisite.sql';
 const advisorName = '20260925192000_notification_advisor_reconciliation.sql';
+const referenceFiles = [
+  '20260910215225_restore_missing_reference_tables.sql',
+  '20260910215226_reconcile_ai_symptom_icd_map.sql',
+  '20260910215227_reconcile_ai_diagnosis_suggestions.sql',
+  '20260910215228_81137334-9a88-408e-b7f3-0993eb7b9918.sql',
+];
 const prerequisitePath = path.join(migrationsDir, prerequisiteName);
 const advisorPath = path.join(migrationsDir, advisorName);
 const contractPath = path.join(root, 'supabase', 'tests', 'database', 'notification_module_contract.sql');
+const referenceContractPath = path.join(root, 'supabase', 'tests', 'database', 'clinical_reference_prerequisite_contract.sql');
 const workflowPath = path.join(root, '.github', 'workflows', 'migration-contract.yml');
 
-for (const file of [prerequisitePath, advisorPath, contractPath, workflowPath]) {
+for (const file of [prerequisitePath, advisorPath, contractPath, referenceContractPath, workflowPath,
+  ...referenceFiles.map((name) => path.join(migrationsDir, name))]) {
   assert.ok(fs.existsSync(file), 'Required notification migration contract file missing: ' + path.relative(root, file));
 }
 
 const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith('.sql'));
 const versions = (name) => name.match(/^(\d{14})_/u)?.[1] ?? null;
-for (const name of [prerequisiteName, advisorName]) {
+for (const name of [...referenceFiles, prerequisiteName, advisorName]) {
   assert.ok(versions(name), 'Invalid migration version prefix: ' + name);
   assert.equal(migrationFiles.filter((candidate) => versions(candidate) === versions(name)).length, 1,
     'Migration version collision for ' + versions(name));
@@ -42,4 +50,22 @@ assert.match(contract, /anon must not read notification delivery evidence/u);
 assert.match(contract, /authenticated must not read notification delivery evidence/u);
 assert.match(workflowText, /supabase test db supabase\/tests\/database\/notification_module_contract\.sql/u);
 
-console.log('Notification migration prerequisite, ordering, RLS, and CI contracts passed.');
+const referenceSql = referenceFiles.map((name) => fs.readFileSync(path.join(migrationsDir, name), 'utf8'));
+const hardeningSql = fs.readFileSync(path.join(migrationsDir, referenceFiles[3]), 'utf8');
+for (const [index, table] of [
+  [0, 'audit_logs'], [0, 'sync_queue'], [0, 'lab_tests'],
+  [1, 'ai_symptom_icd_map'], [2, 'ai_diagnosis_suggestions'],
+]) {
+  assert.match(referenceSql[index], new RegExp('CREATE TABLE IF NOT EXISTS public\\\\.' + table, 'u'));
+  assert.match(hardeningSql, new RegExp('ALTER TABLE public\\\\.' + table + ' ENABLE ROW LEVEL SECURITY', 'u'));
+}
+assert.match(hardeningSql, /DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions"/u);
+assert.match(hardeningSql, /DROP POLICY IF EXISTS "admins read audit logs"/u);
+assert.match(hardeningSql, /DROP POLICY IF EXISTS "admins read sync queue"/u);
+assert.match(hardeningSql, /relkind = 'v'/u);
+assert.match(hardeningSql, /GRANT SELECT, INSERT, UPDATE, DELETE ON public\\\\.ai_symptom_icd_map TO authenticated/u);
+assert.match(hardeningSql, /GRANT SELECT, INSERT, UPDATE, DELETE ON public\\\\.lab_tests TO authenticated/u);
+assert.match(referenceContractPath, /clinical_reference_prerequisite_contract/u);
+assert.match(workflowText, /supabase test db supabase\\/tests\\/database\\/clinical_reference_prerequisite_contract\\.sql/u);
+
+console.log('Clinical reference prerequisites, RLS, grants, and notification migration contracts passed.');

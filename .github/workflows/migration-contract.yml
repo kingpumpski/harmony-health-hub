@@ -86,6 +86,10 @@ jobs:
         if: hashFiles('supabase/tests/database/notification_module_contract.sql') != ''
         timeout-minutes: 10
         run: supabase test db supabase/tests/database/notification_module_contract.sql
+      - name: Verify clinical reference schema and RLS contract
+        if: hashFiles('supabase/tests/database/clinical_reference_prerequisite_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql
       - name: Explain skipped database contract
         if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
         run: echo "Database contract SQL is not present on this legacy PR branch; migration replay remains required."
