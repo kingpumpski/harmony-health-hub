@@ -397,8 +397,10 @@ assert.ok(workflow.includes('notification_module_contract.sql'),'CI must execute
 
 
 const currentUserAuthorizationPrerequisite = read('supabase/migrations/20260923173900_create_current_user_authorization_helpers_prerequisite.sql');
-assert.ok(currentUserAuthorizationPrerequisite.includes("FUNCTION public.current_user_has_facility_access(_facility_id uuid)"),
-  'session-scoped facility helper must exist before policy reconciliation');
+assert.ok(currentUserAuthorizationPrerequisite.includes("to_regprocedure('public.current_user_has_facility_access(uuid)') IS NULL"),
+  'session-scoped facility helper must be created only when absent so a later production definition is preserved');
+assert.ok(currentUserAuthorizationPrerequisite.includes("pg_get_function_result('public.current_user_has_facility_access(uuid)'::regprocedure) <> 'boolean'"),
+  'an incompatible pre-existing facility helper must fail closed');
 assert.ok(currentUserAuthorizationPrerequisite.includes("SET search_path = ''"),
   'session-scoped facility helper must pin an empty search path');
 

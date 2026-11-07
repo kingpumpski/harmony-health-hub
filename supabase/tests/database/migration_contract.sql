@@ -32,6 +32,13 @@ BEGIN
     'anonymous clients must not execute the low-level arbitrary-user facility helper';
   ASSERT has_function_privilege('authenticated', 'public.current_user_has_facility_access(uuid)', 'EXECUTE'),
     'authenticated RLS evaluation must retain the session-scoped facility helper';
+  ASSERT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    WHERE p.oid='public.current_user_has_facility_access(uuid)'::regprocedure
+      AND p.prosecdef
+      AND p.proconfig @> ARRAY['search_path=""']::text[]
+  ), 'session facility helper must be SECURITY DEFINER with an empty pinned search path';
   ASSERT NOT EXISTS (
     SELECT 1
     FROM pg_policies
