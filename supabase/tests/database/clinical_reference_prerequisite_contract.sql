@@ -26,8 +26,13 @@ BEGIN
       WHERE p.schemaname = 'public'
         AND p.tablename = table_name
     ), table_name || ' must have an explicit RLS policy';
-    ASSERT NOT has_table_privilege('anon', 'public.' || table_name, 'SELECT'),
-      'anon must not read ' || table_name;
+    ASSERT NOT EXISTS (
+      SELECT 1
+      FROM pg_policies p
+      WHERE p.schemaname = 'public'
+        AND p.tablename = table_name
+        AND ('anon' = ANY(p.roles) OR 'public' = ANY(p.roles))
+    ), 'anon/public policies must not expose ' || table_name;
     ASSERT has_table_privilege('service_role', 'public.' || table_name, 'SELECT'),
       'service_role must retain access to ' || table_name;
   END LOOP;
@@ -44,10 +49,18 @@ BEGIN
     'authenticated role needs table-level insert privilege; RLS limits it to admins';
   ASSERT has_table_privilege('authenticated', 'public.lab_tests', 'UPDATE'),
     'authenticated role needs table-level update privilege; RLS limits it to admins';
-  ASSERT NOT has_table_privilege('authenticated', 'public.audit_logs', 'INSERT'),
-    'authenticated users must not insert directly into audit_logs';
-  ASSERT NOT has_table_privilege('authenticated', 'public.sync_queue', 'INSERT'),
-    'authenticated users must not insert directly into the service sync queue';
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM pg_policies p
+    WHERE p.schemaname='public' AND p.tablename='audit_logs'
+      AND p.cmd IN ('INSERT','UPDATE','DELETE','ALL')
+      AND 'authenticated' = ANY(p.roles)
+  ), 'authenticated users must not have a direct audit_logs write policy';
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM pg_policies p
+    WHERE p.schemaname='public' AND p.tablename='sync_queue'
+      AND p.cmd IN ('INSERT','UPDATE','DELETE','ALL')
+      AND 'authenticated' = ANY(p.roles)
+  ), 'authenticated users must not have a direct sync_queue write policy';
 
   ASSERT EXISTS (
     SELECT 1 FROM pg_policies

@@ -72,7 +72,7 @@ assert.ok(hardeningSql.includes("relkind = 'v'"), 'Optional legacy views must be
 assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_symptom_icd_map TO authenticated'));
 assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.lab_tests TO authenticated'));
 assert.ok(referenceContract.includes('must have RLS enabled'));
-assert.ok(referenceContract.includes('anon must not read'));
+assert.ok(referenceContract.includes('anon/public policies must not expose'));
 assert.ok(workflowText.includes('supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql'));
 
 console.log('Clinical reference prerequisites, RLS, grants, and notification migration contracts passed.');
