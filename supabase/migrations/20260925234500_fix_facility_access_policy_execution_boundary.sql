@@ -53,25 +53,25 @@ BEGIN
     -- Match the parsed policy expression with explicit parenthesis character classes.
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[()][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[(][)][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\2)',
       'gi'
     );
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access[(][[:space:]]*auth[.]uid[()][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][[:space:]]*auth[.]uid[(][)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[()][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[(][)][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\2)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access[(][[:space:]]*auth[.]uid[()][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][[:space:]]*auth[.]uid[(][)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
