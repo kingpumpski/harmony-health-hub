@@ -376,7 +376,7 @@ const notificationContract = read('supabase/tests/database/notification_module_c
 assert.ok(notificationDeliveryPrerequisite.includes('CREATE TABLE IF NOT EXISTS public.notification_deliveries'),'notification delivery evidence table must exist before its advisor/index migration');
 must(notificationDeliveryPrerequisite,/ENABLE ROW LEVEL SECURITY/i,'notification delivery evidence must retain RLS');
 assert.ok(notificationDeliveryPrerequisite.includes('REVOKE ALL ON TABLE public.notification_deliveries FROM PUBLIC, anon, authenticated'),'notification delivery evidence must deny direct client table access');
-must(notificationDeliveryPrerequisite,/GRANT ALL ON TABLE public\\.notification_deliveries TO service_role/i,'notification delivery evidence must remain service-role accessible');
+assert.ok(notificationDeliveryPrerequisite.includes('GRANT ALL ON TABLE public.notification_deliveries TO service_role'),'notification delivery evidence must remain service-role accessible');
 assert.ok(!notificationAdvisor.includes('public.notification_channel_preferences') && !notificationAdvisor.includes('public.notification_push_subscriptions'),'notification advisor must not target obsolete preference/subscription relations');
 assert.ok(files.indexOf('20260925191900_create_notification_deliveries_table_prerequisite.sql') < files.indexOf('20260925192000_notification_advisor_reconciliation.sql'),'notification delivery prerequisite must precede advisor reconciliation');
 must(notificationContract,/notification_deliveries must have RLS enabled/i,'notification database contract must verify delivery evidence RLS');
