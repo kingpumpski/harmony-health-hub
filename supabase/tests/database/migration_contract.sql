@@ -49,3 +49,29 @@ BEGIN
       )
   ), 'public RLS policies must not call the low-level facility helper directly';
 END $$;
+
+
+DO $$
+BEGIN
+  ASSERT NOT has_function_privilege('authenticated', 'public.has_role(uuid,public.app_role)', 'EXECUTE'),
+    'authenticated clients must not execute the low-level arbitrary-user role helper';
+  ASSERT NOT has_function_privilege('anon', 'public.has_role(uuid,public.app_role)', 'EXECUTE'),
+    'anonymous clients must not execute the low-level arbitrary-user role helper';
+  ASSERT has_function_privilege('authenticated', 'public.current_user_has_role(public.app_role)', 'EXECUTE'),
+    'authenticated RLS evaluation must retain the session-scoped role helper';
+  ASSERT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid='public.current_user_has_role(public.app_role)'::regprocedure
+      AND p.prosecdef
+      AND p.proconfig IS NOT NULL
+      AND EXISTS (SELECT 1 FROM unnest(p.proconfig) setting WHERE setting LIKE 'search_path=%')
+  ), 'session role helper must be SECURITY DEFINER with a pinned search_path';
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public'
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+        OR coalesce(with_check,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+      )
+  ), 'public RLS policies must not call the low-level role helper directly';
+END $$;

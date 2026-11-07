@@ -397,6 +397,16 @@ assert.ok(workflow.includes('notification_module_contract.sql'),'CI must execute
 
 
 
+
+const roleAccessBoundary = read('supabase/migrations/20260926001056_fix_has_role_policy_execution_boundary.sql');
+const roleAccessForward = read('supabase/migrations/20261107160000_reconcile_role_policy_execution_boundary.sql');
+assert.ok(roleAccessBoundary.includes('has_role[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([^)]*)[)]'),
+  'role policy replay must handle nested auth.uid wrappers and preserve the role argument');
+assert.ok(roleAccessForward.includes('to_regprocedure(\'public.current_user_has_role(public.app_role)\') IS NULL'),
+  'forward role-policy reconciliation must require the session wrapper');
+assert.ok(files.indexOf('20261107160000_reconcile_role_policy_execution_boundary.sql') > files.indexOf('20261026141054_reconcile_lab_catalogue_sample_quantity_rpc.sql'),
+  'role policy forward reconciliation must follow the last production-ledger migration');
+
 const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
 assert.ok(facilityAccessBoundary.includes("to_regprocedure('public.current_user_has_facility_access(uuid)') IS NULL"),
   'facility policy migration must create the session helper only when absent, preserving a later production implementation');
