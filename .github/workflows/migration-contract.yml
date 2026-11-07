@@ -37,6 +37,8 @@ jobs:
       - name: Validate legacy schema compatibility contract and security
         if: hashFiles('scripts/migration-contract.mjs') != ''
         run: node scripts/migration-contract.mjs
+      - name: Validate notification migration prerequisite contract
+        run: node scripts/notification-migration-prerequisite-contract.mjs
       - name: Explain skipped static contract
         if: hashFiles('scripts/migration-contract.mjs') == ''
         run: echo "Static migration contract is not present on this legacy PR branch; clean replay still runs, and the full contract is required on branches that include the contract assets."
@@ -80,6 +82,18 @@ jobs:
         if: hashFiles('supabase/tests/database/hr_payroll_record_management_contract.sql') != ''
         timeout-minutes: 10
         run: supabase test db supabase/tests/database/hr_payroll_record_management_contract.sql
+      - name: Verify notification module schema and security contract
+        if: hashFiles('supabase/tests/database/notification_module_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/notification_module_contract.sql
+      - name: Verify clinical reference schema and RLS contract
+        if: hashFiles('supabase/tests/database/clinical_reference_prerequisite_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql
+      - name: Verify department queue compatibility contract
+        if: hashFiles('supabase/tests/database/department_queue_compatibility_contract.sql') != ''
+        timeout-minutes: 10
+        run: supabase test db supabase/tests/database/department_queue_compatibility_contract.sql
       - name: Explain skipped database contract
         if: hashFiles('supabase/tests/database/migration_contract.sql') == ''
         run: echo "Database contract SQL is not present on this legacy PR branch; migration replay remains required."

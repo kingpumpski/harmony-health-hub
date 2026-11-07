@@ -95,6 +95,24 @@ CREATE TABLE IF NOT EXISTS public.department_queues (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The canonical queue table predates this migration. CREATE TABLE IF NOT EXISTS
+-- does not add columns to that legacy table, so reconcile required columns before
+-- creating indexes or defining RPCs that reference them.
+ALTER TABLE public.department_queues
+  ADD COLUMN IF NOT EXISTS service_order_id UUID,
+  ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS claimed_by UUID,
+  ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
+
+UPDATE public.department_queues
+SET queued_at = COALESCE(queued_at, created_at),
+    claimed_by = COALESCE(claimed_by, assigned_to)
+WHERE queued_at IS NULL OR claimed_by IS NULL;
+
+ALTER TABLE public.department_queues
+  ALTER COLUMN queued_at SET DEFAULT now(),
+  ALTER COLUMN queued_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_department_queues_work
   ON public.department_queues(department, status, queued_at);
 
