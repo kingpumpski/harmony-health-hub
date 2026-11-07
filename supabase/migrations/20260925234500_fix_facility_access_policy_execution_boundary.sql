@@ -50,27 +50,28 @@ BEGIN
     v_check := p.with_check;
 
     -- Handle SELECT-wrapped auth.uid() first, then the direct auth.uid() form.
+    -- Match the parsed policy expression with explicit parenthesis character classes.
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\([[:space:]]*\([[:space:]]*SELECT[[:space:]]+auth\.uid\(\)([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*\)[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[()][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\2)',
       'gi'
     );
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\([[:space:]]*auth\.uid\(\)[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'has_facility_access[(][[:space:]]*auth[.]uid[()][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\([[:space:]]*\([[:space:]]*SELECT[[:space:]]+auth\.uid\(\)([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*\)[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[()][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\2)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\([[:space:]]*auth\.uid\(\)[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'has_facility_access[(][[:space:]]*auth[.]uid[()][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
@@ -78,7 +79,7 @@ BEGIN
     v_has_check := v_check IS DISTINCT FROM p.with_check;
 
     IF NOT (v_has_qual OR v_has_check) THEN
-      RAISE EXCEPTION 'Unrecognized has_facility_access policy expression: %.%', p.tablename, p.policyname;
+      RAISE EXCEPTION 'Unrecognized has_facility_access policy expression: %.%, qual=%, with_check=%', p.tablename, p.policyname, p.qual, p.with_check;
     END IF;
 
     IF p.cmd = 'INSERT' THEN

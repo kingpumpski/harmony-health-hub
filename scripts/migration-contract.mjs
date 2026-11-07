@@ -404,6 +404,8 @@ assert.ok(facilityAccessBoundary.includes("pg_get_function_result('public.curren
   'an incompatible pre-existing facility helper must fail closed');
 assert.ok(facilityAccessBoundary.includes("SET search_path = ''"),
   'session-scoped facility helper must pin an empty search path');
+assert.ok(facilityAccessBoundary.includes('has_facility_access[(]') && facilityAccessBoundary.includes('auth[.]uid[()]'),
+  'facility policy rewrite must match PostgreSQL-rendered auth.uid expressions without fragile backslash escaping');
 
 const facilityPolicyFor = facilityAccessBoundary.indexOf('FOR p IN');
 const facilityPolicyLoop = facilityAccessBoundary.indexOf('LOOP', facilityPolicyFor);
