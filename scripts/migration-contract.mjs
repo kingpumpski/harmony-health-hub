@@ -396,13 +396,12 @@ assert.ok(workflow.includes('notification_module_contract.sql'),'CI must execute
 
 
 const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
-assert.ok(
-  facilityAccessBoundary.includes("AND coalesce(with_check, '') !~* 'current_user_has_facility_access'\\n  LOOP"),
-  'facility policy FOR query must flow directly into LOOP without a terminating semicolon'
-);
-assert.ok(
-  !facilityAccessBoundary.includes("AND coalesce(with_check, '') !~* 'current_user_has_facility_access';\\n  LOOP"),
-  'facility policy FOR query must not terminate before LOOP'
-);
+const facilityPolicyQuery = "AND coalesce(with_check, '') !~* 'current_user_has_facility_access'";
+const facilityPolicyQueryStart = facilityAccessBoundary.indexOf(facilityPolicyQuery);
+const facilityPolicyLoop = facilityAccessBoundary.indexOf('LOOP', facilityPolicyQueryStart);
+const facilityPolicySemicolon = facilityAccessBoundary.indexOf(';', facilityPolicyQueryStart);
+assert.ok(facilityPolicyQueryStart >= 0 && facilityPolicyLoop > facilityPolicyQueryStart
+  && (facilityPolicySemicolon < 0 || facilityPolicyLoop < facilityPolicySemicolon),
+  'facility policy FOR query must flow directly into LOOP without a terminating semicolon');
 
 console.log('[migration-contract] schema, index, RPC return/security, attachment lineage and legacy-reconciliation checks passed; inspected '+files.length+' migrations and '+checked+' SECURITY DEFINER definitions.');
