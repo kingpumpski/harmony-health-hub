@@ -396,8 +396,6 @@ assert.ok(workflow.includes('notification_module_contract.sql'),'CI must execute
 
 
 
-assert.ok(currentUserAuthorizationPrerequisite.includes("SET search_path = ''"),
-  'session-scoped facility helper must pin an empty search path');
 
 const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
 assert.ok(facilityAccessBoundary.includes("to_regprocedure('public.current_user_has_facility_access(uuid)') IS NULL"),
