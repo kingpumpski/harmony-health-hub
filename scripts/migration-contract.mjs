@@ -395,6 +395,13 @@ assert.ok(workflow.includes('department_queue_compatibility_contract.sql'),'CI m
 assert.ok(workflow.includes('notification_module_contract.sql'),'CI must execute the notification module database contract');
 
 
+
+const currentUserAuthorizationPrerequisite = read('supabase/migrations/20260923173900_create_current_user_authorization_helpers_prerequisite.sql');
+assert.ok(currentUserAuthorizationPrerequisite.includes("FUNCTION public.current_user_has_facility_access(_facility_id uuid)"),
+  'session-scoped facility helper must exist before policy reconciliation');
+assert.ok(currentUserAuthorizationPrerequisite.includes("SET search_path = ''"),
+  'session-scoped facility helper must pin an empty search path');
+
 const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
 const facilityPolicyQuery = "AND coalesce(with_check, '') !~* 'current_user_has_facility_access'";
 const facilityPolicyQueryStart = facilityAccessBoundary.indexOf(facilityPolicyQuery);

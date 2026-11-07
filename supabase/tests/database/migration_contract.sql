@@ -22,3 +22,25 @@ select ok(exists(select 1 from pg_policies where schemaname='public' and tablena
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='lab_result_attachments' and with_check ilike '%service_orders%'),'attachment writes require service-order lineage');
 select * from finish();
 rollback;
+
+
+DO $$
+BEGIN
+  ASSERT NOT has_function_privilege('authenticated', 'public.has_facility_access(uuid,uuid)', 'EXECUTE'),
+    'authenticated clients must not execute the low-level arbitrary-user facility helper';
+  ASSERT NOT has_function_privilege('anon', 'public.has_facility_access(uuid,uuid)', 'EXECUTE'),
+    'anonymous clients must not execute the low-level arbitrary-user facility helper';
+  ASSERT has_function_privilege('authenticated', 'public.current_user_has_facility_access(uuid)', 'EXECUTE'),
+    'authenticated RLS evaluation must retain the session-scoped facility helper';
+  ASSERT NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname='public'
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+        OR coalesce(with_check,'') ~* '(^|[^_])has_facility_access[[:space:]]*\('
+      )
+      AND coalesce(qual,'') !~* 'current_user_has_facility_access'
+      AND coalesce(with_check,'') !~* 'current_user_has_facility_access'
+  ), 'public RLS policies must not call the low-level facility helper directly';
+END $$;

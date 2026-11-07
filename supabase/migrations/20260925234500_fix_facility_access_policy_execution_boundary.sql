@@ -30,14 +30,14 @@ BEGIN
 
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
-      'current_user_has_facility_access(\1)',
+      'has_facility_access\([[:space:]]*\(?[[:space:]]*(SELECT[[:space:]]+)?auth\.uid\(\)([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*\)?[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'current_user_has_facility_access(\3)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
-      'current_user_has_facility_access(\1)',
+      'has_facility_access\([[:space:]]*\(?[[:space:]]*(SELECT[[:space:]]+)?auth\.uid\(\)([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*\)?[[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*\)',
+      'current_user_has_facility_access(\3)',
       'gi'
     );
 

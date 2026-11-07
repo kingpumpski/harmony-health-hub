@@ -47,6 +47,20 @@ AS $current_user_can_edit_patient_record$
      );
 $current_user_can_edit_patient_record$;
 
+
+CREATE OR REPLACE FUNCTION public.current_user_has_facility_access(_facility_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $current_user_has_facility_access$
+  SELECT public.has_facility_access((SELECT auth.uid()), _facility_id);
+$current_user_has_facility_access$;
+
+REVOKE ALL ON FUNCTION public.current_user_has_facility_access(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) TO authenticated, service_role;
+
 REVOKE ALL ON FUNCTION public.current_user_has_role(public.app_role) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role) TO authenticated, service_role;
 
