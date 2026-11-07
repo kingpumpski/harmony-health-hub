@@ -40,7 +40,5 @@ BEGIN
         coalesce(qual,'') ~* '(^|[^_])has_facility_access[[:space:]]*\('
         OR coalesce(with_check,'') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
-      AND coalesce(qual,'') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check,'') !~* 'current_user_has_facility_access'
   ), 'public RLS policies must not call the low-level facility helper directly';
 END $$;

@@ -403,12 +403,13 @@ assert.ok(currentUserAuthorizationPrerequisite.includes("SET search_path = ''"),
   'session-scoped facility helper must pin an empty search path');
 
 const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
-const facilityPolicyQuery = "AND coalesce(with_check, '') !~* 'current_user_has_facility_access'";
-const facilityPolicyQueryStart = facilityAccessBoundary.indexOf(facilityPolicyQuery);
-const facilityPolicyLoop = facilityAccessBoundary.indexOf('LOOP', facilityPolicyQueryStart);
-const facilityPolicySemicolon = facilityAccessBoundary.indexOf(';', facilityPolicyQueryStart);
-assert.ok(facilityPolicyQueryStart >= 0 && facilityPolicyLoop > facilityPolicyQueryStart
+const facilityPolicyFor = facilityAccessBoundary.indexOf('FOR p IN');
+const facilityPolicyLoop = facilityAccessBoundary.indexOf('LOOP', facilityPolicyFor);
+const facilityPolicySemicolon = facilityAccessBoundary.indexOf(';', facilityPolicyFor);
+assert.ok(facilityPolicyFor >= 0 && facilityPolicyLoop > facilityPolicyFor
   && (facilityPolicySemicolon < 0 || facilityPolicyLoop < facilityPolicySemicolon),
   'facility policy FOR query must flow directly into LOOP without a terminating semicolon');
+assert.ok(!facilityAccessBoundary.includes("!~* 'current_user_has_facility_access'"),
+  'facility policy reconciliation must not skip mixed expressions containing both helper forms');
 
 console.log('[migration-contract] schema, index, RPC return/security, attachment lineage and legacy-reconciliation checks passed; inspected '+files.length+' migrations and '+checked+' SECURITY DEFINER definitions.');
