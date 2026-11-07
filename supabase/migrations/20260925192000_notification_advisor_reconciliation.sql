@@ -15,20 +15,11 @@ CREATE INDEX IF NOT EXISTS idx_facility_notification_provider_connections_update
 CREATE INDEX IF NOT EXISTS idx_notification_deliveries_user_id
   ON public.notification_deliveries(user_id);
 
--- Keep client-visible notification RLS policies from re-evaluating auth state per row.
-DROP POLICY IF EXISTS "users manage own notification channel preferences" ON public.notification_channel_preferences;
-CREATE POLICY "users manage own notification channel preferences"
-  ON public.notification_channel_preferences
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
-
-DROP POLICY IF EXISTS "users manage own push subscriptions" ON public.notification_push_subscriptions;
-CREATE POLICY "users manage own push subscriptions"
-  ON public.notification_push_subscriptions
-  FOR ALL TO authenticated
-  USING ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)))
-  WITH CHECK ((user_id = (select auth.uid())) OR (select public.has_role((select auth.uid()),'admin'::public.app_role)));
+-- Canonical preferences live in public.user_notification_preferences
+-- (including channel_preferences JSONB); device registrations live in
+-- public.notification_devices. The legacy notification_channel_preferences and
+-- notification_push_subscriptions relations are not part of the canonical schema.
+-- Their access policies are owned by the preference and device migrations.
 
 -- Facility notification configuration is read by the Settings control plane.
 -- IT administrators have the same facility-scoped operational read/write access as admins,

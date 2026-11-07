@@ -72,7 +72,7 @@ CREATE POLICY "admins read sync queue"
   USING (public.has_role(auth.uid(), 'admin'));
 
 ALTER TABLE public.ai_symptom_icd_map ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON public.ai_symptom_icd_map TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_symptom_icd_map TO authenticated;
 GRANT ALL ON public.ai_symptom_icd_map TO service_role;
 DROP POLICY IF EXISTS "staff read symptom map" ON public.ai_symptom_icd_map;
 CREATE POLICY "staff read symptom map"
@@ -85,7 +85,7 @@ CREATE POLICY "admins write symptom map"
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
 ALTER TABLE public.lab_tests ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON public.lab_tests TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.lab_tests TO authenticated;
 GRANT ALL ON public.lab_tests TO service_role;
 DROP POLICY IF EXISTS "staff read lab tests" ON public.lab_tests;
 CREATE POLICY "staff read lab tests"
