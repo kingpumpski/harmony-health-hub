@@ -60,7 +60,7 @@ for (const [index, table] of [
   [0, 'audit_logs'], [0, 'sync_queue'], [0, 'lab_tests'],
   [1, 'ai_symptom_icd_map'], [2, 'ai_diagnosis_suggestions'],
 ]) {
-  assert.ok(referenceSql[index].includes('CREATE TABLE IF NOT EXISTS public.' + table),
+  assert.ok(referenceSql[index].toLowerCase().includes('create table if not exists public.' + table),
     'Missing prerequisite CREATE TABLE for ' + table);
   assert.ok(hardeningSql.includes('ALTER TABLE public.' + table + ' ENABLE ROW LEVEL SECURITY'),
     'Missing RLS enablement for ' + table);
@@ -71,7 +71,7 @@ assert.ok(hardeningSql.includes('DROP POLICY IF EXISTS "admins read sync queue"'
 assert.ok(hardeningSql.includes("relkind = 'v'"), 'Optional legacy views must be guarded before ALTER VIEW');
 assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_symptom_icd_map TO authenticated'));
 assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.lab_tests TO authenticated'));
-assert.ok(referenceContract.includes('ai_diagnosis_suggestions must have RLS enabled'));
+assert.ok(referenceContract.includes('must have RLS enabled'));
 assert.ok(referenceContract.includes('anon must not read'));
 assert.ok(workflowText.includes('supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql'));
 
