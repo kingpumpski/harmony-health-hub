@@ -20,7 +20,7 @@ BEGIN
         OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
       AND coalesce(qual, '') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check, '') !~* 'current_user_has_facility_access';
+      AND coalesce(with_check, '') !~* 'current_user_has_facility_access'
   LOOP
     -- These policies all evaluate the current authenticated session. Replace
     -- only the auth.uid()-bound two-argument helper calls with the one-argument

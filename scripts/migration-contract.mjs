@@ -394,4 +394,15 @@ must(workflow,/clinical_reference_prerequisite_contract\\.sql/i,'CI must execute
 must(workflow,/department_queue_compatibility_contract\\.sql/i,'CI must execute the department queue compatibility contract');
 must(workflow,/notification_module_contract\\.sql/i,'CI must execute the notification module database contract');
 
+
+const facilityAccessBoundary = read('supabase/migrations/20260925234500_fix_facility_access_policy_execution_boundary.sql');
+assert.ok(
+  facilityAccessBoundary.includes("AND coalesce(with_check, '') !~* 'current_user_has_facility_access'\\n  LOOP"),
+  'facility policy FOR query must flow directly into LOOP without a terminating semicolon'
+);
+assert.ok(
+  !facilityAccessBoundary.includes("AND coalesce(with_check, '') !~* 'current_user_has_facility_access';\\n  LOOP"),
+  'facility policy FOR query must not terminate before LOOP'
+);
+
 console.log('[migration-contract] schema, index, RPC return/security, attachment lineage and legacy-reconciliation checks passed; inspected '+files.length+' migrations and '+checked+' SECURITY DEFINER definitions.');
