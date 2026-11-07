@@ -49,29 +49,18 @@ BEGIN
     v_qual := p.qual;
     v_check := p.with_check;
 
-    -- Handle SELECT-wrapped auth.uid() first, then the direct auth.uid() form.
-    -- Match the parsed policy expression with explicit parenthesis character classes.
+    -- The parsed policy may wrap auth.uid() in multiple SELECT subqueries.
+    -- Match the entire first argument up to its separator comma, then capture the
+    -- simple facility column as the second argument.
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[(][)][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
-      'current_user_has_facility_access(\2)',
-      'gi'
-    );
-    v_qual := regexp_replace(
-      v_qual,
-      'has_facility_access[(][[:space:]]*auth[.]uid[(][)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access[(][[:space:]]*[(][[:space:]]*SELECT[[:space:]]+auth[.]uid[(][)][[:space:]]*([[:space:]]+AS[[:space:]]+uid)?[[:space:]]*[)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
-      'current_user_has_facility_access(\2)',
-      'gi'
-    );
-    v_check := regexp_replace(
-      v_check,
-      'has_facility_access[(][[:space:]]*auth[.]uid[(][)][[:space:]]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
+      'has_facility_access[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );

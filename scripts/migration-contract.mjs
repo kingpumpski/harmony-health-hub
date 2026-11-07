@@ -406,6 +406,8 @@ assert.ok(facilityAccessBoundary.includes("SET search_path = ''"),
   'session-scoped facility helper must pin an empty search path');
 assert.ok(facilityAccessBoundary.includes('has_facility_access[(]') && facilityAccessBoundary.includes('auth[.]uid[(][)]'),
   'facility policy rewrite must match PostgreSQL-rendered auth.uid expressions without fragile backslash escaping');
+assert.ok(facilityAccessBoundary.includes('[^,]*auth[.]uid[(][)][^,]*'),
+  'facility policy rewrite must tolerate nested SELECT wrappers around auth.uid before the facility argument');
 
 const facilityPolicyFor = facilityAccessBoundary.indexOf('FOR p IN');
 const facilityPolicyLoop = facilityAccessBoundary.indexOf('LOOP', facilityPolicyFor);
