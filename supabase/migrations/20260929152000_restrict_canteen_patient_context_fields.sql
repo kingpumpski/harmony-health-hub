@@ -29,8 +29,9 @@ BEGIN
     mp.plan_type,mp.restrictions,NULLIF(pg_catalog.btrim(p.chronic_conditions),''),
     COALESCE((
       SELECT jsonb_agg(jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code,'principal',COALESCE(d.is_principal,false),'provisional',COALESCE(d.is_provisional,false)) ORDER BY d.is_principal DESC,d.created_at DESC)
-      FROM public.diagnoses d LEFT JOIN public.encounters e ON e.id=d.encounter_id
-      WHERE d.patient_id=p.id AND (e.id IS NULL OR e.status NOT IN ('completed','cancelled'))
+      FROM public.diagnoses d
+      JOIN public.encounters e ON e.id=d.encounter_id AND e.patient_id=p.id
+      WHERE e.status NOT IN ('completed','cancelled')
         AND NULLIF(pg_catalog.btrim(d.diagnosis),'') IS NOT NULL
     ),'[]'::jsonb)
   FROM public.meal_orders mo

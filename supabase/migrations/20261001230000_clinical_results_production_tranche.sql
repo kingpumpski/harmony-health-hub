@@ -1,6 +1,70 @@
 -- Clinical results production tranche: encounter-scoped diagnoses, acknowledgement audit, and
 -- role-separated read contracts for laboratory and radiology results.
 
+-- Repair the diagnosis facility trigger created by the already-applied lineage migration.
+-- The clean-install diagnoses table carries patient identity through encounter_id.
+CREATE OR REPLACE FUNCTION public.sync_child_facility_from_parent()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_facility uuid;
+  v_reconciliation boolean := coalesce(pg_catalog.current_setting('hms.facility_reconciliation', true), 'off') = 'on';
+BEGIN
+  IF tg_table_name='department_queues' THEN
+    SELECT so.facility_id INTO v_facility
+    FROM public.service_orders so WHERE so.id=new.service_order_id;
+  ELSIF tg_table_name='lab_orders' THEN
+    SELECT e.facility_id INTO v_facility
+    FROM public.encounters e WHERE e.id=new.encounter_id;
+    IF v_facility IS NULL THEN
+      SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id;
+    END IF;
+  ELSIF tg_table_name='lab_results' THEN
+    SELECT lo.facility_id INTO v_facility
+    FROM public.lab_orders lo WHERE lo.id=new.lab_order_id;
+  ELSIF tg_table_name='imaging_orders' THEN
+    SELECT e.facility_id INTO v_facility
+    FROM public.encounters e WHERE e.id=new.encounter_id;
+    IF v_facility IS NULL THEN
+      SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id;
+    END IF;
+  ELSIF tg_table_name='prescriptions' THEN
+    SELECT e.facility_id INTO v_facility
+    FROM public.encounters e WHERE e.id=new.encounter_id;
+    IF v_facility IS NULL THEN
+      SELECT p.facility_id INTO v_facility FROM public.patients p WHERE p.id=new.patient_id;
+    END IF;
+  ELSIF tg_table_name='diagnoses' THEN
+    SELECT COALESCE(e.facility_id,p.facility_id) INTO v_facility
+    FROM public.encounters e
+    JOIN public.patients p ON p.id=e.patient_id
+    WHERE e.id=new.encounter_id;
+  END IF;
+
+  IF v_facility IS NULL THEN
+    RAISE EXCEPTION 'Parent clinical record has no facility attribution; reconcile the parent record first';
+  END IF;
+
+  IF new.facility_id IS NULL THEN
+    IF tg_op='UPDATE' THEN
+      RAISE EXCEPTION 'Facility attribution cannot be cleared';
+    END IF;
+    new.facility_id := v_facility;
+  ELSIF new.facility_id<>v_facility
+    AND NOT (
+      v_reconciliation
+      AND (public.current_user_has_role('admin') OR public.current_user_has_role('it_admin'))
+    ) THEN
+    RAISE EXCEPTION 'Facility lineage mismatch';
+  END IF;
+
+  RETURN new;
+END;
+$function$;
+
 ALTER TABLE public.imaging_orders
   ADD COLUMN IF NOT EXISTS acknowledged_at timestamptz,
   ADD COLUMN IF NOT EXISTS acknowledged_by uuid REFERENCES auth.users(id);
@@ -33,7 +97,9 @@ BEGIN
     'diagnoses',COALESCE((
       SELECT jsonb_agg(jsonb_build_object('id',d.id,'diagnosis',d.diagnosis,'icd_code',d.icd_code,'is_principal',d.is_principal)
       ORDER BY d.is_principal DESC,d.created_at ASC) FROM public.diagnoses d
-      WHERE d.encounter_id=io.encounter_id AND d.patient_id=io.patient_id
+      JOIN public.encounters diagnosis_encounter ON diagnosis_encounter.id=d.encounter_id
+        AND diagnosis_encounter.patient_id=io.patient_id
+      WHERE d.encounter_id=io.encounter_id
     ),'[]'::jsonb),
     'patients',jsonb_build_object('id',p.id,'first_name',p.first_name,'last_name',p.last_name,'patient_code',p.patient_code)
    ) row_data
@@ -77,7 +143,9 @@ BEGIN
     'diagnoses',COALESCE((
       SELECT jsonb_agg(jsonb_build_object('id',d.id,'diagnosis',d.diagnosis,'icd_code',d.icd_code,'is_principal',d.is_principal)
       ORDER BY d.is_principal DESC,d.created_at ASC) FROM public.diagnoses d
-      WHERE d.encounter_id=o.encounter_id AND d.patient_id=o.patient_id
+      JOIN public.encounters diagnosis_encounter ON diagnosis_encounter.id=d.encounter_id
+        AND diagnosis_encounter.patient_id=o.patient_id
+      WHERE d.encounter_id=o.encounter_id
     ),'[]'::jsonb),
     'patients',jsonb_build_object('id',p.id,'first_name',p.first_name,'last_name',p.last_name,'patient_code',p.patient_code)
    ) row_data

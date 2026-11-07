@@ -3,6 +3,8 @@
 -- This mirrors the facility-access execution boundary and prevents
 -- authenticated clients from failing with "permission denied for function has_role".
 
+-- Reconcile direct role-helper calls in policies to the session-scoped wrapper.
+-- The first argument may contain nested scalar SELECT wrappers after catalog parsing.
 DO $$
 DECLARE p record; v_qual text; v_check text;
 BEGIN
@@ -10,20 +12,28 @@ BEGIN
     SELECT schemaname,tablename,policyname,cmd,qual,with_check
     FROM pg_policies
     WHERE schemaname='public'
-      AND (coalesce(qual,'') LIKE '%has_role(%' OR coalesce(with_check,'') LIKE '%has_role(%')
-      AND coalesce(qual,'') NOT LIKE '%current_user_has_role(%'
-      AND coalesce(with_check,'') NOT LIKE '%current_user_has_role(%'
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+        OR coalesce(with_check,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+      )
   LOOP
     v_qual := p.qual;
     v_check := p.with_check;
-    v_qual := replace(v_qual, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
-    v_check := replace(v_check, 'has_role(( SELECT auth.uid() AS uid), ', 'current_user_has_role(');
-    v_qual := replace(v_qual, 'has_role((SELECT auth.uid() AS uid), ', 'current_user_has_role(');
-    v_check := replace(v_check, 'has_role((SELECT auth.uid() AS uid), ', 'current_user_has_role(');
-    v_qual := replace(v_qual, 'has_role(auth.uid(), ', 'current_user_has_role(');
-    v_check := replace(v_check, 'has_role(auth.uid(), ', 'current_user_has_role(');
+    v_qual := regexp_replace(
+      v_qual,
+      'has_role[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([^)]*)[)]',
+      'current_user_has_role(\1)',
+      'gi'
+    );
+    v_check := regexp_replace(
+      v_check,
+      'has_role[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([^)]*)[)]',
+      'current_user_has_role(\1)',
+      'gi'
+    );
     IF v_qual IS NOT DISTINCT FROM p.qual AND v_check IS NOT DISTINCT FROM p.with_check THEN
-      RAISE EXCEPTION 'Could not rewrite policy %.%',p.tablename,p.policyname;
+      RAISE EXCEPTION 'Could not rewrite role policy %.%, qual=%, with_check=%',
+        p.tablename,p.policyname,p.qual,p.with_check;
     END IF;
     IF p.cmd='INSERT' THEN
       EXECUTE format('ALTER POLICY %I ON %I.%I WITH CHECK (%s)',p.policyname,p.schemaname,p.tablename,v_check);
@@ -39,6 +49,7 @@ BEGIN
   END LOOP;
 END $$;
 
+
 REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role) TO authenticated;
 
@@ -47,8 +58,11 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname='public'
-      AND (coalesce(qual,'') LIKE '%has_role(%' OR coalesce(with_check,'') LIKE '%has_role(%')
-      AND coalesce(qual,'') NOT LIKE '%current_user_has_role(%'
-      AND coalesce(with_check,'') NOT LIKE '%current_user_has_role(%'
-  ) THEN RAISE EXCEPTION 'Direct has_role calls remain in public RLS policies'; END IF;
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+        OR coalesce(with_check,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+      )
+  ) THEN
+    RAISE EXCEPTION 'Direct has_role calls remain in public RLS policies';
+  END IF;
 END $$;

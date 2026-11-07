@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Supabase CLI state and database-reconciliation evidence are not source artifacts.
+# They can contain project/connection metadata and must remain outside Git history.
+supabase/.temp/
+.reconciliation/
+database-reconciliation-evidence.zip

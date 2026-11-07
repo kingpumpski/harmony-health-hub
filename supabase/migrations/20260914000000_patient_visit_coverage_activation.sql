@@ -209,9 +209,38 @@ BEGIN
     INSERT INTO public.service_order_events(service_order_id, from_status, to_status, actor_id, reason)
     VALUES (NEW.id, NULL, NEW.status, COALESCE(NEW.created_by, NEW.requested_by, auth.uid()), 'order_created');
     IF NEW.status = 'released' THEN
-      INSERT INTO public.department_queues(service_order_id, department)
-      VALUES (NEW.id, NEW.department)
-      ON CONFLICT (service_order_id) DO NOTHING;
+      -- The legacy queue table has required patient/priority fields and uses a
+      -- partial unique index for non-null service_order_id values. Populate the
+      -- complete legacy row and match that index's predicate exactly.
+      INSERT INTO public.department_queues(
+        service_order_id,
+        patient_id,
+        department,
+        related_encounter_id,
+        related_invoice_id,
+        payment_required,
+        payment_satisfied,
+        priority,
+        reason,
+        created_by,
+        queued_at,
+        status
+      )
+      VALUES (
+        NEW.id,
+        NEW.patient_id,
+        NEW.department,
+        NEW.encounter_id,
+        NEW.invoice_id,
+        COALESCE(NEW.payment_required, false),
+        true,
+        'normal',
+        NEW.service_name,
+        COALESCE(NEW.created_by, NEW.requested_by, auth.uid()),
+        now(),
+        'queued'
+      )
+      ON CONFLICT (service_order_id) WHERE service_order_id IS NOT NULL DO NOTHING;
     END IF;
   ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
     INSERT INTO public.service_order_events(service_order_id, from_status, to_status, actor_id, reason)

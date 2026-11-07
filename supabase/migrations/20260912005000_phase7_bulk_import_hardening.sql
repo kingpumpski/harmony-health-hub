@@ -15,6 +15,87 @@ CREATE TABLE IF NOT EXISTS public.bulk_import_jobs (
   completed_at TIMESTAMPTZ
 );
 
+-- Reconcile the original bulk_import_jobs shape before adding indexes.
+-- The legacy table used entity/filename/inserted_rows and did not include
+-- entity_type/source_format/file_name/successful_rows/completed_at.
+ALTER TABLE public.bulk_import_jobs
+  ADD COLUMN IF NOT EXISTS entity_type TEXT,
+  ADD COLUMN IF NOT EXISTS source_format TEXT,
+  ADD COLUMN IF NOT EXISTS file_name TEXT,
+  ADD COLUMN IF NOT EXISTS successful_rows INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+DO $bulk_import_legacy_columns$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='entity'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.bulk_import_jobs
+      SET entity_type = CASE entity
+        WHEN 'patients' THEN 'patients'
+        WHEN 'pharmacy_inventory' THEN 'pharmacy_inventory'
+        WHEN 'icd_codes' THEN 'icd_codes'
+        WHEN 'staff' THEN 'staff'
+        ELSE entity
+      END
+      WHERE entity_type IS NULL
+    $sql$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='filename'
+  ) THEN
+    EXECUTE 'UPDATE public.bulk_import_jobs SET file_name = filename WHERE file_name IS NULL AND filename IS NOT NULL';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='bulk_import_jobs' AND column_name='inserted_rows'
+  ) THEN
+    EXECUTE 'UPDATE public.bulk_import_jobs SET successful_rows = inserted_rows WHERE successful_rows = 0 AND inserted_rows IS NOT NULL';
+  END IF;
+END
+$bulk_import_legacy_columns$;
+
+-- Infer a legacy source format only from the preserved filename extension.
+-- Unknown or missing filenames fail closed rather than silently labelling data CSV.
+UPDATE public.bulk_import_jobs
+SET source_format = CASE
+  WHEN right(lower(coalesce(file_name, '')), 5) = '.xlsx' THEN 'xlsx'
+  WHEN right(lower(coalesce(file_name, '')), 4) = '.csv' THEN 'csv'
+  ELSE NULL
+END
+WHERE source_format IS NULL;
+
+DO $bulk_import_source_format$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.bulk_import_jobs WHERE source_format IS NULL) THEN
+    RAISE EXCEPTION 'Bulk import history contains rows without a verifiable source format; reconcile from original filenames before proceeding.';
+  END IF;
+END
+$bulk_import_source_format$;
+
+ALTER TABLE public.bulk_import_jobs
+  ALTER COLUMN source_format SET DEFAULT 'csv',
+  ALTER COLUMN source_format SET NOT NULL;
+ALTER TABLE public.bulk_import_jobs
+  DROP CONSTRAINT IF EXISTS bulk_import_jobs_source_format_check;
+ALTER TABLE public.bulk_import_jobs
+  ADD CONSTRAINT bulk_import_jobs_source_format_check
+  CHECK (source_format IN ('csv','xlsx'));
+
+ALTER TABLE public.bulk_import_jobs
+  ALTER COLUMN entity_type SET NOT NULL;
+
+ALTER TABLE public.bulk_import_jobs
+  DROP CONSTRAINT IF EXISTS bulk_import_jobs_entity_type_check;
+ALTER TABLE public.bulk_import_jobs
+  ADD CONSTRAINT bulk_import_jobs_entity_type_check
+  CHECK (entity_type IN ('patients','pharmacy_inventory','icd_codes','staff'));
+
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_created_by_time
   ON public.bulk_import_jobs(created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bulk_import_jobs_entity_status
@@ -32,6 +113,17 @@ CREATE POLICY "users read own bulk import jobs"
   ON public.bulk_import_jobs FOR SELECT TO authenticated
   USING (created_by = auth.uid() OR public.has_role(auth.uid(),'admin'));
 
-ALTER TABLE public.bulk_import_jobs
-  ADD CONSTRAINT bulk_import_jobs_row_counts_valid
-  CHECK (successful_rows + failed_rows <= total_rows);
+DO $bulk_import_row_counts$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.bulk_import_jobs'::regclass
+      AND conname = 'bulk_import_jobs_row_counts_valid'
+  ) THEN
+    ALTER TABLE public.bulk_import_jobs
+      ADD CONSTRAINT bulk_import_jobs_row_counts_valid
+      CHECK (successful_rows + failed_rows <= total_rows);
+  END IF;
+END;
+$bulk_import_row_counts$;
+

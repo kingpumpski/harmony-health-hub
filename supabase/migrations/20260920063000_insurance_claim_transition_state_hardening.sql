@@ -82,7 +82,7 @@ BEGIN
   INSERT INTO public.insurance_claim_events(claim_id,event_type,from_status,to_status,notes,actor_id)
   VALUES (_claim_id,'status_changed',v_from,_status,_notes,uid);
 
-  RETURN jsonb_build_object('claim_id',_claim_id,'status',_status,'amount_approved',v_approved,'amount_paid',v_paid);
+  RETURN json_build_object('claim_id',_claim_id,'status',_status,'amount_approved',v_approved,'amount_paid',v_paid);
 END; $$;
 
 REVOKE ALL ON FUNCTION public.transition_insurance_claim_canonical(UUID,TEXT,NUMERIC,NUMERIC,TEXT,TEXT) FROM PUBLIC, anon;

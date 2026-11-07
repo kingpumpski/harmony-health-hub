@@ -3,6 +3,29 @@
 -- This preserves the existing SECURITY DEFINER execution boundary while fixing
 -- direct policy evaluation failures for authenticated users, including admins.
 
+DO $create_current_user_facility_access$
+BEGIN
+  IF to_regprocedure('public.current_user_has_facility_access(uuid)') IS NULL THEN
+    EXECUTE $create_function$
+      CREATE FUNCTION public.current_user_has_facility_access(_facility_id uuid)
+      RETURNS boolean
+      LANGUAGE sql
+      STABLE
+      SECURITY DEFINER
+      SET search_path = ''
+      AS $function_body$
+        SELECT public.has_facility_access((SELECT auth.uid()), _facility_id);
+      $function_body$;
+    $create_function$;
+  ELSIF pg_get_function_result('public.current_user_has_facility_access(uuid)'::regprocedure) <> 'boolean' THEN
+    RAISE EXCEPTION 'current_user_has_facility_access(uuid) must return boolean';
+  END IF;
+END;
+$create_current_user_facility_access$;
+
+REVOKE ALL ON FUNCTION public.current_user_has_facility_access(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_facility_access(uuid) TO authenticated, service_role;
+
 DO $$
 DECLARE
   p record;
@@ -19,8 +42,6 @@ BEGIN
         coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
         OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
-      AND coalesce(qual, '') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check, '') !~* 'current_user_has_facility_access';
   LOOP
     -- These policies all evaluate the current authenticated session. Replace
     -- only the auth.uid()-bound two-argument helper calls with the one-argument
@@ -28,24 +49,26 @@ BEGIN
     v_qual := p.qual;
     v_check := p.with_check;
 
+    -- The parsed policy may wrap auth.uid() in multiple SELECT subqueries.
+    -- Match the entire first argument up to its separator comma, then capture the
+    -- simple facility column as the second argument.
     v_qual := regexp_replace(
       v_qual,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
     v_check := regexp_replace(
       v_check,
-      'has_facility_access\(\s*\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)\s*,\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)',
+      'has_facility_access[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([A-Za-z_][A-Za-z0-9_.]*)[[:space:]]*[)]',
       'current_user_has_facility_access(\1)',
       'gi'
     );
-
     v_has_qual := v_qual IS DISTINCT FROM p.qual;
     v_has_check := v_check IS DISTINCT FROM p.with_check;
 
     IF NOT (v_has_qual OR v_has_check) THEN
-      RAISE EXCEPTION 'Unrecognized has_facility_access policy expression: %.%', p.tablename, p.policyname;
+      RAISE EXCEPTION 'Unrecognized has_facility_access policy expression: %.%, qual=%, with_check=%', p.tablename, p.policyname, p.qual, p.with_check;
     END IF;
 
     IF p.cmd = 'INSERT' THEN
@@ -83,8 +106,6 @@ BEGIN
         coalesce(qual, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
         OR coalesce(with_check, '') ~* '(^|[^_])has_facility_access[[:space:]]*\('
       )
-      AND coalesce(qual, '') !~* 'current_user_has_facility_access'
-      AND coalesce(with_check, '') !~* 'current_user_has_facility_access'
   ) THEN
     RAISE EXCEPTION 'Direct has_facility_access calls remain in authenticated RLS policies';
   END IF;

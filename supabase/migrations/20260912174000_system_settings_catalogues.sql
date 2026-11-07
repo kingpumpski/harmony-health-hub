@@ -21,8 +21,4 @@ CREATE POLICY "service tariffs staff read" ON public.service_tariffs FOR SELECT 
 DROP POLICY IF EXISTS "service tariffs admin write" ON public.service_tariffs;
 CREATE POLICY "service tariffs admin write" ON public.service_tariffs FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
 
-ALTER TABLE public.lab_test_catalogue ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "lab catalogue staff read" ON public.lab_test_catalogue;
-CREATE POLICY "lab catalogue staff read" ON public.lab_test_catalogue FOR SELECT TO authenticated USING (true);
-DROP POLICY IF EXISTS "lab catalogue admin write" ON public.lab_test_catalogue;
-CREATE POLICY "lab catalogue admin write" ON public.lab_test_catalogue FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician')) WITH CHECK (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'lab_technician'));
+-- Lab catalogue policies are applied after the catalogue table is created by the Phase 5 migration.

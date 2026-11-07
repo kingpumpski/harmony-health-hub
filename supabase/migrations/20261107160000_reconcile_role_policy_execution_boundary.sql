@@ -1,0 +1,84 @@
+-- Forward reconciliation for the production-recorded role-policy boundary.
+-- Version 20260926001056 is already present in the production ledger; this later
+-- migration re-applies the policy rewrite safely after all later policy migrations.
+DO $$
+BEGIN
+  IF to_regprocedure('public.current_user_has_role(public.app_role)') IS NULL
+     OR pg_get_function_result('public.current_user_has_role(public.app_role)'::regprocedure) <> 'boolean' THEN
+    RAISE EXCEPTION 'Session-scoped current_user_has_role(public.app_role) wrapper is missing or incompatible';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid='public.current_user_has_role(public.app_role)'::regprocedure
+      AND p.prosecdef
+      AND p.proconfig IS NOT NULL
+      AND EXISTS (SELECT 1 FROM unnest(p.proconfig) setting WHERE setting LIKE 'search_path=%')
+  ) THEN
+    RAISE EXCEPTION 'current_user_has_role must be SECURITY DEFINER with a pinned search_path';
+  END IF;
+END $$;
+
+-- Reconcile direct role-helper calls in policies to the session-scoped wrapper.
+-- The first argument may contain nested scalar SELECT wrappers after catalog parsing.
+DO $$
+DECLARE p record; v_qual text; v_check text;
+BEGIN
+  FOR p IN
+    SELECT schemaname,tablename,policyname,cmd,qual,with_check
+    FROM pg_policies
+    WHERE schemaname='public'
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+        OR coalesce(with_check,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+      )
+  LOOP
+    v_qual := p.qual;
+    v_check := p.with_check;
+    v_qual := regexp_replace(
+      v_qual,
+      'has_role[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([^)]*)[)]',
+      'current_user_has_role(\1)',
+      'gi'
+    );
+    v_check := regexp_replace(
+      v_check,
+      'has_role[(][^,]*auth[.]uid[(][)][^,]*,[[:space:]]*([^)]*)[)]',
+      'current_user_has_role(\1)',
+      'gi'
+    );
+    IF v_qual IS NOT DISTINCT FROM p.qual AND v_check IS NOT DISTINCT FROM p.with_check THEN
+      RAISE EXCEPTION 'Could not rewrite role policy %.%, qual=%, with_check=%',
+        p.tablename,p.policyname,p.qual,p.with_check;
+    END IF;
+    IF p.cmd='INSERT' THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I WITH CHECK (%s)',p.policyname,p.schemaname,p.tablename,v_check);
+    ELSIF p.cmd IN ('SELECT','DELETE') THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I USING (%s)',p.policyname,p.schemaname,p.tablename,v_qual);
+    ELSIF v_qual IS NULL THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I WITH CHECK (%s)',p.policyname,p.schemaname,p.tablename,v_check);
+    ELSIF v_check IS NULL THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I USING (%s)',p.policyname,p.schemaname,p.tablename,v_qual);
+    ELSE
+      EXECUTE format('ALTER POLICY %I ON %I.%I USING (%s) WITH CHECK (%s)',p.policyname,p.schemaname,p.tablename,v_qual,v_check);
+    END IF;
+  END LOOP;
+END $$;
+
+
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_has_role(public.app_role) TO authenticated;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public'
+      AND (
+        coalesce(qual,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+        OR coalesce(with_check,'') ~* '(^|[^_])has_role[[:space:]]*[(]'
+      )
+  ) THEN
+    RAISE EXCEPTION 'Direct has_role calls remain in public RLS policies';
+  END IF;
+END $$;
+

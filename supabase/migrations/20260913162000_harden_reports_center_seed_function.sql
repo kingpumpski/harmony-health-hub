@@ -1,9 +1,14 @@
+-- The foundation migration introduced this RPC as RETURNS INTEGER. PostgreSQL cannot
+-- change a function's return type with CREATE OR REPLACE; no later migration has
+-- created dependent database objects yet, so replace it explicitly and preserve the
+-- production RETURNS VOID contract.
+DROP FUNCTION IF EXISTS public.seed_facility_reports(UUID);
+
 CREATE OR REPLACE FUNCTION public.seed_facility_reports(_facility_id UUID)
-RETURNS INTEGER LANGUAGE PLPGSQL SECURITY DEFINER SET search_path = public
+RETURNS VOID LANGUAGE PLPGSQL SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
   v_type TEXT;
-  v_count INTEGER := 0;
   v_user UUID := auth.uid();
 BEGIN
   IF v_user IS NULL OR NOT public.has_role(v_user, 'admin') THEN
@@ -30,8 +35,6 @@ BEGIN
   )
   ON CONFLICT (facility_id, report_id) DO UPDATE SET is_enabled = TRUE, updated_at = now();
 
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-  RETURN v_count;
 END;
 $$;
 

@@ -92,8 +92,10 @@ BEGIN
     'diagnoses', CASE WHEN is_patient OR is_core THEN coalesce((
       SELECT jsonb_agg(to_jsonb(x) ORDER BY x.created_at DESC)
       FROM (
-        SELECT id,encounter_id,diagnosis,icd_code,is_principal,is_provisional,created_at
-        FROM public.diagnoses WHERE patient_id=_patient_id ORDER BY created_at DESC LIMIT 200
+        SELECT d.id,d.encounter_id,d.diagnosis,d.icd_code,d.is_principal,d.is_provisional,d.created_at
+        FROM public.diagnoses d
+        JOIN public.encounters e ON e.id=d.encounter_id
+        WHERE e.patient_id=_patient_id ORDER BY d.created_at DESC LIMIT 200
       ) x
     ),'[]'::jsonb) ELSE '[]'::jsonb END,
     'labs', CASE WHEN is_patient OR is_core OR is_lab THEN coalesce((

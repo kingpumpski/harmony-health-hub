@@ -38,7 +38,7 @@ begin
  elsif tg_table_name='lab_results' then select lo.facility_id into v_facility from public.lab_orders lo where lo.id=new.lab_order_id;
  elsif tg_table_name='imaging_orders' then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
  elsif tg_table_name='prescriptions' then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if;
- elsif tg_table_name='diagnoses' then select e.facility_id into v_facility from public.encounters e where e.id=new.encounter_id; if v_facility is null then select p.facility_id into v_facility from public.patients p where p.id=new.patient_id; end if; end if;
+ elsif tg_table_name='diagnoses' then select coalesce(e.facility_id,p.facility_id) into v_facility from public.encounters e join public.patients p on p.id=e.patient_id where e.id=new.encounter_id; end if;
  if v_facility is null then raise exception 'Parent clinical record has no facility attribution'; end if;
  if new.facility_id is null then if tg_op='UPDATE' then raise exception 'Facility attribution cannot be cleared'; end if; new.facility_id:=v_facility;
  elsif new.facility_id<>v_facility and not (v_reconciliation and (public.current_user_has_role('admin') or public.current_user_has_role('it_admin'))) then raise exception 'Facility lineage mismatch'; end if;
@@ -57,7 +57,7 @@ as $$ select x.* from (
  union all select 'lab_results',r.id,lo.patient_id,r.created_at,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) from public.lab_results r left join public.lab_orders lo on lo.id=r.lab_order_id where r.facility_id is null
  union all select 'imaging_orders',i.id,i.patient_id,i.created_at,jsonb_build_object('modality',i.modality,'study_name',i.study_name,'status',i.status,'encounter_id',i.encounter_id) from public.imaging_orders i where i.facility_id is null
  union all select 'prescriptions',rx.id,rx.patient_id,rx.created_at,jsonb_build_object('medication',coalesce(rx.medication_name,rx.medication),'status',rx.status,'encounter_id',rx.encounter_id) from public.prescriptions rx where rx.facility_id is null
- union all select 'diagnoses',d.id,d.patient_id,d.created_at,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code,'encounter_id',d.encounter_id) from public.diagnoses d where d.facility_id is null
+ union all select 'diagnoses',d.id,e.patient_id,d.created_at,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code,'encounter_id',d.encounter_id) from public.diagnoses d join public.encounters e on e.id=d.encounter_id where d.facility_id is null
 ) x where public.has_role(auth.uid(),'admin') or public.has_role(auth.uid(),'it_admin') order by x.created_at nulls last limit greatest(1,least(coalesce(_limit,100),500)); $$;
 revoke all on function public.list_unresolved_clinical_facility_records(integer) from public,anon;
 grant execute on function public.list_unresolved_clinical_facility_records(integer) to authenticated;
@@ -92,8 +92,19 @@ begin
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.lab_orders set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='lab_results' then
-  select r.facility_id,r.patient_id,r.lab_order_id,true,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.lab_results r where r.id=_entity_id;
-  select l.facility_id into v_parent from public.lab_orders l where l.id=v_ref; if v_parent is null then raise exception 'Reconcile the parent lab order first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent lab order'; end if;
+  select r.facility_id,lo.patient_id,r.lab_order_id,true,jsonb_build_object('lab_order_id',r.lab_order_id,'status',r.status) into v_source,v_patient,v_ref,v_exists,v_metadata
+  from public.lab_results r
+  left join public.lab_orders lo on lo.id=r.lab_order_id
+  where r.id=_entity_id;
+  if v_patient is null then raise exception 'Reconcile the parent lab order first'; end if;
+  if exists (
+    select 1 from public.lab_results lr
+    join public.lab_orders lo on lo.id=lr.lab_order_id
+    where lr.id=_entity_id and lr.patient_id is not null
+      and lr.patient_id is distinct from lo.patient_id
+  ) then raise exception 'Lab result patient lineage conflicts with parent lab order'; end if;
+  select l.facility_id into v_parent from public.lab_orders l where l.id=v_ref;
+  if v_parent is null then raise exception 'Reconcile the parent lab order first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent lab order'; end if;
   if v_exists then update public.lab_results set facility_id=_target_facility_id where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='imaging_orders' then
   select i.facility_id,i.patient_id,i.encounter_id,true,jsonb_build_object('modality',i.modality,'study_name',i.study_name,'status',i.status) into v_source,v_patient,v_ref,v_exists,v_metadata from public.imaging_orders i where i.id=_entity_id;
@@ -106,8 +117,8 @@ begin
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.prescriptions set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  elsif _entity_type='diagnoses' then
-  select d.facility_id,d.patient_id,d.encounter_id,true,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code) into v_source,v_patient,v_ref,v_exists,v_metadata from public.diagnoses d where d.id=_entity_id;
-  if v_ref is not null then select e.facility_id into v_parent from public.encounters e where e.id=v_ref; elsif v_patient is not null then select p.facility_id into v_parent from public.patients p where p.id=v_patient; end if;
+  select d.facility_id,e.patient_id,d.encounter_id,true,jsonb_build_object('diagnosis',d.diagnosis,'icd_code',d.icd_code) into v_source,v_patient,v_ref,v_exists,v_metadata from public.diagnoses d join public.encounters e on e.id=d.encounter_id where d.id=_entity_id;
+  if v_ref is not null then select coalesce(e.facility_id,p.facility_id) into v_parent from public.encounters e join public.patients p on p.id=e.patient_id where e.id=v_ref; end if;
   if v_patient is not null or v_ref is not null then if v_parent is null then raise exception 'Reconcile the parent encounter or patient facility first'; elsif v_parent<>_target_facility_id then raise exception 'Target facility conflicts with parent facility'; end if; end if;
   if v_exists then update public.diagnoses set facility_id=_target_facility_id,updated_at=now() where id=_entity_id and facility_id is null; end if;
  else raise exception 'Unsupported clinical entity type'; end if;

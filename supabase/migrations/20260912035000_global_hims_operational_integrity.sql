@@ -61,7 +61,7 @@ BEGIN
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.assign_theatre_anesthetist(_case_id UUID,_anesthetist_id UUID) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $assign_theatre_anesthetist$
 DECLARE uid UUID := auth.uid();
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'practitioner')) THEN RAISE EXCEPTION 'Clinical administrator role required'; END IF;
@@ -69,7 +69,7 @@ BEGIN
   UPDATE public.theatre_cases SET anesthetist_id=_anesthetist_id WHERE id=_case_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Theatre case not found'; END IF;
   RETURN jsonb_build_object('case_id',_case_id,'anesthetist_id',_anesthetist_id);
-END; $$;
+END; $assign_theatre_anesthetist$;
 
 CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _claim_id UUID,
@@ -77,8 +77,8 @@ CREATE OR REPLACE FUNCTION public.update_insurance_claim_financials(
   _amount_paid NUMERIC DEFAULT NULL,
   _claim_number TEXT DEFAULT NULL,
   _rejection_reason TEXT DEFAULT NULL
-) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+) RETURNS public.insurance_claims
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $claim_financials$
 DECLARE uid UUID := auth.uid(); c public.insurance_claims%ROWTYPE; v_approved NUMERIC; v_paid NUMERIC;
 BEGIN
   IF uid IS NULL OR NOT (public.has_role(uid,'admin') OR public.has_role(uid,'accountant')) THEN RAISE EXCEPTION 'Accounts role required'; END IF;
@@ -88,9 +88,15 @@ BEGIN
   v_approved:=COALESCE(_amount_approved,c.amount_approved); v_paid:=COALESCE(_amount_paid,c.amount_paid);
   IF v_approved IS NOT NULL AND v_approved < 0 THEN RAISE EXCEPTION 'Approved amount cannot be negative'; END IF;
   IF v_paid < 0 OR (v_approved IS NOT NULL AND v_paid > v_approved) THEN RAISE EXCEPTION 'Invalid paid amount'; END IF;
-  UPDATE public.insurance_claims SET amount_approved=COALESCE(_amount_approved,amount_approved),amount_paid=COALESCE(_amount_paid,amount_paid),claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),rejection_reason=COALESCE(_rejection_reason,rejection_reason) WHERE id=_claim_id;
-  RETURN jsonb_build_object('claim_id',_claim_id,'amount_approved',v_approved,'amount_paid',v_paid);
-END; $$;
+  UPDATE public.insurance_claims
+  SET amount_approved=COALESCE(_amount_approved,amount_approved),
+      amount_paid=COALESCE(_amount_paid,amount_paid),
+      claim_number=COALESCE(NULLIF(trim(_claim_number),''),claim_number),
+      rejection_reason=COALESCE(_rejection_reason,rejection_reason)
+  WHERE id=_claim_id
+  RETURNING * INTO c;
+  RETURN c;
+END; $claim_financials$;
 
 REVOKE ALL ON FUNCTION public.create_ward_unit(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_ward_unit(TEXT,TEXT,TEXT,TEXT) TO authenticated;
