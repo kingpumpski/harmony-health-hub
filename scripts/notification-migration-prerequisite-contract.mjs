@@ -20,7 +20,7 @@ const workflowPath = path.join(root, '.github', 'workflows', 'migration-contract
 
 for (const file of [prerequisitePath, advisorPath, contractPath, referenceContractPath, workflowPath,
   ...referenceFiles.map((name) => path.join(migrationsDir, name))]) {
-  assert.ok(fs.existsSync(file), 'Required notification migration contract file missing: ' + path.relative(root, file));
+  assert.ok(fs.existsSync(file), 'Required migration contract file missing: ' + path.relative(root, file));
 }
 
 const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith('.sql'));
@@ -30,11 +30,15 @@ for (const name of [...referenceFiles, prerequisiteName, advisorName]) {
   assert.equal(migrationFiles.filter((candidate) => versions(candidate) === versions(name)).length, 1,
     'Migration version collision for ' + versions(name));
 }
+assert.ok(versions(referenceFiles[0]) < versions(referenceFiles[1]), 'Reference table prerequisites are out of order');
+assert.ok(versions(referenceFiles[1]) < versions(referenceFiles[2]), 'Symptom map must precede diagnosis suggestions');
+assert.ok(versions(referenceFiles[2]) < versions(referenceFiles[3]), 'Clinical reference tables must precede RLS hardening');
 assert.ok(versions(prerequisiteName) < versions(advisorName), 'Delivery prerequisite must execute before advisor reconciliation');
 
 const prerequisite = fs.readFileSync(prerequisitePath, 'utf8');
 const advisor = fs.readFileSync(advisorPath, 'utf8');
 const contract = fs.readFileSync(contractPath, 'utf8');
+const referenceContract = fs.readFileSync(referenceContractPath, 'utf8');
 const workflowText = fs.readFileSync(workflowPath, 'utf8');
 
 assert.match(prerequisite, /CREATE TABLE IF NOT EXISTS public\.notification_deliveries/u);
@@ -48,24 +52,27 @@ assert.match(contract, /notification_devices must have RLS enabled/u);
 assert.match(contract, /notification_deliveries must have RLS enabled/u);
 assert.match(contract, /anon must not read notification delivery evidence/u);
 assert.match(contract, /authenticated must not read notification delivery evidence/u);
-assert.match(workflowText, /supabase test db supabase\/tests\/database\/notification_module_contract\.sql/u);
+assert.ok(workflowText.includes('supabase test db supabase/tests/database/notification_module_contract.sql'));
 
 const referenceSql = referenceFiles.map((name) => fs.readFileSync(path.join(migrationsDir, name), 'utf8'));
-const hardeningSql = fs.readFileSync(path.join(migrationsDir, referenceFiles[3]), 'utf8');
+const hardeningSql = referenceSql[3];
 for (const [index, table] of [
   [0, 'audit_logs'], [0, 'sync_queue'], [0, 'lab_tests'],
   [1, 'ai_symptom_icd_map'], [2, 'ai_diagnosis_suggestions'],
 ]) {
-  assert.match(referenceSql[index], new RegExp('CREATE TABLE IF NOT EXISTS public\\\\.' + table, 'u'));
-  assert.match(hardeningSql, new RegExp('ALTER TABLE public\\\\.' + table + ' ENABLE ROW LEVEL SECURITY', 'u'));
+  assert.ok(referenceSql[index].includes('CREATE TABLE IF NOT EXISTS public.' + table),
+    'Missing prerequisite CREATE TABLE for ' + table);
+  assert.ok(hardeningSql.includes('ALTER TABLE public.' + table + ' ENABLE ROW LEVEL SECURITY'),
+    'Missing RLS enablement for ' + table);
 }
-assert.match(hardeningSql, /DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions"/u);
-assert.match(hardeningSql, /DROP POLICY IF EXISTS "admins read audit logs"/u);
-assert.match(hardeningSql, /DROP POLICY IF EXISTS "admins read sync queue"/u);
-assert.match(hardeningSql, /relkind = 'v'/u);
-assert.match(hardeningSql, /GRANT SELECT, INSERT, UPDATE, DELETE ON public\\\\.ai_symptom_icd_map TO authenticated/u);
-assert.match(hardeningSql, /GRANT SELECT, INSERT, UPDATE, DELETE ON public\\\\.lab_tests TO authenticated/u);
-assert.match(referenceContractPath, /clinical_reference_prerequisite_contract/u);
-assert.match(workflowText, /supabase test db supabase\\/tests\\/database\\/clinical_reference_prerequisite_contract\\.sql/u);
+assert.ok(hardeningSql.includes('DROP POLICY IF EXISTS "clinical staff manage ai diagnosis suggestions"'));
+assert.ok(hardeningSql.includes('DROP POLICY IF EXISTS "admins read audit logs"'));
+assert.ok(hardeningSql.includes('DROP POLICY IF EXISTS "admins read sync queue"'));
+assert.ok(hardeningSql.includes("relkind = 'v'"), 'Optional legacy views must be guarded before ALTER VIEW');
+assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_symptom_icd_map TO authenticated'));
+assert.ok(hardeningSql.includes('GRANT SELECT, INSERT, UPDATE, DELETE ON public.lab_tests TO authenticated'));
+assert.ok(referenceContract.includes('ai_diagnosis_suggestions must have RLS enabled'));
+assert.ok(referenceContract.includes('anon must not read'));
+assert.ok(workflowText.includes('supabase test db supabase/tests/database/clinical_reference_prerequisite_contract.sql'));
 
 console.log('Clinical reference prerequisites, RLS, grants, and notification migration contracts passed.');
