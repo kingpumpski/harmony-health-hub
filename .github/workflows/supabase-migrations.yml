@@ -36,6 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
       - uses: supabase/setup-cli@v1
         with:
           version: latest
@@ -50,6 +58,9 @@ jobs:
 
       - name: Reject conflicting migration versions
         run: npm run test:migration-filename-uniqueness
+
+      - name: Validate migration contract assets
+        run: npm run test:migration-contract
 
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"

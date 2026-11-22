@@ -1,14 +1,12 @@
-import fs from "node:fs";
 import path from "node:path";
-import assert from "node:assert/strict";
+import { inspectMigrationDirectory, migrationInventoryErrors } from './migration-inventory.mjs';
 
 const dir=path.join(process.cwd(),"supabase","migrations");
-const files=fs.readdirSync(dir).filter((name)=>/^\d{14}_.+\.sql$/.test(name));
-const versions=new Map();
-for(const file of files){
-  const version=file.slice(0,14);
-  const existing=versions.get(version);
-  assert.equal(existing,undefined,`Duplicate Supabase migration version ${version}: ${existing ?? ""} and ${file}`);
-  versions.set(version,file);
+const inventory = inspectMigrationDirectory(dir);
+const errors = migrationInventoryErrors(inventory);
+if (errors.length) {
+  for (const error of errors) console.error(`[migration-filename-uniqueness] ${error}`);
+  process.exitCode = 1;
+} else {
+  console.log(`[migration-filename-uniqueness] ${inventory.migrations.length} migration filenames have unique 14-digit versions`);
 }
-console.log(`[migration-filename-uniqueness] ${files.length} migration filenames have unique 14-digit versions`);
