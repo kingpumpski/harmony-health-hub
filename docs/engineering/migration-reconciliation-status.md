@@ -803,3 +803,52 @@ PR #442's current metadata describes a 23-file collision-normalization tranche (
 The next safe resolution step is a narrow per-collision provenance matrix: compare each old file's Git blob and full SQL body with the proposed replacement, identify whether either version appears in any known environment's ledger, determine the intended execution order and dependencies, and replay the resulting complete chain on a clean disposable database. Changed-content candidates require SQL review and tests, not rename treatment. The two missing September baseline sources and three unrecovered late-October laboratory sources remain independent blockers to declaring clean replay complete.
 
 No migration file was renamed or deleted in this continuation. No production SQL, schema, or migration ledger was changed. PR #444 remains draft and must not merge.
+
+
+## 26. PR #442 collision candidate diff classification (2026-11-23)
+
+A fresh GitHub compare of `main` against `integration/migration-reconciliation` (PR #442) was used to classify the candidate collision repair by actual file history, rather than relying only on the PR description.
+
+### Rename-classified candidates
+
+Git's compare endpoint identifies 20 migration renames. Seventeen have zero additions and zero deletions in the compare result, consistent with byte-identical content-preserving renames. Three are not pure renames:
+
+| Original path | Candidate path | Diff evidence |
+|---|---|---|
+| `20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql` | `20260912024501_global_hims_inpatient_emergency_theatre_insurance.sql` | 167 additions |
+| `20260912200000_prescription_payment_lifecycle_reconciliation.sql` | `20260912200001_prescription_payment_lifecycle_reconciliation.sql` | 5 additions |
+| `20260914170000_clinical_triage_medication_mutation_hardening.sql` | `20260914170001_clinical_triage_medication_mutation_hardening.sql` | 2 additions, 2 deletions |
+
+The 17 zero-diff rename candidates are:
+
+- `20260912003000_phase4_triage.sql` → `20260912003500_phase4_triage.sql`
+- `20260912010000_phase8_ai_clinical_provenance.sql` → `20260912010001_phase8_ai_clinical_provenance.sql`
+- `20260912021000_global_hims_operations.sql` → `20260912021001_global_hims_operations.sql`
+- `20260912250000_reconciliation_finalization.sql` → `20260912250001_reconciliation_finalization.sql`
+- `20260913180000_reports_center_submission_rbac.sql` → `20260913180001_reports_center_submission_rbac.sql`
+- `20260914140000_theatre_emergency_transfusion_lifecycle_hardening.sql` → `20260914140001_theatre_emergency_transfusion_lifecycle_hardening.sql`
+- `20260914150000_clinical_claim_nursing_direct_mutation_hardening.sql` → `20260914150001_clinical_claim_nursing_direct_mutation_hardening.sql`
+- `20260915170000_remove_duplicate_insurance_claim_indexes.sql` → `20260915170001_remove_duplicate_insurance_claim_indexes.sql`
+- `20260925200000_notification_inbound_email_store.sql` → `20260925200001_notification_inbound_email_store.sql`
+- `20260929100000_insurance_company_master_data.sql` → `20260929100001_insurance_company_master_data.sql`
+- `20260929103000_service_catalogue_department_control.sql` → `20260929103001_service_catalogue_department_control.sql`
+- `20260929150000_operational_workspace_scope_hardening.sql` → `20260929150001_operational_workspace_scope_hardening.sql`
+- `20260929150000_patient_canonical_insurer_linkage.sql` → `20260929150002_patient_canonical_insurer_linkage.sql`
+- `20260929200000_role_dashboard_kpi_cleanup.sql` → `20260929200001_role_dashboard_kpi_cleanup.sql`
+- `20260929203000_harden_security_definer_read_workspace_paths_batch6.sql` → `20260929203001_harden_security_definer_read_workspace_paths_batch6.sql`
+- `20261002130000_scope_appointment_workflows_to_active_facility.sql` → `20261002130001_scope_appointment_workflows_to_active_facility.sql`
+- `20261002132500_pharmacy_global_category_edit.sql` → `20261002132501_pharmacy_global_category_edit.sql`
+
+### Three additional replacement-style collision candidates
+
+The compare also shows three duplicate-version source files removed without Git classifying the replacement as a rename:
+
+- `20260912162000_hims_workflow_completion.sql` is removed; the candidate branch modifies `20260912162001_hims_workflow_completion.sql` (52 additions, 21 deletions).
+- `20260929200000_secure_default_function_execute_privileges.sql` is removed; `20260929200002_secure_default_function_execute_privileges.sql` is added (40 additions). The old and new SQL blobs differ.
+- `20260930012000_harden_high_risk_rpc_execution_boundaries.sql` is removed; `20260930012001_harden_high_risk_rpc_execution_boundaries.sql` is added (50 additions). The old and new SQL blobs differ.
+
+This yields 23 candidate collision treatments in total: 17 content-preserving renames and six SQL-changing treatments (three rename-classified changes plus three replacement-style changes). The candidate branch's compare is against `main`; it is not evidence that any replacement SQL is equivalent to the original applied payload or safe to execute in a particular environment.
+
+### Decision
+
+This classification improves the review inventory but does not clear the migration gate. Even a byte-identical rename changes the migration version identity and can cause a previously unapplied migration to become pending. The linked production ledger's absence of the candidate replacement versions does not establish the state of the legacy pre-Supabase environment or any other shared environment. No candidate was copied, renamed, deleted, or executed. The 21 duplicate groups remain unresolved, and the September baseline and three late-October laboratory source gaps remain independent replay blockers.
