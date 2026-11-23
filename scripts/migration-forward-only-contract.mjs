@@ -16,8 +16,6 @@ try {
   const changed = git(['diff', '--name-status', '--no-renames', `${mergeBase}...HEAD`, '--', 'supabase/migrations']);
   const baseFiles = git(['ls-tree', '-r', '--name-only', mergeBase, '--', 'supabase/migrations'])
     .split('\n').filter(file => file.endsWith('.sql'));
-  const headFiles = git(['ls-tree', '-r', '--name-only', 'HEAD', '--', 'supabase/migrations'])
-    .split('\n').filter(file => file.endsWith('.sql'));
   const versions = baseFiles.map(file => /^(\d{14})_.+\.sql$/.exec(path.basename(file))?.[1]).filter(Boolean);
   const latestBaseVersion = versions.sort().at(-1) ?? null;
   const changes = changed ? changed.split('\n').map(line => {
