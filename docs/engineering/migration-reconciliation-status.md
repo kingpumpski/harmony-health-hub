@@ -900,3 +900,16 @@ The PR's staged laboratory privilege migration `20261123090000_harden_laboratory
 The changed-file inventory for PR #444 still includes the staged security migration, migration governance/validation scripts, workflow changes, the hosted-ledger snapshot, and inactive provenance candidates. No historical duplicate was renamed or deleted in this continuation. No production DDL, migration ledger update, schema reset, or PR merge occurred.
 
 **Disposition:** keep PR #444 draft and unmerged. The migration identity gate is still blocked by the 21 collision groups; the two September baseline sources and three unrecovered late-October lab sources remain independent replay blockers. Continue only with source provenance, exact SQL-body comparison, dependency/order analysis, and a clean disposable-database replay after the historical inputs are verified.
+
+
+## 30. Live schema inventory and safe canonical-baseline reconstruction path (2026-11-23 17:00 UTC)
+
+The latest migration gate on commit `d9e39228a78ec7625ec669c1786e75d2b811ebcb` is Migration contract run #2813 / workflow run ID `45222251356`: **FAIL**. Quality run #8894 / workflow run ID `45222250785`: **PASS**. The replay job stopped at migration identity validation and printed the same 21 duplicate version groups; Supabase CLI setup, database startup, clean replay, and schema/security verification were skipped.
+
+A fresh read-only inspection of linked Supabase project `ygqoptvezotdqhtimdkr` confirmed it is ACTIVE_HEALTHY on PostgreSQL 17.6.1.166. The hosted ledger remains 417 entries, from `20260916002251 canonical_remote_schema` through `20261026141054 reconcile_lab_catalogue_sample_quantity_rpc`. Read-only catalog counts currently report 156 public tables, 341 public functions, 452 public policies, 206 non-internal public triggers, 5 installed extensions, and 0 public views.
+
+These figures establish the scale of the current schema but are not a schema export. They do not capture complete object definitions, grants, indexes, constraints, types, sequences, managed-platform dependencies, or configuration. The two missing September SQL files therefore remain unrecovered. The existing project baseline record and readiness register explicitly prohibit fabricating a replacement for the historical `canonical_remote_schema` migration.
+
+A separate recovery/bootstrap plan was added at [canonical-baseline-recovery-plan.md](./canonical-baseline-recovery-plan.md). It defines a safe route to generate a **new-environment-only** baseline from a complete reviewed schema-only export, with a distinct version and provenance. It explicitly separates fresh-database bootstrap from upgrades to existing environments and prohibits production DDL, migration-ledger edits, resets, and historical-version impersonation.
+
+No schema changes or production migrations were applied. No historical SQL was renamed, deleted, or promoted. PR #444 remains draft and unmerged. The 21 duplicate migration-version groups remain the immediate CI blocker; baseline source recovery and late-October missing SQL remain independent replay blockers.
