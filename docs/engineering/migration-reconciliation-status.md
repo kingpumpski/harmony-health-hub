@@ -852,3 +852,17 @@ This yields 23 candidate collision treatments in total: 17 content-preserving re
 ### Decision
 
 This classification improves the review inventory but does not clear the migration gate. Even a byte-identical rename changes the migration version identity and can cause a previously unapplied migration to become pending. The linked production ledger's absence of the candidate replacement versions does not establish the state of the legacy pre-Supabase environment or any other shared environment. No candidate was copied, renamed, deleted, or executed. The 21 duplicate groups remain unresolved, and the September baseline and three late-October laboratory source gaps remain independent replay blockers.
+
+## 27. Latest migration-contract CI failure and source-recovery checks (2026-11-23)
+
+The current PR head `045dfc97f77e0c4df1598ccc81e46a1734f4684a` was checked against GitHub Actions run `45213381767` (Migration contract, run #2809) and run `45213381877` (Quality, run #8890).
+
+- Quality passed.
+- Migration contract failed in both jobs before a database was started.
+- Static job: forward-only regression, immutable-history enforcement, dependency installation, and migration-validation failure-semantics checks passed. The final `Validate migration identities and required contract assets` step failed.
+- Database job: `Validate migration identities before starting database services` failed. Supabase CLI setup, local services, clean replay, and live schema/RPC/privilege/RLS verification were skipped.
+- The validator calls `inspectMigrationDirectory` and rejects every duplicate 14-digit version and every invalid/unversioned directory entry. The known 21 duplicate version groups and `$(path)` entry therefore remain hard blockers. It also requires five non-empty database contract files and verifies workflow-referenced scripts exist; CI step output is not available from the artifact endpoint, so do not claim which individual required asset contributed beyond the migration inventory already independently established.
+- Run #2809 has no retained GitHub Actions artifacts. The repository has no published GitHub releases. Path-scoped commit history queries for `20260916002251_canonical_remote_schema.sql` and `20260916003113_fix_start_imaging_order_queue_contract.sql` return no commits. This adds no recoverable provenance for either missing historical source.
+- PR #444 Vercel bot reports its preview deployment as Ready, but that is not evidence of database migration replay or schema parity.
+
+**Disposition:** keep PR #444 draft and unmerged. Do not rename/delete collision files, fabricate the missing baseline, bypass identity checks, or run production DDL. The next acceptable repair is to recover authenticated original SQL/schema evidence from the original pre-Supabase development environment or a verifiable backup, then classify each file against the live ledger and perform a clean disposable-database replay. If original baseline evidence cannot be recovered, prepare a separately approved bootstrap/upgrade strategy rather than rewriting deployed history.
