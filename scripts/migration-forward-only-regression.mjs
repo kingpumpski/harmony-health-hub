@@ -45,6 +45,16 @@ try {
   assert.equal(result.status, 1, 'changing the verified hosted ledger baseline must fail');
 
   run(['checkout', '--detach', base]);
+  const appendOnlyManifest = JSON.parse(fs.readFileSync(ledgerManifestPath, 'utf8'));
+  appendOnlyManifest.latest_version = '20261027000000';
+  appendOnlyManifest.migration_count = 2;
+  appendOnlyManifest.migrations.push({ version: '20261027000000', name: 'verified_new_hosted_migration' });
+  fs.writeFileSync(ledgerManifestPath, JSON.stringify(appendOnlyManifest, null, 2));
+  run(['add', '.']); run(['commit', '-m', 'append verified hosted ledger entry']);
+  result = check(base);
+  assert.equal(result.status, 0, result.stderr);
+
+  run(['checkout', '--detach', base]);
   write('20261025000000_before_hosted_head.sql');
   run(['add', '.']); run(['commit', '-m', 'out of order migration']);
   result = check(base);
