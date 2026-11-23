@@ -772,3 +772,17 @@ A fresh read-only Supabase migration-list query was compared against the committ
 - This verifies the committed snapshot against the linked hosted ledger at the time of this read-only check. It does not recover the original SQL payloads, prove SQL equivalence, or resolve the 21 duplicate local migration-version groups.
 
 The latest PR #444 head remains `1f9a5c926c0d09817526eae64078a08f348df01a` at the time of this check. Quality run #8886 passed; migration-contract run #2805 failed at duplicate-version identity preflight. Clean replay and post-replay schema verification did not run. No production DDL or migration-ledger changes were made.
+
+
+## 24. Migration-candidate branch and latest CI recheck (2026-11-23)
+
+A further repository search checked the imaging-related branches and the known migration-reconciliation branches for the two September baseline SQL files and the three unrecovered late-October laboratory SQL files. None of the checked branches contained those exact source paths. This is a bounded branch/path search, not proof that no recoverable copy exists elsewhere (for example, in an unindexed artifact or external backup).
+
+The historical repair work in PR #442 (`integration/migration-reconciliation`, head `a95596b0490345160ca10353bd3841742a77cedd`) and PR #437 remains candidate evidence only. PR #442 documents a 23-file collision normalization and earlier clean-replay fixes, but it is an older, separate integration branch, remains draft/open and non-mergeable, and its own recorded clean-replay history contains unresolved blockers. Its renames and changed SQL are not promoted into this branch without a fresh source/provenance review and clean replay.
+
+Latest PR #444 CI on head `88c3bd696d4e38b0986a14afd2fc9fda0498cca0`:
+- Quality run #8887: passed.
+- Migration contract run #2806: failed in both migration preflight jobs at the same 21 duplicate migration-version groups. The validator stops before Supabase CLI setup, local database startup, clean replay, and schema/RPC/privilege/RLS verification.
+- Vercel status: success (preview/deployment check only; not a database replay result).
+
+The exact duplicate groups are unchanged from the inventory already recorded in section 21. No duplicate was renamed or deleted in this continuation. No production SQL, migration history, or schema was changed. PR #444 remains draft and must not merge until source reconciliation, duplicate resolution, clean replay, and post-replay verification pass on the same head.
