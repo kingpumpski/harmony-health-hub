@@ -24,7 +24,7 @@ try {
   const ledgerBaseline = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (ledgerBaseline.schema_version !== 1
     || typeof ledgerBaseline.latest_version !== 'string'
-    || !/^\\d{14}$/.test(ledgerBaseline.latest_version)
+    || !/^\d{14}$/.test(ledgerBaseline.latest_version)
     || !Array.isArray(ledgerBaseline.migrations)
     || ledgerBaseline.migrations.length !== ledgerBaseline.migration_count
     || ledgerBaseline.migrations.at(-1)?.version !== ledgerBaseline.latest_version) {
