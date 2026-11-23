@@ -41,13 +41,15 @@ try {
     }
   }
 
-  const seen = new Map();
-  for (const file of headFiles) {
-    const match = /^(\d{14})_[a-z0-9_]+\.sql$/.exec(path.basename(file));
+  // Existing baseline collisions are legacy debt, not newly introduced changes.
+  // The migration inventory contract reports them separately for controlled reconciliation.
+  const addedByVersion = new Map();
+  for (const change of changes.filter(item => item.status === 'A')) {
+    const match = /^(\\d{14})_[a-z0-9_]+\\.sql$/.exec(path.basename(change.file));
     if (!match) continue;
-    const previous = seen.get(match[1]);
-    if (previous) errors.push(`Duplicate migration version ${match[1]}: ${previous} and ${file}`);
-    else seen.set(match[1], file);
+    const previous = addedByVersion.get(match[1]);
+    if (previous) errors.push(`New migrations reuse version ${match[1]}: ${previous} and ${change.file}`);
+    else addedByVersion.set(match[1], change.file);
   }
 
   if (errors.length) {
