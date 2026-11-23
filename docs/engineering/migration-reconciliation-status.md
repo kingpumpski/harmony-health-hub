@@ -735,3 +735,14 @@ Quality run #8880 / `45175509954` remained in progress at report time. No produc
 On PR head `168856c9fd74b122f75b34d4f2b2e472f5caa1b1`:
 - Quality run #8881 / `45175651558`: **PASS**.
 - Migration contract run #2800 / `45175651574`: **FAIL at migration identity preflight only**. The invalid unversioned artifact is no longer reported; all 21 duplicate version groups remain. The clean replay job stopped before Supabase services started.
+
+## 21. Latest migration gate and live advisor recheck (2026-11-23 13:24 UTC)
+
+- Migration contract run #2801 (workflow run ID 45175937743) failed in both the clean replay preflight and schema/security contract jobs at the migration identity inventory step.
+- The exact reported blocker is the same 21 duplicate migration version groups listed in section 1. The unversioned `$(path)` artifact is no longer reported.
+- Forward-only regression, PR immutability/ordering checks, npm install, and migration validation failure-semantics checks passed before the inventory gate. The local Supabase CLI setup, service startup, replay, and post-replay schema checks were skipped because preflight correctly failed closed.
+- Quality run #8882 passed. This is independent of migration-chain replay and does not establish replay readiness.
+- A fresh read-only Supabase Security Advisor scan observed two RLS-enabled laboratory tables without policies (`public.lab_test_groups`, `public.lab_test_group_items`), one mutable search_path warning for `public.ensure_updated_at()`, 279 authenticated SECURITY DEFINER execute warnings, and leaked-password protection disabled. The two lab tables' no-policy state is consistent with the staged direct-table privilege revocation strategy, but the staged migration remains unapplied; no advisor warning was auto-fixed.
+- The linked Supabase project's development-branch listing is empty. This does not establish whether the owner has other separate Supabase projects or environments.
+- Hosted migration ledger remains 417 rows / 417 distinct versions, latest `20261026141054`; the five late-October reconciliation entries remain present.
+- Historical duplicate-version renames remain blocked pending confirmation that no other shared Supabase environments have applied these versions and a complete cross-environment ledger check. No migration SQL was renumbered, no production DDL was applied, and the draft PR was not merged.
