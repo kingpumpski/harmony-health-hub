@@ -19,6 +19,14 @@ try {
   run(['config', 'user.name', 'Migration Contract']);
   write('20261101000000_baseline.sql');
   write('20261101000000_legacy_duplicate.sql');
+  fs.mkdirSync(path.join(root, 'supabase'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'supabase/migration-ledger-baseline.json'), JSON.stringify({
+    schema_version: 1,
+    project_ref: 'fixture',
+    latest_version: '20261101000000',
+    migration_count: 1,
+    migrations: [{ version: '20261101000000', name: 'baseline' }],
+  }));
   run(['add', '.']); run(['commit', '-m', 'baseline']);
   const base = run(['rev-parse', 'HEAD']).trim();
 
