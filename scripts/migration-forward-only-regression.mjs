@@ -19,6 +19,7 @@ try {
   run(['config', 'user.name', 'Migration Contract']);
   write('20261024070000_baseline.sql');
   write('20261024070000_legacy_duplicate.sql');
+  write('$(path)', '-- unversioned legacy artifact; never an active migration');
   fs.mkdirSync(path.join(root, 'supabase'), { recursive: true });
   fs.writeFileSync(path.join(root, 'supabase/migration-ledger-baseline.json'), JSON.stringify({
     schema_version: 1,
@@ -34,6 +35,24 @@ try {
   run(['add', '.']); run(['commit', '-m', 'forward migration']);
   let result = check(base);
   assert.equal(result.status, 0, result.stderr);
+
+  run(['checkout', '--detach', base]);
+  const legacyArtifact = path.join(root, 'supabase/migrations/$(path)');
+  const archivedArtifact = path.join(root, 'docs/engineering/migration-source-candidates/legacy-workflow-notification.sql.candidate');
+  fs.mkdirSync(path.dirname(archivedArtifact), { recursive: true });
+  fs.copyFileSync(legacyArtifact, archivedArtifact);
+  fs.rmSync(legacyArtifact);
+  run(['add', '-A']); run(['commit', '-m', 'archive invalid unversioned artifact']);
+  result = check(base);
+  assert.equal(result.status, 0, result.stderr);
+
+  run(['checkout', '--detach', base]);
+  fs.mkdirSync(path.dirname(archivedArtifact), { recursive: true });
+  fs.writeFileSync(archivedArtifact, '-- altered archive must not authorize deletion');
+  fs.rmSync(legacyArtifact);
+  run(['add', '-A']); run(['commit', '-m', 'tamper with archived artifact']);
+  result = check(base);
+  assert.equal(result.status, 1, 'archiving the invalid artifact with changed contents must fail');
 
   run(['checkout', '--detach', base]);
   const ledgerManifestPath = path.join(root, 'supabase/migration-ledger-baseline.json');
@@ -78,7 +97,7 @@ try {
   run(['add', '.']); run(['commit', '-m', 'duplicate versions']);
   result = check(base);
   assert.equal(result.status, 1, 'duplicate migration versions must fail');
-  console.log('[migration-forward-only-regression] forward additions pass; older additions, edits, deletions, and duplicate versions fail closed');
+  console.log('[migration-forward-only-regression] forward additions pass; byte-identical archival of the invalid unversioned artifact is allowed; changed archives, older additions, edits, deletions, and duplicate versions fail closed');
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
