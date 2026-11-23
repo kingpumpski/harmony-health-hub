@@ -15,6 +15,12 @@ const requestedBase = process.argv[2] || (process.env.GITHUB_BASE_REF ? `origin/
 try {
   const mergeBase = git(['merge-base', requestedBase, 'HEAD']);
   const changed = git(['diff', '--name-status', '--no-renames', `${mergeBase}...HEAD`, '--', 'supabase/migrations']);
+  const ledgerManifestPath = 'supabase/migration-ledger-baseline.json';
+  const ledgerManifestChanges = git(['diff', '--name-status', '--no-renames', `${mergeBase}...HEAD`, '--', ledgerManifestPath]);
+  let baselineHasLedgerManifest = true;
+  try { git(['cat-file', '-e', `${mergeBase}:${ledgerManifestPath}`]); }
+  catch { baselineHasLedgerManifest = false; }
+
   const baseFiles = git(['ls-tree', '-r', '--name-only', mergeBase, '--', 'supabase/migrations'])
     .split('\n').filter(file => file.endsWith('.sql'));
   const versions = baseFiles.map(file => /^(\d{14})_.+\.sql$/.exec(path.basename(file))?.[1]).filter(Boolean);
@@ -47,6 +53,9 @@ try {
     return { status, file };
   }) : [];
   const errors = [];
+  if (baselineHasLedgerManifest && ledgerManifestChanges) {
+    errors.push('The verified hosted migration ledger manifest is immutable. Refresh it only through a separately reviewed baseline-update procedure.');
+  }
 
   for (const change of changes) {
     if (change.status !== 'A') {
