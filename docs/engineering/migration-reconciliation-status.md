@@ -490,3 +490,42 @@ A snapshot of all 417 hosted ledger version/name pairs is now committed at `supa
 | Production migration readiness | `BLOCKED` |
 
 **No database migrations were applied during this inspection.** This is a read-only evidence report. The hosted migration ledger is now verified as readable, but full repository-to-database parity is not achieved.
+
+
+## 10. Follow-up verification and newly confirmed security details (2026-11-23 10:33 UTC)
+
+### CI workflow correction
+
+The Quality workflow previously stopped after the migration inventory preflight, preventing unrelated application checks from running. The workflow now reports that legacy migration blocker with `continue-on-error: true`, while the dedicated Migration contract workflow remains a required, fail-closed gate for migration changes and clean replay.
+
+- Quality run `8861` / `45156923702`: **PASS**. All 64 job steps completed successfully, including TypeScript typecheck, ESLint, operational and clinical contracts, authorization/security contracts, laboratory and HR/payroll contracts, production build, and GitHub Pages artifact integrity.
+- The migration-identity step was reported separately and did not suppress the remaining Quality checks.
+- Migration contract run `2780` / `45156923892`: **BLOCKED as expected**. Forward-only regression, ancestry/order enforcement, and parity failure-semantics tests passed. Static migration inventory still fails on the existing 21 duplicate timestamp groups and the single invalid `$(path)` artifact. Clean replay preflight stopped before Supabase startup; no replay or database test was run.
+
+This separates application quality from migration-history readiness; it does not waive migration validation or make the migration chain merge-ready.
+
+### Laboratory panel table privileges
+
+A read-only catalog inspection confirmed that `public.lab_test_groups` and `public.lab_test_group_items` both have RLS enabled and no policies. Their original migration `20261013180000_laboratory_test_panels.sql` explicitly revoked all table privileges from `PUBLIC`, `anon`, and `authenticated`, and the application uses the scoped `get_laboratory_test_groups` / `save_laboratory_test_group` RPCs rather than direct table access.
+
+The current live ACL nevertheless grants both `anon` and `authenticated` all listed table privileges, including `TRUNCATE`, `TRIGGER`, `REFERENCES`, and PostgreSQL 17 `MAINTAIN`, in addition to row-level DML privileges. Both tables currently contain zero rows. RLS does not replace table-level privilege controls, and in particular does not protect against `TRUNCATE` privileges. This is a **high-priority privilege-drift finding**: the original revocations have been superseded by a later grant. Reasserting the original least-privilege boundary with a new forward-only migration is the intended correction. It was not applied because the historical migration chain remains blocked and no clean non-production replay/upgrade validation is available in this session.
+
+### Mutable trigger function search path
+
+The live definition of `public.ensure_updated_at()` only sets `NEW.updated_at = now()` and returns `NEW`, but it has no fixed `search_path`. A minimal forward correction can use `ALTER FUNCTION public.ensure_updated_at() SET search_path = ''` without replacing the function body. This has not been applied pending the same forward-migration and replay controls.
+
+### Unversioned SQL artifact investigation
+
+The invalid `supabase/migrations/$(path)` file is a 3,416-byte SQL source file introduced in commit `e08b4f4b1d3c1b0587cda1d12b6bd65e6836c93b` on 2026-10-01. It has no 14-digit migration version and therefore is not a valid Supabase migration identity. Its `create_workflow_notification` function body is older and materially differs from the live definition, which includes category-specific recipient authorization. It must not be renamed into a new migration or replayed as-is. It remains preserved pending a reviewed archival/removal decision.
+
+### Updated state
+
+- Application Quality and build: `PASS` (run 8861).
+- Forward-only migration governance tests: `PASS` (run 2780).
+- Migration inventory / clean replay: `BLOCKED` (21 duplicate timestamp groups plus the invalid unversioned artifact).
+- Hosted ledger identity reconciliation: still `BLOCKED` (77 exact identities; 256 same-name timestamp mismatches; 84 hosted entries without a matching main filename).
+- Production security remediation for lab panel grants and `ensure_updated_at`: `PENDING` — correction SQL identified, not applied.
+- Local checkout parity: `UNVERIFIED`.
+- Production migration readiness: `BLOCKED`.
+
+No production database DDL was executed during this follow-up.
