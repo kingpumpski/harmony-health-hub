@@ -600,12 +600,12 @@ The report remains: application quality checks are green when the current run co
 
 ## 14. Historical source recovery update (2026-11-23)
 
-Two of the five hosted migration identities previously reported as having no repository source have now been recovered from the historical repair branch `fix/missing-ai-diagnosis-schema-migration` (PR #437) and restored byte-for-byte to the current forward-only reconciliation branch:
+Two of the five recent hosted migration identities previously reported as having no repository source have now been recovered from the historical repair branch `fix/missing-ai-diagnosis-schema-migration` (PR #437). Their SQL is preserved byte-for-byte as inactive `.candidate` artifacts under `docs/engineering/migration-source-candidates/`, not in the active `supabase/migrations/` directory:
 
 - `20261026134619_reconcile_hr_payroll_record_management.sql` — source Git blob `a5e0c71da2de1dbae8634916c42156848344c312`.
 - `20261026134818_reconcile_inpatient_reviews_seen_at.sql` — source Git blob `a31a95aeedcba05cd2d1876966278753f1b1d30b`.
 
-The restored paths use the exact version/name identities recorded by the hosted migration ledger. They are historical source restoration only; they do not modify the hosted database or migration ledger. The source branch's PR description records that the HR/payroll and inpatient reconciliation work was applied to the connected Supabase project, but independent SQL-content equivalence against the original deployed migration payload is not available from the ledger and remains subject to source/provenance review.
+The candidate filenames preserve the exact version/name identities recorded by the hosted migration ledger. They are provenance candidates only; they do not modify the hosted database or active migration chain. The source branch's PR description records that the HR/payroll and inpatient reconciliation work was applied to the connected Supabase project, but independent SQL-content equivalence against the original deployed migration payload is not available from the ledger and remains subject to source/provenance review. They were moved out of `supabase/migrations/` after CI correctly rejected them as historical additions older than the hosted latest version.
 
 Three hosted migration identities still need exact source recovery:
 
@@ -693,3 +693,14 @@ Observed live function signatures and definitions:
 The live `pg_get_functiondef` output for these functions matches the corresponding function bodies shown in PR #437 candidate migrations `20261026140000_reconcile_laboratory_rpc_argument_contracts.sql` and `20261026150000_reconcile_lab_catalogue_sample_quantity_rpc.sql`, including SECURITY DEFINER execution and empty search_path. The live catalog also contains the canonical/legacy laboratory panel columns referenced by the candidate (including `group_name`/ `name`, `group_id`/ `lab_test_group_id`, `test_id`/ `test_catalogue_id`, and `display_order`/ `sort_order`), and `lab_test_catalogue.sample_quantity` is `text`.
 
 This strengthens confidence that the candidate RPC definitions represent deployed behavior. It does **not** prove the entire candidate migration files are byte-identical to the original SQL recorded under hosted versions `20261026135424`, `20261026135602`, or `20261026141054`. In particular, no original source for the separate legacy-compatibility version `20261026135602` was found. The candidates remain provenance evidence only; no source file was copied, renumbered, or replayed from this comparison.
+
+
+## 18. Historical candidate placement and CI contract correction (2026-11-23)
+
+The two recovered recent SQL files were initially placed under `supabase/migrations/`. The forward-only contract correctly rejected them because their versions (`20261026134619` and `20261026134818`) are earlier than the hosted latest (`20261026141054`); adding them as new active migrations would violate the forward-only rule and could create an unsafe pending migration queue.
+
+They have therefore been moved byte-for-byte to inactive provenance artifacts:
+- `docs/engineering/migration-source-candidates/20261026134619_reconcile_hr_payroll_record_management.sql.candidate`
+- `docs/engineering/migration-source-candidates/20261026134818_reconcile_inpatient_reviews_seen_at.sql.candidate`
+
+They are not active Supabase migrations and must not be copied back into `supabase/migrations/` until an approved historical provenance reconciliation establishes their role in clean replay. The forward-only contract remains unchanged; the latest CI run is being used to confirm that this correction clears the two historical-addition errors while preserving the existing inventory preflight blockers.
