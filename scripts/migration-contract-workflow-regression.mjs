@@ -19,4 +19,5 @@ assert.ok(deploy.indexOf('run: npm run test:migration-contract') < deploy.indexO
 assert.match(quality, /\n  quality:\n/, 'stable mandatory quality job identity must be preserved');
 assert.match(quality, /run: npm run test:migration-parity/, 'validator regressions must run in the quality gate');
 assert.match(quality, /run: npm run test:migration-contract/, 'migration contract cannot be omitted from the quality gate');
+assert.match(stepFor(quality, 'run: npm run test:migration-contract'), /continue-on-error: true/, 'legacy migration blockers must be reported without suppressing unrelated application quality checks');
 console.log('[migration-contract-workflow-regression] mandatory validation, complete database test coverage, and dependency setup passed');
