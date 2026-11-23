@@ -38,7 +38,7 @@ try {
   run(['checkout', '--detach', base]);
   const ledgerManifestPath = path.join(root, 'supabase/migration-ledger-baseline.json');
   const ledgerManifest = JSON.parse(fs.readFileSync(ledgerManifestPath, 'utf8'));
-  ledgerManifest.latest_version = '20261026141055';
+  ledgerManifest.project_ref = 'tampered';
   fs.writeFileSync(ledgerManifestPath, JSON.stringify(ledgerManifest, null, 2));
   run(['add', '.']); run(['commit', '-m', 'tamper with hosted ledger baseline']);
   result = check(base);
