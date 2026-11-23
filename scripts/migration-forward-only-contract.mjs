@@ -26,9 +26,20 @@ try {
     || typeof ledgerBaseline.latest_version !== 'string'
     || !/^\d{14}$/.test(ledgerBaseline.latest_version)
     || !Array.isArray(ledgerBaseline.migrations)
-    || ledgerBaseline.migrations.length !== ledgerBaseline.migration_count
-    || ledgerBaseline.migrations.at(-1)?.version !== ledgerBaseline.latest_version) {
+    || ledgerBaseline.migrations.length !== ledgerBaseline.migration_count) {
     throw new Error('Supabase migration ledger baseline is malformed or internally inconsistent.');
+  }
+  let previousLedgerVersion = null;
+  for (const entry of ledgerBaseline.migrations) {
+    if (!entry || typeof entry.version !== 'string' || !/^\d{14}$/.test(entry.version)
+      || typeof entry.name !== 'string' || !entry.name.trim()
+      || (previousLedgerVersion && entry.version <= previousLedgerVersion)) {
+      throw new Error('Supabase migration ledger baseline contains invalid, duplicate, or unordered entries.');
+    }
+    previousLedgerVersion = entry.version;
+  }
+  if (previousLedgerVersion !== ledgerBaseline.latest_version) {
+    throw new Error('Supabase migration ledger baseline latest_version does not match its final entry.');
   }
   const latestRequiredVersion = [latestBaseVersion, ledgerBaseline.latest_version].filter(Boolean).sort().at(-1);
   const changes = changed ? changed.split('\n').map(line => {
