@@ -590,3 +590,8 @@ The migration workflow's `npm ci` reported **29 dependency vulnerabilities (18 m
 Searched commit history for the five unrecovered hosted migration identities and checked the migration-reconciliation branch. No exact source files or matching commits were found. The `test/laboratory-migration-chain-reconciliation` branch is diverged (8 commits ahead, 36 behind `main`) and changes other migrations; it is not a safe source to merge. No SQL was reconstructed from filenames or guessed.
 
 The report remains: application quality checks are green when the current run completes; the historical migration chain and production deployment are still blocked. No production DDL or Auth configuration changes were made.
+
+
+### Final CI confirmation for this follow-up
+- Quality run `8866` / `45158748492`: **PASS**, including all 64 steps and GitHub Pages artifact verification.
+- Migration contract run `2785` / `45158748458`: static parity checks **PASS**, including the new laboratory panel migration guard; full migration identity validation **FAILS** on the known legacy inventory blockers; clean replay **NOT RUN**.
