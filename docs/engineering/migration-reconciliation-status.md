@@ -19,6 +19,7 @@ The live Supabase migration ledger is now readable. The repository and hosted hi
 | `main` SQL files | 651 |
 | `main` unique timestamp versions | 628 |
 | `main` duplicate timestamp groups | 21 |
+| `main` invalid migration directory entries | 1 (`$(path)`) |
 | Hosted entries matching a `main` migration name (after stripping embedded timestamp prefixes) | 333 |
 | Of those, exact hosted version and file version matches | 77 |
 | Matching names with different version timestamps | 256 |
@@ -31,7 +32,7 @@ The live Supabase migration ledger is now readable. The repository and hosted hi
 
 ## 1. Current main migration timestamp collisions
 
-`main` contains 21 groups of duplicate version timestamps. These make the migration chain ambiguous for replay.
+`main` contains 21 groups of duplicate version timestamps and one invalid entry named `$(path)`. These make the migration directory fail its static inventory contract and the timestamp collisions make the chain ambiguous for replay.
 
 | Version | Conflicting files |
 |---|---|
@@ -468,7 +469,11 @@ These are separate security/performance remediation workstreams; this migration 
 7. Validate from a clean database, upgrade representative existing databases, run database contracts, and compare schema objects, policies, grants, and functions.
 8. Verify staging/non-production first. Production deployment must remain a separate approved and serialized action.
 
-## 8. Current gate status
+## 8. Future migration guardrail
+
+A snapshot of all 417 hosted ledger version/name pairs is now committed at `supabase/migration-ledger-baseline.json`, captured on 2026-11-23. The CI forward-only guard validates that manifest and requires every newly added migration to sort after both the target branch's latest migration and the latest hosted ledger version, currently `20261026141054`. The guard also rejects edits, deletions, renames, and duplicate versions introduced by a pull request. This snapshot is a version/name baseline only; it does not contain original SQL checksums or prove historical SQL equivalence. Refresh it only after a verified migration deployment and read-back of the live ledger.
+
+## 9. Current gate status
 
 | Gate | Status |
 |---|---|
