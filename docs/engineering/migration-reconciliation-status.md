@@ -678,3 +678,18 @@ The candidate SQL for the 20261026140000 file combines multiple compatibility ch
 ### Decision
 
 Do not merge PR #437 wholesale and do not copy its six changed-content rename candidates as historical truth. A focused historical repair could use the 17 byte-identical rename candidates only after confirming no other shared environment applied the old versions, and after explicitly keeping production apply blocked (the new local versions would otherwise be pending). The remaining six collision resolutions require source-level review. The current PR #444 remains forward-only; no historical rename has been made in it.
+
+
+## 17. Read-only live laboratory candidate comparison (2026-11-23)
+
+The live catalog was queried read-only to compare the same-name candidate SQL in PR #437 with deployed laboratory RPC/schema state.
+
+Observed live function signatures and definitions:
+- `get_laboratory_test_groups(boolean)`
+- `save_laboratory_test_group(uuid,text,text,text,numeric,uuid[],boolean)`
+- `get_lab_result_attachments(uuid[])`
+- `create_lab_test_catalogue_item_with_sample_quantity(text,text,text,text,text,text,numeric,numeric,text,numeric,integer,jsonb)`
+
+The live `pg_get_functiondef` output for these functions matches the corresponding function bodies shown in PR #437 candidate migrations `20261026140000_reconcile_laboratory_rpc_argument_contracts.sql` and `20261026150000_reconcile_lab_catalogue_sample_quantity_rpc.sql`, including SECURITY DEFINER execution and empty search_path. The live catalog also contains the canonical/legacy laboratory panel columns referenced by the candidate (including `group_name`/ `name`, `group_id`/ `lab_test_group_id`, `test_id`/ `test_catalogue_id`, and `display_order`/ `sort_order`), and `lab_test_catalogue.sample_quantity` is `text`.
+
+This strengthens confidence that the candidate RPC definitions represent deployed behavior. It does **not** prove the entire candidate migration files are byte-identical to the original SQL recorded under hosted versions `20261026135424`, `20261026135602`, or `20261026141054`. In particular, no original source for the separate legacy-compatibility version `20261026135602` was found. The candidates remain provenance evidence only; no source file was copied, renumbered, or replayed from this comparison.
