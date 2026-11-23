@@ -786,3 +786,20 @@ Latest PR #444 CI on head `88c3bd696d4e38b0986a14afd2fc9fda0498cca0`:
 - Vercel status: success (preview/deployment check only; not a database replay result).
 
 The exact duplicate groups are unchanged from the inventory already recorded in section 21. No duplicate was renamed or deleted in this continuation. No production SQL, migration history, or schema was changed. PR #444 remains draft and must not merge until source reconciliation, duplicate resolution, clean replay, and post-replay verification pass on the same head.
+
+
+## 25. Exact duplicate preflight diagnostics and PR #442 collision candidate review (2026-11-23 14:53 UTC)
+
+The latest PR #444 head `76cb6d08e0d034403befba7583a00363f8e2b012` triggered Migration contract run #2807 (workflow run ID `45199018700`). The Quality workflow #8888 passed; migration contract failed.
+
+The two migration-contract jobs both stop at the identity validation stage. The clean replay job reports the 21 duplicate version groups listed in section 1; Supabase CLI setup, local Supabase startup, full migration replay, and post-replay schema/RPC/privilege/RLS verification are skipped. The schema/security contract job passes its forward-only regression, immutable-history/ordering checks, npm installation, and migration validation failure-semantics checks, then fails at the same migration identity inventory gate.
+
+The exact 21 duplicate prefixes reported by the clean replay job are:
+
+`20260912003000`, `20260912010000`, `20260912021000`, `20260912024500`, `20260912162000`, `20260912200000`, `20260912250000`, `20260913180000`, `20260914140000`, `20260914150000`, `20260914170000`, `20260915170000`, `20260925200000`, `20260929100000`, `20260929103000`, `20260929150000`, `20260929200000`, `20260929203000`, `20260930012000`, `20261002130000`, and `20261002132500`.
+
+PR #442's current metadata describes a 23-file collision-normalization tranche (20 content-identical rename claims and three changed-content repairs). Its changed-file review shows it is not a collision-only patch: it also adds/restores schema prerequisites, changes compatibility and authorization SQL, adjusts RLS policies, and introduces other forward candidates. The PR remains draft and non-mergeable, and its baseline is explicitly marked unreconciled with production push disabled. Its description and candidate filenames are not sufficient proof that the exact source SQL and intended order are correct for this branch. No PR #442 migration was copied, renamed, or promoted.
+
+The next safe resolution step is a narrow per-collision provenance matrix: compare each old file's Git blob and full SQL body with the proposed replacement, identify whether either version appears in any known environment's ledger, determine the intended execution order and dependencies, and replay the resulting complete chain on a clean disposable database. Changed-content candidates require SQL review and tests, not rename treatment. The two missing September baseline sources and three unrecovered late-October laboratory sources remain independent blockers to declaring clean replay complete.
+
+No migration file was renamed or deleted in this continuation. No production SQL, schema, or migration ledger was changed. PR #444 remains draft and must not merge.
