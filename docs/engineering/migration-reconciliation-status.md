@@ -866,3 +866,15 @@ The current PR head `045dfc97f77e0c4df1598ccc81e46a1734f4684a` was checked again
 - PR #444 Vercel bot reports its preview deployment as Ready, but that is not evidence of database migration replay or schema parity.
 
 **Disposition:** keep PR #444 draft and unmerged. Do not rename/delete collision files, fabricate the missing baseline, bypass identity checks, or run production DDL. The next acceptable repair is to recover authenticated original SQL/schema evidence from the original pre-Supabase development environment or a verifiable backup, then classify each file against the live ledger and perform a clean disposable-database replay. If original baseline evidence cannot be recovered, prepare a separately approved bootstrap/upgrade strategy rather than rewriting deployed history.
+
+## 28. Additional repository branch provenance sweep (2026-11-23)
+
+A targeted branch sweep was performed after the latest CI failure to look for the original pre-Supabase development source or a preserved September baseline.
+
+- Inspected the repository's migration/development branch search results and the full branch listing pages returned by GitHub. Relevant surviving refs include `architecture/next-gen-hims-platform`, `feature/medical-system-enhancement`, `feature/operational-completion-pass`, and `feature/operational-workflow-hardening`, in addition to the previously reviewed migration repair branches.
+- On each of those four refs, the exact file `supabase/migrations/20260916002251_canonical_remote_schema.sql` is absent. The same exact path is absent on the current governance branch and the previously checked PR branches.
+- These refs are not evidence of the user's original pre-Supabase environment: each checked branch contains a Supabase config and Supabase client source. Their existence does not establish when the original local development environment first adopted Supabase.
+- The branch-name search did not surface a clearly identified `pre-supabase`, `backup`, or original-development branch. This is a limited repository-ref search, not proof that no external clone, deleted branch, developer workstation, or backup exists.
+- No migration file was changed, renamed, deleted, or promoted during this sweep.
+
+**Next provenance action:** compare the original project ZIP and any user-held pre-Supabase project archive against the earliest available Git branch/tree, then recover the SQL/schema history from the original development environment or a verifiable backup. The current repository branch search has not recovered that source, so the historical migration identity gate remains unresolved.
