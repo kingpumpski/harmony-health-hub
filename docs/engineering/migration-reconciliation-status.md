@@ -471,7 +471,7 @@ These are separate security/performance remediation workstreams; this migration 
 
 ## 8. Future migration guardrail
 
-A snapshot of all 417 hosted ledger version/name pairs is now committed at `supabase/migration-ledger-baseline.json`, captured on 2026-11-23. The CI forward-only guard validates that manifest and requires every newly added migration to sort after both the target branch's latest migration and the latest hosted ledger version, currently `20261026141054`. The guard also rejects edits, deletions, renames, and duplicate versions introduced by a pull request. This snapshot is a version/name baseline only; it does not contain original SQL checksums or prove historical SQL equivalence. Refresh it only after a verified migration deployment and read-back of the live ledger.
+A snapshot of all 417 hosted ledger version/name pairs is now committed at `supabase/migration-ledger-baseline.json`, captured on 2026-11-23. The CI forward-only guard validates that manifest and requires every newly added migration to sort after both the target branch's latest migration and the latest hosted ledger version, currently `20261026141054`. The guard also rejects edits, deletions, renames, and duplicate versions introduced by a pull request, and prevents later PRs from silently editing the hosted-ledger snapshot. This snapshot is a version/name baseline only; it does not contain original SQL checksums or prove historical SQL equivalence. Refresh it only after a verified migration deployment and read-back of the live ledger.
 
 ## 9. Current gate status
 
@@ -484,6 +484,9 @@ A snapshot of all 417 hosted ledger version/name pairs is now committed at `supa
 | Candidate branch as canonical baseline | `BLOCKED` — still mismatched and heavily divergent |
 | Local checkout parity | `UNVERIFIED` |
 | Clean replay and upgrade tests | `NOT RUN` — must not treat static branch checks as database replay |
+| Forward-only regression and PR guard | `PASS` — CI run 2768 passed both steps |
+| Existing static migration inventory contract | `BLOCKED` — 21 duplicate groups and one invalid entry |
+| Clean database replay | `BLOCKED` — preflight rejected migration inventory; Supabase startup and replay were skipped |
 | Production migration readiness | `BLOCKED` |
 
 **No database migrations were applied during this inspection.** This is a read-only evidence report. The hosted migration ledger is now verified as readable, but full repository-to-database parity is not achieved.
