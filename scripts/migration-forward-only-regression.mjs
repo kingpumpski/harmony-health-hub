@@ -18,6 +18,7 @@ try {
   run(['config', 'user.email', 'migration-contract@example.invalid']);
   run(['config', 'user.name', 'Migration Contract']);
   write('20261101000000_baseline.sql');
+  write('20261101000000_legacy_duplicate.sql');
   run(['add', '.']); run(['commit', '-m', 'baseline']);
   const base = run(['rev-parse', 'HEAD']).trim();
 
