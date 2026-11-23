@@ -728,3 +728,10 @@ CI on PR head `b40f9aaa8c31b1cfa4a11ba36c51191ed0910fa3`, Migration contract run
 - Clean replay still stops at preflight because of those duplicate versions; Supabase services were not started.
 
 Quality run #8880 / `45175509954` remained in progress at report time. No production DDL or migration ledger changes were made.
+
+
+### Latest head validation
+
+On PR head `168856c9fd74b122f75b34d4f2b2e472f5caa1b1`:
+- Quality run #8881 / `45175651558`: **PASS**.
+- Migration contract run #2800 / `45175651574`: **FAIL at migration identity preflight only**. The invalid unversioned artifact is no longer reported; all 21 duplicate version groups remain. The clean replay job stopped before Supabase services started.
