@@ -913,3 +913,25 @@ These figures establish the scale of the current schema but are not a schema exp
 A separate recovery/bootstrap plan was added at [canonical-baseline-recovery-plan.md](./canonical-baseline-recovery-plan.md). It defines a safe route to generate a **new-environment-only** baseline from a complete reviewed schema-only export, with a distinct version and provenance. It explicitly separates fresh-database bootstrap from upgrades to existing environments and prohibits production DDL, migration-ledger edits, resets, and historical-version impersonation.
 
 No schema changes or production migrations were applied. No historical SQL was renamed, deleted, or promoted. PR #444 remains draft and unmerged. The 21 duplicate migration-version groups remain the immediate CI blocker; baseline source recovery and late-October missing SQL remain independent replay blockers.
+
+
+## 31. Expanded read-only schema inventory and confirmed CI stop point (2026-11-23 17:12 UTC)
+
+The next PR merge-test commit `0f15a874854efdf52ec200e17eaf9a3375ed362c` produced Migration contract run #2814 / workflow run ID `45224289445`: **FAIL**; Quality run #8895 / workflow run ID `45224289567`: **PASS**. The clean replay job stopped at step 4, `node scripts/migration-contract.mjs`, before Supabase CLI setup, local services, `supabase db reset`, or post-replay tests. The schema/security job also stopped at the migration identity validator. Its log confirms all 21 duplicate groups in section 1; no new duplicate group was identified. This is an inventory gate failure, not a SQL replay failure: SQL replay has not yet been attempted.
+
+A second read-only catalog aggregation was run against the active PostgreSQL 17 project. It reports:
+- 10 non-system schemas;
+- 156 public tables/partitioned tables;
+- 681 public indexes;
+- 786 public constraints;
+- 314 public types (including composite/array/domain/enum catalog types);
+- 341 public functions/procedures;
+- 452 public RLS policies;
+- 206 non-internal public triggers;
+- 5 installed extensions;
+- 0 public views/materialized views;
+- RLS enabled on all 156 public tables; 0 public tables have FORCE ROW LEVEL SECURITY enabled.
+
+This inventory materially expands the bootstrap scope. It is still not a dump: it does not capture complete DDL, grants, default privileges, function bodies, type definitions, extension versions/configuration, sequences/identity behavior, Supabase-managed schemas, auth/storage configuration, or external dependencies. In particular, the reported zero sequence count must not be interpreted as proof that no identity/sequence-backed columns exist; sequence ownership and identity metadata require separate catalog inspection.
+
+**Engineering disposition:** do not weaken `migration-contract.mjs` to let the workflow proceed. Its fail-fast duplicate identity check is correctly preventing an ambiguous migration chain from being treated as replayable. The next safe implementation step is a source-level collision audit with hashes, exact duplicate/near-duplicate classification, PR-branch provenance, and dependency ordering, followed by a reviewed decision for each version group. A new bootstrap baseline remains a separate track and needs a complete schema-only export plus disposable-database replay. No production DDL, ledger update, migration rename/deletion, reset, or PR merge occurred in this run.
