@@ -746,3 +746,16 @@ On PR head `168856c9fd74b122f75b34d4f2b2e472f5caa1b1`:
 - The linked Supabase project's development-branch listing is empty. This does not establish whether the owner has other separate Supabase projects or environments.
 - Hosted migration ledger remains 417 rows / 417 distinct versions, latest `20261026141054`; the five late-October reconciliation entries remain present.
 - Historical duplicate-version renames remain blocked pending confirmation that no other shared Supabase environments have applied these versions and a complete cross-environment ledger check. No migration SQL was renumbered, no production DDL was applied, and the draft PR was not merged.
+
+
+## 22. Environment clarification and latest CI (2026-11-23)
+
+The project owner clarified that the development environment they are aware of predates the introduction of Supabase. It is therefore a legacy pre-Supabase development environment, not a known additional Supabase migration ledger. The linked Supabase account exposes the single known project `harmony-health-hub`; its development-branch list is empty. This is recorded as owner-reported scope, not proof that no other unconnected Supabase project exists.
+
+The known pre-Supabase environment does not authorize historical migration renames: its schema/deployment history has not been provided, and any renamed migration may be interpreted as pending by the current hosted project. The 23 PR #437 collision-repair candidates therefore remain unpromoted. The 17 byte-identical candidate renames and six content-changing candidates require separate provenance and replay analysis; no rename is being treated as a safe production migration.
+
+Latest CI on PR head `63fe0ce7a1e923d6e244e65fdd3117e5b77ac7a1`:
+- Quality run #8883 passed.
+- Migration contract run #2802 failed at the migration identity inventory step. The forward-only regression and immutability/ordering checks passed.
+- The clean replay job stopped before Supabase services started because the 21 duplicate version groups remain. No clean replay or post-replay schema verification occurred.
+- No production DDL or migration-ledger changes were made; PR #444 remains draft.
