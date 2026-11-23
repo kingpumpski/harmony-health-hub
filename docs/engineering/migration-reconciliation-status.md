@@ -618,3 +618,31 @@ PR #437 contains same-name laboratory candidates at different versions (`2026102
 ### Validation after source restoration
 
 The two exact-version source files have been committed to the draft reconciliation branch. The resulting CI run must validate migration identity inventory, then clean replay. Until those checks pass, the restored files are not considered replay-verified and no production migration apply is authorized. The 21 duplicate-version groups and unversioned `$(path)` artifact remain separate blockers; the local working tree is still unverified.
+
+
+## 15. Local checkout ZIP audit (2026-11-23)
+
+The user supplied `harmony-health-hub.zip`. It was inspected as a local project snapshot; it contains no `.git` directory or Git history, so it cannot establish which local SQL versions were deployed or recover historical commits.
+
+### Local migration inventory
+
+- SQL migration files: **651**.
+- Distinct 14-digit version prefixes: **628**.
+- Duplicate version groups: **21**.
+- Every duplicate group contains non-identical SQL contents (SHA-256 differs); these are not safe duplicate-file deletions.
+- First filename-uniqueness test failure reproduced locally with Node 22: `20260912003000_phase2_pharmacy_procedure_imaging_gates.sql` and `20260912003000_phase4_triage.sql` share a version.
+- Latest local SQL version: `20261024070000`.
+- An additional unversioned file exists at `supabase/migrations/$(path)` (3,478 bytes; SHA-256 `b5127cd9d83e6988774b3345755451d9bc41d86dd1a7c9595223b69d90519e73`). It is not a valid timestamped SQL migration.
+- The archive's `supabase-migration-list.txt` is UTF-16 and has a blank remote-version column; it is not evidence of a successful remote ledger comparison.
+
+The hosted database ledger independently reports 417 unique entries, latest `20261026141054`. The local snapshot therefore trails the hosted latest version by two calendar days and does not contain any of the five exact 2026-10-26 hosted source files.
+
+### Local snapshot is behind the reconciliation PR
+
+The ZIP does not contain the current PR's `supabase/migration-ledger-baseline.json`, forward-only governance scripts, laboratory migration static guard, the two restored exact hosted migrations, or the staged laboratory security correction. This confirms that the uploaded local snapshot is not the current PR #444 working tree.
+
+### Decision
+
+No duplicate migration was renamed, deleted, merged, or rewritten. The duplicate files contain distinct SQL and their deployment status cannot be proven without Git history or an authoritative migration ledger snapshot. The unversioned `$(path)` artifact is preserved; its archival/removal must be reviewed separately. The correct next step remains to obtain the authoritative source history for the pre-baseline migrations and validate the canonical baseline/replay strategy, not to renumber files speculatively.
+
+The local inventory check reproduced the existing migration filename uniqueness failure. Clean replay was not attempted because preflight fails. No local archive changes were made to the user's original ZIP and no production database changes were made.
