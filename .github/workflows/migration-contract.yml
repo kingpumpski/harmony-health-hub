@@ -37,6 +37,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Regression-test forward-only migration enforcement
+        run: node scripts/migration-forward-only-regression.mjs
+      - name: Enforce immutable history and forward version ordering on pull requests
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/migration-forward-only-contract.mjs origin/${{ github.base_ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
