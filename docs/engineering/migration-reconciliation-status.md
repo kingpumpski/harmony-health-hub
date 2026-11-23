@@ -560,3 +560,33 @@ Before staging, the live database catalog was checked again:
 - Leaked-password protection remains a dashboard/Auth configuration item and was not changed.
 
 No production DDL or Auth settings were changed. PR #444 remains draft and blocked by historical migration identity recovery and clean replay.
+
+
+## 13. Follow-up: regression guard and deeper SECURITY DEFINER triage (2026-11-23)
+
+### Laboratory panel migration guard
+Added `scripts/laboratory-panel-privilege-migration-contract.mjs` and wired it into `npm run test:migration-parity`. The test asserts that the staged migration:
+- Revokes all direct table privileges from `PUBLIC`, `anon`, and `authenticated` on both laboratory panel tables.
+- Pins `public.ensure_updated_at()` to an empty `search_path`.
+- Does not add a new grant to client roles.
+
+Migration contract run `2785` / `45158748458` confirms all three static migration/parity regression checks pass, including this new guard. It then fails at the expected historical inventory gate. The exact blockers remain the invalid `$(path)` entry and the 21 duplicate timestamp groups. The database replay job stops before starting Supabase. Thus, this proves the new migration's intended text contract only; it does not prove replay correctness or live behavior.
+
+### Further review of advisor candidates
+Read-only source inspection of sensitive functions found explicit checks in the sampled functions:
+- `platform_set_user_role`: authentication, admin role, self-change prevention, platform-role restriction, and target facility membership checks.
+- `platform_create_facility` / `platform_list_facilities`: explicit system-superuser checks.
+- `get_patient_portal_medical_record`, `get_patient_invoice_summary`, and `get_patient_portal_video_sessions`: authenticated patient-to-user/email ownership checks.
+- `get_patient_admission_history`: clinical/platform role check plus patient facility-context assertion.
+- Laboratory catalogue creation wrappers call a helper that checks authenticated catalogue-creation permissions.
+- `set_hms_test_runtime`: explicit system-superuser check, reason requirement, and test-environment-only guard.
+
+These source samples do not clear the entire 279-function inventory. Remaining candidates require function-by-function review, especially helper functions and functions that rely on `profiles.role` rather than `user_roles`. No function EXECUTE privileges were changed.
+
+### Dependency audit signal
+The migration workflow's `npm ci` reported **29 dependency vulnerabilities (18 moderate, 11 high)**. No automatic `npm audit fix` or force upgrade was run because that could introduce incompatible dependency changes. The exact affected package paths and patched versions still need a dependency audit report and controlled lockfile update.
+
+### Historical recovery attempts
+Searched commit history for the five unrecovered hosted migration identities and checked the migration-reconciliation branch. No exact source files or matching commits were found. The `test/laboratory-migration-chain-reconciliation` branch is diverged (8 commits ahead, 36 behind `main`) and changes other migrations; it is not a safe source to merge. No SQL was reconstructed from filenames or guessed.
+
+The report remains: application quality checks are green when the current run completes; the historical migration chain and production deployment are still blocked. No production DDL or Auth configuration changes were made.
