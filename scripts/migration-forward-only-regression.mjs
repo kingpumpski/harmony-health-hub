@@ -17,38 +17,38 @@ try {
   run(['init', '-b', 'main']);
   run(['config', 'user.email', 'migration-contract@example.invalid']);
   run(['config', 'user.name', 'Migration Contract']);
-  write('20261101000000_baseline.sql');
-  write('20261101000000_legacy_duplicate.sql');
+  write('20261024070000_baseline.sql');
+  write('20261024070000_legacy_duplicate.sql');
   fs.mkdirSync(path.join(root, 'supabase'), { recursive: true });
   fs.writeFileSync(path.join(root, 'supabase/migration-ledger-baseline.json'), JSON.stringify({
     schema_version: 1,
     project_ref: 'fixture',
-    latest_version: '20261101000000',
+    latest_version: '20261026141054',
     migration_count: 1,
-    migrations: [{ version: '20261101000000', name: 'baseline' }],
+    migrations: [{ version: '20261026141054', name: 'hosted_latest' }],
   }));
   run(['add', '.']); run(['commit', '-m', 'baseline']);
   const base = run(['rev-parse', 'HEAD']).trim();
 
-  write('20261102000000_forward_fix.sql');
+  write('20261027000000_forward_fix.sql');
   run(['add', '.']); run(['commit', '-m', 'forward migration']);
   let result = check(base);
   assert.equal(result.status, 0, result.stderr);
 
   run(['checkout', '--detach', base]);
-  write('20261031000000_old_timestamp.sql');
+  write('20261025000000_before_hosted_head.sql');
   run(['add', '.']); run(['commit', '-m', 'out of order migration']);
   result = check(base);
   assert.equal(result.status, 1, 'a new migration older than baseline must fail');
 
   run(['checkout', '--detach', base]);
-  write('20261101000000_baseline.sql', 'select 2;');
+  write('20261024070000_baseline.sql', 'select 2;');
   run(['add', '.']); run(['commit', '-m', 'rewrite applied history']);
   result = check(base);
   assert.equal(result.status, 1, 'editing a baseline migration must fail');
 
   run(['checkout', '--detach', base]);
-  fs.rmSync(path.join(root, 'supabase/migrations/20261101000000_baseline.sql'));
+  fs.rmSync(path.join(root, 'supabase/migrations/20261024070000_baseline.sql'));
   run(['add', '-A']); run(['commit', '-m', 'delete applied history']);
   result = check(base);
   assert.equal(result.status, 1, 'deleting a baseline migration must fail');
