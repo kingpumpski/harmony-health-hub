@@ -39,15 +39,15 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
       - name: Regression-test forward-only migration enforcement
         run: node scripts/migration-forward-only-regression.mjs
       - name: Enforce immutable history and forward version ordering on pull requests
         if: ${{ github.event_name == 'pull_request' }}
         run: node scripts/migration-forward-only-contract.mjs origin/${{ github.base_ref }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
       - run: npm ci
       - name: Verify migration validation failure semantics
         run: npm run test:migration-parity
