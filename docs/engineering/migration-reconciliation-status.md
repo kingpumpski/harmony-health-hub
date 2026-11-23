@@ -484,7 +484,7 @@ A snapshot of all 417 hosted ledger version/name pairs is now committed at `supa
 | Candidate branch as canonical baseline | `BLOCKED` — still mismatched and heavily divergent |
 | Local checkout parity | `UNVERIFIED` |
 | Clean replay and upgrade tests | `NOT RUN` — must not treat static branch checks as database replay |
-| Forward-only regression and PR guard | `PASS` — CI run 2773 passed regression, hosted-ledger ordering, and manifest-immutability checks |
+| Forward-only regression and PR guard | `PASS` — CI run 2777 passed regression, hosted-ledger ordering, and append-only manifest refresh checks |
 | Existing static migration inventory contract | `BLOCKED` — 21 duplicate groups and one invalid entry |
 | Clean database replay | `BLOCKED` — preflight rejected migration inventory; Supabase startup and replay were skipped |
 | Production migration readiness | `BLOCKED` |
