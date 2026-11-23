@@ -1,76 +1,484 @@
-# Migration reconciliation status
+# Live migration reconciliation report
 
-**Assessment date:** 2026-11-23  
-**Repository baseline inspected:** `main` at `2d12bc3d254e2f61ee00966583483c2fc5ade7e1`  
-**Hosted database ledger:** `UNVERIFIED` (the connected Supabase account denied read access)  
-**Local working tree:** `UNVERIFIED` (no local clone was available to inspect)
+**Inspection date:** 2026-11-23  
+**Supabase project:** `harmony-health-hub` (`ygqoptvezotdqhtimdkr`)  
+**Project status:** `ACTIVE_HEALTHY`  
+**Region / database:** `eu-central-1` / PostgreSQL 17.6.1.166  
+**Git baseline inspected:** `main`  
+**Local checkout:** `UNVERIFIED` — no local working tree is exposed to this session.
 
-## Confirmed repository findings
+## Executive result
 
-The `main` migration directory contains 651 SQL files, but the current migration inventory contract does not pass:
+The live Supabase migration ledger is now readable. The repository and hosted history are **not aligned**. Do not merge timestamp-renumbering branches or apply a bulk migration repair until every historical identity is reconciled.
 
-- 21 duplicate 14-digit migration-version groups.
-- One invalidly named SQL entry: `supabase/migrations/$(path)`.
-- A clean replay is blocked before Supabase services start because the static migration contract rejects these entries.
+| Measure | Observed |
+|---|---:|
+| Hosted migration ledger rows | 417 |
+| Hosted distinct versions | 417 |
+| Hosted repeated migration names | 3 name groups |
+| `main` SQL files | 651 |
+| `main` unique timestamp versions | 628 |
+| `main` duplicate timestamp groups | 21 |
+| Hosted entries matching a `main` migration name (after stripping embedded timestamp prefixes) | 333 |
+| Of those, exact hosted version and file version matches | 77 |
+| Matching names with different version timestamps | 256 |
+| Hosted entries with no matching migration filename in `main` | 84 |
+| Public tables reported | 156 |
+| Public tables with RLS enabled | 156 |
+| Public tables without RLS | 0 |
 
-The duplicate version groups are:
+**Interpretation:** a matching SQL filename suffix does not prove the version identity is correct. 256 hosted entries have a corresponding current filename by name, but the 14-digit version in the file differs from the version recorded in Supabase. This is consistent with historical timestamp renumbering after application and must be reconciled using the original applied SQL, not guessed from names.
 
-| Version | Conflicting migration files |
+## 1. Current main migration timestamp collisions
+
+`main` contains 21 groups of duplicate version timestamps. These make the migration chain ambiguous for replay.
+
+| Version | Conflicting files |
 |---|---|
-| `20260912003000` | `phase2_pharmacy_procedure_imaging_gates`, `phase4_triage` |
-| `20260912010000` | `phase6_anesthetic_assessment_foundation`, `phase8_ai_clinical_provenance` |
-| `20260912021000` | `attending_patient_history_summary`, `global_hims_operations` |
-| `20260912024500` | `global_hims_enterprise_operations`, `global_hims_inpatient_emergency_theatre_insurance` |
-| `20260912162000` | `clinical_change_audit_hardening`, `hims_workflow_completion` |
-| `20260912200000` | `phase5_lab_catalogue_and_audit`, `prescription_payment_lifecycle_reconciliation` |
-| `20260912250000` | `lab_direct_write_lockdown`, `reconciliation_finalization` |
-| `20260913180000` | `reconcile_appointments_operational_workflow`, `reports_center_submission_rbac` |
-| `20260914140000` | `clinical_direct_mutation_surface_hardening`, `theatre_emergency_transfusion_lifecycle_hardening` |
-| `20260914150000` | `admission_bed_direct_mutation_reconciliation`, `clinical_claim_nursing_direct_mutation_hardening` |
-| `20260914170000` | `clinical_insurance_case_direct_mutation_hardening`, `clinical_triage_medication_mutation_hardening` |
-| `20260915170000` | `reassert_internal_security_definer_execute_hardening`, `remove_duplicate_insurance_claim_indexes` |
-| `20260925200000` | `notification_advisor_finalization`, `notification_inbound_email_store` |
-| `20260929100000` | `harden_ward_table_data_api_boundary`, `insurance_company_master_data` |
-| `20260929103000` | `harden_operational_workspace_search_path`, `service_catalogue_department_control` |
-| `20260929150000` | `canteen_dietary_operational_workspace`, `operational_workspace_scope_hardening`, `patient_canonical_insurer_linkage` |
-| `20260929200000` | `fix_canteen_menu_rbac_realtime`, `role_dashboard_kpi_cleanup`, `secure_default_function_execute_privileges` |
-| `20260929203000` | `active_dashboard_role_context`, `harden_security_definer_read_workspace_paths_batch6` |
-| `20260930012000` | `harden_department_queue_multirole`, `harden_high_risk_rpc_execution_boundaries` |
-| `20261002130000` | `pharmacy_global_catalogue_facility_stock_and_safety`, `scope_appointment_workflows_to_active_facility` |
-| `20261002132500` | `patient_hub_read_rpc_get_compatibility`, `pharmacy_global_category_edit` |
+| `20260912003000` | `20260912003000_phase2_pharmacy_procedure_imaging_gates.sql`<br>`20260912003000_phase4_triage.sql` |
+| `20260912010000` | `20260912010000_phase6_anesthetic_assessment_foundation.sql`<br>`20260912010000_phase8_ai_clinical_provenance.sql` |
+| `20260912021000` | `20260912021000_attending_patient_history_summary.sql`<br>`20260912021000_global_hims_operations.sql` |
+| `20260912024500` | `20260912024500_global_hims_enterprise_operations.sql`<br>`20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql` |
+| `20260912162000` | `20260912162000_clinical_change_audit_hardening.sql`<br>`20260912162000_hims_workflow_completion.sql` |
+| `20260912200000` | `20260912200000_phase5_lab_catalogue_and_audit.sql`<br>`20260912200000_prescription_payment_lifecycle_reconciliation.sql` |
+| `20260912250000` | `20260912250000_lab_direct_write_lockdown.sql`<br>`20260912250000_reconciliation_finalization.sql` |
+| `20260913180000` | `20260913180000_reconcile_appointments_operational_workflow.sql`<br>`20260913180000_reports_center_submission_rbac.sql` |
+| `20260914140000` | `20260914140000_clinical_direct_mutation_surface_hardening.sql`<br>`20260914140000_theatre_emergency_transfusion_lifecycle_hardening.sql` |
+| `20260914150000` | `20260914150000_admission_bed_direct_mutation_reconciliation.sql`<br>`20260914150000_clinical_claim_nursing_direct_mutation_hardening.sql` |
+| `20260914170000` | `20260914170000_clinical_insurance_case_direct_mutation_hardening.sql`<br>`20260914170000_clinical_triage_medication_mutation_hardening.sql` |
+| `20260915170000` | `20260915170000_reassert_internal_security_definer_execute_hardening.sql`<br>`20260915170000_remove_duplicate_insurance_claim_indexes.sql` |
+| `20260925200000` | `20260925200000_notification_advisor_finalization.sql`<br>`20260925200000_notification_inbound_email_store.sql` |
+| `20260929100000` | `20260929100000_harden_ward_table_data_api_boundary.sql`<br>`20260929100000_insurance_company_master_data.sql` |
+| `20260929103000` | `20260929103000_harden_operational_workspace_search_path.sql`<br>`20260929103000_service_catalogue_department_control.sql` |
+| `20260929150000` | `20260929150000_canteen_dietary_operational_workspace.sql`<br>`20260929150000_operational_workspace_scope_hardening.sql`<br>`20260929150000_patient_canonical_insurer_linkage.sql` |
+| `20260929200000` | `20260929200000_fix_canteen_menu_rbac_realtime.sql`<br>`20260929200000_role_dashboard_kpi_cleanup.sql`<br>`20260929200000_secure_default_function_execute_privileges.sql` |
+| `20260929203000` | `20260929203000_active_dashboard_role_context.sql`<br>`20260929203000_harden_security_definer_read_workspace_paths_batch6.sql` |
+| `20260930012000` | `20260930012000_harden_department_queue_multirole.sql`<br>`20260930012000_harden_high_risk_rpc_execution_boundaries.sql` |
+| `20261002130000` | `20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql`<br>`20261002130000_scope_appointment_workflows_to_active_facility.sql` |
+| `20261002132500` | `20261002132500_patient_hub_read_rpc_get_compatibility.sql`<br>`20261002132500_pharmacy_global_category_edit.sql` |
 
-## Existing reconciliation candidate
+## 2. Hosted migrations whose version differs from the current main filename
 
-The branch `ci/future-proof-migration-contracts` is a useful source for investigation, not a safe wholesale merge target:
+The following list is complete for the 256 same-name mappings discovered by normalizing the optional embedded timestamp in the ledger name. The file currently in `main` must not be assumed to be the exact SQL body originally applied under the hosted version.
 
-- It contains 659 SQL migration files, with no duplicate version groups and no invalid migration entry in the inspected directory.
-- Relative to `main`, it is 327 commits ahead and 25 behind.
-- Its migration-directory comparison shows 24 names removed and 32 added. It includes timestamp adjustments for colliding names and additional schema/security work.
-- Three sampled timestamp-adjusted files were byte-for-byte identical to their old-name counterparts. This confirms those samples are filename/version adjustments, not SQL changes; it does not establish that the corresponding version identities match the live database ledger.
-- The invalid `$(path)` SQL content in `main` appears under the valid filename `20261015090000_fix_workflow_notification_recipient_role.sql` on that branch, with identical Git blob content.
-
-Because that branch is substantially divergent and contains other migration edits, do not merge it wholesale or copy its renumbered files into `main` until the hosted ledger has been compared. Replaying a renamed file can execute SQL again under a new migration identity.
-
-## Required next reconciliation sequence
-
-1. Obtain a read-only export of the hosted Supabase migration ledger (version and name) and inspect the local checkout's `supabase/migrations` directory.
-2. Build a version/name/checksum comparison across local, GitHub `main`, the candidate branch, and each relevant hosted environment.
-3. For every conflicting version, determine which file identity is recorded as applied in each environment. Mark unknown entries `UNVERIFIED`; do not guess.
-4. Preserve all applied identities. Resolve collisions by selecting the canonical already-applied identity and, where needed, adding new forward-only repair migrations with versions greater than the current target baseline and confirmed hosted ledger.
-5. Reconcile the malformed `$(path)` entry as a separate issue. Its SQL is not a valid Supabase migration filename on `main`; verify whether it was ever run manually before promoting its contents as a forward migration.
-6. Run static inventory, clean replay, database contracts, representative upgrade-path tests, linked non-production ledger checks, schema/RLS/privilege checks, and application compatibility checks.
-7. Only after all checks pass should the reviewed migration sequence be proposed for production deployment.
-
-## Current gate results
-
-| Gate | Status | Evidence |
+| Hosted version | Hosted ledger name | Current main file |
 |---|---|---|
-| GitHub `main` inventory | `BLOCKED` | 21 duplicate versions and one invalid entry |
-| Forward-only PR guard regression | `MATCH` | CI regression passed on PR #444 |
-| New migration version guard | `MATCH` | CI guard passed against `origin/main` on PR #444 |
-| Clean database replay | `BLOCKED` | Static migration contract stops before local Supabase startup |
-| Hosted Supabase ledger | `UNVERIFIED` | Read access denied |
-| Local checkout parity | `UNVERIFIED` | Local filesystem not available |
-| Production readiness | `BLOCKED` | Do not deploy corrections until ledger and replay gates pass |
+| `20260916094245` | `harden_service_order_override_and_release_contract` | `20260916100000_harden_service_order_override_and_release_contract.sql` |
+| `20260916103904` | `optimize_rls_auth_uid_initplans` | `20260916110000_optimize_rls_auth_uid_initplans.sql` |
+| `20260916105508` | `harden_internal_trigger_function_execute_boundary` | `20260916112000_harden_internal_trigger_function_execute_boundary.sql` |
+| `20260916110729` | `harden_authorization_helper_execute_boundary` | `20260916113000_harden_authorization_helper_execute_boundary.sql` |
+| `20260916205934` | `harden_record_system_audit_execute_boundary` | `20260916114500_harden_record_system_audit_execute_boundary.sql` |
+| `20260917100222` | `20260917101500_harden_service_order_release_execution` | `20260917101500_harden_service_order_release_execution.sql` |
+| `20260917112143` | `expand_master_data_migration_and_legacy_records` | `20260917120000_expand_master_data_migration_and_legacy_records.sql` |
+| `20260917112203` | `add_reference_data_import_rpcs` | `20260917120500_add_reference_data_import_rpcs.sql` |
+| `20260918064318` | `expand_master_data_migration_and_legacy_records` | `20260917120000_expand_master_data_migration_and_legacy_records.sql` |
+| `20260918064331` | `add_reference_data_import_rpcs` | `20260917120500_add_reference_data_import_rpcs.sql` |
+| `20260918064345` | `legacy_migration_reconciliation_approval` | `20260917130000_legacy_migration_reconciliation_approval.sql` |
+| `20260918064407` | `clinical_admission_referral_document_lifecycle` | `20260917150000_clinical_admission_referral_document_lifecycle.sql` |
+| `20260918064421` | `facility_financial_override_configuration` | `20260917151000_facility_financial_override_configuration.sql` |
+| `20260918064426` | `specialist_referral_queue_security` | `20260917152000_specialist_referral_queue_security.sql` |
+| `20260918064432` | `encounter_workflow_workspace_rpc` | `20260917153000_encounter_workflow_workspace_rpc.sql` |
+| `20260918064438` | `default_streamlined_clinical_routing` | `20260917154000_default_streamlined_clinical_routing.sql` |
+| `20260918064444` | `specialist_referral_appointment_bridge` | `20260917160000_specialist_referral_appointment_bridge.sql` |
+| `20260918064451` | `admission_override_queue_reconciliation` | `20260917163000_admission_override_queue_reconciliation.sql` |
+| `20260918064501` | `billing_tariff_adjustment_workflow` | `20260917170000_billing_tariff_adjustment_workflow.sql` |
+| `20260918064509` | `imaging_result_clinician_notification` | `20260917200000_imaging_result_clinician_notification.sql` |
+| `20260918064515` | `discharge_accounts_reconciliation_handoff` | `20260917210000_discharge_accounts_reconciliation_handoff.sql` |
+| `20260918064522` | `discharge_billing_reconciliation_rpc` | `20260917223000_discharge_billing_reconciliation_rpc.sql` |
+| `20260918064528` | `discharge_insurance_claim_bridge` | `20260917230000_discharge_insurance_claim_bridge.sql` |
+| `20260918064630` | `insurance_claim_lifecycle_reconciliation` | `20260917233000_insurance_claim_lifecycle_reconciliation.sql` |
+| `20260918064639` | `financial_settlement_notifications` | `20260917240000_financial_settlement_notifications.sql` |
+| `20260918064645` | `consolidate_insurance_settlement_notifications` | `20260917241000_consolidate_insurance_settlement_notifications.sql` |
+| `20260918064652` | `add_radiologist_role` | `20260918060000_add_radiologist_role.sql` |
+| `20260918064659` | `staff_patient_notification_access_bridge` | `20260918070000_staff_patient_notification_access_bridge.sql` |
+| `20260918072351` | `maternity_read_workspace` | `20260918100000_maternity_read_workspace.sql` |
+| `20260918073627` | `pharmacy_read_workspace_security_bridge` | `20260918073000_pharmacy_read_workspace_security_bridge.sql` |
+| `20260918073713` | `laboratory_read_workspace_security_bridge` | `20260918073500_laboratory_read_workspace_security_bridge.sql` |
+| `20260918084852` | `emergency_read_workspace_security_bridge` | `20260918074000_emergency_read_workspace_security_bridge.sql` |
+| `20260918085811` | `operational_workspace_security_bridge` | `20260918143000_operational_workspace_security_bridge.sql` |
+| `20260918163526` | `optimize_remaining_auth_rls_initplans_20260918` | `20260918171000_optimize_remaining_auth_rls_initplans_20260918.sql` |
+| `20260918164042` | `harden_service_order_actor_boundary_20260918` | `20260918170000_harden_service_order_actor_boundary_20260918.sql` |
+| `20260918164759` | `optimize_service_order_event_rls_initplan_20260918` | `20260918172000_optimize_service_order_event_rls_initplan_20260918.sql` |
+| `20260918221434` | `tighten_clinical_admission_anesthetic_rls_20260918` | `20260918173000_tighten_clinical_admission_anesthetic_rls_20260918.sql` |
+| `20260918222218` | `bind_anesthetic_clearance_actor_20260918` | `20260918180000_bind_anesthetic_clearance_actor_20260918.sql` |
+| `20260918222257` | `consolidate_overlapping_select_rls_20260918` | `20260918181500_consolidate_overlapping_select_rls_20260918.sql` |
+| `20260919055443` | `align_admission_override_with_canonical_facility_configuration` | `20260919055741_align_admission_override_with_canonical_facility_configuration.sql` |
+| `20260919060738` | `20260919061000_persist_service_release_authorization_metadata` | `20260919061000_persist_service_release_authorization_metadata.sql` |
+| `20260919061518` | `20260919062000_scope_it_support_system_logs` | `20260919062000_scope_it_support_system_logs.sql` |
+| `20260919062218` | `20260919063000_remove_direct_it_audit_log_select` | `20260919063000_remove_direct_it_audit_log_select.sql` |
+| `20260919062524` | `20260919064000_scope_it_admin_notifications` | `20260919064000_scope_it_admin_notifications.sql` |
+| `20260921051847` | `20260920061000_service_order_item_payment_release_hardening` | `20260920061000_service_order_item_payment_release_hardening.sql` |
+| `20260921052113` | `20260920062000_insurance_claim_financial_bounds` | `20260920062000_insurance_claim_financial_bounds.sql` |
+| `20260921052230` | `20260920063000_insurance_claim_transition_state_hardening` | `20260920063000_insurance_claim_transition_state_hardening.sql` |
+| `20260921052236` | `20260920064000_invoice_item_payment_concurrency_hardening` | `20260920064000_invoice_item_payment_concurrency_hardening.sql` |
+| `20260921052241` | `20260920065000_billable_item_materialization_concurrency_hardening` | `20260920065000_billable_item_materialization_concurrency_hardening.sql` |
+| `20260921052316` | `20260920070000_discharge_claim_replay_hardening` | `20260920070000_discharge_claim_replay_hardening.sql` |
+| `20260921052323` | `20260920071000_pharmacy_dispensing_quantity_hardening` | `20260920071000_pharmacy_dispensing_quantity_hardening.sql` |
+| `20260921052328` | `20260920072000_pharmacy_pos_integrity_hardening` | `20260920072000_pharmacy_pos_integrity_hardening.sql` |
+| `20260921052332` | `20260920073000_pharmacy_inventory_workspace_hardening` | `20260920073000_pharmacy_inventory_workspace_hardening.sql` |
+| `20260921052337` | `20260920074000_pharmacy_dispense_consistency_hardening` | `20260920074000_pharmacy_dispense_consistency_hardening.sql` |
+| `20260921052341` | `20260920075000_service_order_release_consistency_hardening` | `20260920075000_service_order_release_consistency_hardening.sql` |
+| `20260921052426` | `20260920080000_lab_lifecycle_consistency_hardening` | `20260920080000_lab_lifecycle_consistency_hardening.sql` |
+| `20260921052431` | `20260920081000_imaging_lifecycle_consistency_hardening` | `20260920081000_imaging_lifecycle_consistency_hardening.sql` |
+| `20260921052434` | `20260920082000_procedure_mar_lifecycle_security_hardening` | `20260920082000_procedure_mar_lifecycle_security_hardening.sql` |
+| `20260921052438` | `20260920083000_theatre_transfusion_lifecycle_consistency_hardening` | `20260920083000_theatre_transfusion_lifecycle_consistency_hardening.sql` |
+| `20260921052442` | `20260920084000_referral_handover_lifecycle_consistency_hardening` | `20260920084000_referral_handover_lifecycle_consistency_hardening.sql` |
+| `20260921052447` | `20260920085000_admission_discharge_replay_consistency_hardening` | `20260920085000_admission_discharge_replay_consistency_hardening.sql` |
+| `20260921052451` | `20260920090000_emergency_transfusion_identity_state_hardening` | `20260920090000_emergency_transfusion_identity_state_hardening.sql` |
+| `20260921052619` | `20260920093000_staff_directory_notification_least_privilege` | `20260920093000_staff_directory_notification_least_privilege.sql` |
+| `20260921052623` | `20260920094000_maternity_workspace_read_consistency` | `20260920094000_maternity_workspace_read_consistency.sql` |
+| `20260921052628` | `20260920095000_clinical_workspace_read_hardening` | `20260920095000_clinical_workspace_read_hardening.sql` |
+| `20260921052632` | `20260920100000_operational_workspace_read_least_privilege` | `20260920100000_operational_workspace_read_least_privilege.sql` |
+| `20260921052636` | `20260920101000_operational_workspace_module_reconciliation` | `20260920101000_operational_workspace_module_reconciliation.sql` |
+| `20260921052640` | `20260920102000_admission_workspace_read_security` | `20260920102000_admission_workspace_read_security.sql` |
+| `20260921052643` | `20260920103000_patient_admission_history_read_security` | `20260920103000_patient_admission_history_read_security.sql` |
+| `20260921052659` | `20260920210000_remove_legacy_claim_transition_overloads` | `20260920210000_remove_legacy_claim_transition_overloads.sql` |
+| `20260921052703` | `20260920211000_privileged_admin_resource_scope_hardening` | `20260920211000_privileged_admin_resource_scope_hardening.sql` |
+| `20260921052707` | `20260920212000_retire_legacy_admin_role_rpc` | `20260920212000_retire_legacy_admin_role_rpc.sql` |
+| `20260921052711` | `20260920220000_notification_queue_atomic_delivery` | `20260920220000_notification_queue_atomic_delivery.sql` |
+| `20260921052715` | `20260920221000_ai_workspace_least_privilege` | `20260920221000_ai_workspace_least_privilege.sql` |
+| `20260921052718` | `20260920222000_ai_protocol_lifecycle_hardening` | `20260920222000_ai_protocol_lifecycle_hardening.sql` |
+| `20260921052722` | `20260920222100_ai_protocol_draft_creation` | `20260920222100_ai_protocol_draft_creation.sql` |
+| `20260921052726` | `20260920223000_ai_clinical_context_read_scoped` | `20260920223000_ai_clinical_context_read_scoped.sql` |
+| `20260921054344` | `clinical_read_context_linkage_hardening_clean` | `20260921100000_clinical_read_context_linkage_hardening_clean.sql` |
+| `20260921055221` | `notification_queue_worker_auth_fix` | `20260921103000_notification_queue_worker_auth_fix.sql` |
+| `20260921064730` | `post_merge_runtime_role_lookup_fix` | `20260921121000_post_merge_runtime_role_lookup_fix.sql` |
+| `20260921085524` | `20260921090000_harden_ai_clinical_context_role_lookup` | `20260921090000_harden_ai_clinical_context_role_lookup.sql` |
+| `20260922083045` | `operational_workspace_medication_read_minimization` | `20260922090000_operational_workspace_medication_read_minimization.sql` |
+| `20260925150644` | `facility_notification_onboarding` | `20260925180000_facility_notification_onboarding.sql` |
+| `20260925161337` | `notification_advisor_reconciliation` | `20260925192000_notification_advisor_reconciliation.sql` |
+| `20260925161432` | `20260925150000_production_notification_module` | `20260925150000_production_notification_module.sql` |
+| `20260925161435` | `20260925170000_notification_provider_operationalization` | `20260925170000_notification_provider_operationalization.sql` |
+| `20260925161438` | `20260925181000_notification_queue_service_role_reconciliation` | `20260925181000_notification_queue_service_role_reconciliation.sql` |
+| `20260925161441` | `20260925182000_notification_facility_onboarding_reconciliation` | `20260925182000_notification_facility_onboarding_reconciliation.sql` |
+| `20260925161443` | `20260925183000_notification_smtp_provider` | `20260925183000_notification_smtp_provider.sql` |
+| `20260925161446` | `20260925184000_notification_onboarding_configuration_catalog` | `20260925184000_notification_onboarding_configuration_catalog.sql` |
+| `20260925161449` | `20260925190000_admin_it_notification_settings_control_plane` | `20260925190000_admin_it_notification_settings_control_plane.sql` |
+| `20260925161522` | `notification_performance_reconciliation` | `20260925193000_notification_performance_reconciliation.sql` |
+| `20260925161542` | `notification_facility_policy_finalization` | `20260925194000_notification_facility_policy_finalization.sql` |
+| `20260925163034` | `notification_advisor_finalization` | `20260925200000_notification_advisor_finalization.sql` |
+| `20260925205231` | `20260925195500_notification_provider_credentials` | `20260925195500_notification_provider_credentials.sql` |
+| `20260925205248` | `20260925200000_notification_inbound_email_store` | `20260925200000_notification_inbound_email_store.sql` |
+| `20260925210206` | `20260925202000_notification_provider_it_admin_multi_provider` | `20260925202000_notification_provider_it_admin_multi_provider.sql` |
+| `20260925223450` | `20260925220000_notification_event_catalog_expansion` | `20260925220000_notification_event_catalog_expansion.sql` |
+| `20260925230241` | `add_radiology_technician_role` | `20260925233000_add_radiology_technician_role.sql` |
+| `20260925232926` | `20260925231500_harden_patient_admission_wrapper_execute` | `20260925231500_harden_patient_admission_wrapper_execute.sql` |
+| `20260925232928` | `20260925240000_notification_internal_table_rls_guards` | `20260925240000_notification_internal_table_rls_guards.sql` |
+| `20260925233744` | `seed_radiology_technician_permissions` | `20260925233500_seed_radiology_technician_permissions.sql` |
+| `20260926000317` | `20260925234500_fix_facility_access_policy_execution_boundary` | `20260925234500_fix_facility_access_policy_execution_boundary.sql` |
+| `20260926005923` | `20260926012000_governed_catalogue_creation_privileges` | `20260926012000_governed_catalogue_creation_privileges.sql` |
+| `20260926005934` | `20260926012100_fix_catalogue_service_unit_default` | `20260926012100_fix_catalogue_service_unit_default.sql` |
+| `20260926010444` | `20260926013000_fix_patient_bill_invoice_item_source_key` | `20260926013000_fix_patient_bill_invoice_item_source_key.sql` |
+| `20260926225635` | `fix_pay_selected_no_conflict` | `20260926230000_fix_pay_selected_no_conflict.sql` |
+| `20260926232847` | `role_dashboard_server_summary` | `20260926233000_role_dashboard_server_summary.sql` |
+| `20260926235425` | `billing_window_insurance_credit_receipt` | `20260926223601_billing_window_insurance_credit_receipt.sql` |
+| `20260927001253` | `dashboard_role_resolution_production_reconciliation` | `20260927001500_dashboard_role_resolution_production_reconciliation.sql` |
+| `20260928124839` | `post_merge_runtime_patient_history_rpcs` | `20260921120000_post_merge_runtime_patient_history_rpcs.sql` |
+| `20260928124849` | `harden_patient_hub_clinical_snapshot_roles` | `20260927073000_harden_patient_hub_clinical_snapshot_roles.sql` |
+| `20260928171053` | `clinical_reference_values` | `20260928170000_clinical_reference_values.sql` |
+| `20260928171108` | `harden_clinical_reference_audit_trigger` | `20260928171200_harden_clinical_reference_audit_trigger.sql` |
+| `20260928172610` | `complete_triage_clinical_reference_coverage` | `20260928183000_complete_triage_clinical_reference_coverage.sql` |
+| `20260928220742` | `add_bmi_clinical_reference` | `20260928210000_add_bmi_clinical_reference.sql` |
+| `20260928234353` | `triage_offline_idempotency` | `20260928233000_triage_offline_idempotency.sql` |
+| `20260929055007` | `triage_server_vital_requirement_parity` | `20260929060000_triage_server_vital_requirement_parity.sql` |
+| `20260929055513` | `triage_offline_replay_race_safety` | `20260929062000_triage_offline_replay_race_safety.sql` |
+| `20260929055841` | `ward_bed_facility_boundary` | `20260929070000_ward_bed_facility_boundary.sql` |
+| `20260929061302` | `inpatient_facility_boundaries` | `20260929073000_inpatient_facility_boundaries.sql` |
+| `20260929062036` | `ward_bed_management_control_plane` | `20260929080000_ward_bed_management_control_plane.sql` |
+| `20260929062038` | `ward_management_facility_selection` | `20260929081500_ward_management_facility_selection.sql` |
+| `20260929062043` | `ward_management_workspace_read_surface` | `20260929083000_ward_management_workspace_read_surface.sql` |
+| `20260929062045` | `expand_department_service_creation_roles` | `20260929084500_expand_department_service_creation_roles.sql` |
+| `20260929062047` | `20260929080000_ward_bed_management_control_plane` | `20260929080000_ward_bed_management_control_plane.sql` |
+| `20260929062050` | `20260929081500_ward_management_facility_selection` | `20260929081500_ward_management_facility_selection.sql` |
+| `20260929062053` | `20260929083000_ward_management_workspace_read_surface` | `20260929083000_ward_management_workspace_read_surface.sql` |
+| `20260929062055` | `20260929084500_expand_department_service_creation_roles` | `20260929084500_expand_department_service_creation_roles.sql` |
+| `20260929062248` | `harden_legacy_ward_visibility` | `20260929090000_harden_legacy_ward_visibility.sql` |
+| `20260929062847` | `harden_ward_table_data_api_boundary` | `20260929100000_harden_ward_table_data_api_boundary.sql` |
+| `20260929063050` | `harden_operational_workspace_search_path` | `20260929103000_harden_operational_workspace_search_path.sql` |
+| `20260929063454` | `service_catalogue_department_control` | `20260929103000_service_catalogue_department_control.sql` |
+| `20260929063458` | `insurance_tariff_governance` | `20260929110000_insurance_tariff_governance.sql` |
+| `20260929063506` | `reconcile_billing_canonical_tariffs` | `20260929113000_reconcile_billing_canonical_tariffs.sql` |
+| `20260929063756` | `insurance_company_master_data` | `20260929100000_insurance_company_master_data.sql` |
+| `20260929063848` | `claim_reconciliation_read_context` | `20260929121500_claim_reconciliation_read_context.sql` |
+| `20260929064521` | `claim_invoice_reconciliation` | `20260929120000_claim_invoice_reconciliation.sql` |
+| `20260929081044` | `patient_canonical_insurer_linkage` | `20260929150000_patient_canonical_insurer_linkage.sql` |
+| `20260929094721` | `canteen_dietary_operational_workspace` | `20260929150000_canteen_dietary_operational_workspace.sql` |
+| `20260929094922` | `seed_patient_meal_menu_permission` | `20260929150500_seed_patient_meal_menu_permission.sql` |
+| `20260929094950` | `enable_meal_menu_realtime` | `20260929151000_enable_meal_menu_realtime.sql` |
+| `20260929095050` | `fix_canteen_realtime_topic_authorization` | `20260929151500_fix_canteen_realtime_topic_authorization.sql` |
+| `20260929095149` | `restrict_canteen_patient_context_fields` | `20260929152000_restrict_canteen_patient_context_fields.sql` |
+| `20260929095154` | `cover_unindexed_foreign_keys` | `20260929163000_cover_unindexed_foreign_keys.sql` |
+| `20260929095507` | `harden_claim_security_definer_search_path` | `20260929164500_harden_claim_security_definer_search_path.sql` |
+| `20260929100439` | `harden_clinical_security_definer_search_paths` | `20260929171500_harden_clinical_security_definer_search_paths.sql` |
+| `20260929100626` | `role_dashboard_workflow_kpi_alignment` | `20260929170000_role_dashboard_workflow_kpi_alignment.sql` |
+| `20260929100746` | `patient_workflow_field_authorization` | `20260929174500_patient_workflow_field_authorization.sql` |
+| `20260929101100` | `harden_clinical_financial_security_definer_search_paths_batch2` | `20260929180000_harden_clinical_financial_security_definer_search_paths_batch2.sql` |
+| `20260929101220` | `role_dashboard_radiologist_workflow_boundary` | `20260929190000_role_dashboard_radiologist_workflow_boundary.sql` |
+| `20260929141826` | `role_dashboard_kpi_cleanup` | `20260929200000_role_dashboard_kpi_cleanup.sql` |
+| `20260929141913` | `harden_security_definer_workflow_paths_batch3` | `20260929181500_harden_security_definer_workflow_paths_batch3.sql` |
+| `20260929142135` | `harden_security_definer_workflow_paths_batch4` | `20260929183000_harden_security_definer_workflow_paths_batch4.sql` |
+| `20260929142353` | `harden_security_definer_auth_helper_paths_batch5` | `20260929184500_harden_security_definer_auth_helper_paths_batch5.sql` |
+| `20260929142436` | `active_dashboard_role_context` | `20260929203000_active_dashboard_role_context.sql` |
+| `20260929143037` | `fix_canteen_menu_rbac_realtime` | `20260929200000_fix_canteen_menu_rbac_realtime.sql` |
+| `20260929143830` | `harden_security_definer_read_workspace_paths_batch6` | `20260929203000_harden_security_definer_read_workspace_paths_batch6.sql` |
+| `20260929144302` | `harden_security_definer_clinical_context_paths_batch7` | `20260929204500_harden_security_definer_clinical_context_paths_batch7.sql` |
+| `20260929144949` | `20260929213000_harden_security_definer_mutation_paths_batch8` | `20260929213000_harden_security_definer_mutation_paths_batch8.sql` |
+| `20260929145202` | `20260929214500_reconcile_revoked_role_helper_rls_policies` | `20260929214500_reconcile_revoked_role_helper_rls_policies.sql` |
+| `20260929235557` | `account_reporting_lab_document_foundations` | `20260929233000_account_reporting_lab_document_foundations.sql` |
+| `20260929235742` | `scope_reports_to_role_audiences` | `20260929234000_scope_reports_to_role_audiences.sql` |
+| `20260930000158` | `seed_departmental_reporting_catalogue` | `20260929238000_seed_departmental_reporting_catalogue.sql` |
+| `20260930011120` | `harden_department_queue_multirole` | `20260930012000_harden_department_queue_multirole.sql` |
+| `20260930014945` | `complete_remaining_facility_attribution` | `20260930017000_complete_remaining_facility_attribution.sql` |
+| `20260930101956` | `harden_facility_reconciliation_audit` | `20260930017200_harden_facility_reconciliation_audit.sql` |
+| `20260930105425` | `derive_single_facility_context_for_users` | `20260930105508_derive_single_facility_context_for_users.sql` |
+| `20260930110651` | `20260930111220_harden_facility_governance_rpc_privileges` | `20260930111220_harden_facility_governance_rpc_privileges.sql` |
+| `20260930110653` | `20260930112000_global_diagnosis_catalogue_access` | `20260930112000_global_diagnosis_catalogue_access.sql` |
+| `20260930110737` | `20260930112100_index_facility_sharing_audit_foreign_keys` | `20260930112100_index_facility_sharing_audit_foreign_keys.sql` |
+| `20260930144000` | `expand_current_treatment_admin_access` | `20260930135600_expand_current_treatment_admin_access.sql` |
+| `20260930160347` | `durable_medication_alert_acknowledgement` | `20260930152000_durable_medication_alert_acknowledgement.sql` |
+| `20260930161253` | `harden_medication_alert_acknowledgement` | `20260930163000_harden_medication_alert_acknowledgement.sql` |
+| `20260930163227` | `repair_start_appointment_encounter_facility_attribution` | `20260930170000_repair_start_appointment_encounter_facility_attribution.sql` |
+| `20260930163749` | `fix_start_appointment_encounter_btrim` | `20260930170100_fix_start_appointment_encounter_btrim.sql` |
+| `20261001163017` | `20261001173000_enable_test_role_mode` | `20261001173000_enable_test_role_mode.sql` |
+| `20261001163101` | `20261001174500_test_mode_appointment_compatibility` | `20261001174500_test_mode_appointment_compatibility.sql` |
+| `20261001163132` | `20261001175000_test_mode_production_default_off` | `20261001175000_test_mode_production_default_off.sql` |
+| `20261001165327` | `super_admin_test_mode_toggle` | `20261001180000_super_admin_test_mode_toggle.sql` |
+| `20261001200302` | `platform_superuser_facility_onboarding` | `20261001200000_platform_superuser_facility_onboarding.sql` |
+| `20261001204413` | `fix_workflow_notification_role_enum_cast` | `20261001210000_fix_workflow_notification_role_enum_cast.sql` |
+| `20261001213448` | `refresh_postgrest_patient_history_rpc_schema_cache` | `20261001163500_refresh_postgrest_patient_history_rpc_schema_cache.sql` |
+| `20261001222653` | `clinical_results_production_tranche` | `20261001230000_clinical_results_production_tranche.sql` |
+| `20261002050540` | `appointment_schedulable_patient_directory` | `20261002050200_appointment_schedulable_patient_directory.sql` |
+| `20261002052916` | `scope_appointment_workflows_to_active_facility` | `20261002130000_scope_appointment_workflows_to_active_facility.sql` |
+| `20261002054934` | `patient_hub_and_test_facility_context_repair` | `20261002160000_patient_hub_and_test_facility_context_repair.sql` |
+| `20261002065556` | `allow_superadmin_facility_context_override` | `20261002070000_allow_superadmin_facility_context_override.sql` |
+| `20261002065703` | `allow_superadmin_facility_context_override` | `20261002070000_allow_superadmin_facility_context_override.sql` |
+| `20261002065912` | `superadmin_patient_history_context_access` | `20261002071000_superadmin_patient_history_context_access.sql` |
+| `20261002070402` | `enforce_superadmin_selected_facility_reads` | `20261002072000_enforce_superadmin_selected_facility_reads.sql` |
+| `20261002114059` | `20261002120000_pharmacy_inventory_catalogue_management` | `20261002120000_pharmacy_inventory_catalogue_management.sql` |
+| `20261002114347` | `20261002124500_preserve_pharmacy_expiry_filter` | `20261002124500_preserve_pharmacy_expiry_filter.sql` |
+| `20261002131200` | `pharmacy_global_catalogue_facility_stock_and_safety` | `20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql` |
+| `20261002131449` | `pharmacy_legacy_stock_reconciliation_rpc` | `20261002132000_pharmacy_legacy_stock_reconciliation_rpc.sql` |
+| `20261002132256` | `pharmacy_global_category_edit` | `20261002132500_pharmacy_global_category_edit.sql` |
+| `20261002134652` | `patient_hub_read_rpc_get_compatibility` | `20261002132500_patient_hub_read_rpc_get_compatibility.sql` |
+| `20261002134656` | `reassert_start_appointment_encounter_facility_context` | `20261002180000_reassert_start_appointment_encounter_facility_context.sql` |
+| `20261003094123` | `harden_service_order_and_invoice_facility_boundaries` | `20261003101500_harden_service_order_and_invoice_facility_boundaries.sql` |
+| `20261003094747` | `harden_billing_workflow_facility_boundaries` | `20261003104000_harden_billing_workflow_facility_boundaries.sql` |
+| `20261003094845` | `harden_insurance_claim_facility_boundaries` | `20261003111500_harden_insurance_claim_facility_boundaries.sql` |
+| `20261004135725` | `20261004170000_make_test_control_rls_deny_explicit` | `20261004170000_make_test_control_rls_deny_explicit.sql` |
+| `20261004184727` | `harden_notification_feature_flag_user_scope` | `20261004180000_harden_notification_feature_flag_user_scope.sql` |
+| `20261004184838` | `refine_notification_feature_flag_admin_scope` | `20261004181000_refine_notification_feature_flag_admin_scope.sql` |
+| `20261004185011` | `pin_create_ward_unit_wrapper_search_path` | `20261004183000_pin_create_ward_unit_wrapper_search_path.sql` |
+| `20261004185307` | `harden_clinical_creation_facility_context` | `20261004184500_harden_clinical_creation_facility_context.sql` |
+| `20261004185459` | `harden_appointment_inpatient_maternity_facility_context` | `20261004191500_harden_appointment_inpatient_maternity_facility_context.sql` |
+| `20261004185636` | `pin_create_admission_workflow_search_path` | `20261004193000_pin_create_admission_workflow_search_path.sql` |
+| `20261004185913` | `harden_remaining_clinical_workflows_v2` | `20261004200500_harden_remaining_clinical_workflows_v2.sql` |
+| `20261004185957` | `correct_discharge_facility_assert_order` | `20261004201500_correct_discharge_facility_assert_order.sql` |
+| `20261004190241` | `reconcile_legacy_test_patients_to_harmony_test_facility` | `20261004203000_reconcile_legacy_test_patients_to_harmony_test_facility.sql` |
+| `20261004190639` | `harden_additional_clinical_patient_writes` | `20261004204500_harden_additional_clinical_patient_writes.sql` |
+| `20261004190925` | `revoke_public_execute_hardened_clinical_rpcs` | `20261004205500_revoke_public_execute_hardened_clinical_rpcs.sql` |
+| `20261004191059` | `optimize_medication_catalogue_rls_initplan` | `20261004211000_optimize_medication_catalogue_rls_initplan.sql` |
+| `20261004192110` | `harden_collect_lab_sample_search_path` | `20261004212500_harden_collect_lab_sample_search_path.sql` |
+| `20261004192252` | `harden_patient_hub_read_rpc_search_paths` | `20261004213500_harden_patient_hub_read_rpc_search_paths.sql` |
+| `20261004192823` | `harden_billing_meal_patient_facility_context` | `20261004220000_harden_billing_meal_patient_facility_context.sql` |
+| `20261004193017` | `pin_patient_journey_wrappers_search_path` | `20261004221500_pin_patient_journey_wrappers_search_path.sql` |
+| `20261004193249` | `harden_direct_clinical_documentation_facility_context` | `20261004223000_harden_direct_clinical_documentation_facility_context.sql` |
+| `20261004193458` | `harden_remaining_direct_patient_write_wrappers` | `20261004224000_harden_remaining_direct_patient_write_wrappers.sql` |
+| `20261004193612` | `harden_care_transition_handover_lab_approval` | `20261004225000_harden_care_transition_handover_lab_approval.sql` |
+| `20261004193700` | `pin_remaining_patient_ai_billing_wrappers` | `20261004231000_pin_remaining_patient_ai_billing_wrappers.sql` |
+| `20261004193804` | `harden_alert_ack_and_ai_report_completion` | `20261004233000_harden_alert_ack_and_ai_report_completion.sql` |
+| `20261004193947` | `harden_fertility_maternity_transfusion_theatre_workflows` | `20261004234000_harden_fertility_maternity_transfusion_theatre_workflows.sql` |
+| `20261004194104` | `harden_ai_lab_patient_read_workflows` | `20261004240000_harden_ai_lab_patient_read_workflows.sql` |
+| `20261004194159` | `harden_operational_workspace_read_boundaries` | `20261004241000_harden_operational_workspace_read_boundaries.sql` |
+| `20261004194337` | `harden_referral_notification_insurance_reads` | `20261004242000_harden_referral_notification_insurance_reads.sql` |
+| `20261004194525` | `harden_notification_consent_device_boundaries` | `20261004243000_harden_notification_consent_device_boundaries.sql` |
+| `20261004194659` | `harden_remaining_notification_insurance_security_definer_boundaries` | `20261004244500_harden_remaining_notification_insurance_security_definer_boundaries.sql` |
+| `20261004194845` | `harden_maternity_operational_workspace_search_paths` | `20261004250000_harden_maternity_operational_workspace_search_paths.sql` |
+| `20261004201331` | `extend_encounter_submission_system_superuser` | `20261004254500_extend_encounter_submission_system_superuser.sql` |
+| `20261004215532` | `align_platform_facility_compatibility_wrapper` | `20261004265500_align_platform_facility_compatibility_wrapper.sql` |
+| `20261004224404` | `complete_platform_user_facility_membership_workflows` | `20261004273000_complete_platform_user_facility_membership_workflows.sql` |
+| `20261004225608` | `complete_platform_user_role_assignment_workflow` | `20261004275000_complete_platform_user_role_assignment_workflow.sql` |
+| `20261004231700` | `harden_bilateral_facility_data_sharing` | `20261004280000_harden_bilateral_facility_data_sharing.sql` |
+| `20261004233801` | `20261004290000_restrict_user_active_facility_context_management` | `20261004290000_restrict_user_active_facility_context_management.sql` |
+| `20261005091332` | `cleanup_inactive_user_facility_context` | `20261005091500_cleanup_inactive_user_facility_context.sql` |
+| `20261005094757` | `align_operational_workspace_admin_roles` | `20261005090500_align_operational_workspace_admin_roles.sql` |
+| `20261005100356` | `reconcile_workspace_role_resolution_and_zero_stock_edit` | `20261005110100_reconcile_workspace_role_resolution_and_zero_stock_edit.sql` |
+| `20261005101014` | `reconcile_workspace_and_pharmacy_rpc_compatibility` | `20261005110000_reconcile_workspace_and_pharmacy_rpc_compatibility.sql` |
+| `20261005101247` | `reconcile_inpatient_workspace_facility_boundaries` | `20261005110200_reconcile_inpatient_workspace_facility_boundaries.sql` |
+| `20261005101316` | `remove_ambiguous_pharmacy_inventory_overloads` | `20261005110300_remove_ambiguous_pharmacy_inventory_overloads.sql` |
+| `20261005102108` | `harden_patient_workflow_admin_roles` | `20261005110400_harden_patient_workflow_admin_roles.sql` |
+| `20261005102543` | `harden_missing_foreign_key_indexes` | `20261005110500_harden_missing_foreign_key_indexes.sql` |
+| `20261005120028` | `unify_runtime_patient_directory_and_pharmacy_zero_price_edits` | `20261005123000_unify_runtime_patient_directory_and_pharmacy_zero_price_edits.sql` |
+| `20261005120259` | `allow_zero_price_pharmacy_creation` | `20261005123500_allow_zero_price_pharmacy_creation.sql` |
+| `20261005152502` | `20261005153000_reconcile_authenticated_entrypoints_and_edge_schema_inventory` | `20261005153000_reconcile_authenticated_entrypoints_and_edge_schema_inventory.sql` |
+| `20261006095729` | `patient_portal_self_service_runtime_reconciliation` | `20261006095000_patient_portal_self_service_runtime_reconciliation.sql` |
+| `20261006144457` | `reconcile_platform_admin_workspace_context` | `20261006113000_reconcile_platform_admin_workspace_context.sql` |
+| `20261006144500` | `revoke_anon_review_queue_security_definers` | `20261006120000_revoke_anon_review_queue_security_definers.sql` |
+| `20261006152312` | `reconcile_remaining_facility_review_schema` | `20261006153000_reconcile_remaining_facility_review_schema.sql` |
+| `20261007151221` | `patient_portal_identity_index` | `20261007161000_patient_portal_identity_index.sql` |
+| `20261008132113` | `20261008120000_add_hr_payroll_foundation` | `20261008120000_add_hr_payroll_foundation.sql` |
+| `20261008163616` | `patient_telemedicine_availability_reconciliation` | `20261008170000_patient_telemedicine_availability_reconciliation.sql` |
+| `20261008213627` | `index_hr_payroll_foreign_keys` | `20261008214000_index_hr_payroll_foreign_keys.sql` |
+| `20261013060634` | `laboratory_specimen_accession_and_rejection` | `20261012170000_laboratory_specimen_accession_and_rejection.sql` |
 
-This report is an evidence snapshot, not an assertion that repository and hosted database parity has been achieved.
+## 3. Hosted ledger entries with no matching current main filename
+
+These 84 ledger entries have no same-name migration file in `main`. They require source recovery from Git history, the other branches, deployment artifacts, or verified SQL definitions.
+
+| Hosted version | Hosted ledger name |
+|---|---|
+| `20260916002251` | `canonical_remote_schema` |
+| `20260916003113` | `fix_start_imaging_order_queue_contract` |
+| `20260916085626` | `reconcile_imaging_lifecycle_server_authority` |
+| `20260916092730` | `reconcile_service_order_workflow_authority` |
+| `20260916093000` | `harden_service_order_rpc_execute_boundary` |
+| `20260916093154` | `reconcile_service_order_lifecycle_metadata` |
+| `20260916093512` | `harden_selected_invoice_payment_service_release` |
+| `20260916093546` | `complete_selected_invoice_service_order_release` |
+| `20260916093817` | `allow_front_desk_payment_release_boundary` |
+| `20260916103929` | `normalize_rls_auth_uid_initplans` |
+| `20260916105824` | `harden_pharmacy_rpc_authorization_boundary` |
+| `20260917113051` | `harden_reference_data_import_rpc_grants` |
+| `20260917115211` | `add_migration_reconciliation_workflows` |
+| `20260918064622` | `reconcile_transition_insurance_claim_canonical_signature` |
+| `20260918065102` | `harden_public_security_definer_execute_boundary` |
+| `20260918065144` | `remove_anon_security_definer_execute_grants` |
+| `20260918065248` | `expand_staff_patient_read_authority` |
+| `20260918065838` | `expand_is_clinical_staff_role_boundary` |
+| `20260918084821` | `imaging_read_workspace_security_bridge` |
+| `20260918090246` | `operational_workspace_nursing_care_extension` |
+| `20260918090305` | `operational_workspace_reconcile_modules` |
+| `20260918091121` | `operational_workspace_security_bridge_v2` |
+| `20260918133547` | `add_it_admin_support_role_live` |
+| `20260918133553` | `configure_it_admin_support_live` |
+| `20260918133626` | `align_functional_domain_permissions_live` |
+| `20260918152910` | `reconcile_missing_runtime_schemas_and_workflows_20260918` |
+| `20260918152955` | `harden_reconciled_function_execute_privileges_20260918` |
+| `20260918153045` | `revoke_explicit_public_function_grants_20260918` |
+| `20260918153159` | `restore_missing_operational_rpc_workflows_20260918` |
+| `20260918153526` | `restore_missing_patient_care_continuity_rpc_20260918` |
+| `20260918153551` | `tighten_reconciled_rpc_execute_privileges_20260918` |
+| `20260918153648` | `tighten_maternity_workspace_execute_privilege_20260918` |
+| `20260918155629` | `reconcile_invoice_item_service_code_and_missing_tariff_workflow_20260918` |
+| `20260918160533` | `reconcile_service_order_client_workflow_20260918` |
+| `20260918161023` | `allow_admit_after_encounter_save_20260918` |
+| `20260918161438` | `harden_billing_override_client_mutation_boundary_20260918` |
+| `20260918161954` | `add_runtime_workflow_fk_indexes_20260918` |
+| `20260918162153` | `scope_department_queue_workspace_20260918` |
+| `20260918163330` | `add_remaining_runtime_fk_indexes_20260918` |
+| `20260918164722` | `optimize_remaining_auth_rls_initplans_20260918b` |
+| `20260921064954` | `patient_history_scoped_read_rpcs` |
+| `20260925092357` | `scope_permission_rbac_policies_to_current_user` |
+| `20260925145946` | `notification_multichannel_delivery` |
+| `20260925150042` | `notification_external_fanout_reconciliation` |
+| `20260925210150` | `20260925201500_notification_provider_multi_provider` |
+| `20260926100909` | `facility_context_clinical_documentation_signatures` |
+| `20260926101003` | `encounter_draft_and_facility_workspace` |
+| `20260926101020` | `restore_operational_workspace_dispatcher` |
+| `20260926101036` | `fix_operational_workspace_aggregate` |
+| `20260926101334` | `lab_report_signature_resolution` |
+| `20260926101400` | `lab_workspace_signature_projection` |
+| `20260926235610` | `billing_window_rpc_reconcile_202609262359` |
+| `20260927000209` | `triage_partial_measurement_nullability_20260927001000_v3` |
+| `20260927000240` | `triage_temperature_precision_20260927002500` |
+| `20260928135330` | `harden_patient_appointment_role_boundary` |
+| `20260928140011` | `20260928163000_harden_legacy_clinical_role_boundaries` |
+| `20260929154601` | `harden_radiology_patient_directory_search` |
+| `20260929230239` | `20260929160000_harden_radiology_patient_directory_search` |
+| `20260929230242` | `20260929170000_fix_ward_management_workspace_ordering` |
+| `20260929230244` | `20260929200000_seed_system_settings_permission` |
+| `20260929230247` | `20260929201000_allow_it_admin_notification_onboarding` |
+| `20260929230250` | `20260929223000_harden_notification_config_anon_access` |
+| `20261001165043` | `super_admin_test_mode_toggle_control` |
+| `20261001222133` | `harden_workflow_notification_search_path` |
+| `20261001222203` | `harden_workflow_notification_search_path_20261001220000` |
+| `20261001222221` | `harden_workflow_notification_search_path_retry` |
+| `20261001222235` | `harden_workflow_notification_enum_cast` |
+| `20261001223220` | `normalize_notification_security_definer_search_path` |
+| `20261004185953` | `harden_discharge_facility_context_v2` |
+| `20261004191252` | `reassert_create_ward_unit_wrapper_search_path_v2` |
+| `20261004200928` | `reconcile_encounter_draft_edit_workflow_live` |
+| `20261004215044` | `restore_system_superuser_platform_access_and_facility_rpc_compatibility` |
+| `20261005094733` | `harden_workspace_patient_directory_and_pharmacy_stock_editing` |
+| `20261006094257` | `reconcile_patient_telemedicine_duty_validation` |
+| `20261006094402` | `reconcile_patient_clinical_snapshot_facility_boundary_live` |
+| `20261006094416` | `reconcile_patient_clinical_snapshot_facility_boundary_exact` |
+| `20261006163711` | `reconcile_encounter_completion_billing_materialization_v2` |
+| `20261013063118` | `create_laboratory_catalogue_parameters_reconciliation` |
+| `20261013063129` | `create_lab_order_with_catalogue_atomic_reconciliation` |
+| `20261026134619` | `reconcile_hr_payroll_record_management` |
+| `20261026134818` | `reconcile_inpatient_reviews_seen_at` |
+| `20261026135424` | `reconcile_laboratory_rpc_argument_contracts` |
+| `20261026135602` | `reconcile_laboratory_rpc_legacy_schema_compatibility` |
+| `20261026141054` | `reconcile_lab_catalogue_sample_quantity_rpc` |
+
+## 4. Repeated migration names in the hosted ledger
+
+The live ledger contains repeated names under different version identifiers. This may reflect migrations applied more than once under separate versions; do not delete or collapse these rows.
+
+- `expand_master_data_migration_and_legacy_records`: `20260917112143`, `20260918064318`
+- `add_reference_data_import_rpcs`: `20260917112203`, `20260918064331`
+- `allow_superadmin_facility_context_override`: `20261002065556`, `20261002065703`
+
+## 5. Candidate branch comparison
+
+The branch `ci/future-proof-migration-contracts` has 659 SQL files and no duplicate timestamp groups in its migration directory. However, it has the same broad hosted-ledger alignment pattern: only 77 exact version/name matches, 256 same-name mappings with version differences, and 84 hosted entries without a same-name file. It also diverges significantly from `main` (327 commits ahead and 25 behind in the previously inspected comparison).
+
+It is therefore useful as a source for reviewing collision repairs, but it is **not** a verified migration baseline and must not be merged wholesale.
+
+The current `main` branch contains a later `20261024070000` migration than that candidate branch's migration directory, while the live ledger has five later October 26 entries not represented by current `main` filenames:
+- `20261026134619_reconcile_hr_payroll_record_management`
+- `20261026134818_reconcile_inpatient_reviews_seen_at`
+- `20261026135424_reconcile_laboratory_rpc_argument_contracts`
+- `20261026135602_reconcile_laboratory_rpc_legacy_schema_compatibility`
+- `20261026141054_reconcile_lab_catalogue_sample_quantity_rpc`
+
+These five should be recovered as exact SQL files from their deployment source or verified commit history. Do not recreate them from their names alone.
+
+## 6. Live database security and schema-advisor observations
+
+The public table inventory reports 156 tables, all 156 with RLS enabled. The live security advisor reports:
+- **INFO — RLS Enabled No Policy:** 2 finding(s) (`rls_enabled_no_policy`)
+- **WARN — Function Search Path Mutable:** 1 finding(s) (`function_search_path_mutable`)
+- **WARN — Signed-In Users Can Execute SECURITY DEFINER Function:** 279 finding(s) (`authenticated_security_definer_function_executable`)
+- **WARN — Leaked Password Protection Disabled:** 1 finding(s) (`auth_leaked_password_protection`)
+
+Notable findings:
+- 279 SECURITY DEFINER functions callable by the authenticated role. These may be legitimate workflow RPCs, but each function must be reviewed for explicit authentication, role authorization, tenant/facility scoping, safe search_path, and argument validation. Do not bulk-revoke execution without checking application dependencies.
+- `public.ensure_updated_at` has a mutable search_path.
+- `public.lab_test_group_items` and `public.lab_test_groups` have RLS enabled but no policies; verify whether these are intended to be service-only tables.
+- Leaked-password protection is disabled in Auth.
+
+Performance advisor:
+- **INFO — Unindexed foreign keys:** 4 finding(s) (`unindexed_foreign_keys`)
+- **WARN — Auth RLS Initialization Plan:** 4 finding(s) (`auth_rls_initplan`)
+- **INFO — Unused Index:** 456 finding(s) (`unused_index`)
+- **WARN — Multiple Permissive Policies:** 12 finding(s) (`multiple_permissive_policies`)
+- **WARN — Duplicate Index:** 1 finding(s) (`duplicate_index`)
+
+These are separate security/performance remediation workstreams; this migration reconciliation did not alter them.
+
+## 7. Safe correction plan
+
+1. Freeze migration renames/deletions and avoid merging candidate timestamp rewrites.
+2. Recover exact SQL bodies for the 84 hosted-only identities and the five latest October 26 migrations.
+3. For each of the 256 renamed/version-shifted mappings, retrieve original commit history and compare SQL checksums where possible. The current SQL file must not be assumed equivalent merely because its name matches.
+4. For each duplicate timestamp group in `main`, establish which migration identity is recorded in each target database and which SQL body was applied. Do not resolve with automatic renumbering.
+5. Build an authoritative manifest containing hosted version, hosted name, canonical repository path, SHA-256, applied environments, and verification evidence.
+6. Restore missing historical files under their actual applied identities only after verifying exact contents; preserve existing applied files. If the schema needs correction, use a new forward-only migration greater than the latest confirmed ledger version (`20261026141054` at this inspection).
+7. Validate from a clean database, upgrade representative existing databases, run database contracts, and compare schema objects, policies, grants, and functions.
+8. Verify staging/non-production first. Production deployment must remain a separate approved and serialized action.
+
+## 8. Current gate status
+
+| Gate | Status |
+|---|---|
+| Supabase connection and live ledger read | `PASS` |
+| Live ledger vs main exact version/name parity | `BLOCKED` — 77/417 exact identities |
+| Main duplicate migration versions | `BLOCKED` — 21 groups |
+| Hosted migrations recoverable by filename in main | `BLOCKED` — 84 ledger entries lack a file |
+| Candidate branch as canonical baseline | `BLOCKED` — still mismatched and heavily divergent |
+| Local checkout parity | `UNVERIFIED` |
+| Clean replay and upgrade tests | `NOT RUN` — must not treat static branch checks as database replay |
+| Production migration readiness | `BLOCKED` |
+
+**No database migrations were applied during this inspection.** This is a read-only evidence report. The hosted migration ledger is now verified as readable, but full repository-to-database parity is not achieved.
