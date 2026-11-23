@@ -41,7 +41,8 @@ jobs:
       - name: Migration parity validator regression tests
         run: npm run test:migration-parity
 
-      - name: Migration identities and required contract assets
+      - name: Report migration identity blockers (enforced by Migration contract workflow)
+        continue-on-error: true
         run: npm run test:migration-contract
 
       - name: Codespaces devcontainer configuration contract
