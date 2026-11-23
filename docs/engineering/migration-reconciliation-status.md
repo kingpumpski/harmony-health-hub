@@ -878,3 +878,25 @@ A targeted branch sweep was performed after the latest CI failure to look for th
 - No migration file was changed, renamed, deleted, or promoted during this sweep.
 
 **Next provenance action:** compare the original project ZIP and any user-held pre-Supabase project archive against the earliest available Git branch/tree, then recover the SQL/schema history from the original development environment or a verifiable backup. The current repository branch search has not recovered that source, so the historical migration identity gate remains unresolved.
+
+
+## 29. Latest PR #444 migration gate and hosted/repository version boundary (2026-11-23 16:52 UTC)
+
+The diagnostic report for Migration contract run #2811 is preserved separately at [migration-ci-run-2811-diagnostics.md](./migration-ci-run-2811-diagnostics.md). The next run on the resulting documentation commit `cfb9aaba9dca76cc4bba1a3f201b76d499bc370d` completed:
+
+- Quality run #8893 / workflow run ID `45221079522`: **PASS**.
+- Migration contract run #2812 / workflow run ID `45221079449`: **FAIL**.
+- The clean replay job failed at `node scripts/migration-contract.mjs` before Supabase CLI setup or database startup. Its log prints all 21 duplicate version groups listed in section 1 and exits with code 1.
+- The schema/security job passed forward-only regression, immutable-history/ordering enforcement, `npm ci`, migration parity/workflow regression, and the laboratory panel privilege static contract. Its final migration inventory check failed on the same 21 collisions.
+- The known `$(path)` artifact is not reported by this run. The one-time exact-blob archive exception remains covered by regression checks.
+- No clean replay, live schema verification, RPC verification, privilege verification, or RLS verification ran in this workflow.
+
+### Hosted versus repository version boundary
+
+The committed hosted-ledger manifest is structurally valid and contains 417 ordered entries. Its final eight entries include the five late-October reconciliation migrations, with the latest hosted version `20261026141054`. The forward-only check compares newly added migration versions against the greater of the base repository's latest version and the hosted manifest's latest version. On the PR merge test it reported repository latest `20261024070000` and hosted latest `20261026141054`; this is an intentional safety boundary, not a replay pass. A new migration must sort after the hosted ledger's latest version, but doing so does not restore the missing historical SQL or reconcile the existing duplicates.
+
+The PR's staged laboratory privilege migration `20261123090000_harden_laboratory_panel_table_privileges_and_timestamp_trigger.sql` is forward-dated after the hosted latest version. Its static contract checks pass. It remains an unapplied candidate: it cannot compensate for the missing late-October SQL sources or make the historical chain replayable.
+
+The changed-file inventory for PR #444 still includes the staged security migration, migration governance/validation scripts, workflow changes, the hosted-ledger snapshot, and inactive provenance candidates. No historical duplicate was renamed or deleted in this continuation. No production DDL, migration ledger update, schema reset, or PR merge occurred.
+
+**Disposition:** keep PR #444 draft and unmerged. The migration identity gate is still blocked by the 21 collision groups; the two September baseline sources and three unrecovered late-October lab sources remain independent replay blockers. Continue only with source provenance, exact SQL-body comparison, dependency/order analysis, and a clean disposable-database replay after the historical inputs are verified.
