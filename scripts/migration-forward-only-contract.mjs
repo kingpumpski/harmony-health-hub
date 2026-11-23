@@ -71,6 +71,21 @@ try {
   }
 
   for (const change of changes) {
+    // The historical $(path) artifact is not a valid migration identity. Permit
+    // its one-time retirement only when its exact Git blob is preserved outside
+    // the active migration directory as a reviewed provenance candidate.
+    if (change.status === 'D' && change.file === 'supabase/migrations/$(path)') {
+      const archivedCandidate = 'docs/engineering/migration-source-candidates/legacy-workflow-notification.sql.candidate';
+      try {
+        const originalBlob = git(['rev-parse', `${mergeBase}:${change.file}`]);
+        const archivedBlob = git(['rev-parse', `HEAD:${archivedCandidate}`]);
+        if (originalBlob === archivedBlob) continue;
+        errors.push(`Unversioned migration artifact retirement must preserve its exact source blob at ${archivedCandidate}.`);
+      } catch {
+        errors.push(`Unversioned migration artifact retirement requires archived source ${archivedCandidate}.`);
+      }
+      continue;
+    }
     if (change.status !== 'A') {
       errors.push(`Existing migration history is immutable: ${change.status} ${change.file}. Add a new forward migration instead.`);
       continue;
