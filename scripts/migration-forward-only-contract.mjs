@@ -17,9 +17,13 @@ try {
   const changed = git(['diff', '--name-status', '--no-renames', `${mergeBase}...HEAD`, '--', 'supabase/migrations']);
   const ledgerManifestPath = 'supabase/migration-ledger-baseline.json';
   const ledgerManifestChanges = git(['diff', '--name-status', '--no-renames', `${mergeBase}...HEAD`, '--', ledgerManifestPath]);
-  let baselineHasLedgerManifest = true;
-  try { git(['cat-file', '-e', `${mergeBase}:${ledgerManifestPath}`]); }
-  catch { baselineHasLedgerManifest = false; }
+  let baselineLedgerManifest = null;
+  try {
+    const baselineContent = git(['show', `${mergeBase}:${ledgerManifestPath}`]);
+    baselineLedgerManifest = JSON.parse(baselineContent);
+  } catch {
+    baselineLedgerManifest = null;
+  }
 
   const baseFiles = git(['ls-tree', '-r', '--name-only', mergeBase, '--', 'supabase/migrations'])
     .split('\n').filter(file => file.endsWith('.sql'));
@@ -53,8 +57,17 @@ try {
     return { status, file };
   }) : [];
   const errors = [];
-  if (baselineHasLedgerManifest && ledgerManifestChanges) {
-    errors.push('The verified hosted migration ledger manifest is immutable. Refresh it only through a separately reviewed baseline-update procedure.');
+  if (baselineLedgerManifest && ledgerManifestChanges) {
+    const previousEntries = baselineLedgerManifest.migrations ?? [];
+    const isAppendOnly = ledgerBaseline.project_ref === baselineLedgerManifest.project_ref
+      && ledgerBaseline.schema_version === baselineLedgerManifest.schema_version
+      && ledgerBaseline.migrations.length > previousEntries.length
+      && previousEntries.every((entry, index) =>
+        entry.version === ledgerBaseline.migrations[index]?.version
+        && entry.name === ledgerBaseline.migrations[index]?.name);
+    if (!isAppendOnly) {
+      errors.push('The hosted migration ledger baseline may only be extended by appending newly verified live ledger entries; existing identities are immutable.');
+    }
   }
 
   for (const change of changes) {
