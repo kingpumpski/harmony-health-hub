@@ -36,6 +36,15 @@ try {
   assert.equal(result.status, 0, result.stderr);
 
   run(['checkout', '--detach', base]);
+  const ledgerManifestPath = path.join(root, 'supabase/migration-ledger-baseline.json');
+  const ledgerManifest = JSON.parse(fs.readFileSync(ledgerManifestPath, 'utf8'));
+  ledgerManifest.latest_version = '20261026141055';
+  fs.writeFileSync(ledgerManifestPath, JSON.stringify(ledgerManifest, null, 2));
+  run(['add', '.']); run(['commit', '-m', 'tamper with hosted ledger baseline']);
+  result = check(base);
+  assert.equal(result.status, 1, 'changing the verified hosted ledger baseline must fail');
+
+  run(['checkout', '--detach', base]);
   write('20261025000000_before_hosted_head.sql');
   run(['add', '.']); run(['commit', '-m', 'out of order migration']);
   result = check(base);
