@@ -646,3 +646,35 @@ The ZIP does not contain the current PR's `supabase/migration-ledger-baseline.js
 No duplicate migration was renamed, deleted, merged, or rewritten. The duplicate files contain distinct SQL and their deployment status cannot be proven without Git history or an authoritative migration ledger snapshot. The unversioned `$(path)` artifact is preserved; its archival/removal must be reviewed separately. The correct next step remains to obtain the authoritative source history for the pre-baseline migrations and validate the canonical baseline/replay strategy, not to renumber files speculatively.
 
 The local inventory check reproduced the existing migration filename uniqueness failure. Clean replay was not attempted because preflight fails. No local archive changes were made to the user's original ZIP and no production database changes were made.
+
+
+## 16. Review of historical duplicate-repair candidate PR #437 (2026-11-23)
+
+PR #437 branch `fix/missing-ai-diagnosis-schema-migration` was evaluated as a candidate source for the 21 duplicate-version groups and invalid artifact. It is **not safe to merge wholesale**: comparison against `main` shows the branch is 263 commits ahead and 9 behind, with broad migration and workflow changes. Its latest PR description still does not claim a successful full clean replay; it records the production baseline as unreconciled and production push disabled.
+
+### Duplicate version evidence
+
+The candidate branch's local migration register contains 661 SQL files with 661 unique 14-digit versions and no `$(path)` artifact. Its 23 collision repairs are useful as a mapping candidate. A comparison of the 22 ordinary old/new filename pairs against `main` and the live hosted ledger found:
+
+- All 22 original duplicate version prefixes are absent from the current hosted ledger.
+- All 22 proposed replacement version prefixes are also absent from the current hosted ledger.
+- 17 of the 22 candidate renames are byte-identical Git blobs.
+- 5 of the 22 candidate rename files have changed SQL contents.
+- The additional `20260929200000_secure_default_function_execute_privileges.sql` to `20260929200002_secure_default_function_execute_privileges.sql` candidate also changes SQL contents (old/new Git blob SHAs differ).
+
+Thus the repair branch demonstrates a collision-free filename plan, but it is not a pure rename-only patch. The 6 changed-content candidates must be reviewed separately. The absent versions in the one linked production ledger are evidence only for project `ygqoptvezotdqhtimdkr`; they do not prove that another shared environment never applied them. Even a version absent from production remains a local pending migration if added to the active migration directory.
+
+### Provenance inventory from PR #437
+
+Its candidate-only inventory (snapshot 2026-11-02, commit `31645d93d07fd620c3e7c54df9907ce239b3ebaf`) reports 661 local files and 417 hosted ledger entries: 80 shared version prefixes, 581 local-only versions, 337 remote-only versions, 257 same-name candidates without SQL equivalence proof, one ambiguous same-name candidate, and 79 remote entries with no same-name candidate. This is a candidate map, not a reconciled migration history.
+
+The three remaining recent hosted laboratory sources are still unresolved:
+- `20261026135424_reconcile_laboratory_rpc_argument_contracts` has a same-name candidate at version `20261026140000`.
+- `20261026135602_reconcile_laboratory_rpc_legacy_schema_compatibility` has no candidate in that inventory.
+- `20261026141054_reconcile_lab_catalogue_sample_quantity_rpc` has a same-name candidate at version `20261026150000`.
+
+The candidate SQL for the 20261026140000 file combines multiple compatibility changes, so it cannot be treated as proof of the two separately recorded hosted migration payloads. The 20261026150000 candidate defines the sample-quantity RPC but is still only a same-name candidate; exact deployed SQL/checksum is not exposed by the version/name ledger.
+
+### Decision
+
+Do not merge PR #437 wholesale and do not copy its six changed-content rename candidates as historical truth. A focused historical repair could use the 17 byte-identical rename candidates only after confirming no other shared environment applied the old versions, and after explicitly keeping production apply blocked (the new local versions would otherwise be pending). The remaining six collision resolutions require source-level review. The current PR #444 remains forward-only; no historical rename has been made in it.
