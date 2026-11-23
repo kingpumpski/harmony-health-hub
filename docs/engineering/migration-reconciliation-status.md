@@ -595,3 +595,26 @@ The report remains: application quality checks are green when the current run co
 ### Final CI confirmation for this follow-up
 - Quality run `8866` / `45158748492`: **PASS**, including all 64 steps and GitHub Pages artifact verification.
 - Migration contract run `2785` / `45158748458`: static parity checks **PASS**, including the new laboratory panel migration guard; full migration identity validation **FAILS** on the known legacy inventory blockers; clean replay **NOT RUN**.
+
+
+
+## 14. Historical source recovery update (2026-11-23)
+
+Two of the five hosted migration identities previously reported as having no repository source have now been recovered from the historical repair branch `fix/missing-ai-diagnosis-schema-migration` (PR #437) and restored byte-for-byte to the current forward-only reconciliation branch:
+
+- `20261026134619_reconcile_hr_payroll_record_management.sql` — source Git blob `a5e0c71da2de1dbae8634916c42156848344c312`.
+- `20261026134818_reconcile_inpatient_reviews_seen_at.sql` — source Git blob `a31a95aeedcba05cd2d1876966278753f1b1d30b`.
+
+The restored paths use the exact version/name identities recorded by the hosted migration ledger. They are historical source restoration only; they do not modify the hosted database or migration ledger. The source branch's PR description records that the HR/payroll and inpatient reconciliation work was applied to the connected Supabase project, but independent SQL-content equivalence against the original deployed migration payload is not available from the ledger and remains subject to source/provenance review.
+
+Three hosted migration identities still need exact source recovery:
+
+- `20261026135424_reconcile_laboratory_rpc_argument_contracts`
+- `20261026135602_reconcile_laboratory_rpc_legacy_schema_compatibility`
+- `20261026141054_reconcile_lab_catalogue_sample_quantity_rpc`
+
+PR #437 contains same-name laboratory candidates at different versions (`20261026140000_reconcile_laboratory_rpc_argument_contracts.sql` and `20261026150000_reconcile_lab_catalogue_sample_quantity_rpc.sql`). These are useful provenance leads, not exact identity matches; they have not been copied or renumbered. An earlier laboratory API compatibility migration is also not proof of the missing `20261026135602` source.
+
+### Validation after source restoration
+
+The two exact-version source files have been committed to the draft reconciliation branch. The resulting CI run must validate migration identity inventory, then clean replay. Until those checks pass, the restored files are not considered replay-verified and no production migration apply is authorized. The 21 duplicate-version groups and unversioned `$(path)` artifact remain separate blockers; the local working tree is still unverified.
