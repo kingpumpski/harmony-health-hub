@@ -529,3 +529,22 @@ The invalid `supabase/migrations/$(path)` file is a 3,416-byte SQL source file i
 - Production migration readiness: `BLOCKED`.
 
 No production database DDL was executed during this follow-up.
+
+
+## 11. Forward-only security correction staged for review (2026-11-23)
+
+A new migration was added to the draft PR:
+
+`supabase/migrations/20261123090000_harden_laboratory_panel_table_privileges_and_timestamp_trigger.sql`
+
+It is newer than the latest verified hosted migration version (`20261026141054`) and does not alter any historical migration. It performs only these targeted corrections:
+
+1. Revokes table-level privileges from `PUBLIC`, `anon`, and `authenticated` on `public.lab_test_groups` and `public.lab_test_group_items`, preserving the existing owner and `service_role` privileges.
+2. Sets `public.ensure_updated_at()` to `search_path = ''`.
+
+Before staging, the live database catalog was checked again:
+- Both laboratory panel tables currently grant broad privileges to `anon` and `authenticated`, including `TRUNCATE` and `MAINTAIN`.
+- The two application RPCs, `get_laboratory_test_groups(boolean)` and `save_laboratory_test_group(uuid,text,text,text,numeric,uuid[],boolean)`, are SECURITY DEFINER functions owned by `postgres` and already have an empty search_path. This supports retaining the service/RPC access model while removing direct table grants.
+- `ensure_updated_at()` is a non-SECURITY-DEFINER trigger function owned by `postgres`; its body only assigns `NEW.updated_at = now()` and returns `NEW`.
+
+**Important:** this migration is staged in the PR only. It has not been applied to Supabase. CI must validate it, and the historical migration identity/replay blocker must be resolved before any deployment. It must not be used to bypass clean replay or upgrade validation.
