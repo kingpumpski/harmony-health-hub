@@ -759,3 +759,16 @@ Latest CI on PR head `63fe0ce7a1e923d6e244e65fdd3117e5b77ac7a1`:
 - Migration contract run #2802 failed at the migration identity inventory step. The forward-only regression and immutability/ordering checks passed.
 - The clean replay job stopped before Supabase services started because the 21 duplicate version groups remain. No clean replay or post-replay schema verification occurred.
 - No production DDL or migration-ledger changes were made; PR #444 remains draft.
+
+
+## 23. Hosted ledger snapshot parity revalidation (2026-11-23)
+
+A fresh read-only Supabase migration-list query was compared against the committed `supabase/migration-ledger-baseline.json` snapshot on this branch.
+
+- Snapshot SHA: `3fd761783ac36ad12473afd8cd15b93bea74c838`.
+- Snapshot and live ledger each contain 417 migration version/name entries.
+- All 417 version/name pairs match exactly; no missing, extra, or changed entries were found.
+- The earliest live entry remains `20260916002251 canonical_remote_schema`; the latest remains `20261026141054 reconcile_lab_catalogue_sample_quantity_rpc`.
+- This verifies the committed snapshot against the linked hosted ledger at the time of this read-only check. It does not recover the original SQL payloads, prove SQL equivalence, or resolve the 21 duplicate local migration-version groups.
+
+The latest PR #444 head remains `1f9a5c926c0d09817526eae64078a08f348df01a` at the time of this check. Quality run #8886 passed; migration-contract run #2805 failed at duplicate-version identity preflight. Clean replay and post-replay schema verification did not run. No production DDL or migration-ledger changes were made.
