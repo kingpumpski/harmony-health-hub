@@ -43,7 +43,7 @@ try {
   // The migration inventory contract reports them separately for controlled reconciliation.
   const addedByVersion = new Map();
   for (const change of changes.filter(item => item.status === 'A')) {
-    const match = /^(\\d{14})_[a-z0-9_]+\\.sql$/.exec(path.basename(change.file));
+    const match = /^(\d{14})_[a-z0-9_]+\.sql$/.exec(path.basename(change.file));
     if (!match) continue;
     const previous = addedByVersion.get(match[1]);
     if (previous) errors.push(`New migrations reuse version ${match[1]}: ${previous} and ${change.file}`);
