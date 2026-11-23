@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harmony-forward-migration-'));
-const run = (args, options = {}) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: 'ignore', ...options });
+const run = (args, options = {}) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options });
 const write = (name, sql = 'select 1;') => {
   const file = path.join(root, 'supabase/migrations', name);
   fs.mkdirSync(path.dirname(file), { recursive: true });
