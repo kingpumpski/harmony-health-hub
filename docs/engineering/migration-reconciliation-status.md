@@ -704,3 +704,11 @@ They have therefore been moved byte-for-byte to inactive provenance artifacts:
 - `docs/engineering/migration-source-candidates/20261026134818_reconcile_inpatient_reviews_seen_at.sql.candidate`
 
 They are not active Supabase migrations and must not be copied back into `supabase/migrations/` until an approved historical provenance reconciliation establishes their role in clean replay. The forward-only contract remains unchanged; the latest CI run is being used to confirm that this correction clears the two historical-addition errors while preserving the existing inventory preflight blockers.
+
+
+## 19. CI after moving historical candidates out of active migrations (2026-11-23)
+
+On PR head `cd761a0526388e147d9f740020c674901d6b33a9`:
+- Migration contract run #2795 / `45175196230`: forward-only regression passed; forward-only migration contract passed with exactly one valid new forward migration; migration parity, workflow-regression, and laboratory privilege static guards passed. The subsequent full migration identity contract still fails only on the known invalid `$(path)` artifact and the 21 duplicate-version groups. Clean database replay was not started.
+- The two historical source additions no longer trigger the forward-only contract. Their candidate copies remain outside the active migration directory.
+- Quality run #8876 / `45175196173` was still in progress at the time of this report update; no conclusion is claimed.
