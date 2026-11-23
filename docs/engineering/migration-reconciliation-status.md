@@ -548,3 +548,15 @@ Before staging, the live database catalog was checked again:
 - `ensure_updated_at()` is a non-SECURITY-DEFINER trigger function owned by `postgres`; its body only assigns `NEW.updated_at = now()` and returns `NEW`.
 
 **Important:** this migration is staged in the PR only. It has not been applied to Supabase. CI must validate it, and the historical migration identity/replay blocker must be resolved before any deployment. It must not be used to bypass clean replay or upgrade validation.
+
+
+## 12. CI result for staged security migration (2026-11-23)
+
+- Quality run `8864` / `45157977971`: **PASS** — all 64 steps completed successfully, including typecheck, lint, application authorization/security contracts, production build, SPA route preparation, and Pages artifact integrity.
+- Migration contract run `2783` / `45157978146`: forward-only regression, hosted-ledger ordering, and validation failure-semantics checks **PASS**. The historical inventory validation still **FAILS** on the pre-existing duplicate/invalid migration inventory. Clean replay was stopped at preflight; Supabase services were not started and the new security migration was not replayed.
+- The 279 authenticated SECURITY DEFINER advisor warnings were examined further with a read-only catalog scan. 250 definitions contain one or more obvious authorization/facility guard patterns; 29 do not contain the scanned marker patterns. This is only a triage heuristic, not proof that the 29 functions are exploitable or that the other 250 are safe. No EXECUTE grants were changed. Each candidate requires source review and role/facility boundary tests before changing privileges.
+- Performance findings remain unmodified: 4 unindexed foreign-key findings, 12 multiple-permissive-policy findings, 1 duplicate index finding, 456 unused-index notices, and 4 RLS initialization-plan notices. Unused-index notices are not sufficient evidence for dropping indexes; production workload and query plans are required.
+- The security advisor still reports the two laboratory tables as RLS-enabled without policies. Their direct grants are staged for revocation; RLS no-policy findings can remain informational when access is intentionally restricted to SECURITY DEFINER RPCs. Verify the RPC execution path in clean replay before deployment.
+- Leaked-password protection remains a dashboard/Auth configuration item and was not changed.
+
+No production DDL or Auth settings were changed. PR #444 remains draft and blocked by historical migration identity recovery and clean replay.
