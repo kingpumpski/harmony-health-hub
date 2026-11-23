@@ -712,3 +712,19 @@ On PR head `cd761a0526388e147d9f740020c674901d6b33a9`:
 - Migration contract run #2795 / `45175196230`: forward-only regression passed; forward-only migration contract passed with exactly one valid new forward migration; migration parity, workflow-regression, and laboratory privilege static guards passed. The subsequent full migration identity contract still fails only on the known invalid `$(path)` artifact and the 21 duplicate-version groups. Clean database replay was not started.
 - The two historical source additions no longer trigger the forward-only contract. Their candidate copies remain outside the active migration directory.
 - Quality run #8876 / `45175196173` was still in progress at the time of this report update; no conclusion is claimed.
+
+
+## 20. Invalid artifact archived; duplicate-only preflight remains (2026-11-23)
+
+The unversioned `supabase/migrations/$(path)` file has now been removed from the active migration directory and preserved byte-for-byte as `docs/engineering/migration-source-candidates/legacy-workflow-notification.sql.candidate`. Its original Git blob is `c5293005a039b1f370fe5a88932de1831aa8acc9`. It is not a valid 14-digit migration and was never a ledger entry.
+
+The forward-only contract permits this single retirement only when the original blob from the PR base is identical to the archived candidate blob in HEAD. Regression coverage verifies the exact-copy case passes and a changed/tampered archive fails. All other existing migration deletions remain rejected.
+
+CI on PR head `b40f9aaa8c31b1cfa4a11ba36c51191ed0910fa3`, Migration contract run #2799 / `45175510139`:
+- Forward-only regression passed, including the new byte-identical archival case.
+- Forward-only migration contract passed; one valid forward migration was added and the one invalid unversioned artifact was retired under the narrow archival exception.
+- Migration parity regression and laboratory panel privilege static guard passed.
+- Full migration identity validation now reports **only the 21 duplicate version groups**; the invalid `$(path)` error is gone.
+- Clean replay still stops at preflight because of those duplicate versions; Supabase services were not started.
+
+Quality run #8880 / `45175509954` remained in progress at report time. No production DDL or migration ledger changes were made.
