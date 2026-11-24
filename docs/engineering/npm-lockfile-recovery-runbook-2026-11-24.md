@@ -53,3 +53,17 @@ The recovery workflow now also runs on pushes to the reconciliation branch (as w
 The recovery workflow now retains the seven-day artifact and commits the regenerated lockfile only after the clean `npm ci --ignore-scripts` validation succeeds. The commit step is restricted to the same-repository reconciliation-branch push or pull-request event; fork PRs and manual runs remain artifact-only. It skips the commit when the lockfile is unchanged. The write permission is limited to repository contents, and the checkout/push target is the reconciliation branch.
 
 The second recovery artifact (#2) was generated after aligning the branch manifest with `main`. It has 53 root dependencies and 21 dev dependencies; its root dependency and dev-dependency declarations match `main` exactly. It includes `@lovable.dev/mcp-js@3.6.0`, and the workflow's clean `npm ci --ignore-scripts` passed. The next push-triggered run will apply the validated lockfile to the reconciliation branch; normal CI must still pass afterwards.
+
+
+## Lockfile candidate review result
+
+The regenerated lockfile is now present on the reconciliation branch (blob SHA `c456f8cd4862fe75bd0ea0da08988f664a3cc42a`). A structured comparison against `main` confirms:
+
+- 671 package entries versus 551 in the old lockfile.
+- 120 new package paths and zero removed package paths.
+- The root dependency map (53 entries) and dev-dependency map (21 entries) match the current `main` `package.json` exactly.
+- 48 existing package entries changed only npm's `dev` / `devOptional` classification because they are now also reachable from the added runtime dependency tree.
+- Only two existing package versions changed: `debug` 4.3.7 → 4.4.3 and `js-yaml` 4.1.0 → 4.3.2. The new `@lovable.dev/mcp-js@3.6.0` dependency explicitly requires `js-yaml ^4.3.2`; the other is a transitive resolution within the dependency graph.
+- No existing package paths were removed.
+
+The recovery workflow's clean `npm ci --ignore-scripts` passed with this manifest/lockfile pair. This validates install-graph consistency only. The normal Quality workflow must now complete its full checks on the updated PR merge result before the lockfile issue is considered closed.
