@@ -4,6 +4,7 @@ import path from "path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
 import { readFileSync, writeFileSync } from "node:fs";
 import { componentTagger } from "lovable-tagger";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 function compressedAssets() {
   return {
@@ -58,7 +59,7 @@ export default defineConfig(({ mode }) => ({
     manifest: true,
     chunkSizeWarningLimit: 350,
   },
-  plugins: [react(), mode === "production" && compressedAssets(), mode === "production" && githubPagesSpaFallback("/harmony-health-hub/"), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), mcpPlugin(), mode === "production" && compressedAssets(), mode === "production" && githubPagesSpaFallback("/harmony-health-hub/"), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

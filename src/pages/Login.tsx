@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { useAuth } from '@/contexts/AuthContext';
 import { HeartPulse, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -16,6 +17,9 @@ export default function Login() {
   const loginIntent = useRef(false);
   const { login, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextParam = searchParams.get('next');
+  const returnPath = nextParam ? oauthReturnPath(nextParam) : '/dashboard';
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -23,9 +27,9 @@ export default function Login() {
         loginIntent.current = false;
         toast.success('Welcome back');
       }
-      navigate('/dashboard', { replace: true });
+      navigate(returnPath, { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, returnPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +46,7 @@ export default function Login() {
           toast.error('Please enter your first and last name.');
           return;
         }
-        await signUp(email, password, firstName.trim(), lastName.trim());
+        await signUp(email, password, firstName.trim(), lastName.trim(), nextParam ? returnPath : undefined);
         toast.success('Account created');
       }
       // Auth state owns the protected-route transition.

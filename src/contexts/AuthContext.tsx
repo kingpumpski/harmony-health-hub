@@ -23,7 +23,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, returnPath?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   switchRole: (role: UserRole) => void;
@@ -175,8 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (import.meta.env.DEV) console.debug('[auth] signIn:success');
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
-    const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}dashboard`;
+  const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string, returnPath?: string) => {
+    const base = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}`;
+    const redirectUrl = returnPath ? `${base}${returnPath}` : `${base}/dashboard`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
