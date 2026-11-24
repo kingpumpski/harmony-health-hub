@@ -1,0 +1,42 @@
+name: Recover npm lockfile artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate-lockfile:
+    name: Regenerate and validate package lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reconciliation branch
+        uses: actions/checkout@v5
+        with:
+          ref: chore/forward-only-migration-governance
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Record toolchain
+        run: |
+          node --version
+          npm --version
+
+      - name: Regenerate lockfile without running lifecycle scripts
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Validate clean dependency installation graph
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Upload reviewed lockfile candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock-recovery-${{ github.run_number }}
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
