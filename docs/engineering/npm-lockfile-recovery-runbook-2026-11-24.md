@@ -46,3 +46,10 @@ The first successful artifact run (#1) checked out the PR branch directly. Its g
 A comparison of `main`, the PR branch, and the PR merge ref showed that `main` and the merge result include `@lovable.dev/mcp-js: ^3.6.0`, while the PR branch manifest did not. The merge result therefore had one more direct dependency than its lockfile. The PR branch manifest has now been aligned with the existing `main` declaration; this does not introduce a dependency that is absent from the target branch.
 
 The recovery workflow now also runs on pushes to the reconciliation branch (as well as pull requests and manual dispatch), so the new manifest/lockfile pair can be regenerated and validated together. Review the next artifact before committing any lockfile changes.
+
+
+## Validated lockfile commit behavior
+
+The recovery workflow now retains the seven-day artifact and, when triggered by a push to `chore/forward-only-migration-governance`, commits the regenerated lockfile only after the clean `npm ci --ignore-scripts` validation succeeds. It skips the commit when the lockfile is unchanged. Pull-request and manual runs remain artifact-only. The write permission is limited to repository contents, and the commit condition is restricted to pushes on the reconciliation branch.
+
+The second recovery artifact (#2) was generated after aligning the branch manifest with `main`. It has 53 root dependencies and 21 dev dependencies; its root dependency and dev-dependency declarations match `main` exactly. It includes `@lovable.dev/mcp-js@3.6.0`, and the workflow's clean `npm ci --ignore-scripts` passed. The next push-triggered run will apply the validated lockfile to the reconciliation branch; normal CI must still pass afterwards.
