@@ -134,6 +134,7 @@
     "test:react-hook-imports": "node scripts/react-hook-import-runtime-contract.mjs"
   },
   "dependencies": {
+    "@lovable.dev/mcp-js": "^3.6.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
