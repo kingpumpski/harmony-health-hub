@@ -50,6 +50,6 @@ The recovery workflow now also runs on pushes to the reconciliation branch (as w
 
 ## Validated lockfile commit behavior
 
-The recovery workflow now retains the seven-day artifact and, when triggered by a push to `chore/forward-only-migration-governance`, commits the regenerated lockfile only after the clean `npm ci --ignore-scripts` validation succeeds. It skips the commit when the lockfile is unchanged. Pull-request and manual runs remain artifact-only. The write permission is limited to repository contents, and the commit condition is restricted to pushes on the reconciliation branch.
+The recovery workflow now retains the seven-day artifact and commits the regenerated lockfile only after the clean `npm ci --ignore-scripts` validation succeeds. The commit step is restricted to the same-repository reconciliation-branch push or pull-request event; fork PRs and manual runs remain artifact-only. It skips the commit when the lockfile is unchanged. The write permission is limited to repository contents, and the checkout/push target is the reconciliation branch.
 
 The second recovery artifact (#2) was generated after aligning the branch manifest with `main`. It has 53 root dependencies and 21 dev dependencies; its root dependency and dev-dependency declarations match `main` exactly. It includes `@lovable.dev/mcp-js@3.6.0`, and the workflow's clean `npm ci --ignore-scripts` passed. The next push-triggered run will apply the validated lockfile to the reconciliation branch; normal CI must still pass afterwards.
