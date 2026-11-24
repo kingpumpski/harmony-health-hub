@@ -2,6 +2,13 @@ name: Recover npm lockfile artifact
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/recover-npm-lockfile.yml"
 
 permissions:
   contents: read
