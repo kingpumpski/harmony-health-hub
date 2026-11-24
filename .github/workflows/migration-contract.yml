@@ -12,7 +12,7 @@ on:
       - '.github/workflows/supabase-migrations.yml'
       - 'package.json'
   push:
-    branches: [main, 'feature/**', 'fix/**', 'ci/**']
+    branches: [main, 'feature/**', 'fix/**', 'ci/**', 'chore/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
