@@ -37,3 +37,12 @@ On success, it uploads the generated `package-lock.json` as a seven-day artifact
 ## Separate migration blocker
 
 The migration contract workflow still fails closed on 21 duplicate migration version groups. The lockfile workflow does not alter migration validation, migration SQL, or any Supabase project. Clean database replay remains blocked until the historical identities are resolved and independently verified.
+
+
+## Merge-result manifest mismatch found and corrected
+
+The first successful artifact run (#1) checked out the PR branch directly. Its generated lockfile was byte-for-byte identical to the tracked lockfile (Git blob SHA `ecbb7acceb69899170b80687d4725ea71cae9e35`), so it was not a repair. That run passed `npm ci` because the branch manifest did not include `@lovable.dev/mcp-js`.
+
+A comparison of `main`, the PR branch, and the PR merge ref showed that `main` and the merge result include `@lovable.dev/mcp-js: ^3.6.0`, while the PR branch manifest did not. The merge result therefore had one more direct dependency than its lockfile. The PR branch manifest has now been aligned with the existing `main` declaration; this does not introduce a dependency that is absent from the target branch.
+
+The recovery workflow now also runs on pushes to the reconciliation branch (as well as pull requests and manual dispatch), so the new manifest/lockfile pair can be regenerated and validated together. Review the next artifact before committing any lockfile changes.
