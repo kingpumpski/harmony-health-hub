@@ -56,7 +56,7 @@ jobs:
           retention-days: 7
 
       - name: Commit validated lockfile on reconciliation-branch pushes
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/chore/forward-only-migration-governance' }}
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/chore/forward-only-migration-governance') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'chore/forward-only-migration-governance') }}
         run: |
           if git diff --quiet -- package-lock.json; then
             echo "The validated lockfile is already current; no commit is needed."
