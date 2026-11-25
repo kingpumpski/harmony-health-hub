@@ -162,3 +162,29 @@ The eight-assertion facility contract has been tightened to normalize SQL whites
 
 This stricter contract is expected to fail against the currently inspected hosted definitions: the maternity, department queue, laboratory, imaging, and canteen RPCs do not resolve active facility scope; the pharmacy RPC still grants facility-admin bypass on patient and dispensing-plan reads; the operational appointments branch contains a null-facility bypass and ward/bed branches include unassigned rows; and the patient-audit policy lacks facility lineage. The contract is a regression gate, not a repair. No hosted function or policy was altered.
 
+## Nursing handover ward-link restoration — 2026-11-25
+
+A read-only canonical catalog check confirms the deployed
+`public.create_nursing_shift_handover(uuid,text,text,text,text,boolean,uuid)`
+function inserts into `nursing_shift_handovers.ward_id`, while the live table
+does not contain that column. The function already validates a supplied ward
+against `ward_units.id` and the patient's resolved facility, and it uses an
+empty search_path. The live handover table currently has zero rows, and the
+proposed forward migration version `20261125090000` is not present in the
+hosted migration ledger.
+
+The existing forward migration restores a nullable UUID column, a
+`ward_units(id)` foreign key with `ON DELETE SET NULL`, and a supporting
+index. This preserves handover history if a ward is removed and does not
+rewrite the deployed RPC. Added
+`supabase/tests/database/nursing_handover_ward_link_contract.sql` with four
+catalog assertions for column nullability/type, validated FK target, delete
+behavior, and index validity. Registered it in the Supabase migration
+workflow's `verify` and `apply` modes.
+
+The migration and regression test are repository changes only. The SQL test
+has not been executed because this environment has no local Supabase CLI or
+disposable PostgreSQL 17/Supabase target; the hosted database has not been
+changed. The migration workflow's normal historical-inventory preflight still
+blocks a safe apply while the 21 duplicate historical migration-version
+groups remain unresolved. Keep the PR draft and do not bypass that gate.
