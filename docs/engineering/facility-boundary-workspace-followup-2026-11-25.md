@@ -111,6 +111,10 @@ Add database regression tests for:
 - platform exceptions are explicit and role-tested;
 - JSON response keys, order, and limits remain backward compatible.
 
+## Regression contract added
+
+Added `supabase/tests/database/facility_boundary_workspace_contract.sql` with eight pgTAP checks covering maternity, department queue, pharmacy, laboratory, imaging, canteen, operational workspace and patient-audit facility boundaries. These checks are expected to fail against the currently inspected hosted definitions until the forward repairs are implemented. The contract has not yet been added to an automated disposable-database replay job.
+
 ## Deployment boundary
 
 These are confirmed live-definition findings, not applied repairs. No forward
