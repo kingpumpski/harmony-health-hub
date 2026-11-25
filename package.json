@@ -138,7 +138,8 @@
     "test:module-relationship-contract": "node scripts/module-relationship-contract.mjs",
     "test:laboratory-panel-access-model": "node scripts/lab-panel-access-model-contract.mjs",
     "test:default-function-acl-database-contract": "node scripts/default-function-acl-database-contract.mjs",
-    "test:report-submissions-readonly-contract": "node scripts/report-submissions-readonly-contract.mjs"
+    "test:report-submissions-readonly-contract": "node scripts/report-submissions-readonly-contract.mjs",
+    "test:billing-window-special-forms-database-contract": "node scripts/billing-window-special-forms-database-contract.mjs"
   },
   "dependencies": {
     "@lovable.dev/mcp-js": "^3.6.0",
