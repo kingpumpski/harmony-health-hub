@@ -114,6 +114,9 @@ jobs:
       - name: Patient audit access contract source
         run: npm run test:patient-audit-access-contract
 
+      - name: Patient audit data minimization contract
+        run: npm run test:patient-audit-data-minimization-contract
+
       - name: Updated-at trigger search_path contract source
         run: npm run test:ensure-updated-at-search-path-contract
       - name: SECURITY DEFINER creation contract
