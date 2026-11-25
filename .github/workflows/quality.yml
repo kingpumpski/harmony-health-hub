@@ -160,6 +160,8 @@ jobs:
 
       - name: Ward and bed workspace resilience contract
         run: npm run test:ward-bed-board-resilience
+      - name: Nursing handover ward schema contract
+        run: npm run test:nursing-handover-schema-contract
 
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
