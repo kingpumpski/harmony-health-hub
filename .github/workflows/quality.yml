@@ -163,6 +163,9 @@ jobs:
       - name: Nursing handover ward schema contract
         run: npm run test:nursing-handover-schema-contract
 
+      - name: Cross-module database schema contract
+        run: npm run test:module-schema-contract
+
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
 
