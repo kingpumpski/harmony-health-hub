@@ -76,7 +76,7 @@ BEGIN
     IF NOT v_index.indisvalid
        OR NOT v_index.indisready
        OR v_index.indnatts <> 1
-       OR v_index.indkey <> ARRAY[v_ward_attnum]::smallint[] THEN
+       OR v_index.indkey::smallint[] <> ARRAY[v_ward_attnum]::smallint[] THEN
       RAISE EXCEPTION
         'Existing idx_nursing_shift_handovers_ward_id conflicts with the canonical ward_id index; reconcile it before applying this migration';
     END IF;
