@@ -211,3 +211,37 @@ in this environment, and the SQL migration and pgTAP test have not been
 executed against PostgreSQL. The hosted schema and migration ledger remain
 unchanged. The known migration-inventory blockers still prevent clean replay
 and deployment.
+
+## Operational workspace role-resolution defect — 2026-11-25
+
+A fresh read-only inspection of the canonical
+`public.get_operational_workspace(text,integer)` definition exposed a separate
+authorization/availability defect. Its initial `v_role` resolution CASE handles
+`system_superuser`, `admin`, `it_admin`, `practitioner`, `nurse`,
+`midwife`, and `specialist_nurse`, then raises `Staff profile required`
+when no role is resolved. Later module authorization branches explicitly list
+`front_desk`, `accountant`, and `radiologist` for appointments, insurance,
+facilities, and AI clinical workspaces, but those roles are not assigned to
+`v_role` by the resolver. Those branches are therefore unreachable for users
+whose relevant role is one of those three and who have no other role in the
+resolver CASE.
+
+The same live function confirms the facility-boundary issues recorded above:
+the appointments predicate includes a role-independent
+`v_facility IS NULL` bypass; ward and bed queries include
+`facility_id IS NULL` rows for ordinary callers. The helper
+`current_user_facility_id()` already distinguishes the system-superuser
+selected-facility path from ordinary active-facility/membership resolution.
+The intended platform-wide exception must therefore be expressed as an explicit
+platform-role plus no-selected-facility condition, never as a standalone
+null-facility bypass.
+
+Expanded `facility_boundary_workspace_contract.sql` from eight to nine
+assertions. The new assertion verifies that the three roles named by the
+workspace's module authorization branches are actually mapped by its role
+resolver. This is a regression gate and is expected to fail against the
+currently inspected live definition. No function replacement or role grant was
+made. A forward repair must preserve existing module-specific authorization,
+add the missing resolver cases only after confirming their canonical enum
+membership and app role semantics, and correct the appointment/ward/bed
+facility predicates without granting facility administrators global access.
