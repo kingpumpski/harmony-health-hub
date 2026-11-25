@@ -85,3 +85,26 @@ A focused read-only recheck refined the ACL and audit findings:
 - Maternity episodes and observations both have an `audit_operational_row_change` trigger. Only maternity episodes have the observed facility-lineage trigger.
 
 No maternity, patient, audit, or configuration row contents were queried during this recheck. No database writes or deployments occurred.
+
+
+## Maternity workspace SECURITY DEFINER follow-up (2026-11-25)
+
+A focused function-body inspection identifies a more direct exposure path than the child-table RLS policy alone:
+
+- `get_maternity_workspace(integer,uuid)` is SECURITY DEFINER with an empty search_path, but it does not call `current_user_facility_id()` or a patient-facility assertion.
+- Its episode query joins maternity episodes to patients but does not filter either record by the caller's active facility.
+- Its observation query joins observations to episodes and patients but likewise does not constrain the episode/patient facility to the caller.
+- For a supplied `_episode_id`, the existence check only verifies that the episode joins to a patient; it does not establish caller facility access.
+- The function returns episode and observation data in JSON, so underlying table RLS does not protect these owner-executed queries.
+
+The separate `record_maternity_observation_workflow` is materially stronger: it resolves the episode's patient and facility, rejects unresolved facility attribution, calls `assert_patient_facility_context`, and requires active-facility equality for ordinary clinical roles. It exempts admin, IT admin and system superuser from that equality check; this privileged override should remain an explicit policy decision and should be audited. Preserve the function's exact 11-argument identity and empty search_path if it is later changed.
+
+**Required repair:**
+1. Replace `get_maternity_workspace` through a forward migration that resolves the caller's active facility once and fails closed for ordinary clinical roles when it is NULL.
+2. Scope both episode and observation subqueries to the same facility, and require patient and episode facility attribution to agree. Do not treat NULL facility IDs as global.
+3. For a requested episode ID, return a not-found/unauthorized response without disclosing whether a foreign-facility episode exists.
+4. Define platform/global access explicitly; do not assume every admin role is entitled to unrestricted cross-facility maternity data.
+5. Add regression tests for same-facility, foreign-facility, null-facility, patient/episode mismatch, null active facility, and privileged override cases.
+6. Review `maternity_observations` policies as defense in depth. Their role-only policies do not constrain access through the parent episode; add parent facility authorization or revoke direct table access in favor of reviewed RPCs, after checking UI callsites.
+
+No maternity or patient row contents were queried. No schema, policy, grant, or data changes were made.
