@@ -132,7 +132,8 @@
     "test:laboratory-specimen-rls": "node scripts/laboratory-specimen-rls-contract.mjs",
     "test:specialist-workflow-indexes": "node scripts/specialist-workflow-index-contract.mjs",
     "test:react-hook-imports": "node scripts/react-hook-import-runtime-contract.mjs",
-    "test:nursing-handover-schema-contract": "node scripts/nursing-handover-schema-contract.mjs"
+    "test:nursing-handover-schema-contract": "node scripts/nursing-handover-schema-contract.mjs",
+    "test:module-schema-contract": "node scripts/module-schema-contract.mjs"
   },
   "dependencies": {
     "@lovable.dev/mcp-js": "^3.6.0",
