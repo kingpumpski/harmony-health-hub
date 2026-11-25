@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     if (!documentId) throw new Error('Document id is required');
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) throw new Error('LOVABLE_API_KEY missing');
-    const { data: doc, error: docError } = await db.from('outside_lab_documents').select('patient_id,title,document_type').eq('id', documentId).maybeSingle();
+    const { data: doc, error: docError } = await authClient.from('outside_lab_documents').select('patient_id,title,document_type').eq('id', documentId).maybeSingle();
     if (docError || !doc) throw new Error('Document not found');
     const effectiveTitle = String(title ?? doc.title ?? 'Outside diagnostic').slice(0, 300);
     const effectiveType = String(documentType ?? doc.document_type ?? 'diagnostic').slice(0, 100);

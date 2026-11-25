@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
     const onboarding = body?.onboarding === 'password' ? 'password' : 'invite';
     const requestedRole = String(body?.role ?? 'patient').trim().toLowerCase();
     if (!ADMIN_USER_ROLE_SET.has(requestedRole)) return json({ error: 'Unsupported role' }, 400);
-    if (requestedRole === 'system_superuser' && callerRole !== 'system_superuser') {
+    if (['admin','it_admin','system_superuser'].includes(String(requestedRole)) && callerRole !== 'system_superuser') {
       return json({ error: 'Only a System Superuser can create or assign another System Superuser.' }, 403);
     }
 
