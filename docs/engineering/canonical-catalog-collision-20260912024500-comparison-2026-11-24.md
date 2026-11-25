@@ -72,3 +72,32 @@ This is a material reason not to rename, drop, or choose one of the same-version
 ## Safety disposition
 
 Read-only catalog inspection only. No SQL migration, table alteration, data mutation, policy change, grant change, or deployment was performed. The canonical project remains unchanged.
+
+
+## Follow-up security and relationship review (2026-11-25)
+
+A subsequent read-only catalog pass extended the original comparison to RLS policies, triggers, and effective table grants. It did not inspect clinical row contents.
+
+### Facility controls now present in the canonical schema
+
+- The modern `ward_units` and `ward_beds` tables have RLS enabled, authenticated direct DML revoked, and facility-identity SELECT guards. The current policy inventory shows SELECT-only client policies for these tables.
+- The legacy `wards` and `beds` tables remain separate objects. Both have RLS enabled and facility-related policy layers. Authenticated direct DML is revoked. The legacy `beds` table still has anon SELECT table privilege, but no anon row policy was observed; this is excess grant surface, not proof of anon row access.
+- `emergency_cases` has RLS enabled, a facility-isolation SELECT policy and a facility-identity SELECT guard in addition to the older clinical-role policy.
+- `transfusion_records` has RLS enabled, facility-isolation SELECT and facility-identity SELECT guards in addition to the clinical-role policy.
+- `nursing_care_plans`, `nursing_shift_handovers`, `theatre_cases`, and the insurance tables also have facility-aware SELECT policy layers in the live catalog. Do not replace these with the candidates' role-only policy definitions.
+- The current live nursing handover table still has no `ward_id`; a forward nullable ward-link repair is staged separately and remains unapplied. It must be tested against the current RPC and generated types before deployment.
+
+### Remaining relationship exceptions
+
+The canonical schema still lacks:
+- `emergency_cases.patient_id -> patients.id`
+- `transfusion_records.patient_id -> patients.id`
+- `ward_beds.admission_id -> admissions.id`
+
+Read-only orphan checks previously returned zero for these three relationships. That does not decide deletion semantics. In particular, emergency and transfusion records are clinical/audit history; do not choose CASCADE merely because the source candidate used it. Decide between RESTRICT, SET NULL with immutable patient attribution, or another retention-safe design with clinical records governance before adding constraints. The ward-bed admission link has a separately reviewed staged proposal for a restrictive FK because release/discharge paths clear the link before a bed becomes unoccupied.
+
+### Migration collision conclusion remains unchanged
+
+The live system contains both the legacy and modern ward models, both insurance case and claim models, and hybrid/evolved clinical tables. This confirms that the two candidates are not interchangeable and neither can be selected as a complete winner. Preserve both files. Keep the four missing relationship exceptions explicit until forward migrations are applied, validated, and reflected in generated types.
+
+No schema writes, grants, policy changes, migration replay, or deployment occurred during this follow-up.
