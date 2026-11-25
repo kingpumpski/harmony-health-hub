@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(9);
+SELECT plan(10);
 
 -- Normalize whitespace so the assertions describe authorization semantics
 -- rather than depending on the SQL formatter used by CREATE FUNCTION.
@@ -108,6 +108,16 @@ SELECT ok(
   ),
   'patient audit log read policy requires patient lineage and active facility authorization'
 );
+
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_admin:=v_rolein(''it_admin'',''system_superuser'')%'
+  AND d NOT LIKE '%v_platform_admin:=v_rolein(''admin''%',
+  'facility admin is not treated as a platform-wide bypass when active facility context is missing'
+) FROM f;
 
 SELECT * FROM finish();
 ROLLBACK;
