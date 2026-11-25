@@ -13,6 +13,11 @@ SELECT ok(
       AND c.confrelid = 'public.admissions'::regclass
       AND c.contype = 'f'
       AND a.attname = 'admission_id'
+      AND cardinality(c.conkey) = 1
+      AND c.confkey = ARRAY[
+        (SELECT attnum FROM pg_attribute
+         WHERE attrelid = 'public.admissions'::regclass AND attname = 'id')
+      ]::smallint[]
       AND c.confdeltype = 'r'
       AND c.convalidated
   ),
