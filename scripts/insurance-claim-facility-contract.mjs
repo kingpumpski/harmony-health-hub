@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const migrationPath = 'supabase/migrations/20261003111500_harden_insurance_claim_facility_boundaries.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
-const sql = migration.replace(/\\s+/g, ' ').trim().toLowerCase();
+const sql = migration.replace(/\s+/g, ' ').trim().toLowerCase();
 
 const claimSignatures = [
   'public.transition_insurance_claim_canonical(uuid,text,numeric,numeric,text,text)',
@@ -37,6 +37,6 @@ assert(sql.includes('grant execute on function %s to authenticated'), 'authentic
 assert(sql.includes('public.assert_patient_facility_context(v_patient_id)'), 'insurance case mutation must enforce patient/test-mode context');
 assert(sql.includes('v_case_facility is distinct from v_patient_facility'), 'insurance case facility must match patient facility');
 assert(sql.includes('if v_patient_facility is null'), 'unresolved patient facility must fail closed');
-assert(!/update\\s+public\\.(insurance_claims|invoices)\\s+set\\s+facility_id/i.test(migration), 'facility hardening must not silently backfill historical claims or invoices');
+assert(!/update\s+public\.(insurance_claims|invoices)\s+set\s+facility_id/i.test(migration), 'facility hardening must not silently backfill historical claims or invoices');
 
 console.log('Insurance claim facility-boundary contract passed.');
