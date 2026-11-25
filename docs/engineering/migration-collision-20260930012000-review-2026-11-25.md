@@ -77,3 +77,25 @@ The live laboratory-order RPC also has facility and encounter checks; preserve i
 ## Safety disposition
 
 Preserve both candidate files byte-for-byte. Do not rename or delete either duplicate version. No historical SQL has been certified as the exact applied source, and the duplicate timestamp remains unresolved.
+
+
+## Facility-lineage and data-readiness follow-up (2026-11-25)
+
+A further read-only aggregate check changes the safe-repair plan:
+
+- All 7 current `department_queues` rows have `facility_id IS NULL`.
+- 13 of 14 current `service_orders` rows have `facility_id IS NULL`.
+- All 5 current `patients` rows have non-null facility attribution.
+- There are currently zero queue rows with a missing service-order reference, zero queue/service-order patient-ID mismatches, and zero service orders with a missing patient.
+- All 7 joined queue/order/patient chains have at least one facility mismatch (the queue and order facility IDs are NULL while patient facility IDs are populated).
+
+These are counts only; no row contents were inspected. This means a simple fail-closed predicate requiring all three existing facility columns to equal the caller's active facility would hide every current queue item. It is still the correct authorization posture for fully attributed records, but a migration must not silently strand existing work.
+
+**Required sequencing before deploying the RPC replacement:**
+1. Trace the authoritative facility source for each queue item and service order through their patient, encounter, creator, and originating workflow. Do not blindly copy patient facility onto historical orders if patient transfers or cross-facility referrals are valid.
+2. Determine whether queue facility should be derived from the service order's operational destination, not merely copied from patient facility.
+3. Backfill only rows whose lineage is unambiguous and record an auditable reconciliation; quarantine ambiguous rows for authorized review rather than exposing them globally.
+4. Add write-path invariants so new queue/order/patient facility relationships cannot drift. Preserve legitimate cross-facility referral/transfer semantics with explicit source and destination facilities if the product supports them.
+5. Only then deploy a fail-closed RPC predicate and test that legacy ambiguous records remain inaccessible to ordinary users but visible to an explicitly authorized reconciliation workflow.
+
+No data was changed. The queue RPC remains a confirmed SECURITY DEFINER facility-isolation gap, and the repair is blocked on safe attribution—not on the authorization rule itself.
