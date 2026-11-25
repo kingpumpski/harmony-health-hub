@@ -219,6 +219,9 @@ jobs:
       - name: Billing window special-form migration contract
         run: npm run test:billing-window-special-forms
 
+      - name: Billing window deployed-function catalog contract
+        run: npm run test:billing-window-special-forms-database-contract
+
       - name: Specialist clinical workflow schema contract
         run: npm run test:specialist-clinical-workflows-schema
 
