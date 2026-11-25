@@ -83,3 +83,31 @@ values are NULL.
 All findings above come from read-only catalog, policy and advisor queries.
 No audit row content was inspected, no Auth setting was modified, no migration
 was generated or applied, and no production data was changed.
+
+## 4. Regression gates added — 2026-11-25
+
+Two database-level pgTAP contracts have been added:
+
+- `supabase/tests/database/patient_audit_access_contract.sql` checks RLS on
+  both audit tables, denies anonymous direct reads, denies authenticated direct
+  mutations, preserves the admin-controlled legacy audit read, and requires a
+  facility-aware policy for staff reads from `patient_audit_log`.
+- `supabase/tests/database/ensure_updated_at_search_path_contract.sql` checks
+  that `public.ensure_updated_at()` pins an empty function-level
+  `search_path`.
+
+Matching Node source contracts were added and registered in the Quality workflow.
+The contracts intentionally express the desired hardened state, not a claim that
+the hosted database already meets it.
+
+The live catalog snapshot remains unchanged: anonymous SELECT and authenticated
+direct DML privileges are still effective on both audit tables; the staff read
+policy on `patient_audit_log` is clinical-role based without facility context;
+and `ensure_updated_at()` has no function-level configuration. The new
+database assertions are therefore expected to fail against the current hosted
+state until forward migrations are prepared and verified.
+
+No ACL, policy, function, or row was changed. Before changing audit grants,
+the application and trigger/RPC write paths still require complete call-site
+verification. The database tests have not been executed on disposable PostgreSQL
+17, and CI for the latest branch head remains unverified.
