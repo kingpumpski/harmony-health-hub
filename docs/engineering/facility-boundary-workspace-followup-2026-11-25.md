@@ -188,3 +188,26 @@ disposable PostgreSQL 17/Supabase target; the hosted database has not been
 changed. The migration workflow's normal historical-inventory preflight still
 blocks a safe apply while the 21 duplicate historical migration-version
 groups remain unresolved. Keep the PR draft and do not bypass that gate.
+
+## Nursing handover migration conflict-detection hardening — 2026-11-25
+
+The staged `20261125090000_restore_nursing_handover_ward_link.sql` migration
+has been tightened before deployment. Previously, its idempotency checks
+accepted any same-name foreign key or index without verifying that the existing
+object actually represented the intended ward relationship. It now validates
+the exact FK target, source/target columns, validation state, and
+`ON DELETE SET NULL` behavior. It also validates that the named index is valid,
+ready, and indexes only `ward_id`. A same-name conflicting object raises an
+exception rather than being silently treated as success or automatically
+dropped.
+
+The Node static migration contract now checks these fail-closed conflict
+branches and the database regression asset. This protects against an
+environment where a prior partial/manual schema change created an object with
+the expected name but incorrect definition.
+
+These are source-level safeguards only. The static contract has not been run
+in this environment, and the SQL migration and pgTAP test have not been
+executed against PostgreSQL. The hosted schema and migration ledger remain
+unchanged. The known migration-inventory blockers still prevent clean replay
+and deployment.
