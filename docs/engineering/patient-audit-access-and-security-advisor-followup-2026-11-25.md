@@ -111,3 +111,42 @@ No ACL, policy, function, or row was changed. Before changing audit grants,
 the application and trigger/RPC write paths still require complete call-site
 verification. The database tests have not been executed on disposable PostgreSQL
 17, and CI for the latest branch head remains unverified.
+
+## 5. Patient audit trigger and UI reconciliation — 2026-11-25
+
+A further read-only production inspection established that the `patients`
+table has two enabled audit triggers:
+
+- `t_patient_audit_changes` calls `audit_patient_changes()` and writes to
+  `patient_audit_log`.
+- `trg_patient_audit` calls `audit_patient_change()` and writes to
+  `patient_audit`.
+
+Both triggers fire after INSERT, UPDATE and DELETE. The live tables contain
+11 rows in `patient_audit` and 8 rows in `patient_audit_log` at inspection
+time. Their schemas are not identical: the former uses `operation`,
+`actor_user_id`, JSONB `changed_fields`, and `occurred_at`; the latter uses
+`action`, `changed_by`, TEXT[] `changed_fields`, and `changed_at`. Both
+retain old/new JSONB record snapshots. The Patient Audit screen reads only
+`patient_audit_log`, so the second audit stream is not currently represented
+in that screen.
+
+The application page previously selected and rendered complete old/new patient
+JSON snapshots. This was excessive for a page described as demographic and
+administrative change history. The page now selects only the audit event
+metadata and changed-field names, and no longer renders raw snapshots. A source
+regression check, `scripts/patient-audit-data-minimization-contract.mjs`, is
+registered in the Quality workflow.
+
+This does not resolve the audit architecture. Do not drop either trigger,
+merge the tables, or migrate historical records until the canonical audit
+record contract, event coverage, actor semantics, retention obligations,
+consumer dependencies, and historical completeness have been reconciled.
+The existing direct UI read also means a facility-aware SELECT policy must be
+implemented without accidentally blocking legitimate audit reads; audit rows
+with null patient lineage need an explicit restricted-access rule. The current
+broad clinical-staff policy remains a production security gap.
+
+No audit rows, triggers, policies, grants, or functions were modified in the
+hosted project. The row counts above are an inspection snapshot, not a durable
+invariant. Disposable PostgreSQL replay and latest-head CI remain outstanding.
