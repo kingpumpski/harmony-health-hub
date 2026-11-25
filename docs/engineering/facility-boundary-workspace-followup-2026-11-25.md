@@ -245,3 +245,42 @@ made. A forward repair must preserve existing module-specific authorization,
 add the missing resolver cases only after confirming their canonical enum
 membership and app role semantics, and correct the appointment/ward/bed
 facility predicates without granting facility administrators global access.
+
+## Operational workspace historical role-fix provenance — 2026-11-25
+
+A source-to-canonical comparison now identifies a likely explanation for the
+role-resolution regression. The repository contains
+`20261013133000_reconcile_operational_workspace_role_resolution.sql`, whose
+role resolver adds module-specific mappings for front-desk appointments,
+accountant insurance, front-desk/accountant facility directory access, and
+radiologist AI-clinical access. The hosted migration ledger does not contain
+version `20261013133000`; the live function definition also lacks those
+module-specific resolver branches. This is consistent with the observed
+unreachable authorization branches, but it does not prove whether the migration
+was never applied, applied under another version, or later overwritten. The
+ledger/source mismatch must be reconciled with object history and later
+migration provenance before selecting a forward repair.
+
+The historical migration is not safe to replay unchanged. It preserves the
+existing appointment predicate that allows a null active facility, and the ward
+and bed branches still include rows with NULL facility IDs for ordinary
+callers. Its global bypass also groups `admin` and `it_admin` with
+`system_superuser`, although the application role model identifies `admin`
+as a facility-level role and reserves the explicit platform-superuser role.
+Therefore, copying this historical function wholesale would restore some
+staff routing while retaining known cross-facility exposure.
+
+The database regression assertion was refined to match the intended,
+module-scoped role mappings from that historical migration, rather than
+requiring a role to be resolved for every unrelated module. It now expects
+front desk only in appointments/facilities, accountant only in
+insurance/facilities, and radiologist only in AI clinical. This avoids
+accidentally broadening role resolution beyond the existing module gates.
+
+A safe forward repair must combine the proven module-scoped role mappings with
+the current function's response shape and all current module branches, then
+replace the null-facility appointment bypass and NULL-facility ward/bed
+visibility. Platform-wide access must be explicitly limited to the approved
+platform role, while facility administrators remain facility-scoped. Preserve
+the empty search_path and authenticated-only execution boundary. No function
+was changed and no migration was applied in this tranche.
