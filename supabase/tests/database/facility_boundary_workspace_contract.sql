@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(10);
+SELECT plan(12);
 
 -- Normalize whitespace so the assertions describe authorization semantics
 -- rather than depending on the SQL formatter used by CREATE FUNCTION.
@@ -117,6 +117,29 @@ SELECT ok(
   d LIKE '%v_platform_admin:=v_rolein(''it_admin'',''system_superuser'')%'
   AND d NOT LIKE '%v_platform_admin:=v_rolein(''admin''%',
   'facility admin is not treated as a platform-wide bypass when active facility context is missing'
+) FROM f;
+
+
+-- Appointment reads must fail closed without an active facility for ordinary
+-- staff. Only the explicit platform roles may bypass when no facility is selected.
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%(v_platform_adminandv_facilityisnullorp.facility_id=v_facility)%'
+  AND d NOT LIKE '%v_rolenotin(''admin'',''it_admin'',''system_superuser'')orv_facilityisnullorp.facility_id=v_facility%',
+  'appointment reads require active-facility lineage unless an explicit platform administrator has no facility selected'
+) FROM f;
+
+-- Unassigned ward/bed rows are not a shared cross-facility workspace.
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_adminandv_facilityisnullorfacility_id=v_facility%'
+  AND d LIKE '%v_platform_adminandv_facilityisnullorb.facility_id=v_facility%'
+  AND d NOT LIKE '%facility_idisnull%',
+  'ward and bed reads exclude unassigned facility rows for ordinary callers'
 ) FROM f;
 
 SELECT * FROM finish();
