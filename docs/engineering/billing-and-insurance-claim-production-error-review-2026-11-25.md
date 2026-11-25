@@ -138,3 +138,41 @@ Verification boundary: the new Node source contract has not yet been executed
 in a local checkout, the pgTAP contract has not been run against a disposable
 PostgreSQL 17 database, and no CI run for the latest branch head is available.
 No hosted migration or production change was made.
+
+## Billing RPC contract expansion — 2026-11-25
+
+A fresh read-only catalog query against the canonical hosted database confirmed
+that the live billing materialization function currently has:
+
+- `SECURITY DEFINER` enabled and `search_path=""`;
+- the existing 14-column TABLE return shape;
+- EXECUTE granted to `authenticated` and `service_role`, with no EXECUTE
+  granted to `anon` or `PUBLIC`;
+- the existing three-argument UUID/timestamptz signature.
+
+The billing pgTAP regression contract has been expanded from one assertion to
+five. It now checks the invalid special-form spellings, SECURITY DEFINER and
+empty search_path, exact return shape, authenticated/anon/PUBLIC execution
+boundary, and the canonical argument signature. The Node source contract also
+checks that these database assertions remain present. The existing Supabase
+migration workflow already registers the pgTAP contract in both verify and
+apply modes, so no additional workflow wiring was needed.
+
+This is a guardrail improvement, not the production fix. The live function
+still contains the three invalid qualified forms. The historical repair file
+is deliberately not being edited or replayed under its old identity. A new
+forward migration cannot be safely authored here because the environment has
+no Supabase CLI, and Supabase's migration workflow requires generating a new
+migration with `supabase migration new`. The existing historical repair also
+needs disposable PostgreSQL 17 execution testing, including the invoice-total
+and admission-accommodation date-range paths, before it can be promoted into a
+new forward migration.
+
+The observed `service_role` grant is preserved as part of the existing
+production contract; the client-facing authenticated grant remains explicit,
+and no anon/PUBLIC access is introduced.
+
+Verification boundary: this turn committed the expanded SQL and Node source
+contracts. Neither the Node contract nor pgTAP was executed in a local checkout
+or PostgreSQL test database. The hosted catalog query was read-only. No
+production schema, grant, invoice, claim, or payment record was changed.
