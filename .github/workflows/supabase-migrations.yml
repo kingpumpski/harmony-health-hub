@@ -133,6 +133,22 @@ jobs:
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/ensure_updated_at_search_path_contract.sql
 
+      - name: Verify default public function execution ACL contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/default_function_acl_contract.sql
+
+      - name: Verify laboratory panel direct-access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/laboratory_panel_access_model_contract.sql
+
+      - name: Verify Reports Center read-only table access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/report_submissions_readonly_contract.sql
+
+      - name: Verify ward-bed admission foreign-key contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ward_beds_admission_fk_contract.sql
+
       - name: Verify clinical workspace read contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/clinical_workspace_read_contract.sql
