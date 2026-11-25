@@ -25,7 +25,7 @@ The read-only Supabase migration listing confirms these hosted ledger identities
 
 The active repository contains the two historical function definitions above, both expecting `ward_id`. The original canonical baseline SQL is not available to prove which initial table definition was used or why the column was omitted. Therefore this report does **not** attribute the omission to one specific colliding September migration candidate.
 
-The key chronology is established: the baseline is recorded, later hosted handover RPC migrations assume the ward column, and the current live table does not provide it.
+The key chronology is established: the baseline is recorded, later hosted handover RPC migrations assume the ward column, and the current live table does not provide it. The precise migration at which the column was omitted cannot be proven without the original baseline SQL.
 
 ## Canonical live evidence
 
