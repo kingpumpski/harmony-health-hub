@@ -26,7 +26,9 @@ The deployed `prepare_patient_billable_items` definition contains schema-qualifi
 special SQL expressions: `pg_catalog.coalesce`, `pg_catalog.greatest`, and
 `pg_catalog.least`. These are SQL special forms, not callable functions, and must
 not be schema-qualified. The function also contains several other occurrences, so
-fixing only the first failing expression would expose subsequent failures.
+fixing only the first failing expression would expose subsequent failures. A
+read-only inventory of all public functions and procedures found this to be the
+only live routine containing any of these three invalid qualified special forms.
 
 The repository already contains
 `20261013150000_fix_billing_window_special_form_qualification.sql`, which
