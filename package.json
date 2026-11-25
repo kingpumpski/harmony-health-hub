@@ -141,7 +141,8 @@
     "test:report-submissions-readonly-contract": "node scripts/report-submissions-readonly-contract.mjs",
     "test:billing-window-special-forms-database-contract": "node scripts/billing-window-special-forms-database-contract.mjs",
     "test:patient-audit-access-contract": "node scripts/patient-audit-access-contract.mjs",
-    "test:ensure-updated-at-search-path-contract": "node scripts/ensure-updated-at-search-path-contract.mjs"
+    "test:ensure-updated-at-search-path-contract": "node scripts/ensure-updated-at-search-path-contract.mjs",
+    "test:patient-audit-data-minimization-contract": "node scripts/patient-audit-data-minimization-contract.mjs"
   },
   "dependencies": {
     "@lovable.dev/mcp-js": "^3.6.0",
