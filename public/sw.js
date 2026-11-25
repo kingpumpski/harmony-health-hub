@@ -1,5 +1,5 @@
 const BASE_PATH = '/harmony-health-hub';
-const CACHE_NAME = 'harmony-health-hub-shell-v17';
+const CACHE_NAME = 'harmony-health-hub-shell-v18';
 const SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
@@ -7,8 +7,6 @@ const SHELL = [
 ];
 const PRODUCTION_MANIFEST = `${BASE_PATH}/.vite/manifest.json`;
 const NETWORK_ONLY_PATHS = new Set([
-  `${BASE_PATH}/`,
-  `${BASE_PATH}/index.html`,
   `${BASE_PATH}/sw.js`,
   `${BASE_PATH}/manifest.webmanifest`,
   PRODUCTION_MANIFEST,
@@ -85,16 +83,22 @@ self.addEventListener('fetch', (event) => {
   // Serve the current SPA shell instead so BrowserRouter can resolve the path.
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request, { cache: 'no-store' }).then(async (response) => {
-      if (response.ok) return response;
-      if (response.status === 404) {
-        const shell = await fetch(`${BASE_PATH}/index.html`, { cache: 'no-store' });
-        if (shell.ok) return shell;
+      // GitHub Pages deep links return 404. A transient hosting 5xx should
+      // also fall back to the SPA shell instead of surfacing a route-level 503.
+      if (response.ok || (response.status !== 404 && response.status < 500)) return response;
+      try {
+        const networkShell = await fetch(`${BASE_PATH}/index.html`, { cache: 'no-store' });
+        if (networkShell.ok) return networkShell;
+      } catch {
+        // Use the last successfully cached application shell below.
       }
-      return response;
+      const cachedShell = await caches.match(`${BASE_PATH}/index.html`);
+      if (cachedShell) return cachedShell;
+      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>The application shell is not available offline. Reconnect and refresh before continuing.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }).catch(async () => {
       const shell = await caches.match(`${BASE_PATH}/index.html`);
       if (shell) return shell;
-      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>Harmony Health Hub is temporarily offline. Reconnect and refresh.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>The application shell is not available offline. Reconnect and refresh before continuing.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }));
     return;
   }
@@ -110,17 +114,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(fetch(request).then((response) => {
-    if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())).catch(() => undefined);
-    return response;
-  }).catch(async () => {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    if (request.mode === 'navigate') {
-      const shell = await caches.match(`${BASE_PATH}/index.html`);
-      if (shell) return shell;
-      return new Response('<!doctype html><title>Harmony Health Hub offline</title><p>Harmony Health Hub is temporarily offline. Reconnect and refresh.</p>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-    }
-    return new Response('', { status: 503, statusText: 'Offline' });
-  }));
+  // Do not cache arbitrary same-origin GET responses: clinical/API payloads
+  // must not become stale service-worker cache entries. Only the app shell and
+  // fingerprinted build assets are eligible for offline caching.
 });
