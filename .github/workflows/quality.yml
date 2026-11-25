@@ -110,6 +110,12 @@ jobs:
         run: npm run test:public-security-definer-exposure
       - name: Default function ACL database contract
         run: npm run test:default-function-acl-database-contract
+
+      - name: Patient audit access contract source
+        run: npm run test:patient-audit-access-contract
+
+      - name: Updated-at trigger search_path contract source
+        run: npm run test:ensure-updated-at-search-path-contract
       - name: SECURITY DEFINER creation contract
         run: npm run test:security-definer-creation
       - name: Authenticated SECURITY DEFINER exposure contract
