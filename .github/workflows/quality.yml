@@ -70,6 +70,9 @@ jobs:
       - name: Laboratory attachment schema and RPC contract
         run: npm run test:laboratory-attachments-schema
 
+      - name: Laboratory panel RPC-only access contract
+        run: npm run test:laboratory-panel-access-model
+
       - name: Clinical report-only access contract
         run: npm run test:clinical-report-access
 
