@@ -4,7 +4,7 @@ SELECT plan(8);
 -- Normalize whitespace so the assertions describe authorization semantics
 -- rather than depending on the SQL formatter used by CREATE FUNCTION.
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_maternity_workspace(integer,uuid)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_maternity_workspace(integer,uuid)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -15,7 +15,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_department_queue(text,integer)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_department_queue(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -27,7 +27,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_pharmacy_workspace(integer)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_pharmacy_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -39,7 +39,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_laboratory_workspace(integer)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_laboratory_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -50,7 +50,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_imaging_workspace(integer)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_imaging_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -60,7 +60,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_canteen_active_patient_orders()'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_canteen_active_patient_orders()'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
@@ -71,7 +71,7 @@ SELECT ok(
 ) FROM f;
 
 WITH f AS (
-  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '\\s+', '', 'g') AS d
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
   d LIKE '%current_user_facility_id%'
