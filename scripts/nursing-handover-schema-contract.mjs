@@ -23,10 +23,32 @@ assert.match(
 );
 assert.match(
   migration,
-  /CREATE INDEX IF NOT EXISTS idx_nursing_shift_handovers_ward_id\s+ON public\.nursing_shift_handovers\s*\(ward_id\)/i,
+  /CREATE INDEX idx_nursing_shift_handovers_ward_id\s+ON public\.nursing_shift_handovers\s*\(ward_id\)/i,
   'ward FK must have a supporting index',
 );
 assert.match(migration, /COMMENT ON COLUMN public\.nursing_shift_handovers\.ward_id/i);
+assert.match(
+  migration,
+  /Existing nursing_shift_handovers_ward_id_fkey conflicts with the canonical ward link/i,
+  'an incorrect same-name FK must stop the migration',
+);
+assert.match(
+  migration,
+  /Existing idx_nursing_shift_handovers_ward_id conflicts with the canonical ward_id index/i,
+  'an incorrect same-name index must stop the migration',
+);
+assert.match(
+  migration,
+  /v_index\\.indkey::smallint\\[\\] <> ARRAY\\[v_ward_attnum\\]::smallint\\[\\]/i,
+  'index validation must compare the exact single-column definition',
+);
+const databaseContract = readFileSync(
+  'supabase/tests/database/nursing_handover_ward_link_contract.sql',
+  'utf8',
+);
+assert.match(databaseContract, /SELECT plan\\(4\\)/);
+assert.match(databaseContract, /confdeltype = 'n'/);
+
 assert.doesNotMatch(migration, /\b(DROP|TRUNCATE)\s+(TABLE|COLUMN|CONSTRAINT|INDEX)\b/i);
 assert.doesNotMatch(migration, /CREATE OR REPLACE FUNCTION/i, 'repair must preserve the already-deployed facility-aware RPC');
 
