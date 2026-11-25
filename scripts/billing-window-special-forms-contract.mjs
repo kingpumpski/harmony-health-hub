@@ -19,6 +19,7 @@ assert.ok(databaseContract.includes('SELECT plan(5);'), 'Database contract must 
 assert.ok(databaseContract.includes("p.proconfig @> ARRAY['search_path=\"\"']"), 'Database contract must verify empty search_path');
 assert.ok(databaseContract.includes('pg_get_function_result('), 'Database contract must verify the canonical return shape');
 assert.ok(databaseContract.includes("has_function_privilege('authenticated'"), 'Database contract must verify authenticated execution');
+assert.ok(databaseContract.includes("has_function_privilege('service_role'"), 'Database contract must preserve service-role execution');
 assert.ok(databaseContract.includes("has_function_privilege('anon'"), 'Database contract must verify anonymous execution is denied');
 assert.ok(databaseContract.includes('a.grantee = 0'), 'Database contract must verify PUBLIC execution is denied');
 
