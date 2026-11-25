@@ -122,3 +122,18 @@ migration was generated because the environment still lacks a usable local
 Supabase CLI and disposable PostgreSQL 17/Supabase replay target. Do not deploy
 function replacements or data backfills until those verification prerequisites
 are available. Existing PR #444 remains draft and unmerged.
+
+## Follow-up verification gates — 2026-11-25
+
+The migration workflow now explicitly runs the database regression contracts for:
+- facility-boundary workspace reads;
+- patient-audit access;
+- billing-window special-form qualification; and
+- `ensure_updated_at()` search-path pinning.
+
+These checks run in the workflow's `verify` and `apply` modes after the normal migration preflight. They are not evidence that the fixes have already been applied. The live definitions inspected on 2026-11-25 still contain the documented defects, so a verify run against the current hosted schema is expected to fail closed until the forward repairs are implemented and safely deployed.
+
+A fresh trigger-dependency query confirms `public.ensure_updated_at()` is attached to exactly three public tables: `lab_orders`, `lab_test_group_items`, and `lab_test_groups`. This narrows the blast radius of the planned empty-search-path pin; it does not replace regression testing of all three update paths.
+
+The security advisor snapshot still reports two RLS-enabled/no-policy informational findings on the laboratory panel tables, one mutable-search-path warning on `ensure_updated_at()`, 279 authenticated-callable SECURITY DEFINER functions, and disabled leaked-password protection. No table grants, policies, function definitions, Auth settings, clinical rows, or financial rows were changed in this follow-up.
+
