@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync(new URL('../supabase/migrations/20261015060000_reconcile_missing_laboratory_objects.sql', import.meta.url), 'utf8');
+const panelMigration = readFileSync(new URL('../supabase/migrations/20261013180000_laboratory_test_panels.sql', import.meta.url), 'utf8');
 const manager = readFileSync(new URL('../src/components/laboratory/LabTestGroupsManager.tsx', import.meta.url), 'utf8');
 const databaseContract = readFileSync(new URL('../supabase/tests/database/laboratory_panel_access_model_contract.sql', import.meta.url), 'utf8');
 
@@ -19,7 +20,7 @@ assert.match(
   'panel read RPC must be SECURITY DEFINER with a pinned empty search path and active-facility scope',
 );
 assert.match(
-  migration,
+  panelMigration,
   /CREATE OR REPLACE FUNCTION public\.save_laboratory_test_group[\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path = ''[\s\S]*?current_user_facility_id\(\)/i,
   'panel write RPC must be SECURITY DEFINER with a pinned empty search path and active-facility scope',
 );
