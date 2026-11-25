@@ -169,6 +169,9 @@ jobs:
       - name: Cross-module database schema contract
         run: npm run test:module-schema-contract
 
+      - name: Cross-module foreign-key relationship contract
+        run: npm run test:module-relationship-contract
+
       - name: Direct patient order facility contract
         run: npm run test:direct-patient-order-facility
 
