@@ -7,7 +7,7 @@ const types = readFileSync(typesPath, 'utf8');
 // This contract is intentionally checked against the generated Database type,
 // which is refreshed from the canonical Supabase catalog. It catches missing
 // module tables and column drift before application code is released.
-const tablePattern = /^      ([a-z][a-z0-9_]*): \\{\\n        Row: \\{\\n([\\s\\S]*?)\\n        \\}\\n        Insert:/gm;
+const tablePattern = new RegExp(String.raw`^      ([a-z][a-z0-9_]*): \\{\\n        Row: \\{\\n([\\s\\S]*?)\\n        \\}\\n        Insert:`, 'gm');
 const tables = new Map();
 for (const match of types.matchAll(tablePattern)) {
   const columns = [...match[2].matchAll(/^          ([a-z][a-z0-9_]*):/gm)].map((item) => item[1]);
