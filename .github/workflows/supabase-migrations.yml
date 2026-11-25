@@ -117,6 +117,10 @@ jobs:
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/maternity_workspace_contract.sql
 
+      - name: Verify facility-boundary workspace contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/facility_boundary_workspace_contract.sql
+
       - name: Verify clinical workspace read contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/clinical_workspace_read_contract.sql
