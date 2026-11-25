@@ -1,0 +1,66 @@
+-- REVIEW CANDIDATE ONLY. NOT AN ACTIVE SUPABASE MIGRATION.
+-- Generate a new timestamped migration with `supabase migration new` before use.
+-- Rewrites only known, exact authorization fragments in the deployed function.
+-- Fails closed if any expected source fragment is missing or ambiguous.
+DO $migration$
+DECLARE
+  v_definition text;
+  v_old text;
+  v_new text;
+  v_pairs text[][] := ARRAY[
+    ARRAY[
+      'v_platform_admin := v_role IN (''admin'',''it_admin'',''system_superuser'');',
+      'v_platform_admin := v_role IN (''it_admin'',''system_superuser'');'
+    ],
+    ARRAY[
+      'AND (v_role NOT IN (''admin'',''it_admin'',''system_superuser'') OR v_facility IS NULL OR p.facility_id=v_facility)',
+      'AND (v_platform_admin AND v_facility IS NULL OR p.facility_id=v_facility)'
+    ],
+    ARRAY[
+      'WHERE active AND (v_platform_admin AND v_facility IS NULL OR facility_id IS NULL OR facility_id=v_facility)',
+      'WHERE active AND (v_platform_admin AND v_facility IS NULL OR facility_id=v_facility)'
+    ],
+    ARRAY[
+      'WHERE v_platform_admin AND v_facility IS NULL OR b.facility_id IS NULL OR b.facility_id=v_facility',
+      'WHERE v_platform_admin AND v_facility IS NULL OR b.facility_id=v_facility'
+    ],
+    ARRAY[
+      'WHERE is_active ORDER BY name LIMIT v_limit',
+      'WHERE is_active AND (v_platform_admin AND v_facility IS NULL OR id=v_facility) ORDER BY name LIMIT v_limit'
+    ]
+  ];
+  v_i integer;
+BEGIN
+  SELECT pg_catalog.pg_get_functiondef(
+    'public.get_operational_workspace(text,integer)'::pg_catalog.regprocedure
+  ) INTO v_definition;
+
+  IF v_definition IS NULL THEN
+    RAISE EXCEPTION 'Required operational workspace function is missing';
+  END IF;
+
+  FOR v_i IN 1..pg_catalog.array_length(v_pairs, 1) LOOP
+    v_old := v_pairs[v_i][1];
+    v_new := v_pairs[v_i][2];
+
+    IF pg_catalog.strpos(v_definition, v_old) = 0
+       OR pg_catalog.length(v_definition) - pg_catalog.length(pg_catalog.replace(v_definition, v_old, '')) <> pg_catalog.length(v_old) THEN
+      RAISE EXCEPTION 'Operational workspace source anchor % is missing or ambiguous; review live definition before applying', v_i;
+    END IF;
+
+    v_definition := pg_catalog.replace(v_definition, v_old, v_new);
+  END LOOP;
+
+  IF v_definition ILIKE '%v_role IN (''admin'',''it_admin'',''system_superuser'')%'
+     OR v_definition ILIKE '%facility_id IS NULL%'
+     OR v_definition ILIKE '%v_role NOT IN (''admin'',''it_admin'',''system_superuser'') OR v_facility IS NULL%' THEN
+    RAISE EXCEPTION 'Operational workspace facility boundary correction did not remove all reviewed bypass patterns';
+  END IF;
+
+  EXECUTE v_definition;
+END;
+$migration$;
+
+REVOKE ALL ON FUNCTION public.get_operational_workspace(text, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_operational_workspace(text, integer) TO authenticated;
+NOTIFY pgrst, 'reload schema';
