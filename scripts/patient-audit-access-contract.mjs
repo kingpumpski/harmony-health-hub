@@ -8,7 +8,9 @@ for (const table of ['patient_audit', 'patient_audit_log']) {
 for (const privilege of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
   assert.ok(sql.includes("'" + privilege + "'"), 'audit contract must inspect ' + privilege);
 }
-assert.match(sql, /current_user_can_select_facility_record|current_user_facility_id/, 'audit log read contract must require facility context');
-assert.match(sql, /SELECT plan[(]6[)]/, 'audit contract must declare all six assertions');
+assert.match(sql, /current_user_facility_id/, 'audit log read contract must require active facility context');
+assert.match(sql, /ILIKE '%patients%'/, 'audit log read contract must join patient lineage');
+assert.match(sql, /ILIKE '%exists%'/, 'audit log read contract must require an existing patient row');
+assert.match(sql, /SELECT plan[(]7[)]/, 'audit contract must declare all seven assertions');
 
 console.log('[patient-audit-access] database contract source checks passed');
