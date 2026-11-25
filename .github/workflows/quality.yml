@@ -79,6 +79,9 @@ jobs:
       - name: Reports Center read-only submission contract
         run: npm run test:report-submissions-readonly-contract
 
+      - name: Reports Center read-only submission contract
+        run: npm run test:report-submissions-readonly-contract
+
       - name: Navigation and header UX contract
         run: node scripts/navigation-header-ux-contract.mjs
       - name: Global UI standardization contract
