@@ -10,7 +10,8 @@ const rpcMigration = readFileSync(
 );
 const ui = readFileSync('src/pages/NursingHandover.tsx', 'utf8');
 
-const version = /^([0-9]{14})_/.exec(migrationPath)?.[1];
+const migrationFileName = migrationPath.split('/').at(-1) ?? migrationPath;
+const version = /^([0-9]{14})_/.exec(migrationFileName)?.[1];
 assert.ok(version, 'forward migration must use a 14-digit timestamp');
 assert.ok(version > ledger.latest_version, 'forward migration must sort after the verified hosted ledger');
 
