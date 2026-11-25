@@ -148,3 +148,17 @@ A fresh read-only catalog check confirms the following live conditions:
 
 The Supabase migration workflow now invokes the four corresponding database contracts in `verify` and `apply` modes. These tests intentionally inspect the linked hosted database without mutating it. Until the forward migrations are applied, the default-function ACL, laboratory panel ACL, Reports Center direct-write, and any still-missing ward-bed FK checks may fail; that failure is the intended safety signal. No ACL, policy, foreign key, function, or application data was changed during this review.
 
+## Facility-boundary contract precision update — 2026-11-25
+
+The eight-assertion facility contract has been tightened to normalize SQL whitespace and check the actual record lineage, rather than merely searching for a generic `facility_id` token. It now requires:
+- maternity episode and patient facility equality, plus a fail-closed missing-facility branch;
+- department queue, service order, and patient facility equality;
+- pharmacy's platform-level exception to be distinct from facility-admin access, with the previous admin bypass predicates rejected;
+- laboratory patient, order, and result facility predicates;
+- imaging patient and imaging-order facility predicates;
+- canteen order, patient, and meal-plan facility predicates;
+- operational workspace rejection of null-facility bypasses and unassigned ward/bed rows; and
+- patient-audit SELECT policy lineage through patient and active-facility authorization.
+
+This stricter contract is expected to fail against the currently inspected hosted definitions: the maternity, department queue, laboratory, imaging, and canteen RPCs do not resolve active facility scope; the pharmacy RPC still grants facility-admin bypass on patient and dispensing-plan reads; the operational appointments branch contains a null-facility bypass and ward/bed branches include unassigned rows; and the patient-audit policy lacks facility lineage. The contract is a regression gate, not a repair. No hosted function or policy was altered.
+
