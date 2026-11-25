@@ -137,3 +137,14 @@ A fresh trigger-dependency query confirms `public.ensure_updated_at()` is attach
 
 The security advisor snapshot still reports two RLS-enabled/no-policy informational findings on the laboratory panel tables, one mutable-search-path warning on `ensure_updated_at()`, 279 authenticated-callable SECURITY DEFINER functions, and disabled leaked-password protection. No table grants, policies, function definitions, Auth settings, clinical rows, or financial rows were changed in this follow-up.
 
+## Additional privilege and linkage verification — 2026-11-25
+
+A fresh read-only catalog check confirms the following live conditions:
+
+- PostgreSQL default EXECUTE ACLs for functions created by both `postgres` and `supabase_admin` in `public` explicitly include `anon` and `authenticated`. The existing two-assertion database contract is therefore a genuine outstanding blocker, not a hypothetical guard.
+- `lab_test_groups` and `lab_test_group_items` each still grant `SELECT`, `INSERT`, `UPDATE`, and `DELETE` to both `anon` and `authenticated`. Their RLS/no-policy posture currently denies ordinary row access, but the excessive table ACLs remain unnecessary exposure and must be revoked in a forward migration after confirming owner/service-role and RPC behavior.
+- `report_submissions` grants authenticated `SELECT`, `INSERT`, and `UPDATE`; it grants no direct `DELETE`. This conflicts with the intended read-only direct table contract because the application mutation paths were previously traced to governed RPCs. Revoke direct INSERT/UPDATE and remove the matching direct-write policies only after a forward migration has passed callsite and RPC regression checks.
+- `ward_beds` grants authenticated SELECT only; its restrictive validated `admission_id` foreign-key contract remains an independent integrity gate.
+
+The Supabase migration workflow now invokes the four corresponding database contracts in `verify` and `apply` modes. These tests intentionally inspect the linked hosted database without mutating it. Until the forward migrations are applied, the default-function ACL, laboratory panel ACL, Reports Center direct-write, and any still-missing ward-bed FK checks may fail; that failure is the intended safety signal. No ACL, policy, foreign key, function, or application data was changed during this review.
+
