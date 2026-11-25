@@ -105,6 +105,8 @@ jobs:
 
       - name: Public SECURITY DEFINER exposure contract
         run: npm run test:public-security-definer-exposure
+      - name: Default function ACL database contract
+        run: npm run test:default-function-acl-database-contract
       - name: SECURITY DEFINER creation contract
         run: npm run test:security-definer-creation
       - name: Authenticated SECURITY DEFINER exposure contract
