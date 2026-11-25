@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(21);
+SELECT plan(20);
 
 SELECT ok(
   (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.lab_test_groups'::regclass),
