@@ -2,9 +2,10 @@
 -- nursing-handover RPC. The live RPC already validates that a supplied ward
 -- belongs to the patient's active facility before inserting the handover.
 --
--- The canonical remote baseline omitted this column, while later recorded
--- handover RPC migrations continued to reference it. This forward-only repair
--- restores the intended FK without rewriting historical migrations or the RPC.
+-- The canonical live schema lacks this column, while later recorded handover
+-- RPC migrations continue to reference it. The original baseline SQL is not
+-- available to prove exactly where the omission occurred. This repair restores
+-- the intended FK without rewriting historical migrations or the RPC.
 
 BEGIN;
 
