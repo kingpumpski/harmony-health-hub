@@ -145,6 +145,10 @@ jobs:
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/report_submissions_readonly_contract.sql
 
+      - name: Verify nursing handover ward-link contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/nursing_handover_ward_link_contract.sql
+
       - name: Verify ward-bed admission foreign-key contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/ward_beds_admission_fk_contract.sql
