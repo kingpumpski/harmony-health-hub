@@ -56,3 +56,14 @@ The candidate also declares `actor_id NOT NULL REFERENCES auth.users(id) ON DELE
 ## Safety boundary
 
 No SQL was applied. No migration filename or version was changed. No patient or clinical data was modified. The collision remains unresolved pending source provenance and disposable replay.
+
+
+## Follow-up catalog verification (2026-11-25)
+
+A second read-only catalog pass confirmed that all three tables still have RLS enabled and that current AI session policies expose SELECT only; no direct INSERT/UPDATE policy was observed on `ai_clinical_sessions`. The live SECURITY DEFINER workflow surface includes `create_ai_clinical_session`, `get_ai_clinical_context`, `request_ai_clinical_analysis`, `record_ai_clinical_event`, and `enforce_ai_clinical_event_facility`. This confirms the current design has moved toward RPC-mediated AI session/event writes rather than the candidate's direct client write policies.
+
+The current `anesthetic_assessments` policy set includes patient-owned read, staff role checks, and facility-identity policies for read/write paths. The AI event policy set exposes role-scoped SELECT; the event write RPC is the governed write surface.
+
+The role-table-grant inspection also surfaced inherited client grants on these tables, including anon privileges on some operations. No anon policy was observed, so the result does not establish anon row access; RLS remains the row barrier. Nevertheless, inherited PUBLIC/anon table grants are broader than a least-privilege RPC-only model and should be reduced after callsite confirmation. This should be tracked as a separate forward-only ACL repair, not conflated with the historical collision.
+
+The exact migration version `20260912010000` remains absent from the hosted ledger. No row data was queried, and no database changes were made.
