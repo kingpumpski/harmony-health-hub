@@ -176,3 +176,77 @@ Verification boundary: this turn committed the expanded SQL and Node source
 contracts. Neither the Node contract nor pgTAP was executed in a local checkout
 or PostgreSQL test database. The hosted catalog query was read-only. No
 production schema, grant, invoice, claim, or payment record was changed.
+
+
+## Read-only live-state refresh — 2026-11-25
+
+A fresh read-only catalog inspection was run against the canonical hosted project
+`ygqoptvezotdqhtimdkr` (PostgreSQL 17.6.1.166). The project is ACTIVE_HEALTHY.
+The migration ledger still contains 417 entries and its latest version is
+`20261026141054`.
+
+### Operational workspace remains a confirmed live authorization defect
+
+The deployed `public.get_operational_workspace(text,integer)` definition still
+contains all of the following:
+
+- `v_platform_admin := v_role IN ('admin','it_admin','system_superuser')`,
+  which incorrectly elevates facility-scoped `admin` to a platform-wide bypass.
+- Appointment facility logic that permits a missing active facility to bypass
+  the patient facility predicate.
+- Ward and bed predicates that include rows with `facility_id IS NULL` for
+  ordinary callers.
+- A role-resolution CASE that recognizes only
+  `system_superuser`, `admin`, `it_admin`, `practitioner`, `nurse`,
+  `midwife`, and `specialist_nurse`, even though later module authorization
+  branches refer to `front_desk`, `accountant`, and `radiologist`.
+
+The function remains SECURITY DEFINER with an empty search_path, grants
+EXECUTE to authenticated, and denies anon. Those properties do not correct the
+facility-scope defects. The committed pgTAP contract is expected to fail against
+this live definition until a reviewed forward migration is deployed.
+
+### Billing defect remains live
+
+The deployed
+`prepare_patient_billable_items(uuid,timestamptz,timestamptz)` still contains
+all three invalid qualified special forms:
+`pg_catalog.coalesce`, `pg_catalog.greatest`, and `pg_catalog.least`.
+Its SECURITY DEFINER setting, empty search_path, 14-column return shape, and
+authenticated/service-role access contract remain intact; anon access is denied.
+The billing runtime failure is therefore not explained by a changed RPC
+signature or return shape.
+
+### Insurance mutation guards are present in the live definitions
+
+The canonical claim transition and financial-update functions currently contain
+patient-context checks, claim-to-patient facility checks, and invoice-to-claim
+patient/facility checks. Both remain SECURITY DEFINER with
+`search_path = 'pg_catalog, public'`, authenticated EXECUTE, and anon denied.
+The insurance case mutation also contains a patient-context/facility check.
+
+This confirms the relevant guard logic is present in the live function bodies;
+it does **not** resolve the previously observed legacy claim/invoice row whose
+facility attribution is NULL. That row still requires authoritative financial
+lineage evidence and must not be auto-backfilled from the patient's current
+facility.
+
+### Migration provenance caveat
+
+The hosted ledger contains no entries with versions
+`20261003111500`, `20261013133000`, or `20261013150000`, despite the live
+function definitions containing code corresponding to some of these reviewed
+source changes. This means the current catalog cannot be used to infer that
+those repository migration files were recorded as applied under their own
+version identities. Do not replay them under their old identities, edit the
+historical files, or assume the live schema's provenance is fully reconciled.
+Recover the actual ledger/object provenance before deciding how to package any
+forward correction.
+
+### Verification boundary
+
+All queries in this refresh were SELECT-only catalog/ledger inspections. No
+patient, claim, invoice, payment, schema, grant, or migration-ledger rows were
+changed. No migration was applied. No PostgreSQL test suite or CI run was
+executed for this refresh. The 21 historical migration timestamp collisions
+and clean-replay blocker remain unresolved.
