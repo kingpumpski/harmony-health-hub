@@ -5,9 +5,9 @@ import fs from 'node:fs';
 const migrationPath = 'supabase/migrations/20261003111500_harden_insurance_claim_facility_boundaries.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const sql = migration.replace(/\s+/g, ' ').trim().toLowerCase();
-assert(!sql.includes('\\n'), 'SQL normalization must collapse line breaks before structural checks');
-const facilityBackfillPattern = /update\\s+public\\.(insurance_claims|invoices)\\s+set\\s+facility_id/i;
-assert(facilityBackfillPattern.test('UPDATE\\n public.insurance_claims\\n SET\\n facility_id = patient_facility_id'), 'facility backfill guard must recognize multiline SQL');
+assert(!sql.includes('\n'), 'SQL normalization must collapse line breaks before structural checks');
+const facilityBackfillPattern = /update\s+public\.(insurance_claims|invoices)\s+set\s+facility_id/i;
+assert(facilityBackfillPattern.test('UPDATE\n public.insurance_claims\n SET\n facility_id = patient_facility_id'), 'facility backfill guard must recognize multiline SQL');
 
 
 const claimSignatures = [
