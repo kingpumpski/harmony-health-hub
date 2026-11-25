@@ -113,3 +113,28 @@ finance/data-steward reconciliation queue; do not weaken the RPC's facility chec
 - Read-only catalog and aggregate checks completed.
 - No migration applied; no production row updated.
 - Disposable replay and full Quality/CI verification remain pending.
+
+## 4. Added deployed-function regression gate — 2026-11-25
+
+The repository now has a separate pgTAP catalog contract at
+`supabase/tests/database/billing_window_special_forms_contract.sql`. It targets
+the exact deployed `prepare_patient_billable_items(uuid,timestamptz,timestamptz)`
+identity and asserts that its catalog definition contains none of the three
+invalid qualified special forms.
+
+The Node source contract
+`scripts/billing-window-special-forms-database-contract.mjs` verifies that the
+SQL test keeps the exact function identity and all three negative assertions.
+It is registered as
+`test:billing-window-special-forms-database-contract` and included in the
+Quality workflow after the existing migration-source contract.
+
+A fresh read-only catalog check on the canonical hosted project still reports
+all three invalid forms present, so the new database assertion is expected to
+fail until a forward repair is applied. This is intentional: the test must not
+pass merely because the migration text looks correct.
+
+Verification boundary: the new Node source contract has not yet been executed
+in a local checkout, the pgTAP contract has not been run against a disposable
+PostgreSQL 17 database, and no CI run for the latest branch head is available.
+No hosted migration or production change was made.
