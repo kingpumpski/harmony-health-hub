@@ -33,6 +33,7 @@ SELECT is(
 
 SELECT ok(
   has_function_privilege('authenticated', 'public.prepare_patient_billable_items(uuid,timestamp with time zone,timestamp with time zone)', 'EXECUTE')
+  AND has_function_privilege('service_role', 'public.prepare_patient_billable_items(uuid,timestamp with time zone,timestamp with time zone)', 'EXECUTE')
   AND NOT has_function_privilege('anon', 'public.prepare_patient_billable_items(uuid,timestamp with time zone,timestamp with time zone)', 'EXECUTE')
   AND NOT EXISTS (
     SELECT 1
@@ -42,7 +43,7 @@ SELECT ok(
       AND a.grantee = 0
       AND a.privilege_type = 'EXECUTE'
   ),
-  'billing materialization remains authenticated-only with no PUBLIC or anon execution'
+  'billing materialization preserves authenticated/service_role access and denies PUBLIC/anon execution'
 );
 
 SELECT ok(
