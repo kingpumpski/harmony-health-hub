@@ -13,6 +13,14 @@ assert.ok(replay.indexOf('run: node scripts/migration-contract.mjs') < replay.in
 assert.match(replay, /run: supabase db reset/, 'full clean replay must remain enabled');
 assert.match(replay, /branches: \[main\]/, 'main-target pull requests must run migration checks');
 assert.match(replay, /'scripts\/migration-\*\.mjs'/, 'validator changes must trigger migration CI');
+
+const facilityBoundaryPath = 'supabase/tests/database/facility_boundary_workspace_contract.sql';
+const facilityBoundary = fs.readFileSync(facilityBoundaryPath, 'utf8');
+assert.match(deploy, /supabase test db --linked supabase\/tests\/database\/facility_boundary_workspace_contract\.sql/, 'facility-boundary regression must run in hosted verification and apply modes');
+assert.match(facilityBoundary, /SELECT plan\(10\);/, 'facility-boundary contract must include the platform-admin regression assertion');
+assert.match(facilityBoundary, /v_platform_admin:=v_rolein\(''it_admin'',''system_superuser''\)/, 'platform bypass assertion must exclude facility-scoped admin');
+assert.match(facilityBoundary, /facility admin is not treated as a platform-wide bypass/, 'facility-admin bypass regression must remain explicitly named');
+
 assert.match(deploy, /uses: actions\/setup-node@v5/, 'deployment validation requires a known Node runtime');
 assert.ok(deploy.indexOf('run: npm ci') > 0 && deploy.indexOf('run: npm ci') < deploy.indexOf('run: npm run test:project-integrity'), 'dependencies must be installed before integrity checks');
 assert.ok(deploy.indexOf('run: npm run test:migration-contract') < deploy.indexOf('run: supabase link'), 'missing contracts must block linking');
