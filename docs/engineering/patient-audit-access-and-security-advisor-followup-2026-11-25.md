@@ -150,3 +150,55 @@ broad clinical-staff policy remains a production security gap.
 No audit rows, triggers, policies, grants, or functions were modified in the
 hosted project. The row counts above are an inspection snapshot, not a durable
 invariant. Disposable PostgreSQL replay and latest-head CI remain outstanding.
+
+## 6. Facility-policy design and ACL refinement — 2026-11-25
+
+A further read-only catalog pass confirmed the exact live read policy on
+`patient_audit_log` is:
+
+`current_user_is_clinical_staff() OR current_user_has_role('admin')`
+
+It does not reference a patient row or active facility. The existing
+`current_user_facility_id()` helper resolves an active facility from the
+user's active-facility assignment or a single active membership; it does not
+grant a global audit bypass to the `admin` role. The role model includes
+`it_admin` and `system_superuser`, but a dedicated cross-facility audit
+permission is not established by this inspection. The safe default for the
+patient-history screen is therefore same-active-facility access, with no
+implicit global admin bypass. Platform-wide audit review remains a separate
+authorization decision and must not be inferred from the generic `admin`
+role.
+
+The intended read predicate for `patient_audit_log` is an EXISTS check against
+`public.patients`: the audit row must have a non-null `patient_id`, that
+patient must still exist, and the patient's `facility_id` must equal
+`public.current_user_facility_id()`. This deliberately denies retained orphan
+audit rows from the ordinary patient screen. Their retention is preserved;
+access to orphaned history requires a separately governed archive/review path.
+
+The ACL inspection also refined the previous summary. Both `anon` and
+`authenticated` currently have broad table privileges on `patient_audit_log`
+(including SELECT, INSERT, UPDATE, DELETE, REFERENCES, TRIGGER and TRUNCATE
+where reported by the role-grant catalog). The frontend has one confirmed
+direct table consumer: `src/pages/PatientAudit.tsx`, which performs a
+patient-filtered SELECT. No application direct insert/update/delete callsite
+was found in the repository search. The trigger functions write audit rows
+through their SECURITY DEFINER execution path; their execute grants are
+separately revoked by existing hardening migrations.
+
+The pgTAP contract has been strengthened to require:
+- no direct anon SELECT/INSERT/UPDATE/DELETE on either audit table;
+- no authenticated direct INSERT/UPDATE/DELETE;
+- the existing admin-controlled `patient_audit` read policy;
+- an `EXISTS` patient-lineage predicate and
+  `current_user_facility_id()` in the `patient_audit_log` read policy;
+- no broad clinical-staff-only read policy; and
+- no read policy that can expose rows without patient lineage.
+
+The test expresses the desired forward state; it is expected to fail against
+the currently inspected live catalog. It has not been run against disposable
+PostgreSQL 17. No production ACL, RLS policy, trigger, function or row was
+changed. Do not apply the policy or revoke grants until the forward migration
+has been generated with the Supabase CLI, tested with same-facility,
+cross-facility, null-facility, deleted-patient, admin and platform-role cases,
+and reviewed alongside the audit trigger ownership/write path.
