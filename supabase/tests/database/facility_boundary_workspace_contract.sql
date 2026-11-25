@@ -87,9 +87,11 @@ WITH f AS (
   SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
 )
 SELECT ok(
-  d LIKE '%whenpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
-  AND d LIKE '%whenpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
-  AND d LIKE '%whenpublic.has_role(auth.uid(),''radiologist''::public.app_role)then''radiologist''%',
+  d LIKE '%when_module=''appointments''andpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
+  AND d LIKE '%when_module=''insurance''andpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
+  AND d LIKE '%when_module=''facilities''andpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
+  AND d LIKE '%when_module=''facilities''andpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
+  AND d LIKE '%when_module=''ai_clinical''andpublic.has_role(auth.uid(),''radiologist''::public.app_role)then''radiologist''%',
   'operational workspace resolves every role that its module authorization branches claim to support'
 ) FROM f;
 
