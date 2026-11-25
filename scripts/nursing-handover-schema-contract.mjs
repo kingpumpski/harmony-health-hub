@@ -39,14 +39,14 @@ assert.match(
 );
 assert.match(
   migration,
-  /v_index\\.indkey::smallint\\[\\] <> ARRAY\\[v_ward_attnum\\]::smallint\\[\\]/i,
+  /v_index\.indkey::smallint\[\] <> ARRAY\[v_ward_attnum\]::smallint\[\]/i,
   'index validation must compare the exact single-column definition',
 );
 const databaseContract = readFileSync(
   'supabase/tests/database/nursing_handover_ward_link_contract.sql',
   'utf8',
 );
-assert.match(databaseContract, /SELECT plan\\(4\\)/);
+assert.match(databaseContract, /SELECT plan\(4\)/);
 assert.match(databaseContract, /confdeltype = 'n'/);
 
 assert.doesNotMatch(migration, /\b(DROP|TRUNCATE)\s+(TABLE|COLUMN|CONSTRAINT|INDEX)\b/i);
