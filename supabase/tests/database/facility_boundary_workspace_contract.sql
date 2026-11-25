@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(8);
+SELECT plan(9);
 
 -- Normalize whitespace so the assertions describe authorization semantics
 -- rather than depending on the SQL formatter used by CREATE FUNCTION.
@@ -81,6 +81,16 @@ SELECT ok(
   AND d LIKE '%p.facility_id=v_facility%'
   AND d LIKE '%facility_id=v_facility%',
   'operational workspace fails closed for missing facility and does not expose unassigned ward or bed rows'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%whenpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
+  AND d LIKE '%whenpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
+  AND d LIKE '%whenpublic.has_role(auth.uid(),''radiologist''::public.app_role)then''radiologist''%',
+  'operational workspace resolves every role that its module authorization branches claim to support'
 ) FROM f;
 
 SELECT ok(
