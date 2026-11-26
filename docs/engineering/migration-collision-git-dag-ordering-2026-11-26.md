@@ -35,14 +35,14 @@ For a comparison with candidate A as the base and candidate B as the head:
 | `20260929203000` | Ordered | `active_dashboard_role_context` (a9abfc86) → `harden_security_definer_read_workspace_paths_batch6` (3711af01) |
 | `20260930012000` | Ordered | `harden_high_risk_rpc_execution_boundaries` (3a198b8b) → `harden_department_queue_multirole` (742c298f) |
 | `20261002130000` | Ordered | `scope_appointment_workflows_to_active_facility` (b6dc3732) → `pharmacy_global_catalogue_facility_stock_and_safety` (bf0f0cb9) |
-| `20261002132500` | Ordered | `pharmacy_global_catalogue_facility_stock_and_safety` (bf0f0cb9) → `patient_hub_read_rpc_get_compatibility` (188ef53f). The pharmacy category-edit file shares the bf0f0cb9 commit with the preceding pharmacy candidate; its relative order is not resolved by this pairwise comparison. |
+| `20261002132500` | Ordered, shared commit caveat | `patient_hub_read_rpc_get_compatibility` (188ef53f) → shared commit `bf0f0cb9`, which touches both `pharmacy_global_catalogue_facility_stock_and_safety` and `pharmacy_global_category_edit`. The two pharmacy files share the same latest path commit; their relative order is not resolved. |
 
 ## Interpretation
 
 - **20 of 21 duplicate-version groups** have a linear ancestor ordering among their latest path-specific commits. The two three-file groups also form linear chains.
 - **One group (`20260912162000`) is genuinely divergent** in the commit graph. It needs source-level dependency analysis and, if possible, original release/deployment evidence.
 - The `20260912024500` pair is chronologically ordered in Git but remains unsafe to replay as-is because its two `CREATE TABLE IF NOT EXISTS` definitions disagree on shared tables.
-- For `20261002130000`, Git ancestry places appointment-scope before the pharmacy catalogue candidate. The pharmacy candidate and `20261002132500_pharmacy_global_category_edit.sql` share a latest path commit, so that commit does not order those two files.
+- For `20261002130000`, Git ancestry places appointment-scope before the pharmacy catalogue candidate. For `20261002132500`, a fresh bidirectional comparison confirms the Patient Hub compatibility commit is an ancestor of shared commit `bf0f0cb9`; that shared commit touches both pharmacy catalogue and pharmacy category-edit paths, so it cannot order those two files relative to one another.
 - For `20260929200000`, the graph orders the dashboard KPI function before the canteen RLS file and both before the default-privilege file. This is a useful ordering lead, but the actual function-body transformation dependency and default-privilege owner semantics still require source and replay checks.
 
 ## Next implementation sequence
