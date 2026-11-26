@@ -267,15 +267,16 @@ assert('outside-lab Edge Function has no direct clinical document update', !anal
 
 
 const adminBulkImport = fs.readFileSync('supabase/functions/admin-bulk-import/index.ts','utf8');
-assert('bulk patient import uses authenticated patient workflow', adminBulkImport.includes("authClient.rpc('register_patient_workflow'") && !adminBulkImport.includes("service.from('patients').insert"), 'bulk patient import must not bypass the patient workflow');
-assert('bulk pharmacy import uses authenticated inventory workflow', adminBulkImport.includes("authClient.rpc('create_pharmacy_inventory_item'") && !adminBulkImport.includes("service.from('pharmacy_inventory').insert"), 'bulk pharmacy import must not bypass the inventory workflow');
+assert('bulk patient import uses authenticated patient workflow', adminBulkImport.includes("db.rpc('register_patient_workflow'") && !adminBulkImport.includes("service.from('patients').insert"), 'bulk patient import must not bypass the patient workflow');
+assert('bulk pharmacy import uses authenticated inventory workflow', adminBulkImport.includes("db.rpc('create_pharmacy_inventory_item'") && !adminBulkImport.includes("service.from('pharmacy_inventory').insert"), 'bulk pharmacy import must not bypass the inventory workflow');
 assert('bulk import retains privileged audit persistence', adminBulkImport.includes("service.from('bulk_import_jobs').insert") && adminBulkImport.includes("service.rpc('record_system_audit'"), 'bulk import audit persistence must remain available');
+assert('bulk import uses caller JWT for clinical and catalogue mutations', adminBulkImport.includes("global: { headers: { Authorization: `Bearer ${token}` } }") && adminBulkImport.includes("createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!") && !adminBulkImport.includes("service.from('patients').insert") && !adminBulkImport.includes("service.from('pharmacy_inventory').insert") && !adminBulkImport.includes("service.from('icd_codes').insert"), 'privileged service client must not perform user-owned clinical/catalogue mutations');
 
 
 assert('ICD catalogue direct client DML is revoked', inpatientTransferMigration.includes('REVOKE INSERT, UPDATE, DELETE ON public.icd_codes FROM authenticated, anon'), 'ICD catalogue client mutation boundary missing');
 assert('ICD catalogue creation is administrator-authorized', inpatientTransferMigration.includes('CREATE OR REPLACE FUNCTION public.create_icd_code_workflow(') && inpatientTransferMigration.includes("public.has_role(uid, 'admin')"), 'ICD catalogue workflow is not administrator-authorized');
 assert('ICD catalogue workflow is authenticated-only', inpatientTransferMigration.includes('REVOKE ALL ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon') && inpatientTransferMigration.includes('GRANT EXECUTE ON FUNCTION public.create_icd_code_workflow(TEXT,TEXT,TEXT,TEXT) TO authenticated'), 'ICD catalogue workflow grants are not restricted');
-assert('bulk ICD import uses protected workflow', adminBulkImport.includes("authClient.rpc('create_icd_code_workflow'") && !adminBulkImport.includes("service.from('icd_codes').insert"), 'bulk ICD import must not bypass the protected workflow');
+assert('bulk ICD import uses protected workflow', adminBulkImport.includes("db.rpc('create_icd_code_workflow'") && !adminBulkImport.includes("service.from('icd_codes').insert"), 'bulk ICD import must not bypass the protected workflow');
 
 
 const clinicalOperationsPage = read('src/pages/ClinicalOperations.tsx');
