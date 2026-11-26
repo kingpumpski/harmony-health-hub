@@ -1,0 +1,32 @@
+{
+  "reviewed_on": "2026-11-26",
+  "sources": [
+    "supabase/migrations/20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql",
+    "supabase/migrations/20261002130000_scope_appointment_workflows_to_active_facility.sql",
+    "supabase/migrations/20261002132000_pharmacy_legacy_stock_reconciliation_rpc.sql",
+    "supabase/migrations/20261002132500_patient_hub_read_rpc_get_compatibility.sql",
+    "supabase/migrations/20261002132500_pharmacy_global_category_edit.sql"
+  ],
+  "findings": {
+    "duplicate_20261002130000_direct_object_collision": false,
+    "duplicate_20261002132500_direct_function_collision": false,
+    "assign_unattributed_pharmacy_inventory_definitions": "identical_after_whitespace_normalization",
+    "pharmacy_workspace_admin_facility_bypass": {
+      "severity": "high",
+      "affected_relations": [
+        "patients",
+        "prescriptions",
+        "pharmacy_dispensing_plans"
+      ],
+      "cause": "facility-scoped admin is ORed with active-facility predicate in SECURITY DEFINER workspace RPC",
+      "forward_repair_required": true
+    },
+    "clean_replay_verified": false
+  },
+  "disposition": {
+    "historical_sql_mutation": "prohibited",
+    "replay_authorized": false,
+    "database_accessed": false,
+    "supabase_branch_created": false
+  }
+}\n
