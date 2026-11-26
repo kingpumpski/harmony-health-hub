@@ -5,12 +5,12 @@ const denoEnv = (name: string): string | undefined =>
   (globalThis as { Deno?: { env: { get(n: string): string | undefined } } }).Deno?.env.get(name);
 
 function supabaseProjectUrl(): string {
-  const url = denoEnv("SUPABASE_URL") ?? import.meta.env?.VITE_SUPABASE_URL;
+  const url = denoEnv("SUPABASE_URL");
   if (!url) throw new Error("SUPABASE_URL is not configured");
   return url;
 }
 function supabasePublishableKey(): string {
-  const key = denoEnv("SUPABASE_ANON_KEY") ?? import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const key = denoEnv("SUPABASE_ANON_KEY");
   if (!key) throw new Error("SUPABASE_ANON_KEY is not configured");
   return key;
 }
