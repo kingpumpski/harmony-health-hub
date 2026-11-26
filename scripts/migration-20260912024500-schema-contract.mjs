@@ -14,9 +14,9 @@ function tableBody(sql, name) {
   return match[1];
 }
 function columnNames(body) {
-  return body.split(/\\r?\\n/).map(line => line.trim())
-    .filter(line => line && !/^(CONSTRAINT|PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY)\\b/i.test(line))
-    .map(line => line.match(/^([a-z_][a-z0-9_]*)\\s+/i)?.[1])
+  return body.split(/\r?\n/).map(line => line.trim())
+    .filter(line => line && !/^(CONSTRAINT|PRIMARY KEY|UNIQUE|CHECK|FOREIGN KEY)\b/i.test(line))
+    .map(line => line.match(/^([a-z_][a-z0-9_]*)\s+/i)?.[1])
     .filter(Boolean);
 }
 for (const [table, expected] of Object.entries(manifest.shared_tables)) {
@@ -37,6 +37,25 @@ for (const [table, expected] of Object.entries(manifest.shared_tables)) {
     throw new Error(table + ': unclassified global-only column: ' + col);
   }
 }
+
+const shapeTokens = [
+  [enterprise, 'nursing_care_plans', 'created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT'],
+  [global, 'nursing_care_plans', 'created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL'],
+  [enterprise, 'nursing_care_plans', 'interventions TEXT,'],
+  [global, 'nursing_care_plans', 'interventions TEXT NOT NULL'],
+  [enterprise, 'nursing_shift_handovers', 'shift_date DATE NOT NULL'],
+  [global, 'nursing_shift_handovers', 'ward_id UUID REFERENCES public.ward_units(id) ON DELETE SET NULL'],
+  [enterprise, 'emergency_cases', "triage_priority TEXT NOT NULL DEFAULT 'urgent'"],
+  [global, 'emergency_cases', "acuity TEXT NOT NULL DEFAULT 'urgent'"],
+  [enterprise, 'theatre_cases', 'scheduled_at TIMESTAMPTZ,'],
+  [global, 'theatre_cases', 'scheduled_start TIMESTAMPTZ NOT NULL'],
+  [enterprise, 'transfusion_records', 'component TEXT NOT NULL'],
+  [global, 'transfusion_records', 'blood_product TEXT NOT NULL']
+];
+for (const [source, table, token] of shapeTokens) {
+  if (!tableBody(source, table).includes(token)) throw new Error(table + ': reviewed semantic-shape token drift: ' + token);
+}
+
 for (const name of manifest.distinct_table_families.enterprise_only) {
   if (!enterprise.includes('CREATE TABLE IF NOT EXISTS public.' + name + ' (')) throw new Error('Missing enterprise-only table: ' + name);
   if (global.includes('CREATE TABLE IF NOT EXISTS public.' + name + ' (')) throw new Error('Unexpected shared table: ' + name);
