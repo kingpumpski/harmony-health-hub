@@ -109,7 +109,7 @@ The newly merged MCP Edge Function had an embedded fallback project reference an
 Changes made:
 
 - Removed the development project URL and embedded key from the generated Edge Function.
-- Changed MCP server issuer configuration to require `SUPABASE_PROJECT_REF`.
+- Changed MCP server issuer configuration to derive its auth issuer from the same required `SUPABASE_URL` used by the user-scoped database client.
 - Changed server-side Supabase client configuration to require `SUPABASE_URL` and `SUPABASE_ANON_KEY` from the Edge Function environment.
 - Retained the verified OAuth user token for PostgREST calls; the MCP read tools do not use a service-role key.
 - Added `scripts/mcp-project-config-contract.mjs` and included it in npm and quality gates.
