@@ -26,7 +26,7 @@ assert.match(facilityBoundary, /ward and bed reads exclude unassigned facility r
 
 assert.match(deploy, /environment: production/, 'all linked production database operations must pass through the protected production environment');
 assert.match(deploy, /SUPABASE_PROJECT_REF: \$\{\{ vars\.SUPABASE_PROJECT_REF \}\}/, 'production project reference must be explicitly configured, not hardcoded');
-assert.match(deploy, /test -n \\\"\$SUPABASE_PROJECT_REF\\\"/, 'production project reference must be validated before linking');
+assert.ok(deploy.includes('test -n "$SUPABASE_PROJECT_REF"'), 'production project reference must be validated before linking');
 assert.match(deploy, /uses: actions\/setup-node@v5/, 'deployment validation requires a known Node runtime');
 assert.ok(deploy.indexOf('run: npm ci') > 0 && deploy.indexOf('run: npm ci') < deploy.indexOf('run: npm run test:project-integrity'), 'dependencies must be installed before integrity checks');
 assert.ok(deploy.indexOf('run: npm run test:migration-contract') < deploy.indexOf('run: supabase link'), 'missing contracts must block linking');
