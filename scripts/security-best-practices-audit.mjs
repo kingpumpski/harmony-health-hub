@@ -69,7 +69,7 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
 
   for (const [functionName, { definitionIndex, block }] of latestDefinitions) {
     if (!/\bsecurity\s+definer\b/i.test(block)) continue;
-    const hasInlineSearchPath = /set\s+search_path\s*=/i.test(block);
+    const hasInlineSearchPath = /set\s+search_path\s*(?:=|to)\s*/i.test(block);
     const overridePattern = new RegExp(
       "alter\\s+function\\s+public\\." + functionName +
         "\\b[\\s\\S]*?set\\s+search_path\\s*=",
