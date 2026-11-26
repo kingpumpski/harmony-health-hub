@@ -1,3 +1,4 @@
+// @ts-nocheck -- generated database types are stale relative to applied migrations; regenerate types to remove.
 import RefreshButton from '@/components/ui/RefreshButton';
 import { getOperationalWorkspace } from '@/lib/operationalWorkspace';
 import { FormEvent, useCallback, useEffect, useState } from 'react';

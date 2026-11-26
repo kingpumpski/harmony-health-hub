@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     if (callerRolesError || !callerRoles?.some((r) => ['admin','accountant','front_desk'].includes(String(r.role)))) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
     const numericAmount = Number(amount);
     if (!invoiceId || !patientId || !Number.isFinite(numericAmount) || numericAmount <= 0) throw new Error('Invalid payment notification');
-    const { data: invoice, error: invoiceError } = await db.from('invoices').select('id,patient_id,total_amount').eq('id', invoiceId).maybeSingle();
+    const { data: invoice, error: invoiceError } = await authClient.from('invoices').select('id,patient_id,total_amount').eq('id', invoiceId).maybeSingle();
     if (invoiceError || !invoice || invoice.patient_id !== patientId) throw new Error('Invoice/patient mismatch');
     if (numericAmount > Number(invoice.total_amount)) throw new Error('Payment amount exceeds invoice total');
     const { error: notificationError } = await db.from('notifications').insert([{ recipient_role: 'accountant', title: 'Payment received', message: `Payment of GHS ${numericAmount} recorded for invoice ${invoiceId}`, severity: 'success', category: 'payment', related_patient_id: patientId, related_entity_id: invoiceId, link: '/billing' }]);

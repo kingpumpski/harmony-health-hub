@@ -8,6 +8,13 @@
       "when": 1791148456646,
       "tag": "0000_lock_superuser_role",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795613902686,
+      "tag": "0001_tighten_reference_reads_and_role_writes",
+      "breakpoints": true
     }
   ]
 }

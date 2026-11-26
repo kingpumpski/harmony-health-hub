@@ -261,6 +261,6 @@ export async function downloadRunWorkbook(run: ReportRun, items: ReportRunItem[]
 
 export function downloadManifestCsv(run: ReportRun, items: ReportRunItem[], facility: HealthcareFacility) {
   const lines = ['Report,Status,Source,Total,Warnings'];
-  for (const item of items) lines.push([item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join('; ')].map((value) => `"${value.replace(/"/g, '""')}"`).join(','));
+  for (const item of items) lines.push([item.file_name ?? item.report_id, item.status, item.data_snapshot.source, String(item.data_snapshot.total), item.validation_messages.join('; ')].map((value) => { const v = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value; return `"${v.replace(/"/g, '""')}"`; }).join(','));
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `reports_manifest_${facility.facility_code ?? facility.id}_${run.period_start.slice(0, 7)}.csv`; anchor.click(); URL.revokeObjectURL(url);
 }
