@@ -61,10 +61,12 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
   for (const [functionName, match] of latestDefinitions) {
     const definitionIndex = match.index ?? 0;
     const remainder = normalizedSql.slice(definitionIndex);
-    const nextFunction = remainder.search(
+    const nextFunction = remainder.slice(match[0].length).search(
       /create\s+(?:or\s+replace\s+)?function\s+public\./i,
     );
-    const block = nextFunction > 0 ? remainder.slice(0, nextFunction) : remainder;
+    const block = nextFunction >= 0
+      ? remainder.slice(0, match[0].length + nextFunction)
+      : remainder;
     const hasInlineSearchPath = /set\s+search_path\s*=/i.test(block);
     const overridePattern = new RegExp(
       "alter\\s+function\\s+public\\." + functionName +
