@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export function auditSecurityBestPractices(projectRoot = process.cwd()) {
   const roots = ["supabase/migrations", "supabase/functions", "supabase/tests"];
@@ -91,13 +92,15 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
   return { findings, fileCount: files.length };
 }
 
-const { findings, fileCount } = auditSecurityBestPractices();
-if (findings.length) {
-  console.error("Security best-practice audit failed:");
-  for (const finding of findings) {
-    console.error(`- [${finding.rule}] ${finding.file}: ${finding.detail}`);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { findings, fileCount } = auditSecurityBestPractices();
+  if (findings.length) {
+    console.error("Security best-practice audit failed:");
+    for (const finding of findings) {
+      console.error(`- [${finding.rule}] ${finding.file}: ${finding.detail}`);
+    }
+    process.exitCode = 1;
+  } else {
+    console.log(`Security best-practice audit passed across ${fileCount} source files.`);
   }
-  process.exitCode = 1;
-} else {
-  console.log(`Security best-practice audit passed across ${fileCount} source files.`);
 }
