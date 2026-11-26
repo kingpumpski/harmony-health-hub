@@ -1,35 +1,30 @@
-name: Supabase database compatibility
+name: Supabase production compatibility review
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/production-hotfix.sql'
-      - '.github/workflows/supabase-database.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-production-compatibility-review
+  cancel-in-progress: false
+
 jobs:
-  compatibility:
+  review-only:
+    name: Review archived compatibility SQL (no database access)
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - name: Validate deployment credentials
-        run: test -n "$SUPABASE_ACCESS_TOKEN"
-      - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - name: Apply production enum compatibility first
-        run: supabase db query --linked "ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'it_admin';"
-      - name: Apply production compatibility SQL
-        run: supabase db query --linked "$(cat supabase/production-hotfix.sql)"
-      - name: Report migration history drift without mutating history
+      - uses: actions/checkout@v5
+      - name: Verify production hotfix is not executable
+        shell: bash
         run: |
-          echo "::warning::Remote migration history contains versions absent from the repository. Automatic db push is intentionally disabled until the migration baseline is reconciled."
+          set -euo pipefail
+          test ! -e supabase/production-hotfix.sql
+          test -s docs/engineering/migration-source-candidates/production-hotfix.sql.candidate
+          if grep -R -nE 'supabase (db query|db push|migration up).*--linked|SUPABASE_ACCESS_TOKEN|SUPABASE_PROJECT_REF' .github/workflows/supabase-database.yml; then
+            echo "Production database access is forbidden in this review-only workflow."
+            exit 1
+          fi
+          echo "Archived compatibility SQL is retained for review only. No Supabase credentials, project link, or SQL execution is available in this workflow."
