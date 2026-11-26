@@ -45,6 +45,9 @@ jobs:
       - name: Production hotfix execution safety
         run: npm run test:production-hotfix-safety
 
+      - name: MCP project configuration isolation
+        run: npm run test:mcp-project-config
+
       - name: Report migration identity blockers (enforced by Migration contract workflow)
         continue-on-error: true
         run: npm run test:migration-contract
