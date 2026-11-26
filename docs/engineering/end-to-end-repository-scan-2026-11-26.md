@@ -139,3 +139,14 @@ Changes made:
 - Deliberately did not use `--force`; the current audit indicates that some suggested fixes require major upgrades (notably React Router and Zod) and must be assessed separately.
 
 The safe lockfile update and a fresh audit are still pending CI. The vulnerability count is a baseline finding, not a claim that all issues are exploitable in the deployed browser application; dependency reachability and development-only versus production dependencies must be assessed.
+
+### Migration collision provenance refinement
+
+Cross-referencing the 21 duplicate version groups with the captured 417-row hosted migration ledger produced a useful split:
+
+- All 21 duplicate version identifiers are absent as exact versions from the hosted ledger.
+- The first 12 collision groups (2026-09-12 through 2026-09-15) have no matching migration names in the hosted ledger. These appear to belong to the earlier development-era history, but that is not enough evidence to delete them from a clean-install path.
+- In the remaining 9 groups (2026-09-25 through 2026-10-02), 17 of the 20 candidate filenames have a matching hosted ledger name at a different version timestamp. Three candidate names do not have a direct ledger-name match.
+- A filename suffix matching a ledger name is only a provenance lead. It does not prove that the current SQL bytes are identical to the SQL originally applied under the hosted version.
+
+This supports a two-track recovery plan: preserve the pre-hosted development-era SQL as archival provenance, and reconstruct a canonical clean-install baseline plus an exact hosted-version source map for the 417-row production history. Do not move, rename, or omit those files from the active chain until the baseline and source-body equivalence are verified.
