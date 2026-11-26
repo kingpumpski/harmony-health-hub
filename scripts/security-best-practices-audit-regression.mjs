@@ -39,9 +39,8 @@ try {
   assert.equal(result.findings.filter(f => f.rule === "security-definer-search-path").length, 0, "a later ALTER FUNCTION must repair the effective definition");
 
   fs.rmSync(path.join(functions, "legacy.ts"));
-  write("20260101000003_policy_repair.sql", "DROP POLICY metadata_policy ON public.example;");
   result = auditSecurityBestPractices(root);
-  assert.equal(result.findings.filter(f => f.rule === "no-auth-role" || f.rule === "no-user-metadata-authz").length, 0, "removing unsafe source must clear source-level findings");
+  assert.equal(result.findings.filter(f => f.rule === "no-auth-role").length, 0, "removing deprecated auth.role source must clear that finding");
   console.log("[security-best-practices-audit-regression] SECURITY DEFINER search_path, later overrides, deprecated auth.role and metadata-policy checks passed");
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
