@@ -19,7 +19,10 @@ try {
     LANGUAGE sql SECURITY DEFINER AS $$ SELECT 'unsafe'; $$;
     CREATE FUNCTION public.safe_rpc() RETURNS text
     LANGUAGE sql SECURITY DEFINER SET search_path = ''
-    AS $$ SELECT 'safe'; $$;
+    AS $ SELECT 'safe'; $;
+    CREATE FUNCTION public.safe_to_rpc() RETURNS text
+    LANGUAGE sql SECURITY DEFINER SET search_path TO ''
+    AS $ SELECT 'safe'; $;
     CREATE FUNCTION public.later_secured_rpc() RETURNS text
     LANGUAGE sql SECURITY DEFINER AS $$ SELECT 'later'; $$;
     ALTER FUNCTION public.later_secured_rpc() SET search_path = '';
