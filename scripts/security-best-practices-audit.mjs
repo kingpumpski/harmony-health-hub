@@ -91,7 +91,7 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
         file: sourceFile ? path.relative(projectRoot, sourceFile) : "supabase/migrations",
         rule: "security-definer-search-path",
         functionName,
-        detail: \`Effective public SECURITY DEFINER function public.\${functionName}() must explicitly set a safe search_path.\`,
+        detail: "Effective public SECURITY DEFINER function public." + functionName + "() must explicitly set a safe search_path.",
       });
     }
   }
@@ -104,10 +104,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (findings.length) {
     console.error("Security best-practice audit failed:");
     for (const finding of findings) {
-      console.error(\`- [\${finding.rule}] \${finding.file}: \${finding.detail}\`);
+      console.error("- [" + finding.rule + "] " + finding.file + ": " + finding.detail);
     }
     process.exitCode = 1;
   } else {
-    console.log(\`Security best-practice audit passed across \${fileCount} source files.\`);
+    console.log("Security best-practice audit passed across " + fileCount + " source files.");
   }
 }
