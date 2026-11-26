@@ -394,5 +394,15 @@
       "commit_evidence": "188ef53f -> bf0f0cb9",
       "caveat": "Patient Hub compatibility commit is an ancestor of bf0f0cb9, which also touches pharmacy_global_catalogue_facility_stock_and_safety.sql; pharmacy catalogue and category-edit files share that commit and cannot be ordered relative to one another."
     }
+  ],
+  "shared_commit_sets": [
+    {
+      "commit": "bf0f0cb9",
+      "files": [
+        "supabase/migrations/20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql",
+        "supabase/migrations/20261002132500_pharmacy_global_category_edit.sql"
+      ],
+      "meaning": "The same latest path commit touches both files; Git ancestry cannot order these two migration files relative to each other."
+    }
   ]
 }
