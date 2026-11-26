@@ -39,6 +39,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Report dependency advisories (non-blocking inventory)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
       - name: Migration parity validator regression tests
         run: npm run test:migration-parity
 
