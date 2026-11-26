@@ -64,6 +64,18 @@ for (const name of manifest.distinct_table_families.global_only) {
   if (!global.includes('CREATE TABLE IF NOT EXISTS public.' + name + ' (')) throw new Error('Missing global-only table: ' + name);
   if (enterprise.includes('CREATE TABLE IF NOT EXISTS public.' + name + ' (')) throw new Error('Unexpected shared table: ' + name);
 }
+
+for (const policy of manifest.security_policy_names.enterprise) {
+  if (!enterprise.includes('CREATE POLICY "' + policy + '"')) throw new Error('Missing enterprise RLS policy: ' + policy);
+  if (global.includes('CREATE POLICY "' + policy + '"')) throw new Error('Unexpected shared enterprise policy: ' + policy);
+}
+for (const policy of manifest.security_policy_names.global) {
+  if (!global.includes('CREATE POLICY "' + policy + '"')) throw new Error('Missing global RLS policy: ' + policy);
+  if (enterprise.includes('CREATE POLICY "' + policy + '"')) throw new Error('Unexpected shared global policy: ' + policy);
+}
+for (const fn of manifest.functions.enterprise) if (!enterprise.includes('FUNCTION ' + fn + '(')) throw new Error('Missing enterprise function: ' + fn);
+for (const fn of manifest.functions.global) if (!global.includes('FUNCTION ' + fn + '(')) throw new Error('Missing global function: ' + fn);
+
 if (manifest.disposition.replay_authorized !== false ||
     manifest.disposition.automatic_merge !== 'prohibited' ||
     manifest.disposition.automatic_drop !== 'prohibited' ||
