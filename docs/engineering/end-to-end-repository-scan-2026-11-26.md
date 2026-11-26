@@ -101,3 +101,29 @@ This checkpoint involved repository-only edits. It did not create a billable Sup
 - Production deployment: not performed.
 
 **Readiness: not approved for operational use.** The repository remains blocked on migration provenance, clean replay, executed security/application tests and deployment acceptance.
+
+### 5. MCP integration pointed at the unowned development project — corrected
+
+The newly merged MCP Edge Function had an embedded fallback project reference and publishable key for the platform-provisioned development project. The source also allowed Vite build-time fallbacks to populate server connection settings.
+
+Changes made:
+
+- Removed the development project URL and embedded key from the generated Edge Function.
+- Changed MCP server issuer configuration to require `SUPABASE_PROJECT_REF`.
+- Changed server-side Supabase client configuration to require `SUPABASE_URL` and `SUPABASE_ANON_KEY` from the Edge Function environment.
+- Retained the verified OAuth user token for PostgREST calls; the MCP read tools do not use a service-role key.
+- Added `scripts/mcp-project-config-contract.mjs` and included it in npm and quality gates.
+
+The MCP Edge Function now fails closed when its environment is missing rather than silently connecting to the unowned dev project. A deploy still requires an operator to configure the correct project environment variables.
+
+### 6. Bulk-import regression contract drift — reconciled
+
+The merged bulk-import Edge Function uses a caller-JWT Supabase client named `db`, while an existing repository contract expected a variable named `authClient`. The contract was therefore inconsistent with the implementation.
+
+Changes made:
+
+- Updated the contract to require the actual caller-JWT client and its RPC calls for patient, pharmacy and ICD imports.
+- Added an assertion that the service-role client is not used for direct patient, inventory or ICD table inserts.
+- Kept service-role access limited to administrator verification and import audit persistence.
+
+The bulk-import regression test and the broader application suite still need CI execution.
