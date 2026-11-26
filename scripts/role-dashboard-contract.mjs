@@ -121,7 +121,8 @@ for (const [label, source, token] of [
   ['dashboard canonical status use', dashboardKpi, "FROM public.service_orders WHERE status IN ('pending_payment_approval','released','in_progress')"],
   ['colliding workflow alternate payment_status shape', collidingWorkflow, "payment_status TEXT NOT NULL DEFAULT 'pending'"],
   ['colliding workflow alternate fulfillment_status shape', collidingWorkflow, "fulfillment_status TEXT NOT NULL DEFAULT 'blocked'"],
-  ['colliding workflow trigger alternate shape dependency', collidingWorkflow, 'NEW.fulfillment_status']
+  ['colliding workflow trigger alternate shape dependency', collidingWorkflow, 'NEW.fulfillment_status'],
+  ['colliding workflow index alternate shape dependency', collidingWorkflow, 'ON public.service_orders (payment_status, fulfillment_status)']
 ]) {
   if (!source.includes(token)) throw new Error(`Service-order migration source contract missing: ${label}`);
 }
@@ -134,14 +135,14 @@ console.log('[role-dashboard-contract] service_orders status/fulfillment migrati
 // This detects source drift in CI; the historical SQL remains untouched.
 const dashboardSourceFunction = "CREATE OR REPLACE FUNCTION public.get_role_dashboard_summary()";
 const dashboardRoleFunction = "CREATE OR REPLACE FUNCTION public.get_role_dashboard_summary_for_role(_requested_role text DEFAULT NULL)";
-const originalRoleLookup = "  SELECT ur.role::text INTO v_role\\n  FROM public.user_roles ur";
+const originalRoleLookup = /SELECT ur\\.role::text INTO v_role\\s+FROM public\\.user_roles ur/;
 if (activeRoleMigration.split(dashboardSourceFunction).length !== 2) {
   throw new Error('Active-role migration must contain exactly one dashboard function definition marker');
 }
 if (activeRoleMigration.split(dashboardRoleFunction).length !== 2) {
   throw new Error('Active-role migration must contain exactly one dashboard role function replacement marker');
 }
-if (!activeRoleMigration.includes(originalRoleLookup)) {
+if (!originalRoleLookup.test(activeRoleMigration)) {
   throw new Error('Active-role migration source lookup replacement marker drifted');
 }
 if (!activeRoleMigration.includes('IF _requested_role IS NOT NULL THEN')) {
