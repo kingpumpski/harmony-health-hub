@@ -29,7 +29,7 @@ try {
   fs.writeFileSync(path.join(functions, "legacy.ts"), "const role = auth.role();");
 
   let result = auditSecurityBestPractices(root);
-  assert.ok(result.findings.some(f => f.rule === "security-definer-search-path" && f.file.endsWith("20260101000000_functions.sql")), "missing SECURITY DEFINER search_path must be detected");
+  assert.ok(result.findings.some(f => f.rule === "security-definer-search-path" && f.file.endsWith("20260101000000_functions.sql") && f.functionName === "unsafe_rpc"), "missing SECURITY DEFINER search_path must be attributed to its exact function and source file");
   assert.ok(result.findings.some(f => f.rule === "no-user-metadata-authz"), "user metadata in RLS policy must be detected");
   assert.ok(result.findings.some(f => f.rule === "no-auth-role"), "deprecated auth.role usage must be detected");
   assert.equal(result.findings.filter(f => f.rule === "security-definer-search-path").length, 1, "inline and later ALTER FUNCTION search_path protections must pass");
