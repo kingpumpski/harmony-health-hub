@@ -82,7 +82,7 @@
     "test:patient-emergency-imaging-facility": "node scripts/patient-emergency-imaging-facility-contract.mjs",
     "test:patient-workflow-admin-roles": "node supabase/tests/database/patient_workflow_field_authorization_contract.mjs",
     "test:migration-filename-uniqueness": "node scripts/migration-filename-uniqueness-contract.mjs",
-    "test:migration-parity": "node scripts/migration-parity-regression.mjs && node scripts/migration-contract-workflow-regression.mjs && node scripts/laboratory-panel-privilege-migration-contract.mjs && node scripts/forward-repair-candidates-contract.mjs && node scripts/production-hotfix-safety-contract.mjs && node scripts/migration-collision-evidence-contract.mjs",
+    "test:migration-parity": "node scripts/migration-parity-regression.mjs && node scripts/migration-contract-workflow-regression.mjs && node scripts/laboratory-panel-privilege-migration-contract.mjs && node scripts/forward-repair-candidates-contract.mjs && node scripts/production-hotfix-safety-contract.mjs && node scripts/migration-collision-evidence-contract.mjs && node scripts/migration-20260912024500-schema-contract.mjs",
     "test:migration-contract": "node scripts/migration-contract.mjs",
     "migration:parity": "node scripts/migration-parity.mjs",
     "test:runtime-patient-directory": "node scripts/runtime-patient-directory-pharmacy-pages-contract.mjs",
