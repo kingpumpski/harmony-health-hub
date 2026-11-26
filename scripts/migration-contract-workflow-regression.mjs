@@ -24,6 +24,7 @@ assert.match(facilityBoundary, /appointment reads require active-facility lineag
 assert.match(facilityBoundary, /ward and bed reads exclude unassigned facility rows for ordinary callers/, 'unassigned ward/bed bypass regression must remain explicit');
 
 
+assert.match(deploy, /environment: production/, 'all linked production database operations must pass through the protected production environment');
 assert.match(deploy, /uses: actions\/setup-node@v5/, 'deployment validation requires a known Node runtime');
 assert.ok(deploy.indexOf('run: npm ci') > 0 && deploy.indexOf('run: npm ci') < deploy.indexOf('run: npm run test:project-integrity'), 'dependencies must be installed before integrity checks');
 assert.ok(deploy.indexOf('run: npm run test:migration-contract') < deploy.indexOf('run: supabase link'), 'missing contracts must block linking');
