@@ -52,28 +52,27 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
     }
   }
 
-  // Inspect the effective latest public SECURITY DEFINER definition per function.
-  const definitions = [
-    ...normalizedSql.matchAll(
-      /create\s+(?:or\s+replace\s+)?function\s+public\.([a-z0-9_]+)\s*\([\s\S]*?\)\s*returns[\s\S]*?security\s+definer/gi,
-    ),
+  // Split at each public function declaration before checking SECURITY DEFINER.
+  // A broad regex across the whole SQL corpus can otherwise associate a later
+  // function's SECURITY DEFINER clause with an earlier invoker function.
+  const functionStarts = [
+    ...normalizedSql.matchAll(/create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.([a-z0-9_]+)\\s*\\(/gi),
   ];
   const latestDefinitions = new Map();
-  for (const match of definitions) latestDefinitions.set(match[1], match);
-
-  for (const [functionName, match] of latestDefinitions) {
+  for (let index = 0; index < functionStarts.length; index += 1) {
+    const match = functionStarts[index];
     const definitionIndex = match.index ?? 0;
-    const remainder = normalizedSql.slice(definitionIndex);
-    const nextFunction = remainder.slice(match[0].length).search(
-      /create\s+(?:or\s+replace\s+)?function\s+public\./i,
-    );
-    const block = nextFunction >= 0
-      ? remainder.slice(0, match[0].length + nextFunction)
-      : remainder;
-    const hasInlineSearchPath = /set\s+search_path\s*=/i.test(block);
+    const nextIndex = functionStarts[index + 1]?.index ?? normalizedSql.length;
+    const block = normalizedSql.slice(definitionIndex, nextIndex);
+    if (!/\\bsecurity\\s+definer\\b/i.test(block)) continue;
+    latestDefinitions.set(match[1], { definitionIndex, block });
+  }
+
+  for (const [functionName, { definitionIndex, block }] of latestDefinitions) {
+    const hasInlineSearchPath = /set\\s+search_path\\s*=/i.test(block);
     const overridePattern = new RegExp(
-      "alter\\s+function\\s+public\\." + functionName +
-        "\\b[\\s\\S]*?set\\s+search_path\\s*=",
+      "alter\\\\s+function\\\\s+public\\\\." + functionName +
+        "\\\\b[\\\\s\\\\S]*?set\\\\s+search_path\\\\s*=",
       "i",
     );
     const hasLaterOverride = overridePattern.test(normalizedSql.slice(definitionIndex));
