@@ -31,4 +31,12 @@ assert.match(quality, /\n  quality:\n/, 'stable mandatory quality job identity m
 assert.match(quality, /run: npm run test:migration-parity/, 'validator regressions must run in the quality gate');
 assert.match(quality, /run: npm run test:migration-contract/, 'migration contract cannot be omitted from the quality gate');
 assert.match(stepFor(quality, 'run: npm run test:migration-contract'), /continue-on-error: true/, 'legacy migration blockers must be reported without suppressing unrelated application quality checks');
+
+const productionApply = deploy.indexOf('run: supabase db push --linked', deploy.indexOf('name: Apply migrations'));
+const productionPreflight = deploy.indexOf('name: Preflight migration plan before validation or production apply');
+assert.ok(productionPreflight >= 0, 'production apply must have a migration dry-run preflight');
+assert.ok(productionPreflight < deploy.indexOf('name: Apply migrations'), 'migration preflight must precede production apply');
+assert.match(deploy.slice(productionPreflight, deploy.indexOf('name: Require explicit production apply confirmation')), /inputs\\.mode == 'validate' \\|\\| inputs\\.mode == 'apply'/, 'dry-run must execute in both validate and apply modes');
+assert.ok(productionApply >= 0, 'production apply command must remain explicitly identifiable');
+
 console.log('[migration-contract-workflow-regression] mandatory validation, complete database test coverage, and dependency setup passed');
