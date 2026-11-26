@@ -36,7 +36,7 @@ const productionApply = deploy.indexOf('run: supabase db push --linked', deploy.
 const productionPreflight = deploy.indexOf('name: Preflight migration plan before validation or production apply');
 assert.ok(productionPreflight >= 0, 'production apply must have a migration dry-run preflight');
 assert.ok(productionPreflight < deploy.indexOf('name: Apply migrations'), 'migration preflight must precede production apply');
-assert.match(deploy.slice(productionPreflight, deploy.indexOf('name: Require explicit production apply confirmation')), /inputs\\.mode == 'validate' \\|\\| inputs\\.mode == 'apply'/, 'dry-run must execute in both validate and apply modes');
+assert.ok(deploy.slice(productionPreflight, deploy.indexOf('name: Require explicit production apply confirmation')).includes("inputs.mode == 'validate' || inputs.mode == 'apply'"), 'dry-run must execute in both validate and apply modes');
 assert.ok(productionApply >= 0, 'production apply command must remain explicitly identifiable');
 
 console.log('[migration-contract-workflow-regression] mandatory validation, complete database test coverage, and dependency setup passed');
