@@ -2,7 +2,8 @@ import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import searchPatients from "./tools/search-patients";
 import listAppointments from "./tools/list-appointments";
 
-const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
+const projectRef = (globalThis as { Deno?: { env: { get(name: string): string | undefined } } }).Deno?.env.get("SUPABASE_PROJECT_REF");
+if (!projectRef) throw new Error("SUPABASE_PROJECT_REF is not configured");
 
 export default defineMcp({
   name: "harmony-health-hub",
