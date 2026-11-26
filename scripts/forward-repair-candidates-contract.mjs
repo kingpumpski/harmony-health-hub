@@ -15,12 +15,12 @@ for (const [name, source] of [['operational workspace', operational], ['billing'
 }
 
 for (const fragment of [
-  "v_platform_admin := v_role IN ('it_admin','system_superuser');",
+  "v_platform_admin := v_role IN (''it_admin'',''system_superuser'');",
   "AND (v_platform_admin AND v_facility IS NULL OR p.facility_id=v_facility)",
-  'WHERE active AND (v_platform_admin AND v_facility IS NULL OR facility_id=v_facility)',
-  'WHERE v_platform_admin AND v_facility IS NULL OR b.facility_id=v_facility',
-  'id=v_facility'
-]) {
+  "WHERE active AND (v_platform_admin AND v_facility IS NULL OR facility_id=v_facility)",
+  "WHERE v_platform_admin AND v_facility IS NULL OR b.facility_id=v_facility",
+  "id=v_facility"
+]){
   assert.ok(operational.includes(fragment), 'operational repair must enforce ' + fragment);
 }
 assert.match(operational, /REVOKE ALL ON FUNCTION public\.get_operational_workspace\(text, integer\) FROM PUBLIC, anon/i);
