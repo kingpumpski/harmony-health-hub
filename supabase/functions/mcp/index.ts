@@ -13,12 +13,12 @@ import { z } from "npm:zod@^3.25.76";
 import { createClient } from "npm:@supabase/supabase-js@2.109.0";
 var denoEnv = (name) => globalThis.Deno?.env.get(name);
 function supabaseProjectUrl() {
-  const url = denoEnv("SUPABASE_URL") ?? "https://pmebpkcufyrbjhawsiyn.supabase.co";
+  const url = denoEnv("SUPABASE_URL");
   if (!url) throw new Error("SUPABASE_URL is not configured");
   return url;
 }
 function supabasePublishableKey() {
-  const key = denoEnv("SUPABASE_ANON_KEY") ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZWJwa2N1ZnlyYmpoYXdzaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTIxNjAsImV4cCI6MjA5MzE2ODE2MH0.mOY1zKxy6SKY3CQrzEq9v8GJrwVFQwj5q8PqJebNFx0";
+  const key = denoEnv("SUPABASE_ANON_KEY");
   if (!key) throw new Error("SUPABASE_ANON_KEY is not configured");
   return key;
 }
@@ -90,7 +90,8 @@ var list_appointments_default = defineTool2({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "pmebpkcufyrbjhawsiyn";
+var projectRef = denoEnv("SUPABASE_PROJECT_REF");
+if (!projectRef) throw new Error("SUPABASE_PROJECT_REF is not configured");
 var mcp_default = defineMcp({
   name: "harmony-health-hub",
   title: "Harmony Health Hub",
