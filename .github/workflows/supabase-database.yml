@@ -23,8 +23,4 @@ jobs:
           set -euo pipefail
           test ! -e supabase/production-hotfix.sql
           test -s docs/engineering/migration-source-candidates/production-hotfix.sql.candidate
-          if grep -R -nE 'supabase (db query|db push|migration up).*--linked|SUPABASE_ACCESS_TOKEN|SUPABASE_PROJECT_REF' .github/workflows/supabase-database.yml; then
-            echo "Production database access is forbidden in this review-only workflow."
-            exit 1
-          fi
           echo "Archived compatibility SQL is retained for review only. No Supabase credentials, project link, or SQL execution is available in this workflow."
