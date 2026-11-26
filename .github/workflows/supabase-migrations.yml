@@ -68,8 +68,8 @@ jobs:
       - name: Show migration state
         run: supabase migration list --linked
 
-      - name: Validate migrations
-        if: ${{ inputs.mode == 'validate' }}
+      - name: Preflight migration plan before validation or production apply
+        if: ${{ inputs.mode == 'validate' || inputs.mode == 'apply' }}
         run: supabase db push --linked --dry-run
 
       - name: Require explicit production apply confirmation
