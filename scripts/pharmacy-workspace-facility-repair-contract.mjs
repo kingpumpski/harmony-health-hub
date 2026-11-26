@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 const file = 'supabase/migrations/20261126154500_fix_pharmacy_workspace_admin_facility_scope.sql';
 const sql = fs.readFileSync(file, 'utf8');
-const normalized = sql.toLowerCase().replace(/[\\s]+/g, '');
+const normalized = sql.toLowerCase().replace(/\s+/g, '');
 
 if (!sql.includes('CREATE OR REPLACE FUNCTION public.get_pharmacy_workspace(_limit integer DEFAULT 200)')) {
   throw new Error('Forward repair must preserve get_pharmacy_workspace(integer) signature');
