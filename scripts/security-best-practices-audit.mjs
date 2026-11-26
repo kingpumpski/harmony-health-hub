@@ -20,8 +20,10 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
 
   const findings = [];
   const sqlFiles = files.filter((file) => file.endsWith(".sql")).sort();
-  const sqlSource = sqlFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
-  const normalizedSql = sqlSource.toLowerCase().replace(/\s+/g, " ");
+  const normalizedFiles = sqlFiles.map((file) =>
+    fs.readFileSync(file, "utf8").toLowerCase().replace(/\s+/g, " "),
+  );
+  const normalizedSql = normalizedFiles.join(" ");
 
   for (const file of files) {
     const source = fs.readFileSync(file, "utf8");
@@ -78,10 +80,10 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
     if (!hasInlineSearchPath && !hasLaterOverride) {
       let sourceOffset = 0;
       let sourceFile = null;
-      for (const file of sqlFiles) {
-        const sourceLength = fs.readFileSync(file, "utf8").length;
+      for (let index = 0; index < sqlFiles.length; index += 1) {
+        const sourceLength = normalizedFiles[index].length;
         if (definitionIndex >= sourceOffset && definitionIndex < sourceOffset + sourceLength) {
-          sourceFile = file;
+          sourceFile = sqlFiles[index];
           break;
         }
         sourceOffset += sourceLength + 1;
