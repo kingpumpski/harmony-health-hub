@@ -33,7 +33,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +53,7 @@ jobs:
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_PROJECT_REF"
 
       - name: Enforce repository project-integrity gate
         run: npm run test:project-integrity
