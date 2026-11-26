@@ -27,6 +27,7 @@ concurrency:
 
 jobs:
   migrate:
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
