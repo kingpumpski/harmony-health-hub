@@ -127,3 +127,15 @@ Changes made:
 - Kept service-role access limited to administrator verification and import audit persistence.
 
 The bulk-import regression test and the broader application suite still need CI execution.
+
+### 7. Dependency vulnerability inventory — remediation underway
+
+The GitHub Actions dependency audit reported 28 npm vulnerabilities at the scanned lockfile revision: 10 high and 18 moderate. Findings include transitive issues in Rollup, source-map-js, flatted, glob, nanoid, picomatch, PostCSS, Browserslist, React Router, Zod and the esbuild/Vite toolchain.
+
+Changes made:
+
+- Added a non-blocking `npm audit --audit-level=high` inventory step to the quality workflow.
+- Updated lockfile recovery to run `npm audit fix --package-lock-only --ignore-scripts` before lockfile regeneration and clean installation.
+- Deliberately did not use `--force`; the current audit indicates that some suggested fixes require major upgrades (notably React Router and Zod) and must be assessed separately.
+
+The safe lockfile update and a fresh audit are still pending CI. The vulnerability count is a baseline finding, not a claim that all issues are exploitable in the deployed browser application; dependency reachability and development-only versus production dependencies must be assessed.
