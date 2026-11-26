@@ -8,6 +8,6 @@ for (const form of ['coalesce', 'greatest', 'least']) {
   assert.match(sql, new RegExp('pg_catalog[.]' + form + '[(]'), 'database contract must reject qualified ' + form);
   assert.ok(sql.includes("NOT ILIKE '%pg_catalog." + form + "(%'"), 'database contract must fail when qualified ' + form + ' remains');
 }
-assert.match(sql, /SELECT plan[(]1[)]/, 'database contract must declare its assertion plan');
+assert.match(sql, /SELECT plan[(]5[)]/, 'database contract must declare its assertion plan');
 
 console.log('[billing-window-special-forms] deployed function catalog contract passed');
