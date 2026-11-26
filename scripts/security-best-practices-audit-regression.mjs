@@ -13,6 +13,8 @@ const write = (name, source) => fs.writeFileSync(path.join(migrations, name), so
 
 try {
   write("20260101000000_functions.sql", `
+    CREATE FUNCTION public.invoker_rpc() RETURNS text
+    LANGUAGE sql AS $ SELECT 'invoker'; $;
     CREATE FUNCTION public.unsafe_rpc() RETURNS text
     LANGUAGE sql SECURITY DEFINER AS $$ SELECT 'unsafe'; $$;
     CREATE FUNCTION public.safe_rpc() RETURNS text
