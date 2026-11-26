@@ -128,5 +128,30 @@
       "explicit canonical model decision"
     ],
     "replay_authorized": false
+  },
+  "security_policy_names": {
+    "enterprise": [
+      "nursing care plans clinical",
+      "handover clinical",
+      "emergency clinical",
+      "theatre clinical",
+      "transfusion clinical"
+    ],
+    "global": [
+      "nursing care plan access",
+      "nursing handover access",
+      "emergency clinical access",
+      "theatre clinical access",
+      "transfusion clinical access"
+    ]
+  },
+  "functions": {
+    "enterprise": [
+      "public.update_insurance_case"
+    ],
+    "global": [
+      "public.touch_global_hims_updated_at",
+      "public.transition_insurance_claim"
+    ]
   }
 }
