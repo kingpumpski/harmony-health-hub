@@ -76,15 +76,21 @@ export function auditSecurityBestPractices(projectRoot = process.cwd()) {
     );
     const hasLaterOverride = overridePattern.test(normalizedSql.slice(definitionIndex));
     if (!hasInlineSearchPath && !hasLaterOverride) {
-      const sourceFile = sqlFiles.find((file) => {
-        const text = fs.readFileSync(file, "utf8").toLowerCase();
-        return text.includes("create or replace function public." + functionName)
-          || text.includes("create function public." + functionName);
-      });
+      let sourceOffset = 0;
+      let sourceFile = null;
+      for (const file of sqlFiles) {
+        const sourceLength = fs.readFileSync(file, "utf8").length;
+        if (definitionIndex >= sourceOffset && definitionIndex < sourceOffset + sourceLength) {
+          sourceFile = file;
+          break;
+        }
+        sourceOffset += sourceLength + 1;
+      }
       findings.push({
         file: sourceFile ? path.relative(projectRoot, sourceFile) : "supabase/migrations",
         rule: "security-definer-search-path",
-        detail: "Every effective public SECURITY DEFINER function must explicitly set a safe search_path.",
+        functionName,
+        detail: `Effective public SECURITY DEFINER function public.${functionName}() must explicitly set a safe search_path.`,
       });
     }
   }
