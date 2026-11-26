@@ -7,9 +7,7 @@
   ],
   "shared_tables": {
     "nursing_care_plans": {
-      "enterprise_only": [
-        "admission_id"
-      ],
+      "enterprise_only": [],
       "global_only": [
         "encounter_id",
         "reviewed_at"
