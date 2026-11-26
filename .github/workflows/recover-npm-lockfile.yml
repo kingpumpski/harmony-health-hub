@@ -41,6 +41,9 @@ jobs:
           node --version
           npm --version
 
+      - name: Apply non-breaking dependency security updates
+        run: npm audit fix --package-lock-only --ignore-scripts --no-fund
+
       - name: Regenerate lockfile without running lifecycle scripts
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
@@ -65,5 +68,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json
-          git commit -m "fix: regenerate npm package lockfile"
+          git commit -m "fix: regenerate npm lockfile with non-breaking security updates"
           git push origin HEAD:chore/forward-only-migration-governance
