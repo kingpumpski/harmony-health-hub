@@ -42,6 +42,7 @@ jobs:
           npm --version
 
       - name: Apply non-breaking dependency security updates
+        continue-on-error: true
         run: npm audit fix --package-lock-only --ignore-scripts --no-fund
 
       - name: Regenerate lockfile without running lifecycle scripts
