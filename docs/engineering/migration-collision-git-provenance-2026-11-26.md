@@ -62,7 +62,7 @@ These records are evidence of source-control chronology, not proof that a migrat
 - `20260912024500` candidates have distinct commits six minutes apart but overlapping table definitions; chronology does not resolve their schema conflict.
 - The `20260929200000` / `20260929203000` candidates have function and default-privilege dependencies documented in the static interaction review. Their order must preserve those dependencies.
 - `20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql` and `20261002132500_pharmacy_global_category_edit.sql` share latest commit `bf0f0cb9`; their relative execution order must be derived from SQL dependencies, not commit ordering.
-- `20260912162000_clinical_change_audit_hardening.sql` and `20260912162000_hims_workflow_completion.sql` each have multiple path commits; the table records the latest commit, not the initial creation commit.
+- Several candidates have multiple path commits, including `clinical_change_audit_hardening.sql`, `hims_workflow_completion.sql`, `reports_center_submission_rbac.sql`, `secure_default_function_execute_privileges.sql`, `harden_department_queue_multirole.sql`, `harden_high_risk_rpc_execution_boundaries.sql`, and `pharmacy_global_catalogue_facility_stock_and_safety.sql`. The table records the latest commit for each path, not the initial creation commit.
 
 ## Remediation use
 
