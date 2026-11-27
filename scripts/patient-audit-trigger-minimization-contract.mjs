@@ -10,8 +10,8 @@ assert.match(migration, /GRANT SELECT ON TABLE public\.patient_audit_log TO auth
 assert.match(migration, /patient_audit_log_active_facility_read[\s\S]*public\.patients[\s\S]*current_user_facility_id/i);
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.audit_patient_changes\(\)[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = ''/i);
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.audit_patient_change\(\)[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = ''/i);
-assert.match(migration, /old_record, new_record, changed_fields\)[\s\S]*NULL,[\s\S]*NULL,[\s\S]*changed/i);
-assert.match(migration, /changed_fields, old_record, new_record\)[\s\S]*pg_catalog\.to_jsonb\(changed\),[\s\S]*NULL,[\s\S]*NULL/i);
+assert.match(migration, /old_record, new_record, changed_fields\s*\)[\s\S]*NULL,[\s\S]*NULL,[\s\S]*changed/i);
+assert.match(migration, /changed_fields, old_record, new_record\s*\)[\s\S]*pg_catalog\.to_jsonb\(changed\),[\s\S]*NULL,[\s\S]*NULL/i);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.audit_patient_changes\(\) FROM PUBLIC, anon, authenticated/i);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.audit_patient_change\(\) FROM PUBLIC, anon, authenticated/i);
 assert.doesNotMatch(migration, /\b(UPDATE|DELETE|TRUNCATE)\s+public\.patient_audit(?:_log)?\b/i, 'historical audit rows must not be rewritten or deleted');
