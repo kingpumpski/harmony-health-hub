@@ -35,16 +35,16 @@ for (const [enterpriseName, globalName] of pairs) {
 // PostgreSQL permissive policies are OR-combined. These source policies overlap on the same
 // five shared tables and can therefore widen access if both migrations are applied.
 assert.equal(pairs.length, 5);
-assert.match(enterprise, /ALTER TABLE public\\.nursing_care_plans ENABLE ROW LEVEL SECURITY/i);
-assert.match(global, /ALTER TABLE public\\.nursing_care_plans ENABLE ROW LEVEL SECURITY/i);
+assert.match(enterprise, /ALTER TABLE public\.nursing_care_plans ENABLE ROW LEVEL SECURITY/i);
+assert.match(global, /ALTER TABLE public\.nursing_care_plans ENABLE ROW LEVEL SECURITY/i);
 
 const globalCare = policy(global, 'nursing care plan access');
 const enterpriseCare = policy(enterprise, 'nursing care plans clinical');
-assert.match(globalCare, /created_by = auth\\.uid\(\)/i);
-assert.match(enterpriseCare, /WITH CHECK\s*\(public\\.has_role/i);
-assert.match(policy(global, 'nursing handover access'), /outgoing_officer = auth\\.uid\(\)/i);
-assert.match(policy(global, 'emergency clinical access'), /assigned_officer = auth\\.uid\(\)/i);
-assert.match(policy(global, 'theatre clinical access'), /created_by = auth\\.uid\(\)/i);
-assert.match(policy(global, 'transfusion clinical access'), /administered_by = auth\\.uid\(\)/i);
+assert.match(globalCare, /created_by = auth\.uid\(\)/i);
+assert.match(enterpriseCare, /WITH CHECK\s*\(public\.has_role/i);
+assert.match(policy(global, 'nursing handover access'), /outgoing_officer = auth\.uid\(\)/i);
+assert.match(policy(global, 'emergency clinical access'), /assigned_officer = auth\.uid\(\)/i);
+assert.match(policy(global, 'theatre clinical access'), /created_by = auth\.uid\(\)/i);
+assert.match(policy(global, 'transfusion clinical access'), /administered_by = auth\.uid\(\)/i);
 
 console.log('[migration-20260912024500-rls] PASS: five colliding policy pairs are pinned; permissive OR-combination and missing facility predicates remain explicit release blockers.');
