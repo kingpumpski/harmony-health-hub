@@ -51,10 +51,17 @@ for (let index = 0; index < ledger.migrations.length; index += 1) {
     assert.equal(local.git_blob_sha, recorded.git_blob_sha, `Git blob changed: ${recorded.path}`);
   }
   counts[status] += 1;
-  if (sameName.length) counts.same_name_candidate += 1;
-  else counts.no_same_name_candidate += 1;
+  if (status === 'version_absent' && sameName.length) counts.same_name_candidate += 1;
+  else if (status === 'version_absent') counts.no_same_name_candidate += 1;
 }
-for (const [key, value] of Object.entries(counts)) assert.equal(value, manifest.counts[key], `count drift: ${key}`);
+const expectedCounts = {
+  exact_identity_source_present: manifest.counts.exact_identity_sources,
+  version_present_name_mismatch: manifest.counts.version_present_name_mismatch,
+  version_absent: manifest.counts.hosted_versions_absent_from_repository,
+  same_name_candidate: manifest.counts.absent_versions_with_same_name_candidate,
+  no_same_name_candidate: manifest.counts.absent_versions_without_same_name_candidate,
+};
+for (const [key, value] of Object.entries(counts)) assert.equal(value, expectedCounts[key], `count drift: ${key}`);
 assert.equal(counts.exact_identity_source_present + counts.version_present_name_mismatch + counts.version_absent, ledger.migration_count);
 
 console.log(`[migration-ledger-source-reconciliation] PASS: ${counts.exact_identity_source_present} exact source identities, ${counts.version_present_name_mismatch} same-version/name mismatches, ${counts.version_absent} absent hosted versions; candidate matches are not treated as proven deployed SQL.`);
