@@ -10,6 +10,7 @@ for (const file of [
   'supabase/tests/database/hr_payroll_record_management_contract.sql',
   'supabase/tests/database/security_access_contract.sql',
   'supabase/tests/database/security_definer_auth_contract.sql',
+  'supabase/tests/database/laboratory_panel_access_contract.sql',
 ]) {
   if (!fs.existsSync(file) || !fs.readFileSync(file, 'utf8').trim()) errors.push(`Required database contract missing or empty: ${file}`);
 }
