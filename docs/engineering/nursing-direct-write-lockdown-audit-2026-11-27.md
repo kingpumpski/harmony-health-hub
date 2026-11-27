@@ -64,3 +64,10 @@ The generated live handover type does not contain `ward_id`, consistent with the
 On commit `a242b824474fe63f686869bab7fd8e5e8cfa89fc`:
 - Quality workflow [#46019159271](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46019159271) passed (81 job steps, no failed steps).
 - Migration contract workflow [#46019159301](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46019159301) passed migration parity and the new nursing direct-write static contract, then failed at the historical migration identity preflight on the known 21 duplicate timestamp groups. PostgreSQL startup and replay were skipped.
+
+
+## Expanded privilege inventory — 2026-11-27
+
+A follow-up catalog check enumerated every table privilege, not only the four common DML privileges. Authenticated also had TRUNCATE, REFERENCES, TRIGGER, and PostgreSQL 17 MAINTAIN on both nursing tables. The forward migration was strengthened to `REVOKE ALL` from authenticated and then re-grant SELECT only. The database contract now asserts absence of INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, and MAINTAIN while retaining SELECT. PUBLIC and anon privileges are also revoked.
+
+This corrects the initially narrower draft that revoked only INSERT/UPDATE/DELETE. The broader revocation is the intended final staged migration.
