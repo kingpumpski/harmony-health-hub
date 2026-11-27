@@ -94,9 +94,9 @@
         "20260912162000_hims_workflow_completion.sql"
       ],
       "ordered_tiers": [],
-      "status": "blocked_diverged_history",
+      "status": "blocked_diverged_history_service_order_conflict",
       "commit_evidence": "f101a219 || ae7c01a5",
-      "caveat": "Commit histories diverge. Static source review found no same-named table/function definitions but prerequisites and security/facility scope require replay validation."
+      "caveat": "Commit histories diverge and cannot establish file order. Static review additionally found an incompatible service_orders state model: this file uses payment_status/fulfillment_status while the canonical lifecycle, billing and dashboard use status. The group remains blocked pending one canonical state model and prerequisite/security/facility replay validation."
     },
     {
       "version": "20260912200000",
