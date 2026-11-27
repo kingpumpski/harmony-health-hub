@@ -30,3 +30,11 @@ Updated `supabase/tests/database/security_definer_auth_contract.sql` to explicit
 ## Limits
 
 This is a catalog and boundary inventory, not a proof that every authenticated RPC's business authorization is correct. The 279 client-callable functions still require semantic review by role, facility, ownership, input validation and data exposure. The inventory also does not replace function-by-function classification. No hosted database changes were made.
+
+
+## CI checkpoint
+
+On commit `3e2cf978c8ad832428a17cc81fea339003ed82ef`:
+- Quality workflow [#46025939250](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46025939250) passed.
+- Migration contract workflow [#46025939187](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46025939187) passed migration parity, migration source provenance, nursing, patient audit, and SECURITY DEFINER source contracts. It then stopped at the unchanged duplicate migration-version preflight; PostgreSQL startup and database SQL tests were skipped.
+- The updated database SECURITY DEFINER contract has not been executed against PostgreSQL because the clean replay gate remains blocked.
