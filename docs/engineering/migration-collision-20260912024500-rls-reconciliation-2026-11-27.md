@@ -57,4 +57,19 @@ The live write boundary is more specific:
 
 The actual live column sets are hybrid/expanded across both candidates (see `docs/engineering/live-supabase-catalog-security-audit-2026-11-27.md`). This is valuable mapping evidence, not approval to preserve duplicate columns forever.
 
-No policy or grant was changed. The required next step is an application/RPC write-path inventory and an approved role × facility × action matrix, followed by a forward-only repair and disposable role/facility tests.
+## Completed live RPC and caller inventory — 2026-11-27
+
+The application write-path inventory is now complete for the five shared tables:
+
+- `nursing_shift_handovers`: the handover page uses `create_nursing_shift_handover` and `acknowledge_nursing_handover`; the dashboard/Edge Function only reads or subscribes. No direct table mutation caller was found.
+- `nursing_care_plans`: Clinical Operations creates plans through `create_nursing_care_plan`; no direct mutation caller or current UI review caller was found.
+- `emergency_cases`, `theatre_cases`, and `transfusion_records`: authenticated direct DML privileges are absent; lifecycle writes are through the clinical RPCs.
+
+A fresh live catalog query found these six RPCs SECURITY DEFINER, with `search_path = ''`, authenticated EXECUTE, and no anon EXECUTE:
+`create_nursing_shift_handover`, `acknowledge_nursing_handover`, `create_nursing_care_plan`, `create_emergency_case`, `transition_emergency_case`, `create_theatre_case`, `transition_theatre_case`, `create_transfusion_record`, and `record_transfusion_event`. All inspected definitions include a facility-context check. Handover acknowledgement, emergency/theatre transitions, transfusion creation and transfusion event recording use row locks. The live catalog did not contain `review_nursing_care_plan`.
+
+The targeted forward repair is staged in `supabase/migrations/20261127103000_lock_nursing_lifecycle_table_writes.sql`: revoke PUBLIC/anon table access and authenticated direct INSERT/UPDATE/DELETE on the two nursing tables, preserving authenticated SELECT under RLS and the existing RPC write paths. Static source and database ACL contracts were added. It is not applied.
+
+The role-based permissive ALL policies remain a policy-design concern and should be reconciled with an approved role × facility × action matrix. The staged grant correction removes the currently unnecessary direct table-write path, but does not claim to replace or fully reconcile the historical policy definitions.
+
+No policy or grant was changed in the hosted database. The staged migration remains unapplied pending duplicate-history reconciliation, disposable PostgreSQL replay, and positive/negative facility tests.
