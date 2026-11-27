@@ -4,7 +4,7 @@
 The latest historical `get_department_queue(text,integer)` definition includes multi-role checks but treats `admin` as a global bypass and has no facility predicate in its result query. The canonical attribution migration adds `facility_id` to `department_queues`, `service_orders`, and `patients`, and the reconciliation trigger derives queue facility from its service order.
 
 ## Forward repair
-Added `20261127100000_fix_department_queue_facility_scope.sql`:
+Added `20261127100400_fix_department_queue_facility_scope.sql`:
 - Preserves RPC signature, table return contract, queue status filtering, ordering, limit bounds, multi-role checks, and authenticated-only grant.
 - Requires active facility for ordinary callers, including facility admins.
 - Requires queue, service order, and patient facility IDs all to equal the active facility.
