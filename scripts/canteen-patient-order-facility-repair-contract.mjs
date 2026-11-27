@@ -17,6 +17,8 @@ assert.match(migration, /IF NOT v_platform_superuser AND v_facility IS NULL THEN
 assert.match(migration, /mo\.facility_id = v_facility/);
 assert.match(migration, /p\.facility_id = v_facility/);
 assert.match(migration, /mp\.facility_id = v_facility/);
+assert.match(migration, /mp\.patient_id = p\.id/);
+assert.match(migration, /d\.facility_id = v_facility AND e\.facility_id = v_facility/);
 assert.match(migration, /AND \(mo\.meal_plan_id IS NULL OR mp\.id IS NOT NULL\)/);
 assert.match(migration, /SET search_path = ''/);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.get_canteen_active_patient_orders\(\) FROM PUBLIC, anon/);
