@@ -23,3 +23,11 @@ Existing source contracts already cover the staged privilege migration and the `
 ## Deployment status and limitations
 
 The migration is repository-only and has not been applied to the hosted database. Live grants and the mutable search_path finding therefore remain present until a reviewed migration release is applied. The migration-history preflight still blocks PostgreSQL replay because of the 21 duplicate migration-version groups. No database writes, resets, data changes or branch creation were performed.
+
+
+## CI checkpoint
+
+On commit `7d326241d98315e625edc2deffa2ad375c403d27`:
+- Quality workflow [#46022136691](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46022136691) passed.
+- Migration contract workflow [#46022136687](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46022136687) ran the migration-parity source contracts successfully, including the existing laboratory privilege contract and the new nursing direct-write contract. It then failed closed at `npm run test:migration-contract` because the migration inventory still contains the 21 historical duplicate timestamp groups. The database replay job failed the same duplicate-identity preflight; Supabase startup and SQL replay were skipped.
+- The new database ACL contract is registered as a required contract asset. It has not yet executed against PostgreSQL because clean replay is blocked.
