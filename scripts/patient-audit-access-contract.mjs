@@ -16,4 +16,8 @@ assert.match(sql, /NOT has_table_privilege\('authenticated','public.patient_audi
 assert.match(sql, /patient_audit_log_active_facility_read/, 'audit log access must use the active-facility policy');
 assert.match(sql, /old_record, new_record/, 'audit trigger privacy contract must be present');
 
+assert.match(sql, /NOT has_table_privilege\('authenticated','public.patient_audit','SELECT'\)/, 'legacy patient snapshots must not be directly readable by authenticated clients');
+assert.match(sql, /patient_audit_log_active_facility_read/, 'audit log access must use the active-facility policy');
+assert.match(sql, /old_record, new_record/, 'audit trigger privacy contract must be present');
+
 console.log('[patient-audit-access] database contract source checks passed');
