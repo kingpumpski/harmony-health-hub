@@ -21,8 +21,8 @@ BEGIN
   IF v_definition IS NULL
      OR v_is_security_definer
      OR v_return_type <> 'jsonb'::pg_catalog.regtype
-     OR pg_catalog.position('Requested dashboard role is not assigned to the authenticated user' IN v_definition) = 0
-     OR pg_catalog.position('ur.role::text = _requested_role' IN v_definition) = 0 THEN
+     OR pg_catalog.strpos(v_definition, 'Requested dashboard role is not assigned to the authenticated user') = 0
+     OR pg_catalog.strpos(v_definition, 'ur.role::text = _requested_role') = 0 THEN
     RAISE EXCEPTION 'Active-role dashboard RPC does not match the reviewed SECURITY INVOKER authorization contract';
   END IF;
 END;
