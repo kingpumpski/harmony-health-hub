@@ -41,7 +41,7 @@ for (let index = 0; index < expectedGroups.length; index += 1) {
   const flattenedTiers = expected.ordered_tiers.flat();
   assert.equal(new Set(flattenedTiers).size, flattenedTiers.length,
     `Ordering evidence repeats a file for version ${expected.version}`);
-  if (expected.status === 'blocked_diverged_history') {
+  if (expected.status.startsWith('blocked_diverged_history')) {
     assert.equal(expected.ordered_tiers.length, 0,
       `Diverged history must not claim an execution order for ${expected.version}`);
   } else {
