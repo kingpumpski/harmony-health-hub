@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const file='supabase/migrations/20261127100000_fix_department_queue_facility_scope.sql';
+const file='supabase/migrations/20261127100400_fix_department_queue_facility_scope.sql';
 const sql=fs.readFileSync(file,'utf8');
 const n=sql.toLowerCase().replace(/\s+/g,'');
 for(const token of [
