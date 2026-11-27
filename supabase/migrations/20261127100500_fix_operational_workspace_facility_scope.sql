@@ -61,7 +61,7 @@ BEGIN
   src := pg_catalog.replace(src,old_predicate,new_predicate);
 
   old_predicate := 'IF v_role IS NULL THEN RAISE EXCEPTION ''Staff profile required''; END IF;';
-  new_predicate := old_predicate || E'\n  IF _module IN (''appointments'',''ward'',''nursing_care'',''emergency'',''handover'',''theatre'',''transfusion'',''insurance'',''medication_administration'')\n     AND v_role <> ''system_superuser'' AND v_facility IS NULL THEN\n    RAISE EXCEPTION ''Select an active facility to access this operational workspace'';\n  END IF;';
+  new_predicate := old_predicate || E'\n  IF _module IN (''appointments'',''ward'',''nursing_care'',''emergency'',''handover'',''theatre'',''transfusion'',''insurance'',''medication_administration'',''ai_clinical'')\n     AND v_role <> ''system_superuser'' AND v_facility IS NULL THEN\n    RAISE EXCEPTION ''Select an active facility to access this operational workspace'';\n  END IF;';
   replacements := (pg_catalog.length(src)-pg_catalog.length(pg_catalog.replace(src,old_predicate,'')))/pg_catalog.length(old_predicate);
   IF replacements <> 1 THEN
     RAISE EXCEPTION 'Expected one operational workspace role-resolution anchor, found %', replacements;
