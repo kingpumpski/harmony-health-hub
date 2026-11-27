@@ -43,3 +43,10 @@ This is a broader migration-provenance blocker than duplicate filenames alone. A
 `scripts/migration-ledger-source-reconciliation-contract.mjs` verifies every ledger entry, local source status, candidate path and Git blob SHA against the captured inventory. It intentionally does not promote candidate files to authoritative migration sources or mark the migration history resolved.
 
 No database writes, migration application, reset, or branch creation occurred during this audit.
+
+
+## CI validation
+
+On commit `cd526b314459a43ed4c39837de35e4a71f28757c`, the new source-reconciliation contract passed in the Migration contract workflow and printed: 68 exact source identities, 10 same-version/name mismatches, 339 absent hosted versions. It verified all candidate file Git blob SHAs against the repository snapshot and did not promote candidates to authoritative sources.
+
+Quality workflow [#46023170576](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46023170576) passed. Migration contract workflow [#46023170630](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46023170630) passed the full migration-parity source contracts, then failed at the existing duplicate migration identity preflight. PostgreSQL startup and clean replay were skipped.
