@@ -18,9 +18,11 @@ assert.match(lifecycle, /ALTER TABLE public\.service_orders\s+ADD COLUMN IF NOT 
   'The payment lifecycle migration must extend, not recreate, the canonical service-order table');
 assert.match(lifecycle, /ADD CONSTRAINT service_orders_status_check\s+CHECK\s*\(status IN \('pending_payment_approval','released','in_progress','completed','cancelled'\)\)/i,
   'The canonical lifecycle state vocabulary must remain explicit');
-assert.match(divergent, /CREATE TABLE IF NOT EXISTS public\.service_orders\s*\([\s\S]*?payment_status\s+TEXT[\s\S]*?fulfillment_status\s+TEXT/i,
-  'The divergent HIMS migration must retain its incompatible source shape as evidence');
-assert.doesNotMatch(divergent, /CREATE TABLE IF NOT EXISTS public\.service_orders\s*\([\s\S]*?\bstatus\s+TEXT/i,
+const divergentServiceOrders = divergent.match(/CREATE TABLE IF NOT EXISTS public\.service_orders\s*\(([\s\S]*?)\n\);/i)?.[1];
+assert.ok(divergentServiceOrders, 'The divergent service_orders declaration must remain present');
+assert.match(divergentServiceOrders, /payment_status\s+TEXT/i, 'The divergent definition must expose payment_status');
+assert.match(divergentServiceOrders, /fulfillment_status\s+TEXT/i, 'The divergent definition must expose fulfillment_status');
+assert.doesNotMatch(divergentServiceOrders, /\bstatus\s+TEXT/i,
   'The divergent HIMS definition must not be mistaken for the canonical status-based model');
 assert.match(divergent, /ON public\.service_orders\s*\(department,\s*fulfillment_status,\s*priority,\s*created_at\)/i,
   'The divergent migration index dependency must remain documented and detectable');
