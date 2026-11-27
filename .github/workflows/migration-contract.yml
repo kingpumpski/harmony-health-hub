@@ -6,6 +6,8 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
+      - 'docs/engineering/migration-collision-*-2026-11-27.md'
+      - 'docs/engineering/active-role-dashboard-search-path-hardening-2026-11-27.md'
       - 'scripts/migration-contract.mjs'
       - 'scripts/migration-*.mjs'
       - 'scripts/*facility-repair-contract.mjs'
@@ -19,6 +21,8 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
+      - 'docs/engineering/migration-collision-*-2026-11-27.md'
+      - 'docs/engineering/active-role-dashboard-search-path-hardening-2026-11-27.md'
       - 'scripts/migration-contract.mjs'
       - 'scripts/migration-*.mjs'
       - 'scripts/*facility-repair-contract.mjs'
