@@ -7,6 +7,8 @@ const ui = readFileSync(new URL('../src/pages/PatientAudit.tsx', import.meta.url
 
 assert.match(migration, /REVOKE ALL PRIVILEGES ON TABLE public\.patient_audit, public\.patient_audit_log\s+FROM PUBLIC, anon, authenticated/i);
 assert.match(migration, /GRANT SELECT ON TABLE public\.patient_audit_log TO authenticated/i);
+assert.match(migration, /ALTER TABLE public\.patient_audit ALTER COLUMN patient_id DROP NOT NULL/i);
+assert.match(migration, /patient_audit_patient_id_fkey[\s\S]*ON DELETE SET NULL/i);
 assert.match(migration, /patient_audit_log_active_facility_read[\s\S]*public\.patients[\s\S]*current_user_facility_id/i);
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.audit_patient_changes\(\)[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = ''/i);
 assert.match(migration, /CREATE OR REPLACE FUNCTION public\.audit_patient_change\(\)[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = ''/i);
