@@ -13,6 +13,8 @@ on:
       - 'scripts/*facility-repair-contract.mjs'
       - 'scripts/*forward-repair-contract.mjs'
       - 'scripts/active-dashboard-role-search-path-contract.mjs'
+      - 'scripts/patient-audit-access-contract.mjs'
+      - 'scripts/patient-audit-trigger-minimization-contract.mjs'
       - '.github/workflows/migration-contract.yml'
       - '.github/workflows/supabase-migrations.yml'
       - 'package.json'
