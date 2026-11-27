@@ -44,3 +44,14 @@ This regression detects source drift in CI. It does not make the historical SQL 
 5. Do not begin full clean replay while the 21 duplicate migration identities remain unresolved.
 
 No historical migration SQL was edited, no migration was applied, and no Supabase branch was created.
+
+
+## Additional security and privacy blockers pinned in CI
+
+The divergent HIMS workflow migration also defines SECURITY DEFINER functions with `SET search_path = public`. This is weaker than the fixed empty search path used by the newer forward-repair conventions and requires a signature-by-signature dependency review before any replacement is designed.
+
+Its `audit_patient_changes()` trigger writes complete `OLD` and `NEW` patient rows to JSONB. That can retain fields unrelated to the audit event and expands the exposure surface of the audit table. A replacement must use an explicit allowlist of changed, non-sensitive fields or a narrowly scoped event payload, with facility-aware read access and retention rules. Do not simply remove the audit trail or assume that current table RLS protects copied JSONB.
+
+A new source contract, `scripts/migration-20260912162000-service-order-conflict-contract.mjs`, is part of `npm run test:migration-parity`. It pins the canonical status-based service-order model, the incompatible alternate fields and trigger/index dependencies, the downstream dashboard/hardening expectations, and these search-path and full-row audit risks. The contract is evidence only; it intentionally does not rewrite historical SQL or mark the collision resolved.
+
+No database replay or application was performed.
