@@ -13,9 +13,9 @@ const clinicalOperations = readFileSync('src/pages/ClinicalOperations.tsx', 'utf
 const clinicalAssist = readFileSync('supabase/functions/ai-clinical-assist/index.ts', 'utf8');
 
 assert.match(migration, /REVOKE ALL ON TABLE public\.nursing_shift_handovers FROM PUBLIC, anon/i);
-assert.match(migration, /REVOKE INSERT, UPDATE, DELETE ON TABLE public\.nursing_shift_handovers FROM authenticated/i);
+assert.match(migration, /REVOKE ALL ON TABLE public\.nursing_shift_handovers FROM authenticated/i);
 assert.match(migration, /REVOKE ALL ON TABLE public\.nursing_care_plans FROM PUBLIC, anon/i);
-assert.match(migration, /REVOKE INSERT, UPDATE, DELETE ON TABLE public\.nursing_care_plans FROM authenticated/i);
+assert.match(migration, /REVOKE ALL ON TABLE public\.nursing_care_plans FROM authenticated/i);
 assert.match(migration, /GRANT SELECT ON TABLE public\.nursing_shift_handovers TO authenticated/i);
 assert.match(migration, /GRANT SELECT ON TABLE public\.nursing_care_plans TO authenticated/i);
 assert.doesNotMatch(migration, /\b(DROP|TRUNCATE)\s+(TABLE|COLUMN|CONSTRAINT|INDEX)\b/i);
