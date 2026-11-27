@@ -17,7 +17,7 @@ assert.match(migration, /p\.facility_id = v_facility/);
 assert.match(migration, /b\.facility_id IS DISTINCT FROM v_facility/);
 assert.match(migration, /w\.facility_id IS DISTINCT FROM v_facility/);
 assert.doesNotMatch(migration, /v_facility IS NULL\s+OR\s+b\.facility_id IS NULL/);
-assert.match(migration, /SET search_path = pg_catalog, public/);
+assert.match(migration, /SET search_path = ''/);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.get_admission_workspace\(integer\) FROM PUBLIC, anon/);
 assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.get_admission_workspace\(integer\) TO authenticated/);
 assert.match(migration, /NOTIFY pgrst, 'reload schema'/);
