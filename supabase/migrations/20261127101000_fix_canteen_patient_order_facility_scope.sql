@@ -77,6 +77,7 @@ BEGIN
      v_platform_superuser
      OR mp.facility_id = v_facility
    )
+   AND mp.patient_id = p.id
   WHERE mo.status <> 'delivered'
     AND mo.scheduled_for >= pg_catalog.now() - INTERVAL '2 hours'
     AND mo.scheduled_for < pg_catalog.now() + INTERVAL '36 hours'
