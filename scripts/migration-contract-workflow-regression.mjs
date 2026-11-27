@@ -17,7 +17,7 @@ assert.match(replay, /'scripts\/migration-\*\.mjs'/, 'validator changes must tri
 const facilityBoundaryPath = 'supabase/tests/database/facility_boundary_workspace_contract.sql';
 const facilityBoundary = fs.readFileSync(facilityBoundaryPath, 'utf8');
 assert.match(deploy, /supabase test db --linked supabase\/tests\/database\/facility_boundary_workspace_contract\.sql/, 'facility-boundary regression must run in hosted verification and apply modes');
-assert.match(facilityBoundary, /SELECT plan\(12\);/, 'facility-boundary contract must include the platform-admin regression assertion');
+assert.match(facilityBoundary, /SELECT plan\(13\);/, 'facility-boundary contract must include the platform-admin regression assertion');
 assert.match(facilityBoundary, /v_platform_admin:=v_rolein\(''it_admin'',''system_superuser''\)/, 'platform bypass assertion must exclude facility-scoped admin');
 assert.match(facilityBoundary, /facility admin is not treated as a platform-wide bypass/, 'facility-admin bypass regression must remain explicitly named');
 assert.match(facilityBoundary, /appointment reads require active-facility lineage unless an explicit platform administrator has no facility selected/, 'appointment facility-null bypass regression must remain explicit');
