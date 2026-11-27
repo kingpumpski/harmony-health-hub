@@ -22,6 +22,8 @@ assert.match(facilityBoundary, /v_platform_admin:=v_rolein\(''it_admin'',''syste
 assert.match(facilityBoundary, /facility admin is not treated as a platform-wide bypass/, 'facility-admin bypass regression must remain explicitly named');
 assert.match(facilityBoundary, /appointment reads require active-facility lineage unless an explicit platform administrator has no facility selected/, 'appointment facility-null bypass regression must remain explicit');
 assert.match(facilityBoundary, /ward and bed reads exclude unassigned facility rows for ordinary callers/, 'unassigned ward/bed bypass regression must remain explicit');
+assert.match(facilityBoundary, /department queue enforces facility lineage across queue, service order, and patient/, 'department queue facility lineage regression must remain explicit');
+assert.match(facilityBoundary, /department queue reserves cross-facility bypass for platform roles/, 'department queue platform bypass must exclude facility admin');
 
 
 assert.match(deploy, /environment: production/, 'all linked production database operations must pass through the protected production environment');
