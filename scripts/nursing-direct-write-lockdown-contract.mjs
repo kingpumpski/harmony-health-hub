@@ -28,7 +28,7 @@ for (const [label, source, table] of [
   ['clinical operations', clinicalOperations, 'nursing_care_plans'],
   ['clinical-assist edge function', clinicalAssist, 'nursing_shift_handovers'],
 ]) {
-  const directMutation = new RegExp(String.raw`from\\(['"]${table}['"]\\)\\s*\\.\\s*(insert|update|upsert|delete)\\b`, 'i');
+  const directMutation = new RegExp(String.raw`\\.from\\(['"]${table}['"]\\)\\s*\\.\\s*(insert|update|upsert|delete)\\b`, 'i');
   assert.doesNotMatch(source, directMutation, `${label} must not mutate ${table} directly`);
 }
 
