@@ -9,7 +9,7 @@ const sourcePaths = [
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const sources = sourcePaths.map((path) => fs.readFileSync(path, 'utf8'));
 const normalized = sql.toLowerCase().replace(/\s+/g, '');
-const sourceText = sources.join('\n').toLowerCase();
+const sourceText = sources.join('\n').toLowerCase().replace(/\\s+/g, '');
 
 for (const token of [
   "ifnotpublic.has_role(uid,''system_superuser'')",
