@@ -104,3 +104,10 @@ An exact version lookup against the 417-entry read-only ledger baseline found th
 The migration directory therefore contains a legacy/source-history set that must not be replayed wholesale as though it were the hosted upgrade chain. The new-environment track should use a separately named, complete, provenance-checked schema-only bootstrap generated from the approved authoritative schema. The existing-environment track must retain the hosted 417-entry identity baseline and apply only verified forward migrations. Both tracks remain blocked until the schema-only export, replay and upgrade tests exist.
 
 The comparison is documented in `docs/engineering/migration-collision-git-dag-ordering-2026-11-26.md`. No migration file or ledger entry was changed.
+
+
+## Active source inventory gate — 2026-11-27
+
+The active migration directory now has 666 SQL files. Compared with the 417-entry hosted ledger baseline, only 68 exact version/name source files are present, 10 entries have the version but a different filename suffix, and 339 hosted versions are absent. Of the absent versions, 182 have same-name files under different timestamps (unverified candidates) and 157 have no same-name candidate in the active directory.
+
+The per-entry inventory, including Git blob SHAs, is maintained in `docs/engineering/migration-ledger-source-reconciliation-2026-11-27.json` and guarded by `scripts/migration-ledger-source-reconciliation-contract.mjs`. This source-provenance gap must be resolved before the duplicate-version problem can be treated as the only clean-replay blocker. A matching filename is not proof of identical SQL. No source file is auto-renamed or treated as canonical by this inventory.
