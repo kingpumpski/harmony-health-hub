@@ -51,8 +51,8 @@ No database was accessed or modified, no SQL was applied, and no Supabase branch
 A read-only inspection of project `ygqoptvezotdqhtimdkr` confirms all five tables exist with RLS enabled. The live catalog has a role-based **PERMISSIVE FOR ALL** policy on each table, plus two **RESTRICTIVE SELECT-only** policies: `facility isolation select` and `facility_identity_select_guard`. Because the facility policies are restrictive, they AND with permissive policies for SELECT; the earlier source-only warning must not be interpreted as proof that current SELECT isolation is absent.
 
 The live write boundary is more specific:
-- `nursing_shift_handovers`: authenticated INSERT, UPDATE and DELETE table privileges are present. Its permissive ALL policy uses role checks, while the restrictive facility policies apply only to SELECT. Direct write scope therefore requires urgent review.
-- `nursing_care_plans`: authenticated UPDATE and DELETE privileges are present (INSERT is not). Its permissive ALL policy uses role checks; restrictive facility policies apply only to SELECT. Review UPDATE `WITH CHECK` carefully to prevent facility reassignment.
+- `nursing_shift_handovers`: authenticated INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER and MAINTAIN table privileges are present. Its permissive ALL policy uses role checks, while the restrictive facility policies apply only to SELECT.
+- `nursing_care_plans`: authenticated UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER and MAINTAIN privileges are present (INSERT is not). Its permissive ALL policy uses role checks; restrictive facility policies apply only to SELECT.
 - `emergency_cases`, `theatre_cases`, and `transfusion_records`: authenticated direct INSERT/UPDATE/DELETE privileges were not present at inspection. Their RPC paths still need exact-signature authorization review.
 
 The actual live column sets are hybrid/expanded across both candidates (see `docs/engineering/live-supabase-catalog-security-audit-2026-11-27.md`). This is valuable mapping evidence, not approval to preserve duplicate columns forever.
