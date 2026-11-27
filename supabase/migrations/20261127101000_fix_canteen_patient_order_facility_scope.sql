@@ -63,6 +63,10 @@ BEGIN
       WHERE d.patient_id = p.id
         AND (e.id IS NULL OR e.status NOT IN ('completed', 'cancelled'))
         AND NULLIF(pg_catalog.btrim(d.diagnosis), '') IS NOT NULL
+        AND (
+          v_platform_superuser
+          OR (d.facility_id = v_facility AND e.facility_id = v_facility)
+        )
     ), '[]'::jsonb),
     mo.notes
   FROM public.meal_orders mo
