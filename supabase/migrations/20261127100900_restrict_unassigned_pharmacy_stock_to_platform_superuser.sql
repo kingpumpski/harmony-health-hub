@@ -7,16 +7,18 @@ DECLARE
   v_workspace_marker text := 'CASE WHEN v_admin OR v_superuser THEN COALESCE((';
   v_assign_marker text := 'IF uid IS NULL OR NOT (public.has_role(uid, ''admin'') OR public.has_role(uid, ''system_superuser'')) THEN';
   v_count integer;
-  v_workspace_secure boolean;
-  v_assign_secure boolean;
+  v_workspace_definer boolean;
+  v_workspace_empty_path boolean;
+  v_assign_definer boolean;
+  v_assign_empty_path boolean;
 BEGIN
   SELECT pg_catalog.pg_get_functiondef(p.oid), p.prosecdef,
-         p.proconfig @> ARRAY['search_path=""']
-    INTO v_workspace, v_workspace_secure, v_workspace_secure
+         COALESCE(p.proconfig @> ARRAY['search_path=""'], false)
+    INTO v_workspace, v_workspace_definer, v_workspace_empty_path
   FROM pg_catalog.pg_proc p
   WHERE p.oid = 'public.get_pharmacy_workspace(integer)'::pg_catalog.regprocedure;
 
-  IF v_workspace IS NULL OR NOT v_workspace_secure THEN
+  IF v_workspace IS NULL OR NOT v_workspace_definer OR NOT v_workspace_empty_path THEN
     RAISE EXCEPTION 'Pharmacy workspace RPC is missing or no longer SECURITY DEFINER';
   END IF;
 
@@ -27,12 +29,12 @@ BEGIN
   v_workspace := pg_catalog.replace(v_workspace, v_workspace_marker, 'CASE WHEN v_superuser THEN COALESCE((');
 
   SELECT pg_catalog.pg_get_functiondef(p.oid), p.prosecdef,
-         p.proconfig @> ARRAY['search_path=""']
-    INTO v_assign, v_assign_secure, v_assign_secure
+         COALESCE(p.proconfig @> ARRAY['search_path=""'], false)
+    INTO v_assign, v_assign_definer, v_assign_empty_path
   FROM pg_catalog.pg_proc p
   WHERE p.oid = 'public.assign_unattributed_pharmacy_inventory(uuid,text)'::pg_catalog.regprocedure;
 
-  IF v_assign IS NULL OR NOT v_assign_secure THEN
+  IF v_assign IS NULL OR NOT v_assign_definer OR NOT v_assign_empty_path THEN
     RAISE EXCEPTION 'Unassigned inventory reconciliation RPC is missing or no longer SECURITY DEFINER';
   END IF;
 
