@@ -6,10 +6,9 @@ const enterprise = readFileSync(new URL('20260912024500_global_hims_enterprise_o
 const global = readFileSync(new URL('20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql', base), 'utf8');
 
 function policy(source, name) {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = source.match(new RegExp('CREATE POLICY "' + escaped + '"[\s\\S]*?;', 'i'));
-  assert.ok(match, 'Missing policy: ' + name);
-  return match[0].replace(/\s+/g, ' ').trim();
+  const statement = source.split(';').find(part => part.includes('CREATE POLICY "' + name + '"'));
+  assert.ok(statement, 'Missing policy: ' + name);
+  return statement.trim() + ';';
 }
 
 const pairs = [
