@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(8);
+SELECT plan(9);
 
 SELECT ok(
   (SELECT relrowsecurity FROM pg_class WHERE oid='public.patient_audit'::regclass)
@@ -30,6 +30,20 @@ SELECT ok(
   AND NOT has_table_privilege('authenticated','public.patient_audit_log','UPDATE')
   AND NOT has_table_privilege('authenticated','public.patient_audit_log','DELETE'),
   'authenticated clients can read only the facility-scoped audit log and cannot read or mutate the legacy snapshot table'
+);
+
+SELECT ok(
+  NOT (SELECT attnotnull FROM pg_attribute
+       WHERE attrelid='public.patient_audit'::regclass
+         AND attname='patient_id' AND attnum>0 AND NOT attisdropped)
+  AND EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.patient_audit'::regclass
+      AND conname='patient_audit_patient_id_fkey'
+      AND contype='f'
+      AND confdeltype='n'
+  ),
+  'patient deletion preserves legacy audit events through ON DELETE SET NULL'
 );
 
 SELECT ok(
