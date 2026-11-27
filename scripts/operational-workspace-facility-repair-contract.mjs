@@ -18,6 +18,7 @@ for (const token of [
   "v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND p.facility_id=v_facility)",
   "v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND facility_id=v_facility)",
   "v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND b.facility_id=v_facility)",
+  "v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND facility_id=v_facility)",
   "v_role <> ''system_superuser'' AND v_facility IS NULL"
 ]) {
   if (!normalized.includes(token.toLowerCase().replace(/\s+/g, ''))) {
@@ -25,10 +26,11 @@ for (const token of [
   }
 }
 if (!sourceNormalized.includes("(v_platform_adminandv_facilityisnullorp.facility_id=v_facility)") ||
+    !sourceNormalized.includes("frompublic.ai_clinical_sessionsorderbycreated_atdesclimitv_limit") ||
     !sourceNormalized.includes("facility_idisnull")) {
   throw new Error('Source drift detected: reviewed vulnerable predicates no longer match the documented source');
 }
-if (!sql.includes('replacements <> 7') || !sql.includes('replacements <> 1')) {
+if (!sql.includes("'ai_clinical'") || !sql.includes('replacements <> 7') || !sql.includes('replacements <> 1')) {
   throw new Error('Repair must fail closed when expected source replacement counts drift');
 }
 if (!sql.includes('REVOKE ALL ON FUNCTION public.get_operational_workspace(text,integer) FROM PUBLIC, anon;') ||
