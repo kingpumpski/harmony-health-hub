@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 
 const migrationPath = 'supabase/migrations/20261127103000_lock_nursing_lifecycle_table_writes.sql';
 const migration = readFileSync(migrationPath, 'utf8');
+const ledger = JSON.parse(readFileSync('supabase/migration-ledger-baseline.json', 'utf8'));
+const migrationVersion = /^([0-9]{14})_/.exec(migrationPath.split('/').at(-1) ?? '')?.[1];
+assert.ok(migrationVersion && migrationVersion > ledger.latest_version, 'forward repair must sort after the verified hosted migration ledger');
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 const handoverUi = readFileSync('src/pages/NursingHandover.tsx', 'utf8');
 const nurseDashboard = readFileSync('src/pages/dashboard/NurseDashboard.tsx', 'utf8');
@@ -28,7 +31,7 @@ for (const [label, source, table] of [
   ['clinical operations', clinicalOperations, 'nursing_care_plans'],
   ['clinical-assist edge function', clinicalAssist, 'nursing_shift_handovers'],
 ]) {
-  const directMutation = new RegExp(String.raw`\\.from\\(['"]${table}['"]\\)\\s*\\.\\s*(insert|update|upsert|delete)\\b`, 'i');
+  const directMutation = new RegExp(String.raw`\.from\(['"]${table}['"]\)\s*\.\s*(insert|update|upsert|delete)\b`, 'i');
   assert.doesNotMatch(source, directMutation, `${label} must not mutate ${table} directly`);
 }
 
