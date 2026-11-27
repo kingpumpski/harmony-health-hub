@@ -11,7 +11,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   uid UUID := auth.uid();
