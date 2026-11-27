@@ -15,6 +15,14 @@ for (const file of [
 ]) {
   if (!fs.existsSync(file) || !fs.readFileSync(file, 'utf8').trim()) errors.push(`Required database contract missing or empty: ${file}`);
 }
+for (const script of [
+  'scripts/migration-ledger-source-reconciliation-contract.mjs',
+  'scripts/patient-audit-trigger-minimization-contract.mjs',
+]) {
+  if (!fs.existsSync(script) || !fs.readFileSync(script, 'utf8').trim()) {
+    errors.push(`Required migration/security contract script missing or empty: ${script}`);
+  }
+}
 for (const workflow of ['migration-contract.yml', 'supabase-migrations.yml']) {
   const source = fs.readFileSync(path.join('.github/workflows', workflow), 'utf8');
   for (const match of source.matchAll(/\bnode\s+((?:scripts|supabase\/tests)\/[^\s"']+\.mjs)/g)) {
