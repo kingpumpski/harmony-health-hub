@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Read-only comparison of the saved 417-entry hosted ledger baseline for project `ygqoptvezotdqhtimdkr` against the active repository `supabase/migrations` directory at commit `669d097fafa83abbee547b777a871555e1bdba1d`.
+Read-only comparison of the saved 417-entry hosted ledger baseline for project `ygqoptvezotdqhtimdkr` against the active repository `supabase/migrations` directory at commit `ad2cfecf44b88b3b92f7ebdfe46f288bf09e8011`.
 
 | Measure | Count |
 |---|---:|
