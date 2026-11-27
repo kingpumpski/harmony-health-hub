@@ -11,7 +11,7 @@ for (const privilege of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
 assert.match(sql, /current_user_facility_id/, 'audit log read contract must require active facility context');
 assert.match(sql, /ILIKE '%patients%'/, 'audit log read contract must join patient lineage');
 assert.match(sql, /ILIKE '%exists%'/, 'audit log read contract must require an existing patient row');
-assert.match(sql, /SELECT plan[(]9[)]/, 'audit contract must declare all eight assertions');
+assert.match(sql, /SELECT plan[(]9[)]/, 'audit contract must declare all nine assertions');
 assert.match(sql, /NOT has_table_privilege\('authenticated','public.patient_audit','SELECT'\)/, 'legacy patient snapshots must not be directly readable by authenticated clients');
 assert.match(sql, /patient_audit_log_active_facility_read/, 'audit log access must use the active-facility policy');
 assert.match(sql, /old_record, new_record/, 'audit trigger privacy contract must be present');
