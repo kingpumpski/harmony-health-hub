@@ -28,7 +28,7 @@ assert.match(divergent, /ON public\.service_orders\s*\(department,\s*fulfillment
   'The divergent migration index dependency must remain documented and detectable');
 assert.match(divergent, /NEW\.fulfillment_status/i,
   'The divergent trigger dependency must remain documented and detectable');
-assert.match(hardening, /service_orders\.status|NEW\.status|OLD\.status/i,
+assert.match(hardening, /service_orders\.status|v_order\.status|NEW\.status|OLD\.status/i,
   'The later release/override hardening must continue to use the canonical status field');
 assert.match(dashboard, /FROM public\.service_orders WHERE status IN/i,
   'The dashboard must continue to consume the canonical status field');
