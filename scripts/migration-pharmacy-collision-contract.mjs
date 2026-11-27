@@ -8,8 +8,9 @@ const appointmentPath = path.join(root, base + '20261002130000_scope_appointment
 const legacyPath = path.join(root, base + '20261002132000_pharmacy_legacy_stock_reconciliation_rpc.sql');
 const patientHubPath = path.join(root, base + '20261002132500_patient_hub_read_rpc_get_compatibility.sql');
 const categoryPath = path.join(root, base + '20261002132500_pharmacy_global_category_edit.sql');
-const [pharmacy, appointment, legacy, patientHub, category] =
-  [pharmacyPath, appointmentPath, legacyPath, patientHubPath, categoryPath].map(file => fs.readFileSync(file, 'utf8'));
+const forwardRepairPath = path.join(root, base + '20261127100300_fix_pharmacy_workspace_admin_facility_scope.sql');
+const [pharmacy, appointment, legacy, patientHub, category, forwardRepair] =
+  [pharmacyPath, appointmentPath, legacyPath, patientHubPath, categoryPath, forwardRepairPath].map(file => fs.readFileSync(file, 'utf8'));
 
 function functionNames(sql) {
   return [...sql.matchAll(/CREATE(?: OR REPLACE)? FUNCTION public\.([a-z0-9_]+)/gi)].map(match => match[1].toLowerCase());
@@ -46,6 +47,31 @@ const workspace = pharmacy.slice(workspaceStart, workspaceEnd);
 if (!workspace.includes("v_admin := public.has_role(v_uid, 'admin')")) {
   throw new Error('Expected admin role classification in pharmacy workspace');
 }
+
+// The historical bypass is retained as provenance evidence above. The later
+// forward-only correction must close it for all patient-linked clinical rows.
+const repairedStart = forwardRepair.indexOf('CREATE OR REPLACE FUNCTION public.get_pharmacy_workspace');
+const repairedEnd = forwardRepair.indexOf('$function$;', repairedStart);
+if (repairedStart < 0 || repairedEnd < 0) throw new Error('Could not isolate the forward pharmacy workspace repair');
+const repairedWorkspace = forwardRepair.slice(repairedStart, repairedEnd);
+for (const token of [
+  'AND v_facility IS NOT NULL AND p.facility_id = v_facility',
+  'AND v_facility IS NOT NULL AND d.facility_id = v_facility',
+  'AND p.facility_id = v_facility',
+  'WHERE i.active AND i.facility_id = v_facility',
+  'AND s.facility_id = v_facility'
+]) {
+  if (!repairedWorkspace.includes(token)) throw new Error('Forward pharmacy repair is missing facility predicate: ' + token);
+}
+if (repairedWorkspace.includes('(v_admin OR (v_facility IS NOT NULL AND p.facility_id = v_facility))') ||
+    repairedWorkspace.includes('(v_admin OR (v_facility IS NOT NULL AND d.facility_id = v_facility))')) {
+  throw new Error('Forward pharmacy repair must not preserve the historical administrator facility bypass');
+}
+if (!forwardRepair.includes('SET search_path = \'\'' ) ||
+    !forwardRepair.includes('REVOKE ALL ON FUNCTION public.get_pharmacy_workspace(integer) FROM PUBLIC, anon;') ||
+    !forwardRepair.includes('GRANT EXECUTE ON FUNCTION public.get_pharmacy_workspace(integer) TO authenticated;')) {
+  throw new Error('Forward pharmacy repair must preserve hardened execution and authenticated-only RPC access');
+}
 for (const relation of ['public.patients p', 'public.prescriptions r', 'public.pharmacy_dispensing_plans d']) {
   if (!workspace.includes(relation)) throw new Error('Expected reviewed workspace relation: ' + relation);
 }
@@ -72,4 +98,4 @@ for (const target of patientHubTargets) {
 if (!category.includes('CREATE FUNCTION public.update_pharmacy_inventory_item(')) {
   throw new Error('Expected pharmacy category-edit inventory update RPC');
 }
-console.log('[migration-pharmacy-collision] PASS: duplicate timestamp object scopes and identical legacy-stock definitions verified; pharmacy admin facility bypass remains documented as an unresolved security blocker.');
+console.log('[migration-pharmacy-collision] PASS: historical pharmacy bypass is pinned as provenance evidence and the forward repair scopes patient-linked clinical rows, inventory and POS data to the active facility. Unassigned legacy-stock visibility remains a separate reconciliation policy.');
