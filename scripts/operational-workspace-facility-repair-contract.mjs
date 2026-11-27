@@ -30,7 +30,7 @@ if (!sourceNormalized.includes("(v_platform_adminandv_facilityisnullorp.facility
     !sourceNormalized.includes("facility_idisnull")) {
   throw new Error('Source drift detected: reviewed vulnerable predicates no longer match the documented source');
 }
-if (!sql.includes("'ai_clinical'") || !sql.includes('replacements <> 7') || !sql.includes('replacements <> 1')) {
+if (!sql.includes("''ai_clinical''") || !sql.includes('replacements <> 7') || !sql.includes('replacements <> 1')) {
   throw new Error('Repair must fail closed when expected source replacement counts drift');
 }
 if (!sql.includes('REVOKE ALL ON FUNCTION public.get_operational_workspace(text,integer) FROM PUBLIC, anon;') ||
