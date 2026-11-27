@@ -28,6 +28,12 @@ assert.ok(tables.size >= 150, 'expected complete generated public table types; f
 
 const expected = [
   ['appointments','patient_id','patients','id'],
+  ['patients','insurance_company_id','insurance_companies','id'],
+  ['meal_orders','facility_id','healthcare_facilities','id'],
+  ['meal_orders','patient_id','patients','id'],
+  ['meal_orders','meal_plan_id','meal_plans','id'],
+  ['meal_plans','facility_id','healthcare_facilities','id'],
+  ['meal_plans','patient_id','patients','id'],
   ['encounters','patient_id','patients','id'],
   ['encounters','appointment_id','appointments','id'],
   ['admissions','patient_id','patients','id'],
