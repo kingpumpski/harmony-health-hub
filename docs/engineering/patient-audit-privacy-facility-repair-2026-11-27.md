@@ -42,3 +42,11 @@ The Patient Hub UI continues to use the changed-field-only projection.
 ## Limits and release status
 
 This is a staged repository migration only. It has not been applied to the hosted database. Existing historical old/new snapshots remain unchanged pending an explicit retention/compliance decision; this migration does not rewrite or delete historical audit evidence. The duplicate migration/source-history blocker still prevents disposable PostgreSQL replay, so runtime database validation remains pending. No live data, schema, Auth, Storage or project settings were changed.
+
+
+## CI checkpoint
+
+On commit `0ac70450934e0d9713df67ef14b273b51f19e45a`:
+- Quality workflow [#46025174154](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46025174154) passed.
+- Migration contract workflow [#46025174160](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46025174160) passed the migration-parity source contracts, including the nine-assertion patient audit source contract, then failed closed at the 21 duplicate migration-version preflight. PostgreSQL startup and SQL replay were skipped.
+- The database contract itself has not executed against PostgreSQL yet. The staged migration remains unapplied.
