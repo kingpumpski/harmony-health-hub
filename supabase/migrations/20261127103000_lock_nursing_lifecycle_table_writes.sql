@@ -4,10 +4,10 @@
 BEGIN;
 
 REVOKE ALL ON TABLE public.nursing_shift_handovers FROM PUBLIC, anon;
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.nursing_shift_handovers FROM authenticated;
+REVOKE ALL ON TABLE public.nursing_shift_handovers FROM authenticated;
 
 REVOKE ALL ON TABLE public.nursing_care_plans FROM PUBLIC, anon;
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.nursing_care_plans FROM authenticated;
+REVOKE ALL ON TABLE public.nursing_care_plans FROM authenticated;
 
 -- Preserve the authenticated read surface; row visibility remains RLS-governed.
 GRANT SELECT ON TABLE public.nursing_shift_handovers TO authenticated;
