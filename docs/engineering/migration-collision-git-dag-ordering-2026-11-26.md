@@ -56,3 +56,19 @@ For a comparison with candidate A as the base and candidate B as the head:
 ## Safety disposition
 
 This is repository evidence only. No migration file was renamed, deleted, merged, or reordered. No migration was applied, no Supabase branch was created, and no database was modified. The 21 duplicate-version groups remain a hard migration preflight blocker; clean replay must remain stopped until identity and schema reconciliation is complete.
+
+
+## Hosted ledger cross-check — 2026-11-27
+
+The 21 duplicate version numbers were compared exactly against the saved 417-entry read-only hosted ledger baseline for project `ygqoptvezotdqhtimdkr` (earliest recorded version `20260916002251`, latest `20261026141054`). **None of the 21 duplicate version numbers appears in that ledger.**
+
+This is useful negative evidence, but it does not establish that none of the SQL ran: the live ledger records version/name identities only, and a later canonical remote schema baseline may already contain effects of earlier development SQL. It also means the live ledger cannot choose one filename as the authoritative member of any duplicate group. Do not select or discard a candidate based on absence from the ledger.
+
+Implication for the new-environment plan:
+- Treat these 21 groups as untracked pre-baseline/source-history candidates, not as confirmed deployed migrations.
+- Recover the original canonical baseline source if possible; otherwise generate a separately named complete schema-only bootstrap from the approved live schema.
+- Build the fresh-install path from that reviewed bootstrap, not by replaying the 653-file development directory verbatim.
+- Keep the existing-environment path anchored to the unchanged 417-entry ledger and separately verified forward migrations.
+- Preserve every candidate file and its Git blob provenance until the bootstrap has been replayed and all object contracts pass.
+
+This cross-check does not resolve any collision or authorize changing migration history. No database changes were made.
