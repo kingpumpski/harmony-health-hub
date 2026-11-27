@@ -18,7 +18,7 @@ assert.match(migration, /mo\.facility_id = v_facility/);
 assert.match(migration, /p\.facility_id = v_facility/);
 assert.match(migration, /mp\.facility_id = v_facility/);
 assert.match(migration, /AND \(mo\.meal_plan_id IS NULL OR mp\.id IS NOT NULL\)/);
-assert.match(migration, /SET search_path = pg_catalog, public/);
+assert.match(migration, /SET search_path = ''/);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.get_canteen_active_patient_orders\(\) FROM PUBLIC, anon/);
 assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.get_canteen_active_patient_orders\(\) TO authenticated/);
 assert.match(migration, /NOTIFY pgrst, 'reload schema'/);
