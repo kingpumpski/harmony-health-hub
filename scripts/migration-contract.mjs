@@ -18,6 +18,7 @@ for (const file of [
 for (const script of [
   'scripts/migration-ledger-source-reconciliation-contract.mjs',
   'scripts/patient-audit-trigger-minimization-contract.mjs',
+  'scripts/security-definer-auth-contract-source.mjs',
 ]) {
   if (!fs.existsSync(script) || !fs.readFileSync(script, 'utf8').trim()) {
     errors.push(`Required migration/security contract script missing or empty: ${script}`);
