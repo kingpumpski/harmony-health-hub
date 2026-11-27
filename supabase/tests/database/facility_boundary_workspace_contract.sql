@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 
 -- Normalize whitespace so the assertions describe authorization semantics
 -- rather than depending on the SQL formatter used by CREATE FUNCTION.
@@ -24,6 +24,16 @@ SELECT ok(
   AND d LIKE '%p.facility_id=v_facility%'
   AND d LIKE '%v_facilityisnull%',
   'department queue enforces facility lineage across queue, service order, and patient'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_department_queue(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_adminboolean:=public.has_role(auth.uid(),''it_admin'')orpublic.has_role(auth.uid(),''system_superuser'')%'
+  AND d NOT LIKE '%v_platform_adminboolean:=public.has_role(auth.uid(),''admin'')%'
+  AND d LIKE '%v_facilityisnullandnotv_platform_admin%',
+  'department queue reserves cross-facility bypass for platform roles and requires active facility for ordinary admins'
 ) FROM f;
 
 WITH f AS (
