@@ -29,7 +29,7 @@ for (const token of [
 if (normalized.includes("public.has_role(auth.uid(),'admin')orpublic.has_role(auth.uid(),'it_admin')")) {
   throw new Error('Facility admin must not be included in the platform-wide queue bypass');
 }
-const roleClauses = [...sql.matchAll(/ur\\.role\\s*(?:=|IN\\s*\\([^)]*\\))/gi)].map(match => match[0]);
+const roleClauses = sql.split('\n').filter(line => line.includes('ur.role'));
 for (const role of ['lab_technician','radiologist','radiology_technician','pharmacist','accountant','canteen','front_desk','nurse','specialist_nurse','midwife']) {
   if (!roleClauses.some(clause => clause.includes("'" + role + "'"))) {
     throw new Error('Department queue role contract missing: ' + role);
