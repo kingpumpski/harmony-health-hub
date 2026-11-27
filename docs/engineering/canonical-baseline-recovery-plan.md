@@ -95,3 +95,12 @@ This inspection did **not** retrieve a complete schema-only export, object defin
 
 The live project is now an identified read-only source for further catalog recovery. Any schema export/bootstrap creation must still use a supported complete dump process, exclude patient/business data and secrets, capture checksums/provenance, and be validated on a separate disposable PostgreSQL 17 environment. The live project itself remains untouched.
 
+
+
+## Collision-to-ledger reconciliation — 2026-11-27
+
+An exact version lookup against the 417-entry read-only ledger baseline found that none of the 21 duplicate local migration version numbers is recorded in the hosted ledger. This does not prove those SQL files never ran; their effects may have been incorporated into the later canonical remote schema baseline. The ledger stores identities, not source bodies or checksums, and cannot choose one colliding file over another.
+
+The migration directory therefore contains a legacy/source-history set that must not be replayed wholesale as though it were the hosted upgrade chain. The new-environment track should use a separately named, complete, provenance-checked schema-only bootstrap generated from the approved authoritative schema. The existing-environment track must retain the hosted 417-entry identity baseline and apply only verified forward migrations. Both tracks remain blocked until the schema-only export, replay and upgrade tests exist.
+
+The comparison is documented in `docs/engineering/migration-collision-git-dag-ordering-2026-11-26.md`. No migration file or ledger entry was changed.
