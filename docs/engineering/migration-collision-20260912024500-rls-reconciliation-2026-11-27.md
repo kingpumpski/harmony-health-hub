@@ -65,7 +65,7 @@ The application write-path inventory is now complete for the five shared tables:
 - `nursing_care_plans`: Clinical Operations creates plans through `create_nursing_care_plan`; no direct mutation caller or current UI review caller was found.
 - `emergency_cases`, `theatre_cases`, and `transfusion_records`: authenticated direct DML privileges are absent; lifecycle writes are through the clinical RPCs.
 
-A fresh live catalog query found these six RPCs SECURITY DEFINER, with `search_path = ''`, authenticated EXECUTE, and no anon EXECUTE:
+A fresh live catalog query found these nine RPCs SECURITY DEFINER, with `search_path = ''`, authenticated EXECUTE, and no anon EXECUTE:
 `create_nursing_shift_handover`, `acknowledge_nursing_handover`, `create_nursing_care_plan`, `create_emergency_case`, `transition_emergency_case`, `create_theatre_case`, `transition_theatre_case`, `create_transfusion_record`, and `record_transfusion_event`. All inspected definitions include a facility-context check. Handover acknowledgement, emergency/theatre transitions, transfusion creation and transfusion event recording use row locks. The live catalog did not contain `review_nursing_care_plan`.
 
 The targeted forward repair is staged in `supabase/migrations/20261127103000_lock_nursing_lifecycle_table_writes.sql`: revoke PUBLIC/anon table access and authenticated direct INSERT/UPDATE/DELETE on the two nursing tables, preserving authenticated SELECT under RLS and the existing RPC write paths. Static source and database ACL contracts were added. It is not applied.
