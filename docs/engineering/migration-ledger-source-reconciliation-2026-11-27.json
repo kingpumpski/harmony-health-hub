@@ -2,7 +2,7 @@
   "schema_version": 1,
   "captured_at": "2026-11-27",
   "repository": "kingpumpski/harmony-health-hub",
-  "ref": "669d097fafa83abbee547b777a871555e1bdba1d",
+  "ref": "ad2cfecf44b88b3b92f7ebdfe46f288bf09e8011",
   "hosted_ledger_project_ref": "ygqoptvezotdqhtimdkr",
   "hosted_ledger_captured_at": "2026-11-23",
   "scope": "Read-only filename/source-path reconciliation. Candidate filename matches do not prove SQL body equivalence, deployment, or historical execution order. Hosted ledger contains identities only and no SQL checksums.",
