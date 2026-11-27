@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const path = 'supabase/migrations/20261123090000_harden_laboratory_panel_table_privileges_and_timestamp_trigger.sql';
+const path = 'supabase/migrations/20261127100100_harden_laboratory_panel_table_privileges_and_timestamp_trigger.sql';
 const sql = fs.readFileSync(path, 'utf8');
 
 assert.match(sql, /REVOKE\s+ALL\s+PRIVILEGES\s+ON\s+TABLE\s+public\.lab_test_groups\s*,\s*public\.lab_test_group_items\s+FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated\s*;/is,
