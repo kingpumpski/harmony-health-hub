@@ -53,3 +53,14 @@ Database security contract additions verify the effective grants and authenticat
 1. Add an explicit care-plan review workflow only after its role/action and facility rules are approved; do not restore direct UPDATE/DELETE grants as a shortcut.
 2. Verify whether any external integrations outside this repository depend on direct table writes before deployment.
 3. After migration-history reconciliation, run positive and negative facility-context database tests for create/acknowledge RPCs and the resulting table grants.
+
+
+## Generated type comparison and CI confirmation
+
+A fresh read-only Supabase TypeScript type generation was compared with the repository's `src/integrations/supabase/types.ts` for six affected tables: `nursing_shift_handovers`, `nursing_care_plans`, `service_orders`, `emergency_cases`, `theatre_cases`, and `transfusion_records`. Their generated Row/Insert/Update and relationship blocks match the repository type blocks for these selected tables.
+
+The generated live handover type does not contain `ward_id`, consistent with the live catalog omission. The separate forward migration `20261127100200_restore_nursing_handover_ward_link.sql` is staged but unapplied, so type regeneration for that relationship must wait until the migration is replayed and verified. The selected comparison is not a whole-schema type parity certification.
+
+On commit `a242b824474fe63f686869bab7fd8e5e8cfa89fc`:
+- Quality workflow [#46019159271](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46019159271) passed (81 job steps, no failed steps).
+- Migration contract workflow [#46019159301](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46019159301) passed migration parity and the new nursing direct-write static contract, then failed at the historical migration identity preflight on the known 21 duplicate timestamp groups. PostgreSQL startup and replay were skipped.
