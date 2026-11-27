@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.get_admission_workspace(_limit integer DEFAULT
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $function$
 DECLARE
   v_role text;
