@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const file = 'supabase/migrations/20261126154500_fix_pharmacy_workspace_admin_facility_scope.sql';
+const file = 'supabase/migrations/20261127100300_fix_pharmacy_workspace_admin_facility_scope.sql';
 const sql = fs.readFileSync(file, 'utf8');
 const normalized = sql.toLowerCase().replace(/\s+/g, '');
 
