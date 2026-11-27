@@ -26,6 +26,24 @@ BEGIN
       AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('public', p.oid, 'EXECUTE'))
   ) THEN RAISE EXCEPTION 'SECURITY DEFINER function in public schema is exposed to anon/public'; END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.prosecdef
+      AND (
+        p.proconfig IS NULL
+        OR NOT (
+          p.proconfig @> ARRAY['search_path=""']::text[]
+          OR p.proconfig @> ARRAY['search_path=pg_catalog, public']::text[]
+          OR p.proconfig @> ARRAY['search_path="pg_catalog, public"']::text[]
+        )
+      )
+  ) THEN RAISE EXCEPTION 'SECURITY DEFINER function has no approved pinned search_path'; END IF;
+
+  IF has_schema_privilege('authenticated','public','CREATE')
+     OR has_schema_privilege('anon','public','CREATE') THEN
+    RAISE EXCEPTION 'Data API roles must not be able to create objects in public schema';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
     WHERE n.nspname='public'
