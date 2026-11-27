@@ -55,3 +55,13 @@ Its `audit_patient_changes()` trigger writes complete `OLD` and `NEW` patient ro
 A new source contract, `scripts/migration-20260912162000-service-order-conflict-contract.mjs`, is part of `npm run test:migration-parity`. It pins the canonical status-based service-order model, the incompatible alternate fields and trigger/index dependencies, the downstream dashboard/hardening expectations, and these search-path and full-row audit risks. The contract is evidence only; it intentionally does not rewrite historical SQL or mark the collision resolved.
 
 No database replay or application was performed.
+
+## Live project catalog verification — 2026-11-27
+
+A read-only inspection of project `ygqoptvezotdqhtimdkr` confirms the live `public.service_orders` table is status-based: it has `status` (default `pending_payment_approval`) and lifecycle timestamps/actors, but no `payment_status` or `fulfillment_status` columns. This is the current deployed shape, not proof of which colliding historical SQL was applied. The divergent HIMS migration remains a clean-replay blocker because its index and trigger assume columns absent from the live canonical table.
+
+The live project has 417 unique migration ledger rows, and its version/name identities exactly match the repository's saved 417-entry baseline. The ledger does not contain SQL bodies or checksums, so this does not recover the missing original canonical migration or establish the colliding files' original deployment order.
+
+The live `patient_audit` table stores `old_record` and `new_record` JSONB. Its `audit_patient_changes()` trigger function is SECURITY DEFINER with `search_path=pg_catalog, public`. The live advisor also flags `ensure_updated_at()` for mutable search_path. Treat these as privacy and function-hardening items for exact-signature forward review, not as justification for a blanket function rewrite.
+
+Full read-only findings are recorded in `docs/engineering/live-supabase-catalog-security-audit-2026-11-27.md`.
