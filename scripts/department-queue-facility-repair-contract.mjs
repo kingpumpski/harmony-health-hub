@@ -2,7 +2,7 @@ import fs from 'node:fs';
 
 const file = 'supabase/migrations/20261127100400_fix_department_queue_facility_scope.sql';
 const sql = fs.readFileSync(file, 'utf8');
-const normalized = sql.toLowerCase().replace(/\\s+/g, '');
+const normalized = sql.toLowerCase().replace(/\s+/g, '');
 
 if (!sql.includes('CREATE OR REPLACE FUNCTION public.get_department_queue(') ||
     !sql.includes('_department text') ||
@@ -22,7 +22,7 @@ for (const token of [
   "public.has_role(auth.uid(),'it_admin')",
   "public.has_role(auth.uid(),'system_superuser')"
 ]) {
-  if (!normalized.includes(token.replace(/\\s+/g, ''))) {
+  if (!normalized.includes(token.replace(/\s+/g, ''))) {
     throw new Error('Missing department queue facility contract: ' + token);
   }
 }
