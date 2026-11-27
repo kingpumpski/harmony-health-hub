@@ -15,7 +15,7 @@ assert.match(migration, /changed_fields, old_record, new_record\s*\)[\s\S]*pg_ca
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.audit_patient_changes\(\) FROM PUBLIC, anon, authenticated/i);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.audit_patient_change\(\) FROM PUBLIC, anon, authenticated/i);
 assert.doesNotMatch(migration, /\b(UPDATE|DELETE|TRUNCATE)\s+public\.patient_audit(?:_log)?\b/i, 'historical audit rows must not be rewritten or deleted');
-assert.match(databaseContract, /SELECT plan\(8\)/);
+assert.match(databaseContract, /SELECT plan\(9\)/);
 assert.match(databaseContract, /patient_audit_log_active_facility_read/);
 assert.match(databaseContract, /old_record, new_record/);
 assert.match(ui, /from\('patient_audit_log'\)/);
