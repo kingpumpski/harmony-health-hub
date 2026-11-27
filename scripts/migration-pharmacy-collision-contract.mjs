@@ -54,14 +54,14 @@ const repairedStart = forwardRepair.indexOf('CREATE OR REPLACE FUNCTION public.g
 const repairedEnd = forwardRepair.indexOf('$function$;', repairedStart);
 if (repairedStart < 0 || repairedEnd < 0) throw new Error('Could not isolate the forward pharmacy workspace repair');
 const repairedWorkspace = forwardRepair.slice(repairedStart, repairedEnd);
+const normalizedRepair = repairedWorkspace.replace(/\\s+/g, ' ');
 for (const token of [
   'AND v_facility IS NOT NULL AND p.facility_id = v_facility',
-  'AND v_facility IS NOT NULL AND d.facility_id = v_facility',
-  'AND p.facility_id = v_facility',
+  'AND d.facility_id = v_facility AND p.facility_id = v_facility',
   'WHERE i.active AND i.facility_id = v_facility',
   'AND s.facility_id = v_facility'
 ]) {
-  if (!repairedWorkspace.includes(token)) throw new Error('Forward pharmacy repair is missing facility predicate: ' + token);
+  if (!normalizedRepair.includes(token)) throw new Error('Forward pharmacy repair is missing facility predicate: ' + token);
 }
 if (repairedWorkspace.includes('(v_admin OR (v_facility IS NOT NULL AND p.facility_id = v_facility))') ||
     repairedWorkspace.includes('(v_admin OR (v_facility IS NOT NULL AND d.facility_id = v_facility))')) {
