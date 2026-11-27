@@ -7,6 +7,13 @@ REVOKE ALL PRIVILEGES ON TABLE public.patient_audit, public.patient_audit_log
   FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.patient_audit_log TO authenticated;
 
+-- Preserve the deletion audit event instead of blocking patient deletion.
+ALTER TABLE public.patient_audit ALTER COLUMN patient_id DROP NOT NULL;
+ALTER TABLE public.patient_audit DROP CONSTRAINT IF EXISTS patient_audit_patient_id_fkey;
+ALTER TABLE public.patient_audit
+  ADD CONSTRAINT patient_audit_patient_id_fkey
+  FOREIGN KEY (patient_id) REFERENCES public.patients(id) ON DELETE SET NULL;
+
 DO $$
 DECLARE
   policy_row record;
