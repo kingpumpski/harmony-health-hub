@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const migrationPath = 'supabase/migrations/20261125090000_restore_nursing_handover_ward_link.sql';
+const migrationPath = 'supabase/migrations/20261127100200_restore_nursing_handover_ward_link.sql';
 const migration = readFileSync(migrationPath, 'utf8');
 const ledger = JSON.parse(readFileSync('supabase/migration-ledger-baseline.json', 'utf8'));
 const rpcMigration = readFileSync(
