@@ -80,3 +80,18 @@ The next implementation phase is explicitly split into two independent tracks. T
 
 Do not call migration reconciliation complete until both tracks have their own reproducible artifacts and tests, every collision is resolved or explicitly excluded from the applicable bootstrap path with a documented reason, the empty-database replay passes, and an existing-environment upgrade is independently verified. A passing source-level contract alone is not an exit criterion.
 
+## Authoritative project identified and read-only catalog checkpoint — 2026-11-27
+
+The user identified `ygqoptvezotdqhtimdkr` as the project to inspect. The Supabase project metadata confirms `harmony-health-hub`, `ACTIVE_HEALTHY`, PostgreSQL 17.6.1.166 (engine 17), region `eu-central-1`.
+
+A read-only inspection confirmed:
+- 417 live migration ledger entries, from `20260916002251` through `20261026141054`, with zero duplicate ledger versions.
+- Exact version/name identity equality between the live ledger and the repository's 417-entry `supabase/migration-ledger-baseline.json` (zero mismatches, zero missing, zero additional).
+- 156 public tables in the verbose public table inventory.
+- Current service_orders is status-based; the five shared HIMS tables contain hybrid/expanded columns from the two source candidates.
+- Security/performance advisor findings are recorded in `docs/engineering/live-supabase-catalog-security-audit-2026-11-27.md`.
+
+This inspection did **not** retrieve a complete schema-only export, object definitions for every function/trigger/policy/grant, extension configuration, or managed Supabase dependencies. It is not a bootstrap artifact and does not recover the original `20260916002251_canonical_remote_schema.sql` source. The 21 duplicate repository migration identities remain unresolved. No DDL/DML, migration apply, reset, Auth/storage change, or branch creation occurred.
+
+The live project is now an identified read-only source for further catalog recovery. Any schema export/bootstrap creation must still use a supported complete dump process, exclude patient/business data and secrets, capture checksums/provenance, and be validated on a separate disposable PostgreSQL 17 environment. The live project itself remains untouched.
+
