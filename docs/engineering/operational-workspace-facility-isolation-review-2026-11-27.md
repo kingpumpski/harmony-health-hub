@@ -20,7 +20,7 @@ The latest effective source definition was introduced by `20261013133000_reconci
 - Preserves the RPC identity, return type, module branches, SECURITY DEFINER mode, empty search_path, and authenticated-only EXECUTE grant.
 - Fails migration execution if the deployed function definition does not match the expected replacement anchors and counts.
 
-The facilities directory and data-migration branches retain their existing platform-control-plane behavior. AI-clinical session scoping is not changed here because the reviewed source does not establish a patient/facility join for that relation; it remains a separate schema-lineage review item.
+The facilities directory and data-migration branches retain their existing platform-control-plane behavior. The AI-clinical session table has an explicit facility_id added by the historical facility-attribution migration; the repair now scopes this branch to that facility and includes it in the active-facility requirement.
 
 ## Verification limits
 
