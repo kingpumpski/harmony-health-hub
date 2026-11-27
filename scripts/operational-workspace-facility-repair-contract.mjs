@@ -4,8 +4,8 @@ const migrationPath = 'supabase/migrations/20261127100500_fix_operational_worksp
 const sourcePath = 'supabase/migrations/20261013133000_reconcile_operational_workspace_role_resolution.sql';
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const source = fs.readFileSync(sourcePath, 'utf8');
-const normalized = sql.toLowerCase().replace(/\\s+/g, '');
-const sourceNormalized = source.toLowerCase().replace(/\\s+/g, '');
+const normalized = sql.toLowerCase().replace(/\s+/g, '');
+const sourceNormalized = source.toLowerCase().replace(/\s+/g, '');
 
 if (!source.includes('CREATE OR REPLACE FUNCTION public.get_operational_workspace(_module text, _limit integer DEFAULT 200)')) {
   throw new Error('Expected canonical operational workspace source definition is missing');
@@ -20,7 +20,7 @@ for (const token of [
   "v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND b.facility_id=v_facility)",
   "v_role <> ''system_superuser'' AND v_facility IS NULL"
 ]) {
-  if (!normalized.includes(token.toLowerCase().replace(/\\s+/g, ''))) {
+  if (!normalized.includes(token.toLowerCase().replace(/\s+/g, ''))) {
     throw new Error('Missing operational workspace facility invariant: ' + token);
   }
 }
