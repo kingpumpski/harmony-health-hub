@@ -12,8 +12,8 @@ Added `20261127101000_fix_canteen_patient_order_facility_scope.sql`:
 
 - Requires authentication and the canteen/administrator role, or the platform `system_superuser` role.
 - Requires a selected active facility for every non-superuser caller.
-- Filters meal orders and patients to the same active facility.
-- Ensures a linked meal plan belongs to that same facility; a mismatched or unresolved linked plan does not leak into the projection.
+- Filters meal orders and patients to the same active facility, and filters linked diagnoses and encounters to that facility as well.
+- Ensures a linked meal plan belongs to the same facility and the same patient; a mismatched or unresolved linked plan does not leak into the projection.
 - Preserves the RPC signature and return shape, fixed search path, authenticated-only execute grant, and PostgREST schema reload.
 
 The historical migration is unchanged.
