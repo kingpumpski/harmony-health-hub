@@ -52,6 +52,14 @@ BEGIN
   END IF;
   src := pg_catalog.replace(src,old_predicate,new_predicate);
 
+  old_predicate := 'FROM public.ai_clinical_sessions' || E'\\n      ORDER BY created_at DESC LIMIT v_limit)x),''[]''::jsonb)) INTO result;';
+  new_predicate := 'FROM public.ai_clinical_sessions WHERE (v_role = ''system_superuser'' OR (v_facility IS NOT NULL AND facility_id=v_facility))' || E'\\n      ORDER BY created_at DESC LIMIT v_limit)x),''[]''::jsonb)) INTO result;';
+  replacements := (pg_catalog.length(src)-pg_catalog.length(pg_catalog.replace(src,old_predicate,'')))/pg_catalog.length(old_predicate);
+  IF replacements <> 1 THEN
+    RAISE EXCEPTION 'Expected one AI-clinical session facility predicate anchor, found %', replacements;
+  END IF;
+  src := pg_catalog.replace(src,old_predicate,new_predicate);
+
   old_predicate := 'IF v_role IS NULL THEN RAISE EXCEPTION ''Staff profile required''; END IF;';
   new_predicate := old_predicate || E'\n  IF _module IN (''appointments'',''ward'',''nursing_care'',''emergency'',''handover'',''theatre'',''transfusion'',''insurance'',''medication_administration'')\n     AND v_role <> ''system_superuser'' AND v_facility IS NULL THEN\n    RAISE EXCEPTION ''Select an active facility to access this operational workspace'';\n  END IF;';
   replacements := (pg_catalog.length(src)-pg_catalog.length(pg_catalog.replace(src,old_predicate,'')))/pg_catalog.length(old_predicate);
