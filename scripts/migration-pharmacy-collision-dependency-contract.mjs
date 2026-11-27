@@ -14,7 +14,7 @@ function functionDefinition(source, name) {
     'i',
   ));
   assert.ok(match, `Expected function definition for public.${name}`);
-  return match[0].replace(/\\s+/g, ' ').trim();
+  return match[0].replace(/\s+/g, ' ').trim();
 }
 
 // Both files were touched by the same Git commit, so Git ancestry cannot order them.
