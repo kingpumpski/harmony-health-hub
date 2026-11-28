@@ -43,6 +43,33 @@ and Windows editor-launcher issues; production deployment exposure depends on
 whether the development server/editor tooling is reachable in the deployed
 environment. Keep the development server private regardless of the upgrade.
 
+### Repository usage review — 2026-11-28
+
+A targeted source search found the following compatibility constraints:
+
+- Zod is used by `src/lib/mcp/tools/search-patients.ts` and
+  `src/lib/mcp/tools/list-appointments.ts`. The Supabase Edge MCP bundle also
+  imports `npm:zod@^3.25.76`; changing the frontend npm package does not
+  automatically patch this separately resolved Deno dependency.
+- React Router v6 is integrated throughout the app shell, role guards, login,
+  OAuth consent, patient portal and operational pages. The app uses
+  `BrowserRouter`, `Routes`, `Navigate`, `useNavigate`, `useLocation`,
+  `useParams`, `useSearchParams` and `Link`. A router major upgrade must
+  cover these routes and the existing GitHub Pages fallback contract.
+- Vite configuration contains custom production plugins for compressed assets
+  and GitHub Pages SPA fallback, alongside the SWC plugin and Lovable MCP
+  plugin. Upgrade tests must verify generated `dist/index.html`,
+  `dist/404.html`, compressed assets and deep-link recovery.
+- Drizzle Kit is declared as a dev dependency and referenced by
+  `drizzle.config.ts`; however, `drizzle/schema.ts` is intentionally blank and
+  no package script invokes Drizzle Kit. The two Drizzle migration files are
+  still present. Treat removal or replacement as a separately reviewed
+  developer-tooling decision, not an automatic security fix.
+
+This source review strengthens the case against a blanket force-upgrade. It
+also identifies the independent Edge MCP Zod dependency as a separate patch
+target to review and test before release.
+
 ## Remediation sequencing
 
 1. **Zod:** migrate validation schemas and resolver integration to a patched Zod
