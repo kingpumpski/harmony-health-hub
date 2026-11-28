@@ -12,6 +12,63 @@ Advisories visible in the captured audit output include:
 
 The captured log summarizes two high findings, but exposes only the Zod high advisory in the excerpted report. The second high advisory must be captured from a complete `npm audit --json` output before claiming its package identity.
 
+## Complete audit evidence — 2026-11-28
+
+The Quality workflow now retains the complete `npm audit --json` output as artifact
+`npm-audit-report` (run [46125933254](https://github.com/kingpumpski/harmony-health-hub/actions/runs/46125933254),
+artifact ID `15255374822`, SHA-256
+`1d8f5b3278a044a78ae3fb8c278f2dde040b54f6da2cd110cd0d226f7fa18696`).
+The artifact expires 2026-12-12. Its machine-readable summary confirms:
+
+| Package | Severity | Direct dependency | Advisory / affected range |
+|---|---|---:|---|
+| `vite` | High | Yes | Multiple advisories; affected through `<=6.4.3` |
+| `zod` | High | Yes | GHSA-mrhx-c7xc-m3w5; `<4.6.6` |
+| `react-router` / `react-router-dom` | Moderate | `react-router-dom` | GHSA-wrjc-x8rr-h8h6 and GHSA-337j-9hxr-rhxg; fixed in 7.18.0+ |
+| `esbuild` | Moderate | Transitive | GHSA-67mh-4wv8-2f99; `<=0.24.2` |
+| `postcss-selector-parser` | Moderate | Transitive | GHSA-rj75-hqrm-r3gf; `<6.1.5` |
+| `drizzle-kit` | Moderate | Yes | Vulnerable dependency chain through `@esbuild-kit/esm-loader` |
+| `@esbuild-kit/core-utils`, `@esbuild-kit/esm-loader` | Moderate | Transitive | Inherited from the Drizzle Kit dependency chain |
+| `@tailwindcss/typography` | Moderate | Yes | Vulnerable nested selector-parser dependency |
+
+The direct dependency declarations at this branch are Zod `^3.25.76`,
+`@hookform/resolvers` `^3.10.0`, React Router DOM `^6.30.6`, Vite
+`^5.4.21`, `@vitejs/plugin-react-swc` `^3.11.0`, Drizzle Kit `^0.31.11`,
+and Tailwind Typography `^0.5.16`.
+
+The full audit reports 10 package findings (2 high, 8 moderate). Several are
+transitive and share a root dependency path; do not count each package row as a
+separate independent exploit path. The Vite advisories include development-server
+and Windows editor-launcher issues; production deployment exposure depends on
+whether the development server/editor tooling is reachable in the deployed
+environment. Keep the development server private regardless of the upgrade.
+
+## Remediation sequencing
+
+1. **Zod:** migrate validation schemas and resolver integration to a patched Zod
+   release in a dedicated change. Zod 4 is a major upgrade; verify schema APIs,
+   inferred TypeScript types, coercion/default behavior, and form error mapping.
+2. **Vite/esbuild:** evaluate the latest patched compatible Vite line and matching
+   SWC plugin peer range first. Do not assume the audit's suggested Vite 8
+   automatic fix is the only route; validate supported upgrade paths, build
+   output, dev server, and GitHub Pages SPA artifacts.
+3. **React Router:** keep v6 routing stable until a separately tested v7 migration
+   covers route loaders/actions, nested layouts, auth guards, navigation and
+   GitHub Pages deep links. Verify whether a patched supported v6 release exists
+   before taking a major upgrade.
+4. **Drizzle Kit:** inspect whether the project uses Drizzle Kit at runtime or
+   only for development/schema tooling. Replace or remove obsolete
+   `@esbuild-kit` transitive paths through a supported Drizzle Kit release,
+   after validating config and generated SQL workflows.
+5. **Tailwind Typography/PostCSS:** verify a patched dependency path without
+   blindly downgrading the typography plugin; run CSS build and visual contracts.
+6. Regenerate the lockfile only after selected versions are proven compatible,
+   then run `npm ci`, typecheck, lint, build and the complete contract suite.
+
+No dependency versions or lockfile entries were changed by this audit follow-up.
+The audit remains a release-blocking security task until both high findings are
+remediated and a fresh audit reports no high/critical vulnerabilities.
+
 ## Why no forced upgrade was applied
 
 The audit tool's automatic recommendation crosses multiple major-version boundaries:
