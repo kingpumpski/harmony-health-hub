@@ -39,9 +39,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Report dependency advisories (non-blocking inventory)
+      - name: Capture complete dependency advisory report
+        id: dependency-audit
         continue-on-error: true
-        run: npm audit --audit-level=high
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          audit_exit=$?
+          echo "audit_exit=$audit_exit" >> "$GITHUB_OUTPUT"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          const counts = report.metadata?.vulnerabilities ?? {};
+          const lines = [
+            '## Dependency advisory inventory',
+            '',
+            '| Severity | Count |',
+            '|---|---:|',
+            ...['critical', 'high', 'moderate', 'low', 'info'].map(level => `| ${level} | ${counts[level] ?? 0} |`),
+            '',
+            `npm audit exit code: ${process.env.AUDIT_EXIT ?? 'captured in step output'}`,
+            '',
+            'The complete machine-readable report is retained as the npm-audit-report artifact.'
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          NODE
+          exit "$audit_exit"
+
+      - name: Upload complete dependency advisory report
+        if: always() && hashFiles('npm-audit.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Migration parity validator regression tests
         run: npm run test:migration-parity
