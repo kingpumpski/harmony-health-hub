@@ -9,6 +9,8 @@ for (const role of ['system_superuser', 'admin', 'it_admin', 'practitioner', 'nu
   assert.ok(roleResolution.includes("'" + role + "'::public.app_role"), 'Operational workspace role resolution must include ' + role);
 }
 assert.ok(roleResolution.includes("_module = 'appointments' AND public.has_role(auth.uid(), 'front_desk'::public.app_role)"), 'Front-desk role resolution must be selected for appointments before lower-priority clinical roles');
+assert.ok(roleResolution.includes("_module = 'facilities' AND public.has_role(auth.uid(), 'front_desk'::public.app_role)"), 'Front-desk role resolution must be selected for facilities before lower-priority clinical roles');
+assert.ok(roleResolution.includes("_module = 'facilities' AND public.has_role(auth.uid(), 'accountant'::public.app_role)"), 'Accountant role resolution must be selected for facilities before lower-priority clinical roles');
 assert.ok(roleResolution.includes("_module = 'insurance' AND public.has_role(auth.uid(), 'accountant'::public.app_role)"), 'Accountant role resolution must be selected for insurance before lower-priority clinical roles');
 assert.ok(roleResolution.includes("_module = 'ai_clinical' AND public.has_role(auth.uid(), 'radiologist'::public.app_role)"), 'Radiologist role resolution must be selected for AI clinical before lower-priority clinical roles');
 assert.ok(lower.includes('if auth.uid() is null then raise exception'), 'RPC must reject unauthenticated calls');

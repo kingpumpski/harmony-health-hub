@@ -1,0 +1,73 @@
+name: Recover npm lockfile artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chore/forward-only-migration-governance
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/recover-npm-lockfile.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/recover-npm-lockfile.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-lockfile:
+    name: Regenerate and validate package lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout reconciliation branch
+        uses: actions/checkout@v5
+        with:
+          ref: chore/forward-only-migration-governance
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Record toolchain
+        run: |
+          node --version
+          npm --version
+
+      - name: Apply non-breaking dependency security updates
+        continue-on-error: true
+        run: npm audit fix --package-lock-only --ignore-scripts --no-fund
+
+      - name: Regenerate lockfile without running lifecycle scripts
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Validate clean dependency installation graph
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Upload reviewed lockfile candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock-recovery-${{ github.run_number }}
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit validated lockfile on reconciliation-branch pushes
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/chore/forward-only-migration-governance') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'chore/forward-only-migration-governance') }}
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "The validated lockfile is already current; no commit is needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "fix: regenerate npm lockfile with non-breaking security updates"
+          git push origin HEAD:chore/forward-only-migration-governance

@@ -1,0 +1,408 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-26",
+  "repository": "kingpumpski/harmony-health-hub",
+  "branch": "chore/forward-only-migration-governance",
+  "scope": "Repository-only evidence for duplicate migration version groups; not a deployment ledger or authorization to reorder migrations.",
+  "migration_directory": "supabase/migrations",
+  "observed_migration_file_count": 653,
+  "duplicate_group_count": 21,
+  "colliding_file_count": 44,
+  "source_documents": [
+    "docs/engineering/migration-collision-git-provenance-2026-11-26.md",
+    "docs/engineering/migration-collision-git-dag-ordering-2026-11-26.md",
+    "docs/engineering/migration-collision-20260912162000-source-review-2026-11-26.md"
+  ],
+  "safety": "No active migration files are changed by this manifest. Git ancestry is source-control evidence only. Hosted execution order and SQL equivalence remain unproven. Do not use this file to rename, delete, merge, reorder, or apply migrations.",
+  "groups": [
+    {
+      "version": "20260912003000",
+      "files": [
+        "20260912003000_phase2_pharmacy_procedure_imaging_gates.sql",
+        "20260912003000_phase4_triage.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912003000_phase2_pharmacy_procedure_imaging_gates.sql"
+        ],
+        [
+          "20260912003000_phase4_triage.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "b5a6826c -> b7519672",
+      "caveat": "Git ancestry orders the two path commits."
+    },
+    {
+      "version": "20260912010000",
+      "files": [
+        "20260912010000_phase6_anesthetic_assessment_foundation.sql",
+        "20260912010000_phase8_ai_clinical_provenance.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912010000_phase6_anesthetic_assessment_foundation.sql"
+        ],
+        [
+          "20260912010000_phase8_ai_clinical_provenance.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "eab6ad4c -> 7930a828",
+      "caveat": "Git ancestry orders the two path commits."
+    },
+    {
+      "version": "20260912021000",
+      "files": [
+        "20260912021000_attending_patient_history_summary.sql",
+        "20260912021000_global_hims_operations.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912021000_attending_patient_history_summary.sql"
+        ],
+        [
+          "20260912021000_global_hims_operations.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "a34225c2 -> 2327065d",
+      "caveat": "Git ancestry orders the two path commits."
+    },
+    {
+      "version": "20260912024500",
+      "files": [
+        "20260912024500_global_hims_enterprise_operations.sql",
+        "20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912024500_global_hims_enterprise_operations.sql"
+        ],
+        [
+          "20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql"
+        ]
+      ],
+      "status": "blocked_schema_conflict",
+      "commit_evidence": "dc4964fa -> af7063bf",
+      "caveat": "Both files define five shared tables differently using CREATE TABLE IF NOT EXISTS; order does not reconcile missing columns or constraints."
+    },
+    {
+      "version": "20260912162000",
+      "files": [
+        "20260912162000_clinical_change_audit_hardening.sql",
+        "20260912162000_hims_workflow_completion.sql"
+      ],
+      "ordered_tiers": [],
+      "status": "blocked_diverged_history_service_order_conflict",
+      "commit_evidence": "f101a219 || ae7c01a5",
+      "caveat": "Commit histories diverge and cannot establish file order. Static review additionally found an incompatible service_orders state model: this file uses payment_status/fulfillment_status while the canonical lifecycle, billing and dashboard use status. The group remains blocked pending one canonical state model and prerequisite/security/facility replay validation."
+    },
+    {
+      "version": "20260912200000",
+      "files": [
+        "20260912200000_phase5_lab_catalogue_and_audit.sql",
+        "20260912200000_prescription_payment_lifecycle_reconciliation.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912200000_phase5_lab_catalogue_and_audit.sql"
+        ],
+        [
+          "20260912200000_prescription_payment_lifecycle_reconciliation.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "2d2d727e -> e73d28ff",
+      "caveat": "Git ancestry orders the two path commits."
+    },
+    {
+      "version": "20260912250000",
+      "files": [
+        "20260912250000_lab_direct_write_lockdown.sql",
+        "20260912250000_reconciliation_finalization.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260912250000_lab_direct_write_lockdown.sql"
+        ],
+        [
+          "20260912250000_reconciliation_finalization.sql"
+        ]
+      ],
+      "status": "ordered_with_acl_review",
+      "commit_evidence": "cc9bd846 -> f3414fb1",
+      "caveat": "Git ancestry orders the two path commits; overlapping privilege revocations require complete ACL comparison."
+    },
+    {
+      "version": "20260913180000",
+      "files": [
+        "20260913180000_reconcile_appointments_operational_workflow.sql",
+        "20260913180000_reports_center_submission_rbac.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260913180000_reconcile_appointments_operational_workflow.sql"
+        ],
+        [
+          "20260913180000_reports_center_submission_rbac.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "8f119976 -> 95032b12",
+      "caveat": "Git ancestry orders the two path commits."
+    },
+    {
+      "version": "20260914140000",
+      "files": [
+        "20260914140000_clinical_direct_mutation_surface_hardening.sql",
+        "20260914140000_theatre_emergency_transfusion_lifecycle_hardening.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260914140000_theatre_emergency_transfusion_lifecycle_hardening.sql"
+        ],
+        [
+          "20260914140000_clinical_direct_mutation_surface_hardening.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "28da9414 -> a1c344bc",
+      "caveat": "Git ancestry orders theatre/emergency/transfusion before direct-mutation hardening."
+    },
+    {
+      "version": "20260914150000",
+      "files": [
+        "20260914150000_admission_bed_direct_mutation_reconciliation.sql",
+        "20260914150000_clinical_claim_nursing_direct_mutation_hardening.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260914150000_clinical_claim_nursing_direct_mutation_hardening.sql"
+        ],
+        [
+          "20260914150000_admission_bed_direct_mutation_reconciliation.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "56a74fa5 -> 4a536575",
+      "caveat": "Git ancestry orders claim/nursing hardening before admission/bed reconciliation."
+    },
+    {
+      "version": "20260914170000",
+      "files": [
+        "20260914170000_clinical_insurance_case_direct_mutation_hardening.sql",
+        "20260914170000_clinical_triage_medication_mutation_hardening.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260914170000_clinical_triage_medication_mutation_hardening.sql"
+        ],
+        [
+          "20260914170000_clinical_insurance_case_direct_mutation_hardening.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "8d1295a8 -> 5b2bfb48",
+      "caveat": "Git ancestry orders triage/medication before insurance-case hardening."
+    },
+    {
+      "version": "20260915170000",
+      "files": [
+        "20260915170000_reassert_internal_security_definer_execute_hardening.sql",
+        "20260915170000_remove_duplicate_insurance_claim_indexes.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260915170000_reassert_internal_security_definer_execute_hardening.sql"
+        ],
+        [
+          "20260915170000_remove_duplicate_insurance_claim_indexes.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "871d18de -> 77f22a76",
+      "caveat": "Git ancestry orders function-execute hardening before index cleanup."
+    },
+    {
+      "version": "20260925200000",
+      "files": [
+        "20260925200000_notification_advisor_finalization.sql",
+        "20260925200000_notification_inbound_email_store.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260925200000_notification_advisor_finalization.sql"
+        ],
+        [
+          "20260925200000_notification_inbound_email_store.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "b7ea7773 -> e06e94d9",
+      "caveat": "Git ancestry orders advisor finalization before inbound-email storage."
+    },
+    {
+      "version": "20260929100000",
+      "files": [
+        "20260929100000_harden_ward_table_data_api_boundary.sql",
+        "20260929100000_insurance_company_master_data.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260929100000_harden_ward_table_data_api_boundary.sql"
+        ],
+        [
+          "20260929100000_insurance_company_master_data.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "3c41c791 -> 8b5f38a4",
+      "caveat": "Git ancestry orders ward table boundary before insurance master data."
+    },
+    {
+      "version": "20260929103000",
+      "files": [
+        "20260929103000_harden_operational_workspace_search_path.sql",
+        "20260929103000_service_catalogue_department_control.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260929103000_harden_operational_workspace_search_path.sql"
+        ],
+        [
+          "20260929103000_service_catalogue_department_control.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "3ca89e68 -> 9253cdd8",
+      "caveat": "Git ancestry orders operational workspace search-path hardening before service catalogue controls."
+    },
+    {
+      "version": "20260929150000",
+      "files": [
+        "20260929150000_canteen_dietary_operational_workspace.sql",
+        "20260929150000_operational_workspace_scope_hardening.sql",
+        "20260929150000_patient_canonical_insurer_linkage.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260929150000_patient_canonical_insurer_linkage.sql"
+        ],
+        [
+          "20260929150000_canteen_dietary_operational_workspace.sql"
+        ],
+        [
+          "20260929150000_operational_workspace_scope_hardening.sql"
+        ]
+      ],
+      "status": "ordered_three_way",
+      "commit_evidence": "6da42424 -> 72b574de -> 87e44de3",
+      "caveat": "Git ancestry establishes patient insurer linkage, then canteen workspace, then operational scope hardening."
+    },
+    {
+      "version": "20260929200000",
+      "files": [
+        "20260929200000_fix_canteen_menu_rbac_realtime.sql",
+        "20260929200000_role_dashboard_kpi_cleanup.sql",
+        "20260929200000_secure_default_function_execute_privileges.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260929200000_role_dashboard_kpi_cleanup.sql"
+        ],
+        [
+          "20260929200000_fix_canteen_menu_rbac_realtime.sql"
+        ],
+        [
+          "20260929200000_secure_default_function_execute_privileges.sql"
+        ]
+      ],
+      "status": "ordered_three_way",
+      "commit_evidence": "7eff6c34 -> 7a0b427c -> d4ab4050",
+      "caveat": "Git ancestry establishes dashboard KPI cleanup, then canteen RBAC/realtime, then default function EXECUTE hardening."
+    },
+    {
+      "version": "20260929203000",
+      "files": [
+        "20260929203000_active_dashboard_role_context.sql",
+        "20260929203000_harden_security_definer_read_workspace_paths_batch6.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260929203000_active_dashboard_role_context.sql"
+        ],
+        [
+          "20260929203000_harden_security_definer_read_workspace_paths_batch6.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "a9abfc86 -> 3711af01",
+      "caveat": "Git ancestry orders active dashboard role context before SECURITY DEFINER read-path hardening."
+    },
+    {
+      "version": "20260930012000",
+      "files": [
+        "20260930012000_harden_department_queue_multirole.sql",
+        "20260930012000_harden_high_risk_rpc_execution_boundaries.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20260930012000_harden_high_risk_rpc_execution_boundaries.sql"
+        ],
+        [
+          "20260930012000_harden_department_queue_multirole.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "3a198b8b -> 742c298f",
+      "caveat": "Git ancestry orders high-risk RPC execution boundaries before department queue multi-role hardening."
+    },
+    {
+      "version": "20261002130000",
+      "files": [
+        "20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql",
+        "20261002130000_scope_appointment_workflows_to_active_facility.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20261002130000_scope_appointment_workflows_to_active_facility.sql"
+        ],
+        [
+          "20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql"
+        ]
+      ],
+      "status": "ordered",
+      "commit_evidence": "b6dc3732 -> bf0f0cb9",
+      "caveat": "Git ancestry orders appointment facility-scope correction before pharmacy catalogue."
+    },
+    {
+      "version": "20261002132500",
+      "files": [
+        "20261002132500_patient_hub_read_rpc_get_compatibility.sql",
+        "20261002132500_pharmacy_global_category_edit.sql"
+      ],
+      "ordered_tiers": [
+        [
+          "20261002132500_patient_hub_read_rpc_get_compatibility.sql"
+        ],
+        [
+          "20261002132500_pharmacy_global_category_edit.sql"
+        ]
+      ],
+      "status": "shared_commit_partial_order",
+      "commit_evidence": "188ef53f -> bf0f0cb9",
+      "caveat": "Patient Hub compatibility commit is an ancestor of bf0f0cb9, which also touches pharmacy_global_catalogue_facility_stock_and_safety.sql; pharmacy catalogue and category-edit files share that commit and cannot be ordered relative to one another."
+    }
+  ],
+  "shared_commit_sets": [
+    {
+      "commit": "bf0f0cb9",
+      "files": [
+        "supabase/migrations/20261002130000_pharmacy_global_catalogue_facility_stock_and_safety.sql",
+        "supabase/migrations/20261002132500_pharmacy_global_category_edit.sql"
+      ],
+      "meaning": "The same latest path commit touches both files; Git ancestry cannot order these two migration files relative to each other."
+    }
+  ]
+}

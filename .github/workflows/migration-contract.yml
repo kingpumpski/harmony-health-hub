@@ -6,18 +6,31 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
+      - 'docs/engineering/migration-collision-*-2026-11-27.md'
+      - 'docs/engineering/active-role-dashboard-search-path-hardening-2026-11-27.md'
       - 'scripts/migration-contract.mjs'
       - 'scripts/migration-*.mjs'
+      - 'scripts/*facility-repair-contract.mjs'
+      - 'scripts/*forward-repair-contract.mjs'
+      - 'scripts/active-dashboard-role-search-path-contract.mjs'
+      - 'scripts/patient-audit-access-contract.mjs'
+      - 'scripts/patient-audit-trigger-minimization-contract.mjs'
+      - 'scripts/security-definer-auth-contract-source.mjs'
       - '.github/workflows/migration-contract.yml'
       - '.github/workflows/supabase-migrations.yml'
       - 'package.json'
   push:
-    branches: [main, 'feature/**', 'fix/**', 'ci/**']
+    branches: [main, 'feature/**', 'fix/**', 'ci/**', 'chore/**']
     paths:
       - 'supabase/migrations/**'
       - 'supabase/tests/**'
+      - 'docs/engineering/migration-collision-*-2026-11-27.md'
+      - 'docs/engineering/active-role-dashboard-search-path-hardening-2026-11-27.md'
       - 'scripts/migration-contract.mjs'
       - 'scripts/migration-*.mjs'
+      - 'scripts/*facility-repair-contract.mjs'
+      - 'scripts/*forward-repair-contract.mjs'
+      - 'scripts/active-dashboard-role-search-path-contract.mjs'
       - '.github/workflows/migration-contract.yml'
       - '.github/workflows/supabase-migrations.yml'
       - 'package.json'
@@ -37,10 +50,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
+      - name: Regression-test forward-only migration enforcement
+        run: node scripts/migration-forward-only-regression.mjs
+      - name: Enforce immutable history and forward version ordering on pull requests
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/migration-forward-only-contract.mjs origin/${{ github.base_ref }}
       - run: npm ci
       - name: Verify migration validation failure semantics
         run: npm run test:migration-parity

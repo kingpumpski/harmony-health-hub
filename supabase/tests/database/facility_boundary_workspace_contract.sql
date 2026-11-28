@@ -1,0 +1,156 @@
+BEGIN;
+SELECT plan(13);
+
+-- Normalize whitespace so the assertions describe authorization semantics
+-- rather than depending on the SQL formatter used by CREATE FUNCTION.
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_maternity_workspace(integer,uuid)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%me.facility_id=v_facility%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%v_facilityisnull%',
+  'maternity episode and patient reads require a resolved, matching active facility'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_department_queue(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%q.facility_id=v_facility%'
+  AND d LIKE '%so.facility_id=v_facility%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%v_facilityisnull%',
+  'department queue enforces facility lineage across queue, service order, and patient'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_department_queue(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_adminboolean:=public.has_role(auth.uid(),''it_admin'')orpublic.has_role(auth.uid(),''system_superuser'')%'
+  AND d NOT LIKE '%v_platform_adminboolean:=public.has_role(auth.uid(),''admin'')%'
+  AND d LIKE '%v_facilityisnullandnotv_platform_admin%',
+  'department queue reserves cross-facility bypass for platform roles and requires active facility for ordinary admins'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_pharmacy_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%v_superuser%'
+  AND d LIKE '%v_facilityisnull%'
+  AND d NOT LIKE '%v_adminor(v_facilityisnotnullandp.facility_id=v_facility)%'
+  AND d NOT LIKE '%v_adminor(v_facilityisnotnullandd.facility_id=v_facility)%',
+  'pharmacy patient and dispensing-plan reads do not treat facility admin as a platform-wide bypass'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_laboratory_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%o.facility_id=v_facility%'
+  AND d LIKE '%r.facility_id=v_facility%',
+  'laboratory patient, order, and result reads share the active facility boundary'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_imaging_workspace(integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%io.facility_id=v_facility%',
+  'imaging patient and imaging-order reads share the active facility boundary'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_canteen_active_patient_orders()'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%mo.facility_id=v_facility%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%mp.facility_id=v_facility%',
+  'canteen patient orders and linked meal plans are facility-scoped'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%current_user_facility_id%'
+  AND d LIKE '%v_platform_admin%'
+  AND d NOT LIKE '%orv_facilityisnull%'
+  AND d NOT LIKE '%facility_idisnull%'
+  AND d LIKE '%p.facility_id=v_facility%'
+  AND d LIKE '%facility_id=v_facility%',
+  'operational workspace fails closed for missing facility and does not expose unassigned ward or bed rows'
+) FROM f;
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%when_module=''appointments''andpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
+  AND d LIKE '%when_module=''insurance''andpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
+  AND d LIKE '%when_module=''facilities''andpublic.has_role(auth.uid(),''front_desk''::public.app_role)then''front_desk''%'
+  AND d LIKE '%when_module=''facilities''andpublic.has_role(auth.uid(),''accountant''::public.app_role)then''accountant''%'
+  AND d LIKE '%when_module=''ai_clinical''andpublic.has_role(auth.uid(),''radiologist''::public.app_role)then''radiologist''%',
+  'operational workspace resolves every role that its module authorization branches claim to support'
+) FROM f;
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public' AND tablename='patient_audit_log'
+      AND cmd='SELECT'
+      AND qual ILIKE '%current_user_facility_id%'
+      AND qual ILIKE '%patient_id%'
+      AND qual ILIKE '%patients%'
+      AND qual ILIKE '%exists%'
+      AND qual ILIKE '%facility_id%'
+  ),
+  'patient audit log read policy requires patient lineage and active facility authorization'
+);
+
+
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_admin:=v_rolein(''it_admin'',''system_superuser'')%'
+  AND d NOT LIKE '%v_platform_admin:=v_rolein(''admin''%',
+  'facility admin is not treated as a platform-wide bypass when active facility context is missing'
+) FROM f;
+
+
+-- Appointment reads must fail closed without an active facility for ordinary
+-- staff. Only the explicit platform roles may bypass when no facility is selected.
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%(v_platform_adminandv_facilityisnullorp.facility_id=v_facility)%'
+  AND d NOT LIKE '%v_rolenotin(''admin'',''it_admin'',''system_superuser'')orv_facilityisnullorp.facility_id=v_facility%',
+  'appointment reads require active-facility lineage unless an explicit platform administrator has no facility selected'
+) FROM f;
+
+-- Unassigned ward/bed rows are not a shared cross-facility workspace.
+WITH f AS (
+  SELECT regexp_replace(lower(pg_get_functiondef('public.get_operational_workspace(text,integer)'::regprocedure)), '[[:space:]]+', '', 'g') AS d
+)
+SELECT ok(
+  d LIKE '%v_platform_adminandv_facilityisnullorfacility_id=v_facility%'
+  AND d LIKE '%v_platform_adminandv_facilityisnullorb.facility_id=v_facility%'
+  AND d NOT LIKE '%facility_idisnull%',
+  'ward and bed reads exclude unassigned facility rows for ordinary callers'
+) FROM f;
+
+SELECT * FROM finish();
+ROLLBACK;

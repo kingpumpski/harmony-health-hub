@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "duplicate_version": "20260912024500",
+  "candidates": [
+    "supabase/migrations/20260912024500_global_hims_enterprise_operations.sql",
+    "supabase/migrations/20260912024500_global_hims_inpatient_emergency_theatre_insurance.sql"
+  ],
+  "shared_tables": {
+    "nursing_care_plans": {
+      "enterprise_only": [],
+      "global_only": [
+        "encounter_id",
+        "reviewed_at"
+      ],
+      "conflicts": [
+        "patient_id FK absent vs patients(id) ON DELETE CASCADE",
+        "interventions nullable vs NOT NULL",
+        "created_by NOT NULL ON DELETE RESTRICT vs nullable ON DELETE SET NULL"
+      ]
+    },
+    "nursing_shift_handovers": {
+      "enterprise_only": [
+        "admission_id",
+        "shift_date",
+        "shift_name",
+        "outstanding_tasks",
+        "risks_and_alerts"
+      ],
+      "global_only": [
+        "ward_id",
+        "shift_label",
+        "pending_tasks",
+        "safety_concerns"
+      ],
+      "conflicts": [
+        "patient_id FK absent vs patients(id) ON DELETE CASCADE",
+        "enterprise clinical_summary required; global clinical_summary required but surrounding workflow columns differ"
+      ]
+    },
+    "emergency_cases": {
+      "enterprise_only": [
+        "arrival_at",
+        "triage_priority",
+        "notes"
+      ],
+      "global_only": [
+        "arrival_time",
+        "acuity",
+        "triage_summary",
+        "disposition_at"
+      ],
+      "conflicts": [
+        "patient_id no FK vs patients(id) ON DELETE SET NULL",
+        "chief_complaint nullable vs NOT NULL",
+        "arrival_mode has different nullability/default/allowed values",
+        "status CHECK vocabularies differ"
+      ]
+    },
+    "theatre_cases": {
+      "enterprise_only": [
+        "theatre",
+        "anaesthetist_id",
+        "scheduled_at",
+        "anaesthetic_cleared",
+        "consent_confirmed",
+        "notes"
+      ],
+      "global_only": [
+        "encounter_id",
+        "anesthetist_id",
+        "scheduled_start",
+        "scheduled_end",
+        "theatre_name",
+        "urgency",
+        "preoperative_notes",
+        "postoperative_notes",
+        "cancellation_reason"
+      ],
+      "conflicts": [
+        "patient_id no FK vs patients(id) ON DELETE CASCADE",
+        "scheduled_at nullable vs scheduled_start NOT NULL",
+        "status vocabularies differ",
+        "anaesthetist_id vs anesthetist_id spelling"
+      ]
+    },
+    "transfusion_records": {
+      "enterprise_only": [
+        "component",
+        "notes"
+      ],
+      "global_only": [
+        "encounter_id",
+        "blood_product",
+        "volume_ml",
+        "reaction_observed"
+      ],
+      "conflicts": [
+        "patient_id no FK vs patients(id) ON DELETE CASCADE",
+        "component vs blood_product",
+        "unit_identifier nullable vs NOT NULL",
+        "status vocabularies differ"
+      ]
+    }
+  },
+  "distinct_table_families": {
+    "enterprise_only": [
+      "wards",
+      "beds",
+      "insurance_cases"
+    ],
+    "global_only": [
+      "ward_units",
+      "ward_beds",
+      "insurance_claims",
+      "insurance_claim_events"
+    ]
+  },
+  "disposition": {
+    "automatic_merge": "prohibited",
+    "automatic_drop": "prohibited",
+    "automatic_dual_column_expansion": "prohibited",
+    "required_evidence": [
+      "authoritative deployed catalog snapshot",
+      "migration ledger and applied SQL provenance",
+      "application RPC and UI consumer inventory",
+      "explicit canonical model decision"
+    ],
+    "replay_authorized": false
+  },
+  "security_policy_names": {
+    "enterprise": [
+      "nursing care plans clinical",
+      "handover clinical",
+      "emergency clinical",
+      "theatre clinical",
+      "transfusion clinical"
+    ],
+    "global": [
+      "nursing care plan access",
+      "nursing handover access",
+      "emergency clinical access",
+      "theatre clinical access",
+      "transfusion clinical access"
+    ]
+  },
+  "functions": {
+    "enterprise": [
+      "public.update_insurance_case"
+    ],
+    "global": [
+      "public.touch_global_hims_updated_at",
+      "public.transition_insurance_claim"
+    ]
+  }
+}

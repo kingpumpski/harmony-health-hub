@@ -1,0 +1,38 @@
+{
+  "source": "Canonical Supabase catalog inspection, read-only, 2026-11-25",
+  "policy": "Every missing expected clinical FK must be explicitly reviewed here. Remove an exception only after a forward-only migration is replayed and generated types confirm the relationship.",
+  "exceptions": [
+    {
+      "table": "emergency_cases",
+      "column": "patient_id",
+      "target": "patients",
+      "referencedColumn": "id",
+      "reason": "Canonical catalog has no patient FK; column is nullable and read-only orphan check returned zero. Deletion semantics need clinical-record retention review.",
+      "reviewRequired": true
+    },
+    {
+      "table": "transfusion_records",
+      "column": "patient_id",
+      "target": "patients",
+      "referencedColumn": "id",
+      "reason": "Canonical catalog has no patient FK; column is NOT NULL and read-only orphan check returned zero. Deletion semantics need transfusion-record retention review.",
+      "reviewRequired": true
+    },
+    {
+      "table": "medication_administrations",
+      "column": "prescription_id",
+      "target": "prescriptions",
+      "referencedColumn": "id",
+      "reason": "Canonical catalog has no prescription FK; column is nullable and read-only orphan check returned zero. Decide whether deletion should be restricted or detached while preserving medication-administration history.",
+      "reviewRequired": true
+    },
+    {
+      "table": "ward_beds",
+      "column": "admission_id",
+      "target": "admissions",
+      "referencedColumn": "id",
+      "reason": "Canonical catalog has no admission FK; bed occupancy is operationally linked to admission IDs. Confirm legacy/orphan behavior and safe delete semantics before adding a constraint.",
+      "reviewRequired": true
+    }
+  ]
+}

@@ -11,8 +11,6 @@ interface AuditRow {
   changed_at: string;
   changed_by: string | null;
   changed_fields: string[] | null;
-  old_record: Record<string, unknown> | null;
-  new_record: Record<string, unknown> | null;
 }
 
 export default function PatientAudit() {
@@ -27,7 +25,7 @@ export default function PatientAudit() {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('patient_audit_log')
-      .select('id, action, changed_at, changed_by, changed_fields, old_record, new_record')
+      .select('id, action, changed_at, changed_by, changed_fields')
       .eq('patient_id', patientId)
       .order('changed_at', { ascending: false })
       .limit(100);
@@ -64,29 +62,6 @@ export default function PatientAudit() {
       header: 'Changed fields',
       hideBelow: 'lg' as const,
       render: (row: AuditRow) => row.changed_fields?.length ? row.changed_fields.join(', ') : 'Not specified',
-    },
-    {
-      key: 'snapshot',
-      header: 'Snapshot',
-      render: (row: AuditRow) => (
-        <details className="max-w-xl text-xs" onClick={(event) => event.stopPropagation()}>
-          <summary className="cursor-pointer font-medium">View record snapshot</summary>
-          <div className="grid gap-3 md:grid-cols-2 mt-3">
-            {row.old_record && (
-              <div>
-                <p className="mb-1 font-medium text-muted-foreground">Previous</p>
-                <pre className="overflow-auto rounded-lg bg-muted p-3 max-h-64">{JSON.stringify(row.old_record, null, 2)}</pre>
-              </div>
-            )}
-            {row.new_record && (
-              <div>
-                <p className="mb-1 font-medium text-muted-foreground">Current</p>
-                <pre className="overflow-auto rounded-lg bg-muted p-3 max-h-64">{JSON.stringify(row.new_record, null, 2)}</pre>
-              </div>
-            )}
-          </div>
-        </details>
-      ),
     },
   ], []);
 

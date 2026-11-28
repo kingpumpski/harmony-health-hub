@@ -1,0 +1,39 @@
+-- REVIEW CANDIDATE ONLY. NOT AN ACTIVE SUPABASE MIGRATION.
+-- Generate a new timestamped migration with `supabase migration new` before use.
+-- Changes only invalid qualification of SQL special forms in the existing function.
+DO $migration$
+DECLARE
+  v_definition text;
+  v_old text;
+BEGIN
+  SELECT pg_catalog.pg_get_functiondef(
+    'public.prepare_patient_billable_items(uuid,timestamp with time zone,timestamp with time zone)'::pg_catalog.regprocedure
+  ) INTO v_definition;
+
+  IF v_definition IS NULL THEN
+    RAISE EXCEPTION 'Required billing materialization function is missing';
+  END IF;
+
+  FOREACH v_old IN ARRAY ARRAY[
+    'pg_catalog.coalesce(',
+    'pg_catalog.greatest(',
+    'pg_catalog.least('
+  ] LOOP
+    IF pg_catalog.strpos(v_definition, v_old) = 0 THEN
+      RAISE EXCEPTION 'Billing function differs from expected source; missing %', v_old;
+    END IF;
+  END LOOP;
+
+  v_definition := pg_catalog.replace(v_definition, 'pg_catalog.coalesce(', 'COALESCE(');
+  v_definition := pg_catalog.replace(v_definition, 'pg_catalog.greatest(', 'GREATEST(');
+  v_definition := pg_catalog.replace(v_definition, 'pg_catalog.least(', 'LEAST(');
+
+  IF v_definition ILIKE '%pg_catalog.coalesce(%'
+     OR v_definition ILIKE '%pg_catalog.greatest(%'
+     OR v_definition ILIKE '%pg_catalog.least(%' THEN
+    RAISE EXCEPTION 'Billing special-form correction did not remove every invalid qualification';
+  END IF;
+
+  EXECUTE v_definition;
+END;
+$migration$;

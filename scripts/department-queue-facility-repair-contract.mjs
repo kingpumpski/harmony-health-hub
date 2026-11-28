@@ -1,14 +1,17 @@
 import fs from 'node:fs';
 
-const file = 'supabase/migrations/20261127090000_fix_department_queue_facility_scope.sql';
+const file = 'supabase/migrations/20261127100400_fix_department_queue_facility_scope.sql';
 const sql = fs.readFileSync(file, 'utf8');
 const normalized = sql.toLowerCase().replace(/\s+/g, '');
 
 if (!sql.includes('CREATE OR REPLACE FUNCTION public.get_department_queue(') ||
-    !sql.includes('_department text') || !sql.includes('_limit integer DEFAULT 100')) {
+    !sql.includes('_department text') ||
+    !sql.includes('_limit integer DEFAULT 100')) {
   throw new Error('Department queue repair must preserve the existing RPC argument contract');
 }
-if (!sql.includes('RETURNS TABLE(') || !sql.includes('SECURITY DEFINER') || !sql.includes("SET search_path = ''")) {
+if (!sql.includes('RETURNS TABLE(') ||
+    !sql.includes('SECURITY DEFINER') ||
+    !sql.includes("SET search_path = ''")) {
   throw new Error('Department queue repair must preserve table return and hardened execution mode');
 }
 for (const token of [
@@ -16,16 +19,19 @@ for (const token of [
   'so.facility_id=v_facility',
   'p.facility_id=v_facility',
   'v_facilityisnullandnotv_platform_admin',
-  "public.has_role(auth.uid(), 'it_admin')",
-  "public.has_role(auth.uid(), 'system_superuser')"
+  "public.has_role(auth.uid(),'it_admin')",
+  "public.has_role(auth.uid(),'system_superuser')"
 ]) {
-  if (!normalized.includes(token.replace(/\s+/g, ''))) throw new Error('Missing department queue facility contract: ' + token);
+  if (!normalized.includes(token.replace(/\s+/g, ''))) {
+    throw new Error('Missing department queue facility contract: ' + token);
+  }
 }
 if (normalized.includes("public.has_role(auth.uid(),'admin')orpublic.has_role(auth.uid(),'it_admin')")) {
   throw new Error('Facility admin must not be included in the platform-wide queue bypass');
 }
+const roleClauses = sql.split('\n').filter(line => line.includes('ur.role'));
 for (const role of ['lab_technician','radiologist','radiology_technician','pharmacist','accountant','canteen','front_desk','nurse','specialist_nurse','midwife']) {
-  if (!sql.includes("ur.role='" + role + "'") && !sql.includes("ur.role IN ('" + role)) {
+  if (!roleClauses.some(clause => clause.includes("'" + role + "'"))) {
     throw new Error('Department queue role contract missing: ' + role);
   }
 }

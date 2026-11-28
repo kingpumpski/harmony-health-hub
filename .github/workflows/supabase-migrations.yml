@@ -27,12 +27,13 @@ concurrency:
 
 jobs:
   migrate:
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_REF: ygqoptvezotdqhtimdkr
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +53,7 @@ jobs:
         run: |
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_PROJECT_REF"
 
       - name: Enforce repository project-integrity gate
         run: npm run test:project-integrity
@@ -68,8 +70,8 @@ jobs:
       - name: Show migration state
         run: supabase migration list --linked
 
-      - name: Validate migrations
-        if: ${{ inputs.mode == 'validate' }}
+      - name: Preflight migration plan before validation or production apply
+        if: ${{ inputs.mode == 'validate' || inputs.mode == 'apply' }}
         run: supabase db push --linked --dry-run
 
       - name: Require explicit production apply confirmation
@@ -116,6 +118,42 @@ jobs:
       - name: Verify maternity workspace contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
         run: supabase test db --linked supabase/tests/database/maternity_workspace_contract.sql
+
+      - name: Verify facility-boundary workspace contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/facility_boundary_workspace_contract.sql
+
+      - name: Verify patient-audit access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/patient_audit_access_contract.sql
+
+      - name: Verify billing-window special-form contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/billing_window_special_forms_contract.sql
+
+      - name: Verify updated-at trigger search-path contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ensure_updated_at_search_path_contract.sql
+
+      - name: Verify default public function execution ACL contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/default_function_acl_contract.sql
+
+      - name: Verify laboratory panel direct-access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/laboratory_panel_access_model_contract.sql
+
+      - name: Verify Reports Center read-only table access contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/report_submissions_readonly_contract.sql
+
+      - name: Verify nursing handover ward-link contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/nursing_handover_ward_link_contract.sql
+
+      - name: Verify ward-bed admission foreign-key contract
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}
+        run: supabase test db --linked supabase/tests/database/ward_beds_admission_fk_contract.sql
 
       - name: Verify clinical workspace read contract
         if: ${{ inputs.mode == 'apply' || inputs.mode == 'verify' }}

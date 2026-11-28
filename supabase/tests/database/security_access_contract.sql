@@ -1,6 +1,6 @@
 begin;
 
-select plan(28);
+select plan(30);
 
 select ok((select relrowsecurity from pg_class where oid = 'public.user_roles'::regclass),'user_roles has RLS enabled');
 select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'user_roles' and policyname = 'user_roles_select_own' and qual is not null and qual ilike '%auth.uid%'),'user_roles read policy is scoped to the current user');
@@ -155,3 +155,47 @@ select ok((select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n o
 
 select ok((select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_attending_patient_history' and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _current_encounter_id uuid DEFAULT NULL::uuid') ilike '%Encounter does not belong to patient%' ,'attending history rejects cross-patient encounter context');
 select ok((select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_encounter_clinical_context' and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _encounter_id uuid DEFAULT NULL::uuid') ilike '%Encounter does not belong to patient%' ,'clinical context rejects cross-patient encounter context');
+
+select ok(
+  has_table_privilege('authenticated','public.nursing_shift_handovers','SELECT')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','INSERT')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','UPDATE')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','DELETE')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','TRUNCATE')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','REFERENCES')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','TRIGGER')
+  and not has_table_privilege('authenticated','public.nursing_shift_handovers','MAINTAIN')
+  and has_table_privilege('authenticated','public.nursing_care_plans','SELECT')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','INSERT')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','UPDATE')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','DELETE')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','TRUNCATE')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','REFERENCES')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','TRIGGER')
+  and not has_table_privilege('authenticated','public.nursing_care_plans','MAINTAIN')
+  and not has_table_privilege('anon','public.nursing_shift_handovers','SELECT')
+  and not has_table_privilege('anon','public.nursing_shift_handovers','INSERT')
+  and not has_table_privilege('anon','public.nursing_care_plans','SELECT')
+  and not has_table_privilege('anon','public.nursing_care_plans','INSERT'),
+  'nursing handover and care-plan tables expose authenticated read only and no anonymous table privileges'
+);
+
+select ok(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public'
+     and p.proname in ('create_nursing_shift_handover','acknowledge_nursing_handover','create_nursing_care_plan')
+     and p.prosecdef
+     and p.proconfig @> ARRAY['search_path=""']::text[]
+     and has_function_privilege('authenticated',p.oid,'EXECUTE')
+     and not has_function_privilege('anon',p.oid,'EXECUTE')) = 3
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public' and p.proname='create_nursing_shift_handover'
+         and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _shift_label text, _clinical_summary text, _pending_tasks text DEFAULT NULL::text, _safety_concerns text DEFAULT NULL::text, _escalation_required boolean DEFAULT false, _ward_id uuid DEFAULT NULL::uuid') ilike '%assert_patient_facility_context%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public' and p.proname='acknowledge_nursing_handover'
+         and pg_get_function_identity_arguments(p.oid)='_handover_id uuid') ilike '%current_user_facility_id%'
+  and (select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public' and p.proname='create_nursing_care_plan'
+         and pg_get_function_identity_arguments(p.oid)='_patient_id uuid, _problem text, _goal text, _interventions text, _priority text, _encounter_id uuid, _admission_id uuid') ilike '%assert_patient_facility_context%',
+  'nursing lifecycle writes remain on authenticated-only SECURITY DEFINER RPCs with facility context checks and pinned search paths'
+);
